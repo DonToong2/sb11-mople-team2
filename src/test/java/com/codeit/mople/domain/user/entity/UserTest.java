@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class UserTest {
 
@@ -18,6 +19,30 @@ public class UserTest {
   }
 
   @Test
+  @DisplayName("email이 null이면 User 생성 시 예외가 발생함")
+  void createUser_throwsException_whenEmailIsNull() {
+    assertThatThrownBy(() -> User.createUser(null, "encodedPassword", "testUser"))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("email");
+  }
+
+  @Test
+  @DisplayName("password가 null이면 User 생성 시 예외가 발생함")
+  void createUser_throwsException_whenPasswordIsNull() {
+    assertThatThrownBy(() -> User.createUser("test@test.com",  null, "testUser"))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("password");
+  }
+
+  @Test
+  @DisplayName("name이 null이면 User 생성 시 예외가 발생함")
+  void createUser_throwsException_whenNameIsNull() {
+    assertThatThrownBy(() -> User.createUser("test@test.com", "encodedPassword", null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("name");
+  }
+
+  @Test
   @DisplayName("프로필 변경 시 이름과 프로필 사진이 갱신됨")
   void updateProfile_success() {
     User user = User.createUser("test@test.com", "encodedPassword", "pastName");
@@ -26,5 +51,25 @@ public class UserTest {
 
     assertThat(user.getName()).isEqualTo("newName");
     assertThat(user.getProfileImageUrl()).isEqualTo("https://new-image.url");
+  }
+
+  @Test
+  @DisplayName("changePassword에 null을 전달하면 예외가 발생함")
+  void changePassword_throwsException_whenNewPasswordIsNull() {
+    User user = User.createUser("test@test.com",  "encodedPassword", "testUser");
+
+    assertThatThrownBy(() -> user.changePassword(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("encodedNewPassword");
+  }
+
+  @Test
+  @DisplayName("changeRole에 null을 전달하면 예외가 발생함")
+  void changeRole_throwsException_whenRoleIsNull() {
+    User user = User.createUser("test@test.com", "encodedPassword", "testUser");
+
+    assertThatThrownBy(() -> user.changeRole(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("role");
   }
 }

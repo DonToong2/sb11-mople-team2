@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -35,10 +36,10 @@ public class User extends BaseEntity {
   private boolean locked;
 
   private User(String email, String password, String name, Role role) {
-    this.email = email;
-    this.password = password;
-    this.name = name;
-    this.role = role;
+    this.email = Objects.requireNonNull(email, "email");
+    this.password = Objects.requireNonNull(password, "password");
+    this.name = Objects.requireNonNull(name, "name");
+    this.role = Objects.requireNonNull(role, "role");
     this.locked = false;
   }
 
@@ -58,12 +59,12 @@ public class User extends BaseEntity {
 
   // 비밀번호 변경
   public void changePassword(String encodedNewPassword) {
-    this.password = encodedNewPassword;
+    this.password = Objects.requireNonNull(encodedNewPassword, "encodedNewPassword");
   }
 
   // 어드민 기능
   public void changeRole(Role role) {
-    this.role = role;
+    this.role = Objects.requireNonNull(role, "role");
   }
 
   public void lock() {
