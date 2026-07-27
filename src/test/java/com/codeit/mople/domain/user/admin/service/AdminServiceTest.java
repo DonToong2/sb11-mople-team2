@@ -57,4 +57,15 @@ class AdminServiceTest {
         .satisfies(e -> assertThat(((CustomException) e).getErrorCode())
             .isEqualTo(UserErrorCode.USER_NOT_FOUND));
   }
+
+  @Test
+  void 어드민을_일반유저로_강등할_수_있다() {
+    UUID userId = UUID.randomUUID();
+    User admin = User.createAdmin("admin@test.com", "encoded", "어드민");
+    given(userRepository.findById(userId)).willReturn(Optional.of(admin));
+
+    adminService.changeUserRole(userId, "USER");
+
+    assertThat(admin.getRole()).isEqualTo(Role.USER);
+  }
 }

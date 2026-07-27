@@ -8,10 +8,12 @@ import com.codeit.mople.global.error.CustomException;
 import com.codeit.mople.global.event.UserForceLogoutEvent;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminService {
@@ -21,10 +23,12 @@ public class AdminService {
 
   @Transactional
   public void changeUserRole(UUID userId, String roleStr) {
+    log.debug("권한 변경 시작 - userId: {}, role: {}", userId, roleStr);
     Role role = Role.valueOf(roleStr.toUpperCase());
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
     user.changeRole(role);
     eventPublisher.publishEvent(new UserForceLogoutEvent(userId));
+    log.info("권한 변경 완료 - userId: {}, role: {}", userId, role);
   }
 }

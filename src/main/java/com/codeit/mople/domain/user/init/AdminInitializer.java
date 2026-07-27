@@ -25,11 +25,12 @@ public class AdminInitializer implements ApplicationRunner {
   @Override
   @Transactional
   public void run(ApplicationArguments args) {
+    log.debug("어드민 계정 초기화 시작 - email: {}", adminProperties.email());
     if (userRepository.existsByEmailAndRole(adminProperties.email(), Role.ADMIN)) {
       return;
     }
     if (userRepository.existsByEmail(adminProperties.email())) {
-      log.warn("Admin initialization skipped: email already taken by non-admin account: {}", adminProperties.email());
+      log.warn("어드민 초기화 건너뜀 - 이미 사용 중인 이메일: {}", adminProperties.email());
       return;
     }
     User admin = User.createAdmin(
@@ -38,6 +39,6 @@ public class AdminInitializer implements ApplicationRunner {
         adminProperties.name()
     );
     userRepository.save(admin);
-    log.info("Admin account initialized: {}", adminProperties.email());
+    log.info("어드민 계정 초기화 완료 - email: {}", adminProperties.email());
   }
 }
