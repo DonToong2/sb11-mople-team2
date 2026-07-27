@@ -12,9 +12,11 @@ import com.codeit.mople.domain.user.repository.UserRepository;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PlaylistService {
@@ -28,19 +30,28 @@ public class PlaylistService {
   @Transactional
   public PlaylistResponse create(UUID ownerId, PlaylistCreateRequest request) {
 
+    log.debug("플레이리스트 생성 시도: ownerId={}, title={}",
+        ownerId, request.title());
+
+    // TODO 김명근: UserNotFound 예외 추가 시 .orElseThrow()에 해당 예외 클래스 추가하여 리팩토링
+    User owner = userRepository.findById(ownerId).orElseThrow();
+
     Playlist playlist = Playlist.create(ownerId, request.title(), request.description());
 
     Playlist savedPlaylist = playlistRepository.save(playlist);
 
-    // TODO 김명근: UserNotFound 예외 추가 시 .orElseThrow()에 해당 예외 클래스 추가하여 리팩토링
-    User owner = userRepository.findById(ownerId).orElseThrow();
     PlaylistOwnerResponse ownerResponse = ownerMapper.toResponse(owner);
 
-    return mapper.toResponse(
+    PlaylistResponse response = mapper.toResponse(
         savedPlaylist,
         ownerResponse,
         true,
         List.of());
+
+    log.info("플레이리스트 생성 완료: playlistId={}, ownerId={}",
+        savedPlaylist.getId(), savedPlaylist.getOwnerId());
+
+    return response;
   }
 
 }

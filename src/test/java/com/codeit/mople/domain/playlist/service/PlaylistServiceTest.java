@@ -81,12 +81,12 @@ public class PlaylistServiceTest {
     PlaylistResponse response = mock(PlaylistResponse.class);
 
     // playlist DB 저장 → user DB 조회 → PlaylistOwnerMapper 생성 → PlaylistMapper 생성 순
-    given(playlistRepository.save(any(Playlist.class)))
-        .willReturn(playlist);
-
     // 성공 테스트이기 때문에 orElseThrow() 미호출
     given(userRepository.findById(ownerId))
         .willReturn(Optional.of(owner));
+
+    given(playlistRepository.save(any(Playlist.class)))
+        .willReturn(playlist);
 
     given(ownerMapper.toResponse(owner))
         .willReturn(ownerResponse);
