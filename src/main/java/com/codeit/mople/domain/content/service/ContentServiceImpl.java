@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.content.service;
 
 import com.codeit.mople.domain.content.dto.ContentCreateRequest;
+import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
@@ -55,5 +56,10 @@ public class ContentServiceImpl implements ContentService {
         savedContent.getReviewCount(),
         savedContent.getWatcherCount()
     );
+  }
+
+  @Override
+  public ContentPageResponse getContents(int limit, String sortDirection, String sortBy) {
+    return null;
   }
 }
