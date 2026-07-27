@@ -5,8 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 public record PlaylistCreateRequest(
     @NotBlank
     String title,
-    
-    // TODO 김명근: schema.sql 확인 후 Bean Validation 적용
+
+    @NotBlank
     String description
 ) {
 

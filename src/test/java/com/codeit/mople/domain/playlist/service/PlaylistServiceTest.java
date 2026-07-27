@@ -103,7 +103,7 @@ public class PlaylistServiceTest {
     PlaylistResponse result = playlistService.create(ownerId, request);
 
     // then
-    // 결과 중심
+    // 결과 중심(상태 검증)
     assertThat(result).isEqualTo(response);
 
     // 행위 중심(given(...) 메서드가 호출됐는지 검증)
@@ -138,6 +138,8 @@ public class PlaylistServiceTest {
         // then
         // TODO 김명근: UserNotFound 예외 추가 시 isInstanceOf()에 해당 예외 클래스 추가하여 리팩토링
         .isInstanceOf(NoSuchElementException.class);
+
+    verify(userRepository).findById(ownerId);
   }
 
 }
