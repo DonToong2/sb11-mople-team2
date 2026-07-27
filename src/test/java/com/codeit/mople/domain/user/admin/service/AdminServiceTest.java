@@ -68,4 +68,40 @@ class AdminServiceTest {
 
     assertThat(admin.getRole()).isEqualTo(Role.USER);
   }
+
+  @Test
+  void 계정_잠금_성공_및_강제로그아웃_이벤트_발행() {
+    UUID userId = UUID.randomUUID();
+    User user = User.createUser("test@test.com", "encoded", "테스터");
+    given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+    adminService.changeUserLocked(userId, true);
+
+    assertThat(user.isLocked()).isTrue();
+    ArgumentCaptor<UserForceLogoutEvent> captor = ArgumentCaptor.forClass(UserForceLogoutEvent.class);
+    verify(eventPublisher).publishEvent(captor.capture());
+    assertThat(captor.getValue().userId()).isEqualTo(userId);
+  }
+
+  @Test
+  void 계정_잠금_해제_성공() {
+    UUID userId = UUID.randomUUID();
+    User user = User.createUser("test@test.com", "encoded", "테스터");
+    given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+    adminService.changeUserLocked(userId, false);
+
+    assertThat(user.isLocked()).isFalse();
+  }
+
+  @Test
+  void 존재하지_않는_사용자_잠금_변경_시_예외() {
+    UUID userId = UUID.randomUUID();
+    given(userRepository.findById(userId)).willReturn(Optional.empty());
+
+    assertThatThrownBy(() -> adminService.changeUserLocked(userId, true))
+        .isInstanceOf(CustomException.class)
+        .satisfies(e -> assertThat(((CustomException) e).getErrorCode())
+            .isEqualTo(UserErrorCode.USER_NOT_FOUND));
+  }
 }
