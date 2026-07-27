@@ -7,6 +7,7 @@ import com.codeit.mople.domain.conversation.service.ConversationService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,14 +25,14 @@ public class ConversationController {
   private final ConversationService conversationService;
 
   // TODO: 보안 연동 완료 시 @AuthenticationPrincipal로 교체
-  private final UUID TEMP_REQUESTER_ID = UUID.randomUUID();
+  private static final UUID TEMP_REQUESTER_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
 
   @PostMapping
   public ResponseEntity<ConversationDto> createConversation(
       @Valid @RequestBody ConversationCreateRequest request
   ) {
     ConversationDto response = conversationService.findOrCreateConversation(TEMP_REQUESTER_ID, request.withUserId());
-    return ResponseEntity.ok(response);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @GetMapping
