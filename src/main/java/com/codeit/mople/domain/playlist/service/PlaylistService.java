@@ -20,8 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class PlaylistService {
 
   private final PlaylistRepository playlistRepository;
-  private final PlaylistOwnerMapper playlistOwnerMapper;
-  private final PlaylistMapper playlistMapper;
+  private final PlaylistOwnerMapper ownerMapper;
+  private final PlaylistMapper mapper;
 
   private final UserRepository userRepository;
 
@@ -32,11 +32,11 @@ public class PlaylistService {
 
     Playlist savedPlaylist = playlistRepository.save(playlist);
 
-    // TODO(김명근) : UserNotFound 예외 추가 시 .orElseThrow()에 해당 예외 클래스 추가하여 리팩토링
+    // TODO 김명근: UserNotFound 예외 추가 시 .orElseThrow()에 해당 예외 클래스 추가하여 리팩토링
     User owner = userRepository.findById(ownerId).orElseThrow();
-    PlaylistOwnerResponse ownerResponse = playlistOwnerMapper.toResponse(owner);
+    PlaylistOwnerResponse ownerResponse = ownerMapper.toResponse(owner);
 
-    return playlistMapper.toResponse(
+    return mapper.toResponse(
         savedPlaylist,
         ownerResponse,
         true,

@@ -10,7 +10,7 @@ public class PlaylistTest {
 
   @Test
   @DisplayName("플레이리스트 생성 성공")
-  void createPlaylist_success() {
+  void create_success() {
     // given
     UUID ownerId = UUID.randomUUID();
     String title = "새 플레이리스트 (1)";
