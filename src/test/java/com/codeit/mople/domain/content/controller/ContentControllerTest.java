@@ -5,8 +5,10 @@ import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 import com.codeit.mople.domain.content.dto.ContentCreateRequest;
+import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.service.ContentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,6 +40,10 @@ public class ContentControllerTest {
 
   @MockitoBean
   private ContentService contentService;
+
+  //=========================================================================================
+  //콘텐츠 생성 테스트
+  //=========================================================================================
 
   @Test
   @DisplayName("콘텐츠 생성 성공 - 201 Created")
@@ -123,5 +129,59 @@ public class ContentControllerTest {
                 .contentType(MediaType.MULTIPART_FORM_DATA)
         )
         .andExpect(status().isInternalServerError());
+  }
+
+  //=========================================================================================
+  //콘텐츠 목록 조회 테스트
+  //=========================================================================================
+
+  @Test
+  @DisplayName("콘텐츠 목록 조회 성공 - 200 OK")
+  void getContents_Success() throws Exception {
+    ContentResponse content1 = new ContentResponse(
+        UUID.randomUUID(), "MOVIE", "테스트 영화1", "설명 1",
+        "http://example.com/test1.png", List.of("액션"),
+        0.0, 0, 0L);
+
+    ContentResponse content2 = new ContentResponse(
+        UUID.randomUUID(), "DRAMA", "테스트 영화2", "설명 2",
+        "http://example.com/test2.png", List.of("로맨스"),
+        0.0, 0, 0L);
+
+    ContentPageResponse mockPageResponse = new ContentPageResponse(
+        List.of(content1, content2),
+        null, //당장 커서를 사용 안 하므로 null
+        null,
+        false,
+        2L,
+        "createdAt",
+        "ASCENDING"
+    );
+
+    given(contentService.getContents(any(), any(), any())).willReturn(mockPageResponse);
+
+    mockMvc.perform(
+            get("/api/contents")
+                .param("limit", "10")
+                .param("sortDirection", "ASCENDING")
+                .param("sortBy", "createdAt")
+                .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(2))
+        .andExpect(jsonPath("$.data[0].title").value("테스트 영화 1"))
+        .andExpect(jsonPath("$.totalCount").value(2))
+        .andExpect(jsonPath("$.hasNext").value(false));
+  }
+
+  @Test
+  @DisplayName("콘텐츠 목록 조회 실패 - 필수 파라미터(limit) 누락 시 400 Bad Request")
+  void getContents_FAil_MissingParam() throws Exception {
+    //limit 파라미터를 의도적으로 누락
+    mockMvc.perform(
+        get("/api/contents")
+            .param("sortDirection", "ASCENDING")
+            .param("sortBy", "createdAt")
+            .contentType(MediaType.APPLICATION_JSON)
+    ).andExpect(status().isBadRequest());
   }
 }
