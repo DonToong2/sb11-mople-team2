@@ -104,7 +104,7 @@ public class PlaylistControllerTest {
   }
 
   @Test
-  @DisplayName("플레이리스트 생성 실패 - 제목이 비어있음")
+  @DisplayName("플레이리스트 생성 실패 - 제목이 비어있음(400 에러)")
   void create_fail_blankTitle() throws Exception {
     // given
     PlaylistCreateRequest invalidRequest = new PlaylistCreateRequest("", description);
@@ -124,7 +124,7 @@ public class PlaylistControllerTest {
   }
 
   @Test
-  @DisplayName("플레이리스트 생성 실패 - 설명이 비어있음")
+  @DisplayName("플레이리스트 생성 실패 - 설명이 비어있음(400 에러)")
   void create_fail_blankDescription() throws Exception {
     // given
     PlaylistCreateRequest invalidRequest = new PlaylistCreateRequest(title, "");
