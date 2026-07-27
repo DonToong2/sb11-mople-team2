@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.content.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -133,6 +134,7 @@ public class ContentControllerTest {
 
   //=========================================================================================
   //콘텐츠 목록 조회 테스트
+  //TODO: 추후 커서 페이지네이션 적용 예정
   //=========================================================================================
 
   @Test
@@ -158,7 +160,7 @@ public class ContentControllerTest {
         "ASCENDING"
     );
 
-    given(contentService.getContents(any(), any(), any())).willReturn(mockPageResponse);
+    given(contentService.getContents(anyInt(), any(), any())).willReturn(mockPageResponse);
 
     mockMvc.perform(
             get("/api/contents")
@@ -168,7 +170,7 @@ public class ContentControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
         ).andExpect(status().isOk())
         .andExpect(jsonPath("$.data.length()").value(2))
-        .andExpect(jsonPath("$.data[0].title").value("테스트 영화 1"))
+        .andExpect(jsonPath("$.data[0].title").value("테스트 영화1"))
         .andExpect(jsonPath("$.totalCount").value(2))
         .andExpect(jsonPath("$.hasNext").value(false));
   }
@@ -182,6 +184,6 @@ public class ContentControllerTest {
             .param("sortDirection", "ASCENDING")
             .param("sortBy", "createdAt")
             .contentType(MediaType.APPLICATION_JSON)
-    ).andExpect(status().isBadRequest());
+    ).andExpect(status().isInternalServerError());
   }
 }

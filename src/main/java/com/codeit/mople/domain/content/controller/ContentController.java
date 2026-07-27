@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.content.controller;
 
 import com.codeit.mople.domain.content.dto.ContentCreateRequest;
+import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.service.ContentService;
 import jakarta.validation.Valid;
@@ -9,9 +10,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,5 +32,14 @@ public class ContentController {
       @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail) {
     ContentResponse response = contentService.createContent(adminId, request, thumbnail);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  @GetMapping
+  public ResponseEntity<ContentPageResponse> getContents(
+      @RequestParam("limit") int limit,
+      @RequestParam("sortDirection") String sortDirection,
+      @RequestParam("sortBy") String sortBy) {
+    ContentPageResponse response = contentService.getContents(limit, sortDirection, sortBy);
+    return ResponseEntity.ok(response);
   }
 }
