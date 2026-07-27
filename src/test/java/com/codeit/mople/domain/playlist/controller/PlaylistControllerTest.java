@@ -73,8 +73,8 @@ public class PlaylistControllerTest {
 
     PlaylistOwnerResponse ownerResponse = new PlaylistOwnerResponse(
         ownerId,
-        "사용자",
-        "profileImageUrl"
+        "test",
+        null
     );
 
     PlaylistResponse response = new PlaylistResponse(
@@ -84,7 +84,7 @@ public class PlaylistControllerTest {
         description,
         Instant.now(),
         0L,
-        true,
+        false,
         List.of()
     );
 
@@ -107,10 +107,14 @@ public class PlaylistControllerTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.id").value(playlistId.toString()))
         .andExpect(jsonPath("$.owner.userId").value(ownerId.toString()))
+        .andExpect(jsonPath("$.owner.name").value(owner.getName()))
+        .andExpect(jsonPath("$.owner.profileImageUrl").value(owner.getProfileImageUrl()))
         .andExpect(jsonPath("$.title").value(title))
         .andExpect(jsonPath("$.description").value(description))
         .andExpect(jsonPath("$.subscriberCount").value(0L))
-        .andExpect(jsonPath("$.contents").isArray());
+        .andExpect(jsonPath("$.subscribedByMe").value(false))
+        .andExpect(jsonPath("$.contents").isArray()
+        );
 
     // 행위 중심(PlaylistService.create() 메서드가 호출되었는지 검증)
     verify(playlistService).create(eq(owner), any(PlaylistCreateRequest.class));

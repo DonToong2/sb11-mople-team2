@@ -76,9 +76,12 @@ public class PlaylistIntegrationTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.id").exists())
         .andExpect(jsonPath("$.owner.userId").value(savedOwner.getId().toString()))
+        .andExpect(jsonPath("$.owner.name").value(savedOwner.getName()))
+        .andExpect(jsonPath("$.owner.profileImageUrl").value(savedOwner.getProfileImageUrl()))
         .andExpect(jsonPath("$.title").value(title))
         .andExpect(jsonPath("$.description").value(description))
         .andExpect(jsonPath("$.subscriberCount").value(0L))
+        .andExpect(jsonPath("$.subscribedByMe").value(false))
         .andExpect(jsonPath("$.contents").isArray())
         .andReturn();
 
