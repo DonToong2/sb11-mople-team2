@@ -4,11 +4,12 @@ import com.codeit.mople.domain.playlist.controller.api.PlaylistApi;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.service.PlaylistService;
+import com.codeit.mople.domain.user.entity.User;
+import com.codeit.mople.domain.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PlaylistController implements PlaylistApi {
 
   private final PlaylistService playlistService;
+  private final UserRepository userRepository;
 
   @Override
   @PostMapping
@@ -30,7 +32,10 @@ public class PlaylistController implements PlaylistApi {
       @Valid @RequestBody PlaylistCreateRequest request
   ) {
 
-    PlaylistResponse response = playlistService.create(ownerId, request);
+    // TODO 김명근: Custom UserDetails 등 인증 구현 시 해당 findById 삭제(UserRepository Import도 같이 삭제)
+    User owner = userRepository.findById(ownerId).orElseThrow();
+
+    PlaylistResponse response = playlistService.create(owner, request);
 
     return ResponseEntity
         .created(URI.create("/api/playlists/" + response.id()))

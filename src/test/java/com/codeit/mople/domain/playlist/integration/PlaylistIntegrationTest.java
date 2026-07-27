@@ -52,7 +52,7 @@ public class PlaylistIntegrationTest {
   void setUp() {
     savedOwner = userRepository.save(
         User.createUser("test@test.com", "12345678", "test")
-        );
+    );
     title = "새 플레이리스트 (1)";
     description = "새로운 플레이리스트입니다.";
     request = new PlaylistCreateRequest(title, description);
@@ -90,7 +90,7 @@ public class PlaylistIntegrationTest {
 
     Playlist playlist = playlistRepository.findById(response.id()).orElseThrow();
 
-    assertThat(playlist.getOwnerId()).isEqualTo(savedOwner.getId());
+    assertThat(playlist.getOwner()).isEqualTo(savedOwner);
     assertThat(playlist.getTitle()).isEqualTo(title);
     assertThat(playlist.getDescription()).isEqualTo(description);
   }

@@ -8,9 +8,7 @@ import com.codeit.mople.domain.playlist.mapper.PlaylistMapper;
 import com.codeit.mople.domain.playlist.mapper.PlaylistOwnerMapper;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.user.entity.User;
-import com.codeit.mople.domain.user.repository.UserRepository;
 import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,18 +23,14 @@ public class PlaylistService {
   private final PlaylistOwnerMapper ownerMapper;
   private final PlaylistMapper mapper;
 
-  private final UserRepository userRepository;
 
   @Transactional
-  public PlaylistResponse create(UUID ownerId, PlaylistCreateRequest request) {
+  public PlaylistResponse create(User owner, PlaylistCreateRequest request) {
 
     log.debug("플레이리스트 생성 시도: ownerId={}, title={}",
-        ownerId, request.title());
+        owner.getId(), request.title());
 
-    // TODO 김명근: UserNotFound 예외 추가 시 .orElseThrow()에 해당 예외 클래스 추가하여 리팩토링
-    User owner = userRepository.findById(ownerId).orElseThrow();
-
-    Playlist playlist = Playlist.create(ownerId, request.title(), request.description());
+    Playlist playlist = Playlist.create(owner, request.title(), request.description());
 
     Playlist savedPlaylist = playlistRepository.save(playlist);
 
@@ -49,7 +43,7 @@ public class PlaylistService {
         List.of());
 
     log.info("플레이리스트 생성 완료: playlistId={}, ownerId={}",
-        savedPlaylist.getId(), savedPlaylist.getOwnerId());
+        savedPlaylist.getId(), owner.getId());
 
     return response;
   }

@@ -1,10 +1,13 @@
 package com.codeit.mople.domain.playlist.entity;
 
+import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,8 +19,9 @@ import lombok.NoArgsConstructor;
 public class Playlist extends BaseTimeEntity {
 
   // userId
-  @Column(nullable = false)
-  private UUID ownerId;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "owner_id", nullable = false)
+  private User owner;
 
   @Column(nullable = false)
   private String title;
@@ -28,14 +32,14 @@ public class Playlist extends BaseTimeEntity {
   @Column(nullable = false)
   private long subscriberCount = 0L;
 
-  private Playlist(UUID ownerId, String title, String description) {
-    this.ownerId = ownerId;
+  private Playlist(User owner, String title, String description) {
+    this.owner = owner;
     this.title = title;
     this.description = description;
   }
 
-  public static Playlist create(UUID ownerId, String title, String description) {
-    return new Playlist(ownerId, title, description);
+  public static Playlist create(User owner, String title, String description) {
+    return new Playlist(owner, title, description);
   }
 
 }

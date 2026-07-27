@@ -15,9 +15,12 @@ import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistOwnerResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.service.PlaylistService;
+import com.codeit.mople.domain.user.entity.User;
+import com.codeit.mople.domain.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +43,11 @@ public class PlaylistControllerTest {
   @MockitoBean
   private PlaylistService playlistService;
 
+  // TODO 김명근: Custom UserDetails 등 인증 구현 시 UserRepository MockBean 삭제
+  @MockitoBean
+  private UserRepository userRepository;
+
+  private User owner;
   private UUID ownerId;
   private PlaylistCreateRequest request;
   private String title;
@@ -47,6 +55,7 @@ public class PlaylistControllerTest {
 
   @BeforeEach
   void setUp() {
+    owner = User.createUser("test@test.com", "12345678", "test");
     ownerId = UUID.randomUUID();
     title = "새 플레이리스트 (1)";
     description = "새로운 플레이리스트입니다.";
@@ -79,7 +88,11 @@ public class PlaylistControllerTest {
         List.of()
     );
 
-    given(playlistService.create(ownerId, request))
+    // TODO 김명근: Custom UserDetails 등 인증 구현 시 해당 given() 메서드 삭제
+    given(userRepository.findById(ownerId))
+        .willReturn(Optional.of(owner));
+
+    given(playlistService.create(eq(owner), any(PlaylistCreateRequest.class)))
         .willReturn(response);
 
     // when & then
@@ -100,7 +113,7 @@ public class PlaylistControllerTest {
         .andExpect(jsonPath("$.contents").isArray());
 
     // 행위 중심(PlaylistService.create() 메서드가 호출되었는지 검증)
-    verify(playlistService).create(eq(ownerId), any(PlaylistCreateRequest.class));
+    verify(playlistService).create(eq(owner), any(PlaylistCreateRequest.class));
   }
 
   @Test
