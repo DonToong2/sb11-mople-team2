@@ -94,7 +94,7 @@ public class PlaylistServiceTest {
     given(mapper.toResponse(
         any(Playlist.class),
         eq(ownerResponse),
-        eq(true),
+        eq(false),
         eq(List.of())
     ))
         .willReturn(response);
@@ -113,7 +113,7 @@ public class PlaylistServiceTest {
     verify(mapper).toResponse(
         any(Playlist.class),
         eq(ownerResponse),
-        eq(true),
+        eq(false),
         eq(List.of())
     );
   }

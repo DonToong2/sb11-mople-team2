@@ -45,7 +45,7 @@ public class PlaylistService {
     PlaylistResponse response = mapper.toResponse(
         savedPlaylist,
         ownerResponse,
-        true,
+        false,
         List.of());
 
     log.info("플레이리스트 생성 완료: playlistId={}, ownerId={}",
