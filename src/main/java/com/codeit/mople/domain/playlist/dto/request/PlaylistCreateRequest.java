@@ -6,7 +6,7 @@ public record PlaylistCreateRequest(
     @NotBlank
     String title,
     
-    // TODO: schema.sql 확인 후 Bean Validation 적용
+    // TODO(김명근): schema.sql 확인 후 Bean Validation 적용
     String description
 ) {
 
