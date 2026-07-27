@@ -177,7 +177,7 @@ public class ContentControllerTest {
 
   @Test
   @DisplayName("콘텐츠 목록 조회 실패 - 필수 파라미터(limit) 누락 시 400 Bad Request")
-  void getContents_FAil_MissingParam() throws Exception {
+  void getContents_Fail_MissingParam() throws Exception {
     //limit 파라미터를 의도적으로 누락
     mockMvc.perform(
         get("/api/contents")

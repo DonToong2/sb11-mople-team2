@@ -5,9 +5,15 @@ import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
+import com.codeit.mople.domain.content.mapper.ContentMapper;
 import com.codeit.mople.domain.content.repository.ContentRepository;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,7 +23,9 @@ import org.springframework.web.multipart.MultipartFile;
 public class ContentServiceImpl implements ContentService {
 
   private final ContentRepository contentRepository;
+  private final ContentMapper contentMapper;
 
+  //콘텐츠 생성 로직
   @Override
   @Transactional
   public ContentResponse createContent(UUID adminId, ContentCreateRequest request,
@@ -45,21 +53,37 @@ public class ContentServiceImpl implements ContentService {
     Content savedContent = contentRepository.save(content);
 
     //저장된 엔티티 데이터를 ContentResponse 구조로 변환하여 반환
-    return new ContentResponse(
-        savedContent.getId(),
-        savedContent.getType().name(),
-        savedContent.getTitle(),
-        savedContent.getDescription(),
-        savedContent.getThumbnailUrl(),
-        savedContent.getTags(),
-        savedContent.getAverageRating(),
-        savedContent.getReviewCount(),
-        savedContent.getWatcherCount()
-    );
+    return contentMapper.toDto(savedContent);
   }
 
+  //콘텐츠 목록 조회 로직
   @Override
+  @Transactional(readOnly = true)
   public ContentPageResponse getContents(int limit, String sortDirection, String sortBy) {
-    return null;
+    //정렬 방향 설정(ASCENDING(오름차순) 또는 DESCENDING(내림차순))
+    Sort.Direction direction = sortDirection.equalsIgnoreCase("DESCENDING")
+        ? Direction.DESC
+        : Direction.ASC;
+
+    //PageRequest 객체 생성(첫 페이지(0) 부터 limit 개수만큼 조회)
+    PageRequest pageRequest = PageRequest.of(0, limit, Sort.by(direction, sortBy));
+
+    //DB 조회
+    Page<Content> contentPage = contentRepository.findAll(pageRequest);
+
+    //Content 엔티티 리스트를 ContentResponse DTO 리스트로 변환
+    List<ContentResponse> contentResponses = contentPage.getContent().stream()
+        .map(contentMapper::toDto).toList();
+
+    //ContentPageResponse에 맞춰 반환
+    return new ContentPageResponse(
+        contentResponses,
+        null, //nextCursor(당장 미사용)
+        null, //nextIdAfter(당장 미사용)
+        contentPage.hasNext(), //다음 페이지 존재 여부
+        contentPage.getTotalElements(), //전체 데이터 개수
+        sortBy,
+        sortDirection
+    );
   }
 }
