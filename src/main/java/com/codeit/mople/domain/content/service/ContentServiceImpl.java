@@ -7,6 +7,8 @@ import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.mapper.ContentMapper;
 import com.codeit.mople.domain.content.repository.ContentRepository;
+import com.codeit.mople.domain.exception.ContentErrorCode;
+import com.codeit.mople.global.error.CustomException;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +32,15 @@ public class ContentServiceImpl implements ContentService {
   @Transactional
   public ContentResponse createContent(UUID adminId, ContentCreateRequest request,
       MultipartFile thumbnail) {
-    
+
+    //ContentType 변환 방어 로직
+    ContentType contentType;
+    try {
+      contentType = ContentType.valueOf(request.type().toUpperCase());
+    } catch (IllegalArgumentException e) {
+      throw new CustomException(ContentErrorCode.INVALID_CONTENT_TYPE);
+    }
+
     //TODO: 관리자 권한 검증 추가 예정
 
     //썸네일 이미지 업로드 처리(현재는 임시 URL 처리)
@@ -40,14 +50,8 @@ public class ContentServiceImpl implements ContentService {
       uploadedThumbnailUrl = "http://example.com/images/" + thumbnail.getOriginalFilename();
     }
 
-    //Request DTO 데이터를 바탕으로 Content 엔티티 생성
-    Content content = new Content(
-        ContentType.valueOf(request.type().toUpperCase()),
-        request.title(),
-        request.description(),
-        uploadedThumbnailUrl,
-        request.tags()
-    );
+    //Request DTO 데이터를 바탕으로 매퍼를 통해 Content 엔티티 생성
+    Content content = contentMapper.toEntity(request, contentType, uploadedThumbnailUrl);
 
     //DB에 엔티티 저장
     Content savedContent = contentRepository.save(content);
@@ -60,6 +64,11 @@ public class ContentServiceImpl implements ContentService {
   @Override
   @Transactional(readOnly = true)
   public ContentPageResponse getContents(int limit, String sortDirection, String sortBy) {
+    //Limit 검증 로직
+    if (limit <= 0) {
+      throw new CustomException(ContentErrorCode.INVALID_PAGE_REQUEST);
+    }
+
     //정렬 방향 설정(ASCENDING(오름차순) 또는 DESCENDING(내림차순))
     Sort.Direction direction = sortDirection.equalsIgnoreCase("DESCENDING")
         ? Direction.DESC
@@ -75,15 +84,7 @@ public class ContentServiceImpl implements ContentService {
     List<ContentResponse> contentResponses = contentPage.getContent().stream()
         .map(contentMapper::toDto).toList();
 
-    //ContentPageResponse에 맞춰 반환
-    return new ContentPageResponse(
-        contentResponses,
-        null, //nextCursor(당장 미사용)
-        null, //nextIdAfter(당장 미사용)
-        contentPage.hasNext(), //다음 페이지 존재 여부
-        contentPage.getTotalElements(), //전체 데이터 개수
-        sortBy,
-        sortDirection
-    );
+    //ContentPageResponse에 맞춰 매퍼를 통해 페이징 응답 객체 생성 및 반환
+    return contentMapper.toPageResponse(contentResponses, contentPage, sortBy, sortDirection);
   }
 }
