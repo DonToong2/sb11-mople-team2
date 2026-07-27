@@ -1,9 +1,10 @@
 package com.codeit.mople.domain.follow.dto;
 
+import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record FollowRequest(
-    UUID followeeId
+    @NotNull UUID followeeId
 ) {
 
 }
