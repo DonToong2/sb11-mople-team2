@@ -26,11 +26,11 @@ public interface FollowApi {
       @ApiResponse(responseCode = "201", description = "성공",
           content = @Content(schema = @Schema(implementation = FollowResponse.class))),
       @ApiResponse(responseCode = "400", description = "잘못된 요청",
-          content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))),
       @ApiResponse(responseCode = "401", description = "인증 오류",
-          content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))),
       @ApiResponse(responseCode = "500", description = "서버 오류",
-          content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))),
   })
   public ResponseEntity<FollowResponse> createFollow(
       @Parameter(hidden = true) @AuthenticationPrincipal MoplUserDetails principal,
