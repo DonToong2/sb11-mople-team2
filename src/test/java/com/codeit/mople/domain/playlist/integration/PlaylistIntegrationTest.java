@@ -143,8 +143,7 @@ public class PlaylistIntegrationTest {
   }
 
   @Test
-  // TODO 김명근: UserNotFound 예외 추가 시 DisplayName의 500 에러를 404 에러로 리팩토링
-  @DisplayName("플레이리스트 생성 실패 - 사용자가 존재하지 않음(500 에러)")
+  @DisplayName("플레이리스트 생성 실패 - 사용자가 존재하지 않음(404 에러)")
   void create_fail_notFoundUser() throws Exception {
     // given
     UUID notExistOwnerId = UUID.randomUUID();
@@ -158,8 +157,7 @@ public class PlaylistIntegrationTest {
             .param("ownerId", notExistOwnerId.toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
-        // TODO 김명근: UserNotFound 예외 추가 시 상태코드를 isNotFound() 메서드로 교체하여 리팩토링
-        .andExpect(status().isInternalServerError());
+        .andExpect(status().isNotFound());
 
     // 플레이리스트가 저장되지 말아야 함
     assertThat(playlistRepository.count()).isZero();

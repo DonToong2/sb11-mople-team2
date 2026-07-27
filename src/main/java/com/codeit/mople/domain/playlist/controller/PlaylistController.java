@@ -5,7 +5,9 @@ import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.service.PlaylistService;
 import com.codeit.mople.domain.user.entity.User;
+import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.global.error.CustomException;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
@@ -33,7 +35,8 @@ public class PlaylistController implements PlaylistApi {
   ) {
 
     // TODO 김명근: Custom UserDetails 등 인증 구현 시 해당 findById 삭제(UserRepository Import도 같이 삭제)
-    User owner = userRepository.findById(ownerId).orElseThrow();
+    User owner = userRepository.findById(ownerId).orElseThrow(() ->
+            new CustomException(UserErrorCode.USER_NOT_FOUND));
 
     PlaylistResponse response = playlistService.create(owner, request);
 
