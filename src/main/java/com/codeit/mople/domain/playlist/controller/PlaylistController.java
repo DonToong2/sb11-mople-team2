@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.playlist.controller;
 
+import com.codeit.mople.domain.playlist.controller.api.PlaylistApi;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.service.PlaylistService;
@@ -17,10 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/playlists")
 @RequiredArgsConstructor
-public class PlaylistController {
+public class PlaylistController implements PlaylistApi {
 
   private final PlaylistService playlistService;
 
+  @Override
   @PostMapping
   public ResponseEntity<PlaylistResponse> create(
       @RequestParam UUID ownerId,
