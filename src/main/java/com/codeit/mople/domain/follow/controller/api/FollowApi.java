@@ -1,0 +1,39 @@
+package com.codeit.mople.domain.follow.controller.api;
+
+import com.codeit.mople.domain.follow.dto.FollowRequest;
+import com.codeit.mople.domain.follow.dto.FollowResponse;
+import com.codeit.mople.global.security.MoplUserDetails;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.RequestBody;
+
+@Tag(name = "팔로우 관리")
+public interface FollowApi {
+
+  // ErrorResponse 임시 작성
+  @Operation(operationId = "createFollow", summary = "팔로우")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "성공",
+          content = @Content(schema = @Schema(implementation = FollowResponse.class))),
+      @ApiResponse(responseCode = "201", description = "성공",
+          content = @Content(schema = @Schema(implementation = FollowResponse.class))),
+      @ApiResponse(responseCode = "400", description = "잘못된 요청",
+          content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+      @ApiResponse(responseCode = "401", description = "인증 오류",
+          content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+      @ApiResponse(responseCode = "500", description = "서버 오류",
+          content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+  })
+  public ResponseEntity<FollowResponse> createFollow(
+      @Parameter(hidden = true) @AuthenticationPrincipal MoplUserDetails principal,
+      @Valid @RequestBody FollowRequest followRequest);
+
+}
