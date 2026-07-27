@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 @Tag(name = "팔로우 관리")
 public interface FollowApi {
 
-  // ErrorResponse 임시 작성
+  // ErrorResponse 는 어떻게 해야할지??, 일단 작업하던거 하고 수정할 예정
   @Operation(operationId = "createFollow", summary = "팔로우")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "성공",
@@ -35,5 +35,4 @@ public interface FollowApi {
   public ResponseEntity<FollowResponse> createFollow(
       @Parameter(hidden = true) @AuthenticationPrincipal MoplUserDetails principal,
       @Valid @RequestBody FollowRequest followRequest);
-
 }
