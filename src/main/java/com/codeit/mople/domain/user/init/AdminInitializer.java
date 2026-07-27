@@ -10,6 +10,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
@@ -22,6 +23,7 @@ public class AdminInitializer implements ApplicationRunner {
   private final AdminProperties adminProperties;
 
   @Override
+  @Transactional
   public void run(ApplicationArguments args) {
     if (userRepository.existsByEmailAndRole(adminProperties.email(), Role.ADMIN)) {
       return;

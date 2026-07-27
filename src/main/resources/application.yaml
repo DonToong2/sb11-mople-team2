@@ -21,5 +21,5 @@ password-reset:
 
 admin:
   email: "admin@mople.com"
-  password: ${ADMIN_PASSWORD:Admin1234!}
+  password: ${ADMIN_PASSWORD}
   name: "관리자"
