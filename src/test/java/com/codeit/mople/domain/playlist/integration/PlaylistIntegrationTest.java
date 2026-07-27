@@ -51,7 +51,7 @@ public class PlaylistIntegrationTest {
   @BeforeEach
   void setUp() {
     savedOwner = userRepository.save(
-        User.createUser("test@test.com", "1234", "test")
+        User.createUser("test@test.com", "12345678", "test")
         );
     title = "새 플레이리스트 (1)";
     description = "새로운 플레이리스트입니다.";
