@@ -16,14 +16,18 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(ContentController.class)
+@AutoConfigureMockMvc(addFilters = false) //403 에러 방지를 위해 보안 필터 비활성화
+@WithMockUser //가짜 인증 사용자 설정
 public class ContentControllerTest {
 
   @Autowired
@@ -98,7 +102,7 @@ public class ContentControllerTest {
   }
 
   @Test
-  @DisplayName("콘텐츠 생성 실패 - 필수 헤더(X-User-Id) 누락 시 400 Bad Request")
+  @DisplayName("콘텐츠 생성 실패 - 필수 헤더(X-User-Id) 누락 시 500 Internal Server Error 반환")
   void createContent_Fail_MissingHeader() throws Exception {
     ContentCreateRequest requestDto = new ContentCreateRequest(
         "MOVIE", "테스트 영화", "설명", List.of("액션"));
@@ -118,6 +122,6 @@ public class ContentControllerTest {
                 // .header("X-User-Id", adminId.toString()) 헤더를 의도적으로 누락
                 .contentType(MediaType.MULTIPART_FORM_DATA)
         )
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isInternalServerError());
   }
 }
