@@ -26,13 +26,12 @@ public class Playlist extends BaseTimeEntity {
   private String description;
 
   @Column(nullable = false)
-  private long subscriberCount;
+  private long subscriberCount = 0L;
 
   private Playlist(UUID ownerId, String title, String description) {
     this.ownerId = ownerId;
     this.title = title;
     this.description = description;
-    this.subscriberCount = 0L;
   }
 
   public static Playlist create(UUID ownerId, String title, String description) {
