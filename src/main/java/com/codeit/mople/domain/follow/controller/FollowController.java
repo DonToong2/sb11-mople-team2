@@ -22,6 +22,6 @@ public class FollowController implements FollowApi {
   // MoplUserDetails 임시 작성
   @Override
   public ResponseEntity<FollowResponse> createFollow(MoplUserDetails principal, FollowRequest followRequest) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(followService.follow(followRequest, principal.getUserId());
+    return ResponseEntity.status(HttpStatus.CREATED).body(followService.follow(followRequest, principal.getUserId()));
   }
 }

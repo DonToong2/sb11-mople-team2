@@ -57,7 +57,7 @@ public class FollowService {
     log.info("팔로우 성공: followId={}, followeeId={}, followerId={}", saved.getId(), followeeId, followerId);
 
     // 알림을 위한 이벤트 발행, 알림 도메인 담당과 상의해서 발신자 이름 포함할지 정해야함
-    publisher.publishEvent(new FollowCreatedEvent(saved.getId(), followerId, followerId));
+    publisher.publishEvent(new FollowCreatedEvent(saved.getId(), followeeId, followerId));
 
     // mapper로 리턴
     return followMapper.toFollowResponse(saved);
