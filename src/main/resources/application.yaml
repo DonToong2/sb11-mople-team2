@@ -18,3 +18,8 @@ jwt:
 password-reset:
   temporary-password: "temporary1!!"
   expiration-minutes: 3
+
+admin:
+  email: "admin@mople.com"
+  password: ${ADMIN_PASSWORD:Admin1234!}
+  name: "관리자"
