@@ -40,12 +40,12 @@ public interface PlaylistApi {
           description = "인증 오류",
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       ),
-      // TODO 김명근: 인증 구현 후 403/404 응답 삭제
       @ApiResponse(
           responseCode = "403",
           description = "권한 없음",
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       ),
+      // TODO 김명근: 인증 구현 후 404 응답 삭제
       @ApiResponse(
           responseCode = "404",
           description = "플레이리스트 소유자를 찾을 수 없음",
