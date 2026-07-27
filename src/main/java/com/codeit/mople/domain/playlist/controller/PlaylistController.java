@@ -5,6 +5,7 @@ import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.service.PlaylistService;
 import jakarta.validation.Valid;
+import java.net.URI;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -31,7 +32,9 @@ public class PlaylistController implements PlaylistApi {
 
     PlaylistResponse response = playlistService.create(ownerId, request);
 
-    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    return ResponseEntity
+        .created(URI.create("/api/playlists/" + response.id()))
+        .body(response);
   }
 
 }
