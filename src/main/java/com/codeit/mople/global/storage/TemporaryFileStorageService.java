@@ -13,6 +13,6 @@ public class TemporaryFileStorageService implements FileStorageService {
 
   @Override
   public String upload(MultipartFile file) {
-    return "https://placeholder.mople.com/" + UUID.randomUUID() + "-" + file.getOriginalFilename();
+    return "https://placeholder.mople.com/" + UUID.randomUUID();
   }
 }
