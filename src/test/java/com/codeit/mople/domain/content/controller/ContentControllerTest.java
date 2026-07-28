@@ -3,6 +3,9 @@ package com.codeit.mople.domain.content.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willDoNothing;
+import static org.mockito.BDDMockito.willThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -327,4 +330,41 @@ public class ContentControllerTest {
         .andExpect(status().isInternalServerError());
   }
   */
+
+  //=========================================================================================
+  //콘텐츠 삭제 테스트
+  //=========================================================================================
+
+  @Test
+  @DisplayName("콘텐츠 삭제 성공 - 200 OK")
+  void deleteContent_Success() throws Exception {
+    UUID contentId = UUID.randomUUID();
+    UUID adminId = UUID.randomUUID();
+
+    willDoNothing().given(contentService).deleteContent(any(), any());
+
+    mockMvc.perform(
+        delete("/api/contents/{contentId}", contentId)
+            //TODO: 추후 JWT 도입 및 관리자 권한 적용 시 주석 해제
+            //.header("X-User-Id", adminId.toString())
+            .contentType(MediaType.APPLICATION_JSON)
+    ).andExpect(status().isOk());
+  }
+
+  @Test
+  @DisplayName("콘텐츠 삭제 실패 - 존재하지 않는 ID 삭제 시 404 Not Found")
+  void deleteContent_Fail_NotFound() throws Exception {
+    UUID contentId = UUID.randomUUID();
+    UUID adminId = UUID.randomUUID();
+
+    willThrow(ContentNotFoundException.withId(contentId))
+        .given(contentService).deleteContent(any(), any());
+
+    mockMvc.perform(
+        delete("/api/contents/{contentId}", contentId)
+            //TODO: 추후 JWT 도입 및 관리자 권한 적용 시 주석 해제
+            //.header("X-User-Id", adminId.toString())
+            .contentType(MediaType.APPLICATION_JSON)
+    ).andExpect(status().isNotFound());
+  }
 }

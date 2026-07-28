@@ -129,4 +129,10 @@ public class ContentServiceImpl implements ContentService {
     //수정된 엔티티를 DTO로 변환하여 반환
     return contentMapper.toDto(content);
   }
+
+  //콘텐츠 삭제
+  @Override
+  public void deleteContent(UUID adminId, UUID contentId) {
+
+  }
 }

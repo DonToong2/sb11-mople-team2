@@ -16,4 +16,8 @@ public interface ContentService {
   //콘텐츠 단건 조회 메서드
   ContentResponse getContent(UUID contentId);
   //콘텐츠 수정 메서드
-  ContentResponse updateContent(UUID adminId, UUID contentId, ContentUpdateRequest request, MultipartFile thumbnail);}
+  ContentResponse updateContent(UUID adminId, UUID contentId, ContentUpdateRequest request, MultipartFile thumbnail);
+  //콘텐츠 삭제 메서드
+  void deleteContent(UUID adminId, UUID contentId);
+
+}
