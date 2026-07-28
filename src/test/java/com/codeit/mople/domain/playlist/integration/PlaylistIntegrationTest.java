@@ -74,7 +74,7 @@ public class PlaylistIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.id").exists())
+        .andExpect(jsonPath("$.id").isNotEmpty())
         .andExpect(jsonPath("$.owner.userId").value(savedOwner.getId().toString()))
         .andExpect(jsonPath("$.owner.name").value(savedOwner.getName()))
         .andExpect(jsonPath("$.owner.profileImageUrl").value(savedOwner.getProfileImageUrl()))
@@ -85,12 +85,16 @@ public class PlaylistIntegrationTest {
         .andExpect(jsonPath("$.contents").isArray())
         .andReturn();
 
-    // DB 검증
     // 응답 추출
     PlaylistResponse response = objectMapper.readValue(
         result.getResponse().getContentAsString(), PlaylistResponse.class
     );
 
+    // 헤더 검증
+    assertThat(result.getResponse().getHeader("Location"))
+        .isEqualTo("/api/playlists/" + response.id());
+
+    // DB 검증
     Playlist playlist = playlistRepository.findById(response.id()).orElseThrow();
 
     assertThat(playlist.getOwner()).isEqualTo(savedOwner);
