@@ -29,7 +29,7 @@ public class ContentServiceImpl implements ContentService {
   private final ContentRepository contentRepository;
   private final ContentMapper contentMapper;
 
-  //콘텐츠 생성 로직
+  //콘텐츠 생성
   @Override
   @Transactional
   public ContentResponse createContent(UUID adminId, ContentCreateRequest request,
@@ -62,7 +62,7 @@ public class ContentServiceImpl implements ContentService {
     return contentMapper.toDto(savedContent);
   }
 
-  //콘텐츠 목록 조회 로직
+  //콘텐츠 목록 조회
   @Override
   @Transactional(readOnly = true)
   public ContentPageResponse getContents(int limit, String sortDirection, String sortBy) {
@@ -102,9 +102,31 @@ public class ContentServiceImpl implements ContentService {
     return contentMapper.toDto(content);
   }
 
+  //콘텐츠 수정
   @Override
+  @Transactional
   public ContentResponse updateContent(UUID adminId, UUID contentId, ContentUpdateRequest request,
       MultipartFile thumbnail) {
-    return null;
+    //수정할 콘텐츠 조회(없으면 404 예외 발생)
+    Content content = contentRepository.findById(contentId)
+        .orElseThrow(() -> ContentNotFoundException.withId(contentId));
+
+    //썸네일 수정(새로운 파일이 들어온 경우에만 업데이트)
+    String uploadedThumbnailUrl = content.getThumbnailUrl(); //기존 URL 유지
+    if (thumbnail != null && !thumbnail.isEmpty()) {
+      //TODO: 추후 S3 업로드 로직으로 교체
+      uploadedThumbnailUrl = "http://example.com/images/updated_" + thumbnail.getOriginalFilename();
+    }
+
+    //엔티티 상태 변경(JPA 변경 감지 활용)
+    content.updateContentInfo(
+        request.title(),
+        request.description(),
+        uploadedThumbnailUrl,
+        request.tags()
+    );
+
+    //수정된 엔티티를 DTO로 변환하여 반환
+    return contentMapper.toDto(content);
   }
 }
