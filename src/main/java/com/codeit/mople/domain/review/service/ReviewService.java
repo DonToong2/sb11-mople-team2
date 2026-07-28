@@ -11,9 +11,11 @@ import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.error.CustomException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReviewService {
@@ -27,17 +29,28 @@ public class ReviewService {
   @Transactional
   public ReviewResponse create(UUID authorId, ReviewCreateRequest request) {
 
-    User author = userRepository.findById(authorId).orElseThrow(() ->
-        new CustomException(UserErrorCode.USER_NOT_FOUND));
+    log.debug("리뷰 생성 시도: authorId={}, contentId={}, rating={}",
+        authorId, request.contentId(), request.rating());
 
-    Content content = contentRepository.findById(request.contentId()).orElseThrow(() ->
-        new CustomException(ContentErrorCode.CONTENT_NOT_FOUND));
+    User author = userRepository.findById(authorId).orElseThrow(() -> {
+      log.warn("리뷰 생성 실패: 사용자를 찾을 수 없습니다. userId={}", authorId);
+      return new CustomException(UserErrorCode.USER_NOT_FOUND);
+    });
+
+    Content content = contentRepository.findById(request.contentId()).orElseThrow(() -> {
+      log.warn("리뷰 생성 실패: 컨텐츠를 찾을 수 없습니다. contentId={}", request.contentId());
+      return new CustomException(ContentErrorCode.CONTENT_NOT_FOUND);
+    });
 
     Review review = Review.create(content, author, request.text(), request.rating());
 
     Review savedReview = reviewRepository.save(review);
 
-    return reviewMapper.toResponse(savedReview);
+    ReviewResponse response = reviewMapper.toResponse(savedReview);
+    log.info("리뷰 생성 완료: reviewId={}, userId={}, contentId={}",
+        savedReview.getId(), authorId, request.contentId());
+
+    return response;
   }
 
 }
