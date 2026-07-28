@@ -21,8 +21,6 @@ public interface FollowApi {
   // ErrorResponse 는 어떻게 해야할지??, 일단 작업하던거 하고 수정할 예정
   @Operation(operationId = "createFollow", summary = "팔로우")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "성공",
-          content = @Content(schema = @Schema(implementation = FollowResponse.class))),
       @ApiResponse(responseCode = "201", description = "성공",
           content = @Content(schema = @Schema(implementation = FollowResponse.class))),
       @ApiResponse(responseCode = "400", description = "잘못된 요청",
