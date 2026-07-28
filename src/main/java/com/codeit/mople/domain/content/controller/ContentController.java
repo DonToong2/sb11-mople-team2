@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -75,5 +76,21 @@ public class ContentController {
 
     ContentResponse response = contentService.updateContent(adminId, contentId, request, thumbnail);
     return ResponseEntity.ok(response);
+  }
+
+  //콘텐츠 삭제
+  @DeleteMapping("/{contentId}")
+  public ResponseEntity<Void> deleteContent(
+      @PathVariable UUID contentId
+      //TODO: 추후 JWT 도입 및 관리자 권한 적용 시 주석 해제
+      //,@RequestHeader("X-User-Id") UUID adminId
+  ) {
+
+    //TODO: JWT 도입 시 아래 임시 adminId 삭제 예정
+    UUID adminId = UUID.randomUUID();
+
+    contentService.deleteContent(adminId, contentId);
+
+    return ResponseEntity.ok().build();
   }
 }
