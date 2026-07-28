@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -13,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.codeit.mople.domain.review.dto.request.ReviewCreateRequest;
 import com.codeit.mople.domain.review.dto.response.ReviewResponse;
 import com.codeit.mople.domain.review.service.ReviewService;
+import com.codeit.mople.global.config.SecurityConfig;
 import com.codeit.mople.global.dto.UserSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
@@ -21,10 +24,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+@Import(SecurityConfig.class)
 @WebMvcTest(ReviewController.class)
 public class ReviewControllerTest {
 
@@ -80,6 +85,8 @@ public class ReviewControllerTest {
 
     // when & then
     mockMvc.perform(post("/api/reviews")
+            .with(user("test"))
+            .with(csrf())
             .param("authorId", authorId.toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request))
@@ -106,6 +113,8 @@ public class ReviewControllerTest {
 
     // when & then
     mockMvc.perform(post("/api/reviews")
+            .with(user("test"))
+            .with(csrf())
             .param("authorId", authorId.toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(invalidRequest))
@@ -123,6 +132,8 @@ public class ReviewControllerTest {
 
     // when & then
     mockMvc.perform(post("/api/reviews")
+            .with(user("test"))
+            .with(csrf())
             .param("authorId", authorId.toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(invalidRequest))
@@ -140,6 +151,8 @@ public class ReviewControllerTest {
 
     // when & then
     mockMvc.perform(post("/api/reviews")
+            .with(user("test"))
+            .with(csrf())
             .param("authorId", authorId.toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(invalidRequest))
@@ -157,6 +170,8 @@ public class ReviewControllerTest {
 
     // when & then
     mockMvc.perform(post("/api/reviews")
+            .with(user("test"))
+            .with(csrf())
             .param("authorId", authorId.toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(invalidRequest))
@@ -174,6 +189,8 @@ public class ReviewControllerTest {
 
     // when & then
     mockMvc.perform(post("/api/reviews")
+            .with(user("test"))
+            .with(csrf())
             .param("authorId", authorId.toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(invalidRequest))

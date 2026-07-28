@@ -1,6 +1,8 @@
 package com.codeit.mople.domain.review.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,6 +16,7 @@ import com.codeit.mople.domain.review.entity.Review;
 import com.codeit.mople.domain.review.repository.ReviewRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.global.config.SecurityConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
@@ -23,11 +26,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+@Import(SecurityConfig.class)
 @Transactional
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -60,11 +65,11 @@ public class ReviewIntegrationTest {
         User.createUser("test@test.com", "12345678", "test")
     );
     savedContent = contentRepository.save(new Content(
-        ContentType.DRAMA,
-        "test",
-        "test 컨텐츠",
-        "test/image.png",
-        List.of("테스트")
+            ContentType.DRAMA,
+            "test",
+            "test 컨텐츠",
+            "test/image.png",
+            List.of("테스트")
         )
     );
 
@@ -83,6 +88,8 @@ public class ReviewIntegrationTest {
 
     // when & then
     MvcResult result = mockMvc.perform(post("/api/reviews")
+            .with(user("test"))
+            .with(csrf())
             .param("authorId", savedAuthor.getId().toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request))
@@ -126,6 +133,8 @@ public class ReviewIntegrationTest {
 
     // when & then
     mockMvc.perform(post("/api/reviews")
+            .with(user("test"))
+            .with(csrf())
             .param("authorId", savedAuthor.getId().toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(invalidRequest))
@@ -145,10 +154,12 @@ public class ReviewIntegrationTest {
 
     // when & then
     mockMvc.perform(post("/api/reviews")
-        .param("authorId", notExistAuthorId.toString())
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(request))
-    )
+            .with(user("test"))
+            .with(csrf())
+            .param("authorId", notExistAuthorId.toString())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request))
+        )
         .andExpect(status().isNotFound());
 
     assertThat(reviewRepository.count()).isZero();
