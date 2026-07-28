@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import com.codeit.mople.domain.content.dto.ContentCreateRequest;
 import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
+import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
@@ -167,6 +168,57 @@ public class ContentServiceImplTest {
     given(contentRepository.findById(any(UUID.class))).willReturn(Optional.empty());
 
     assertThatThrownBy(() -> contentService.getContent(contentId))
+        .isInstanceOf(ContentNotFoundException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.CONTENT_NOT_FOUND);
+  }
+
+  //=========================================================================================
+  //콘텐츠 수정 테스트
+  //=========================================================================================
+
+  @Test
+  @DisplayName("콘텐츠 수정 성공 - 존재하는 ID로 요청 시 정상 수정 및 DTO 반환")
+  void updateContent_Success() {
+    UUID contentId = UUID.randomUUID();
+    UUID adminId = UUID.randomUUID();
+
+    ContentUpdateRequest request = new ContentUpdateRequest("수정된 제목",
+        "수정된 설명", List.of("스릴러"));
+    MockMultipartFile thumbnail = new MockMultipartFile("thumbnail",
+        "update.png", "image/png", "dummy".getBytes());
+
+    //기존 데이터
+    Content content = new Content(ContentType.MOVIE, "기존 제목", "기존 설명",
+        "http://example.com/old.png", List.of("액션"));
+
+    //수정된 응답 DTO 가정
+    ContentResponse expectedResponse = new ContentResponse(contentId, "MOVIE",
+        "수정된 제목", "수정된 설명", "http://example.com/update.png",
+        List.of("스릴러"), 0.0, 0, 0L);
+
+    given(contentRepository.findById(any(UUID.class))).willReturn(Optional.of(content));
+    given(contentMapper.toDto(content)).willReturn(expectedResponse);
+
+    //TODO: 추후 관리자 권한 검증 로직이 서비스에 추가되면 adminId 검증 관련 Mock 설정 추가 예정
+    ContentResponse response = contentService.updateContent(adminId, contentId, request, thumbnail);
+
+    assertThat(response).isNotNull();
+    assertThat(response.title()).isEqualTo("수정된 제목");
+  }
+
+  @Test
+  @DisplayName("콘텐츠 수정 실패 - 존재하지 않는 ID 수정 시 ContentNotFoundException 발생")
+  void updateContent_Fail_NotFound() {
+    UUID contentId = UUID.randomUUID();
+    UUID adminId = UUID.randomUUID();
+
+    ContentUpdateRequest request = new ContentUpdateRequest("수정된 제목", "수정된 설명", List.of("스릴러"));
+
+    given(contentRepository.findById(any(UUID.class))).willReturn(Optional.empty());
+
+    //TODO: 추후 관리자 권한 검증 로직 실패(권한 없음) 예외 처리 테스트도 추가 예정
+    assertThatThrownBy(() -> contentService.updateContent(adminId, contentId, request, null))
         .isInstanceOf(ContentNotFoundException.class)
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.CONTENT_NOT_FOUND);
