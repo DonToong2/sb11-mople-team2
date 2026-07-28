@@ -12,11 +12,13 @@ import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
+import com.codeit.mople.domain.content.exception.ContentNotFoundException;
 import com.codeit.mople.domain.content.exception.InvalidContentTypeException;
 import com.codeit.mople.domain.content.exception.InvalidPageRequestException;
 import com.codeit.mople.domain.content.mapper.ContentMapper;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,7 +66,7 @@ public class ContentServiceImplTest {
     given(contentRepository.save(any(Content.class))).willReturn(savedContent);
     given(contentMapper.toDto(savedContent)).willReturn(expectedResponse);
 
-    ContentResponse response = contentService.createContent(adminId, request,  thumbnail);
+    ContentResponse response = contentService.createContent(adminId, request, thumbnail);
 
     assertThat(response).isNotNull();
     assertThat(response.title()).isEqualTo("테스트 영화");
@@ -111,7 +113,8 @@ public class ContentServiceImplTest {
     given(contentRepository.findAll(any(PageRequest.class))).willReturn(contentPage);
     given(contentMapper.toDto(content1)).willReturn(responseDto);
     //매퍼의 toPageResponse가 호출되면 expectedPageResponse를 반환
-    given(contentMapper.toPageResponse(any(), any(), any(), any())).willReturn(expectedPageResponse);
+    given(contentMapper.toPageResponse(any(), any(), any(), any())).willReturn(
+        expectedPageResponse);
 
     ContentPageResponse response = contentService.getContents(limit, sortDirection, sortBy);
 
@@ -130,5 +133,42 @@ public class ContentServiceImplTest {
     //PageRequest.of(0, -1) 이 실행되면서 InvalidPageRequestException 예외 발생
     assertThatThrownBy(() -> contentService.getContents(-1, "ASCENDING", "createdAt"))
         .isInstanceOf(InvalidPageRequestException.class);
+  }
+
+  //=========================================================================================
+  //콘텐츠 단건 조회 테스트
+  //=========================================================================================
+
+  @Test
+  @DisplayName("콘텐츠 단건 조회 성공 - 존재하는 ID로 조회 시 정상 반환")
+  void getContent_Success() {
+    UUID contentId = UUID.randomUUID();
+    Content content = new Content(ContentType.MOVIE, "단건 조회 영화",
+        "설명", null, List.of());
+    ContentResponse responseDto = new ContentResponse(contentId, "MOVIE",
+        "단건 조회 영화", "설명", null, List.of(),
+        0.0, 0, 0L);
+
+    given(contentRepository.findById(any(UUID.class))).willReturn(Optional.of(content));
+    given(contentMapper.toDto(content)).willReturn(responseDto);
+
+    ContentResponse response = contentService.getContent(contentId);
+
+    assertThat(response).isNotNull();
+    assertThat(response.title()).isEqualTo("단건 조회 영화");
+    verify(contentRepository).findById(contentId);
+  }
+
+  @Test
+  @DisplayName("콘텐츠 단건 조회 실패 - 존재하지 않는 ID 조회 시 ContentNotFoundException 발생")
+  void getContent_Fail_NotFound() {
+    UUID contentId = UUID.randomUUID();
+
+    given(contentRepository.findById(any(UUID.class))).willReturn(Optional.empty());
+
+    assertThatThrownBy(() -> contentService.getContent(contentId))
+        .isInstanceOf(ContentNotFoundException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.CONTENT_NOT_FOUND);
   }
 }
