@@ -126,8 +126,8 @@ class FollowControllerTest {
     }
 
     @Test
-    @DisplayName("팔로우 대상이 존재하지 않으면 404를 반환한다")
-    void 팔로우_대상이_존재하지_않으면_404를_반환() throws Exception {
+    @DisplayName("팔로우 대상이 존재하지 않으면 400를 반환한다")
+    void 팔로우_대상이_존재하지_않으면_400를_반환() throws Exception {
       // given
       FollowRequest request = new FollowRequest(followeeId);
       given(followService.follow(any(FollowRequest.class), eq(followerId)))
@@ -140,14 +140,14 @@ class FollowControllerTest {
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(request)))
           .andDo(print())
-          .andExpect(status().isNotFound())
+          .andExpect(status().isBadRequest())
           .andExpect(jsonPath("$.success").value(false))
           .andExpect(jsonPath("$.error.code").value("FOLLOW-005"));
     }
 
     @Test
-    @DisplayName("이미 팔로우 중이면 409를 반환")
-    void 중복_팔로우_시_409_반환() throws Exception {
+    @DisplayName("이미 팔로우 중이면 400를 반환")
+    void 중복_팔로우_시_400_반환() throws Exception {
       // given
       FollowRequest request = new FollowRequest(followeeId);
       given(followService.follow(any(FollowRequest.class), eq(followerId)))
@@ -160,7 +160,7 @@ class FollowControllerTest {
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(request)))
           .andDo(print())
-          .andExpect(status().isConflict())
+          .andExpect(status().isBadRequest())
           .andExpect(jsonPath("$.success").value(false))
           .andExpect(jsonPath("$.error.code").value("FOLLOW-002"));
     }
