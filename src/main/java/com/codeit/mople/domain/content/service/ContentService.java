@@ -8,6 +8,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface ContentService {
 
+  //콘텐츠 생성 메서드
   ContentResponse createContent(UUID adminId, ContentCreateRequest request, MultipartFile thumbnail);
+  //콘텐츠 목록 조회 메서드
   ContentPageResponse getContents(int limit, String sortDirection, String sortBy);
+  //콘텐츠 단건 조회 메서드
+  ContentResponse getContent(UUID contentId);
 }

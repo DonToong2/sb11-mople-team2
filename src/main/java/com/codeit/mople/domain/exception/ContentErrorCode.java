@@ -9,7 +9,8 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum ContentErrorCode implements ErrorCode {
   INVALID_CONTENT_TYPE(HttpStatus.BAD_REQUEST, "CONTENT-001", "지원하지 않는 콘텐츠 타입입니다."),
-  INVALID_PAGE_REQUEST(HttpStatus.BAD_REQUEST, "CONTENT-002", "조회 가능한 개수(limit)는 1 이상이어야 합니다.");
+  INVALID_PAGE_REQUEST(HttpStatus.BAD_REQUEST, "CONTENT-002", "조회 가능한 개수(limit)는 1 이상이어야 합니다."),
+  CONTENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CONTENT-003", "콘텐츠를 찾을 수 없습니다.");
 
   private final HttpStatus status;
   private final String code;

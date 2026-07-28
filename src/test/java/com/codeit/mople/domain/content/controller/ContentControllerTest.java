@@ -12,6 +12,8 @@ import com.codeit.mople.domain.content.dto.ContentCreateRequest;
 import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.service.ContentService;
+import com.codeit.mople.domain.exception.ContentErrorCode;
+import com.codeit.mople.global.error.CustomException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -185,5 +187,42 @@ public class ContentControllerTest {
             .param("sortBy", "createdAt")
             .contentType(MediaType.APPLICATION_JSON)
     ).andExpect(status().isInternalServerError());
+  }
+
+  //=========================================================================================
+  //콘텐츠 단건 조회 테스트
+  //=========================================================================================
+
+  @Test
+  @DisplayName("콘텐츠 단건 조회 성공 - 200 OK")
+  void getContent_Success() throws Exception {
+    UUID contentId = UUID.randomUUID();
+    ContentResponse mockResponse = new ContentResponse(
+        contentId, "MOVIE", "단건 조회 테스트 영화", "설명"
+        , "http://example.com/test.png", List.of("액션"),
+        0.0, 0, 0L);
+
+    given(contentService.getContent(any(UUID.class))).willReturn(mockResponse);
+
+    mockMvc.perform(
+        get("/api/contents/{contentId}", contentId)
+            .contentType(MediaType.APPLICATION_JSON)
+    ).andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(contentId.toString()))
+        .andExpect(jsonPath("$.title").value("단건 조회 테스트 영화"));
+  }
+
+  @Test
+  @DisplayName("콘텐츠 단건 조회 실패 - 존재하지 않는 ID 조회 시 404 Not Found")
+  void getContent_Fail_NotFound() throws Exception {
+    UUID contentId = UUID.randomUUID();
+
+    given(contentService.getContent(any(UUID.class)))
+        .willThrow(new CustomException(ContentErrorCode.CONTENT_NOT_FOUND));
+
+    mockMvc.perform(
+        get("/api/contents/{contentId}", contentId)
+            .contentType(MediaType.APPLICATION_JSON)
+    ).andExpect(status().isNotFound());
   }
 }
