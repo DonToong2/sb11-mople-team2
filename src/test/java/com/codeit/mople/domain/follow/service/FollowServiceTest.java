@@ -15,11 +15,12 @@ import com.codeit.mople.domain.follow.dto.FollowResponse;
 import com.codeit.mople.domain.follow.entity.Follow;
 import com.codeit.mople.domain.follow.event.FollowCreatedEvent;
 import com.codeit.mople.domain.follow.exception.FollowErrorCode;
-import com.codeit.mople.domain.follow.exception.FollowException;
 import com.codeit.mople.domain.follow.mapper.FollowMapper;
 import com.codeit.mople.domain.follow.repository.FollowRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.global.error.CustomException;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -76,10 +77,9 @@ class FollowServiceTest {
       Follow saved = Follow.create(followee, follower);
       FollowResponse expected = new FollowResponse(saved.getId(), followeeId, followerId);
 
-      given(userRepository.existsById(followeeId)).willReturn(true);
       given(followRepository.existsByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(false);
-      given(userRepository.getReferenceById(followeeId)).willReturn(followee);
-      given(userRepository.getReferenceById(followerId)).willReturn(follower);
+      given(userRepository.findById(followeeId)).willReturn(Optional.of(followee));
+      given(userRepository.findById(followerId)).willReturn(Optional.of(follower));
       given(followRepository.save(any(Follow.class))).willReturn(saved);
       given(followMapper.toFollowResponse(saved)).willReturn(expected);
 
@@ -106,9 +106,9 @@ class FollowServiceTest {
       FollowRequest selfRequest = new FollowRequest(followerId);
 
       // when & then
-      assertThatExceptionOfType(FollowException.class)
+      assertThatExceptionOfType(CustomException.class)
           .isThrownBy(() -> followService.follow(selfRequest, followerId))
-          .extracting(FollowException::getErrorCode)
+          .extracting(CustomException::getErrorCode)
           .isEqualTo(FollowErrorCode.FOLLOW_SELF_NOT_ALLOWED);
 
       verifyNoInteractions(userRepository, followRepository, publisher);
@@ -119,12 +119,33 @@ class FollowServiceTest {
     void 팔로우_대상이_존재하지_않으면_예외가_발생한다() {
 
       // given
-      given(userRepository.existsById(followeeId)).willReturn(false);
+      given(followRepository.existsByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(false);
+      given(userRepository.findById(followeeId)).willReturn(Optional.empty());
 
-      assertThatExceptionOfType(FollowException.class)
+      assertThatExceptionOfType(CustomException.class)
           .isThrownBy(() -> followService.follow(request, followerId))
-          .extracting(FollowException::getErrorCode)
+          .extracting(CustomException::getErrorCode)
           .isEqualTo(FollowErrorCode.FOLLOWEE_NOT_FOUND);
+
+      verify(followRepository, never()).save(any(Follow.class));
+      verify(publisher, never()).publishEvent(any(FollowCreatedEvent.class));
+    }
+
+    @Test
+    @DisplayName("요청자 정보를 찾을 수 없으면 예외가 발생한다")
+    void 요청자_정보를_찾을_수_없으면_예외가_발생한다() {
+
+      // given
+      User followee = mock(User.class);
+      given(followRepository.existsByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(false);
+      given(userRepository.findById(followeeId)).willReturn(Optional.of(followee));
+      given(userRepository.findById(followerId)).willReturn(Optional.empty());
+
+      // when & then
+      assertThatExceptionOfType(CustomException.class)
+          .isThrownBy(() -> followService.follow(request, followerId))
+          .extracting(CustomException::getErrorCode)
+          .isEqualTo(FollowErrorCode.FOLLOWER_NOT_FOUND);
 
       verify(followRepository, never()).save(any(Follow.class));
       verify(publisher, never()).publishEvent(any(FollowCreatedEvent.class));
@@ -135,13 +156,12 @@ class FollowServiceTest {
     void 이미_팔로우_중이면_예외가_발생하고_중복_저장하지_않는다() {
 
       // given
-      given(userRepository.existsById(followeeId)).willReturn(true);
       given(followRepository.existsByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(true);
 
       // when & then
-      assertThatExceptionOfType(FollowException.class)
+      assertThatExceptionOfType(CustomException.class)
           .isThrownBy(() -> followService.follow(request, followerId))
-          .extracting(FollowException::getErrorCode)
+          .extracting(CustomException::getErrorCode)
           .isEqualTo(FollowErrorCode.FOLLOW_DUPLICATE);
 
       verify(followRepository, never()).save(any(Follow.class));

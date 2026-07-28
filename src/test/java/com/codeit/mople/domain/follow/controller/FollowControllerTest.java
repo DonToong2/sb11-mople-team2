@@ -16,8 +16,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.codeit.mople.domain.follow.dto.FollowRequest;
 import com.codeit.mople.domain.follow.dto.FollowResponse;
 import com.codeit.mople.domain.follow.exception.FollowErrorCode;
-import com.codeit.mople.domain.follow.exception.FollowException;
 import com.codeit.mople.domain.follow.service.FollowService;
+import com.codeit.mople.global.error.CustomException;
 import com.codeit.mople.global.security.MoplUserDetails;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
@@ -111,7 +111,7 @@ class FollowControllerTest {
       // given
       FollowRequest request = new FollowRequest(followerId);
       given(followService.follow(any(FollowRequest.class), eq(followerId)))
-          .willThrow(new FollowException(FollowErrorCode.FOLLOW_SELF_NOT_ALLOWED));
+          .willThrow(new CustomException(FollowErrorCode.FOLLOW_SELF_NOT_ALLOWED));
 
       // when & then
       mockMvc.perform(post("/api/follows")
@@ -131,7 +131,7 @@ class FollowControllerTest {
       // given
       FollowRequest request = new FollowRequest(followeeId);
       given(followService.follow(any(FollowRequest.class), eq(followerId)))
-          .willThrow(new FollowException(FollowErrorCode.FOLLOWEE_NOT_FOUND));
+          .willThrow(new CustomException(FollowErrorCode.FOLLOWEE_NOT_FOUND));
 
       // when & then
       mockMvc.perform(post("/api/follows")
@@ -151,7 +151,7 @@ class FollowControllerTest {
       // given
       FollowRequest request = new FollowRequest(followeeId);
       given(followService.follow(any(FollowRequest.class), eq(followerId)))
-          .willThrow(new FollowException(FollowErrorCode.FOLLOW_DUPLICATE));
+          .willThrow(new CustomException(FollowErrorCode.FOLLOW_DUPLICATE));
 
       // when & then
       mockMvc.perform(post("/api/follows")
