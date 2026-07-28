@@ -72,6 +72,7 @@ class FollowServiceTest {
       // given
       User followee = mock(User.class);
       User follower = mock(User.class);
+      given(follower.getName()).willReturn("아메리카노좋아");
       Follow saved = Follow.create(followee, follower);
       FollowResponse expected = new FollowResponse(saved.getId(), followeeId, followerId);
 
@@ -94,7 +95,7 @@ class FollowServiceTest {
       assertThat(captured.getFollower()).isSameAs(follower);
 
       verify(publisher).publishEvent(
-          new FollowCreatedEvent(saved.getId(), followeeId, followerId));
+          new FollowCreatedEvent(saved.getId(), followeeId, followerId, "아메리카노좋아"));
     }
 
     @Test
