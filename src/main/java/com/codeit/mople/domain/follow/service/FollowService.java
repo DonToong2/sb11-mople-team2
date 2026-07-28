@@ -39,19 +39,16 @@ public class FollowService {
       throw new FollowException(FollowErrorCode.FOLLOW_SELF_NOT_ALLOWED);
     }
 
-    // 팔로우 대상이 존재하는지?
-    if (!userRepository.existsById(followeeId)) {
-      throw new FollowException(FollowErrorCode.FOLLOWEE_NOT_FOUND);
-    }
-
     // 이미 팔로가 되어있으면 중복 팔로우 안돼
     if (followRepository.existsByFolloweeIdAndFollowerId(followeeId, followerId)) {
       throw new FollowException(FollowErrorCode.FOLLOW_DUPLICATE);
     }
 
     // 영속화
-    User followee = userRepository.getReferenceById(followeeId);
-    User follower = userRepository.getReferenceById(followerId);
+    User followee = userRepository.findById(followeeId)
+        .orElseThrow(() -> new FollowException(FollowErrorCode.FOLLOWEE_NOT_FOUND));
+    User follower = userRepository.findById(followerId) // MoplUserDetails 에 아직 name이 없어서 userRepository.findById()로 받음
+        .orElseThrow(() -> new FollowException(FollowErrorCode.FOLLOWER_NOT_FOUND));
     Follow saved = followRepository.save(Follow.create(followee, follower));
 
     log.info("팔로우 성공: followId={}, followeeId={}, followerId={}", saved.getId(), followeeId, followerId);
