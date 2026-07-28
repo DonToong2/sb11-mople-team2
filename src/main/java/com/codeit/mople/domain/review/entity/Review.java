@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.review.entity;
 
+import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.entity.BaseEntity;
 import jakarta.persistence.Column;

@@ -1,5 +1,8 @@
 package com.codeit.mople.domain.review.service;
 
+import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.exception.ContentErrorCode;
+import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.domain.review.dto.request.ReviewCreateRequest;
 import com.codeit.mople.domain.review.dto.response.ReviewResponse;
 import com.codeit.mople.domain.review.entity.Review;

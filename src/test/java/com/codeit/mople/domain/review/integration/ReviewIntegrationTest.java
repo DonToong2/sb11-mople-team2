@@ -5,6 +5,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.entity.ContentType;
+import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.domain.review.dto.request.ReviewCreateRequest;
 import com.codeit.mople.domain.review.dto.response.ReviewResponse;
 import com.codeit.mople.domain.review.entity.Review;
@@ -12,6 +15,7 @@ import com.codeit.mople.domain.review.repository.ReviewRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,8 +59,13 @@ public class ReviewIntegrationTest {
     savedAuthor = userRepository.save(
         User.createUser("test@test.com", "12345678", "test")
     );
-    savedContent = contentRepository.save(
-        Content.create()
+    savedContent = contentRepository.save(new Content(
+        ContentType.DRAMA,
+        "test",
+        "test 컨텐츠",
+        "test/image.png",
+        List.of("테스트")
+        )
     );
 
     reviewText = "리뷰 내용";

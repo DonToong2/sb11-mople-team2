@@ -2,7 +2,10 @@ package com.codeit.mople.domain.review.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.user.entity.User;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +16,13 @@ public class ReviewTest {
   void create_success() {
     // given
     User user = User.createUser("test@test.com", "12345678", "test");
-    Content content = Content.create("test", "test");
+    Content content = new Content(
+        ContentType.DRAMA,
+        "test",
+        "test 컨텐츠",
+        "test/image.png",
+        List.of("테스트")
+    );
     User author = User.createUser("test@test.com", "12345678", "test");
 
     String text = "리뷰 내용";

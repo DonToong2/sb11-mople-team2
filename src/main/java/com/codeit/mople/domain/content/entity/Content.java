@@ -1,0 +1,74 @@
+package com.codeit.mople.domain.content.entity;
+
+import com.codeit.mople.global.entity.BaseTimeEntity;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Table;
+import java.util.List;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "contents")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Content extends BaseTimeEntity {
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "type", nullable = false)
+  private ContentType type;
+
+  @Column(name = "title", nullable = false)
+  private String title;
+
+  //긴 텍스트를 저장하기 위해 columnDefinition을 TEXT로 명시
+  @Column(name = "description", columnDefinition = "TEXT")
+  private String description;
+
+  @Column(name = "thumbnailUrl")
+  private String thumbnailUrl;
+
+  @ElementCollection(fetch = FetchType.LAZY)
+  @CollectionTable(name = "content_tags", joinColumns = @JoinColumn(name = "content_id"))
+  @Column(name = "tags")
+  private List<String> tags;
+
+  @Column(name = "average_rating", nullable = false)
+  private double averageRating = 0.0; //리뷰 평균 별점
+
+  @Column(name = "review_count", nullable = false)
+  private int reviewCount = 0; //리뷰 개수
+
+  @Column(name = "watcher_count", nullable = false)
+  private long watcherCount = 0L; //실시간 사용자 수
+
+  public Content(ContentType type, String title, String description, String thumbnailUrl, List<String> tags) {
+    this.type = type;
+    this.title = title;
+    this.description = description;
+    this.thumbnailUrl = thumbnailUrl;
+    this.tags = tags;
+  }
+
+  //새로운 리뷰가 작성되거나 삭제 될 때,
+  //서비스 계층에서 계산된 새로운 평점 평균과 리뷰 총 개수를 DB에 갱신하기 위한 메서드
+  public void updateRatingStats(Double averageRating, Integer reviewCount) {
+    this.averageRating = averageRating;
+    this.reviewCount = reviewCount;
+  }
+
+  //관리자가 콘텐츠의 기본 정보를 수정할 때 사용하는 메서드
+  public void updateContentInfo(String title, String description, String thumbnailUrl, List<String> tags) {
+    this.title = title;
+    this.description = description;
+    this.thumbnailUrl = thumbnailUrl;
+    this.tags = tags;
+  }
+}
