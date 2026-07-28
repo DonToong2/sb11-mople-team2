@@ -1,9 +1,10 @@
 package com.codeit.mople.global.error;
 
-import com.codeit.mople.domain.follow.exception.FollowErrorCode;
 import com.codeit.mople.global.response.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -17,9 +18,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-  private static final Map<String, ErrorCode> CONSTRAINT_ERROR_CODES = Map.of(
-      "uk_follows_followee_follower", FollowErrorCode.FOLLOW_DUPLICATE
-  );
+  private final Map<String, ErrorCode> constraintErrorCodes;
 
   // 직접 정의한 비즈니스 예외
   @ExceptionHandler(CustomException.class)
@@ -90,10 +89,16 @@ public class GlobalExceptionHandler {
       return null;
     }
     String name = ce.getConstraintName().toLowerCase();
-    return CONSTRAINT_ERROR_CODES.entrySet().stream()
+    return constraintErrorCodes.entrySet().stream()
         .filter(entry -> name.contains(entry.getKey()))
         .map(Map.Entry::getValue)
         .findFirst()
         .orElse(null);
+  }
+
+  public GlobalExceptionHandler(List<ConstraintErrorCodes> contributors) {
+    this.constraintErrorCodes = contributors.stream()
+        .flatMap(c -> c.get().entrySet().stream())
+        .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 }
