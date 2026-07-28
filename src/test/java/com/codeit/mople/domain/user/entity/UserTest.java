@@ -107,4 +107,12 @@ public class UserTest {
         .isInstanceOf(NullPointerException.class)
         .hasMessage("role");
   }
+
+  @Test
+  @DisplayName("increaseSessionVersion 호출 시 버전이 1 증가한다.")
+  void increaseSessionVersion_success() {
+    User user = User.createUser("test@test.com", "encoded", "testUser");
+    assertThat(user.increaseSessionVersion()).isEqualTo(1L);
+    assertThat(user.increaseSessionVersion()).isEqualTo(2L);
+  }
 }
