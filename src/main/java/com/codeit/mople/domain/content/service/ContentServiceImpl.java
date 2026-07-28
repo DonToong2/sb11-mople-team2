@@ -5,6 +5,7 @@ import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
+import com.codeit.mople.domain.content.exception.ContentNotFoundException;
 import com.codeit.mople.domain.content.exception.InvalidContentTypeException;
 import com.codeit.mople.domain.content.exception.InvalidPageRequestException;
 import com.codeit.mople.domain.content.mapper.ContentMapper;
@@ -88,8 +89,15 @@ public class ContentServiceImpl implements ContentService {
     return contentMapper.toPageResponse(contentResponses, contentPage, sortBy, sortDirection);
   }
 
+  //콘텐츠 단건 조회
   @Override
+  @Transactional(readOnly = true)
   public ContentResponse getContent(UUID contentId) {
-    return null;
+    //ID로 DB에서 콘텐츠 조회
+    Content content = contentRepository.findById(contentId)
+        .orElseThrow(() -> ContentNotFoundException.withId(contentId));
+
+    //조회된 엔티티를 매퍼를 통해 DTO로 변환하여 반환
+    return contentMapper.toDto(content);
   }
 }
