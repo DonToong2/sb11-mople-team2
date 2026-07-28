@@ -49,7 +49,7 @@ public class ReviewServiceTest {
   private User author;
   private Content content;
   private String reviewText;
-  private double reviewRating;
+  private Double reviewRating;
   private ReviewCreateRequest request;
 
   @BeforeEach
@@ -69,7 +69,7 @@ public class ReviewServiceTest {
   void create_success() {
     // given
 
-    // BeforeEach에서 author, content, Review Create Request 초기화
+    // BeforeEach에서 author, authorId, content, contentId, Review Create Request 초기화
 
     Review review = Review.create(content, author, request.text(), request.rating());
 
