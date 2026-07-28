@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -39,11 +40,18 @@ public class ConversationService {
     User userB = userRepository.findById(userBId)
         .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
 
-    Conversation conversation = conversationRepository.findByUserAAndUserB(userA, userB)
-        .orElseGet(() -> {
-          log.info("기존 대화방 없음, 새 대화방 생성 - userAId: {}, userBId: {}", userAId, userBId);
-          return conversationRepository.save(Conversation.createConversation(userA, userB));
-        });
+    Conversation conversation;
+    try {
+      conversation = conversationRepository.findByUserAAndUserB(userA, userB)
+          .orElseGet(() -> {
+            log.info("기존 대화방 없음, 새 대화방 생성 - userAId: {}, userBId: {}", userAId, userBId);
+            return conversationRepository.save(Conversation.createConversation(userA, userB));
+          });
+    } catch (DataIntegrityViolationException e) {
+      log.info("동시 대화방 생성 충돌 발생, 기존 방 재조회 시도 - userAId: {}, userBId: {}", userAId, userBId);
+      conversation = conversationRepository.findByUserAAndUserB(userA, userB)
+          .orElseThrow(() -> new CustomException(ConversationErrorCode.CONVERSATION_NOT_FOUND));
+    }
 
     log.info("대화방 생성 완료 - conversationId: {}", conversation.getId());
     return ConversationDto.from(conversation, requesterId);
@@ -82,10 +90,9 @@ public class ConversationService {
     log.debug("내 대화방 목록 조회 요청 - requesterId: {}", requesterId);
 
     User requester = userRepository.findById(requesterId)
-        .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
 
-    List<Conversation> conversations = conversationRepository.findByUserAOrUserBOrderByCreatedAtDesc(
-        requester);
+    List<Conversation> conversations = conversationRepository.findByUserAOrUserBOrderByCreatedAtDesc(requester);
 
     List<ConversationDto> conversationDtos = conversations.stream()
         .map(c -> ConversationDto.from(c, requesterId))

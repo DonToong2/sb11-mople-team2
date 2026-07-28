@@ -17,7 +17,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
       @Param("userB") User userB);
 
   @Query("SELECT c FROM Conversation c JOIN FETCH c.userA JOIN FETCH c.userB "
-      + "WHERE c.userA = :userA OR c.userB = :user "
+      + "WHERE c.userA = :user OR c.userB = :user "
       + "ORDER BY c.createdAt DESC")
   List<Conversation> findByUserAOrUserBOrderByCreatedAtDesc(@Param("user") User user);
 }
