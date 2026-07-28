@@ -54,14 +54,15 @@ public class UserTest {
   }
 
   @Test
-  @DisplayName("이름만 전달하면 이름만 갱신됨")
+  @DisplayName("이름만 전달하면 이름만 갱신되고 기존 프로필 이미지는 유지됨")
   void updateProfile_success_nameOnly() {
     User user = User.createUser("test@test.com", "encodedPassword", "pastName");
+    user.updateProfile(null, "https://existing-image.url");
 
     user.updateProfile("newName", null);
 
     assertThat(user.getName()).isEqualTo("newName");
-    assertThat(user.getProfileImageUrl()).isNull();
+    assertThat(user.getProfileImageUrl()).isEqualTo("https://existing-image.url");
   }
 
   @Test
@@ -76,14 +77,15 @@ public class UserTest {
   }
 
   @Test
-  @DisplayName("이름과 이미지 모두 null이면 변경되지 않음")
+  @DisplayName("이름과 이미지 모두 null이면 기존 값이 그대로 유지됨")
   void updateProfile_noChange_whenBothNull() {
     User user = User.createUser("test@test.com", "encodedPassword", "pastName");
+    user.updateProfile(null, "https://existing-image.url");
 
     user.updateProfile(null, null);
 
     assertThat(user.getName()).isEqualTo("pastName");
-    assertThat(user.getProfileImageUrl()).isNull();
+    assertThat(user.getProfileImageUrl()).isEqualTo("https://existing-image.url");
   }
 
   @Test
