@@ -58,7 +58,7 @@ class FollowControllerTest {
 
   @Nested
   @DisplayName("팔로우 생성 [POST /api/follows]")
-  class 팔로우_생성 {
+  class CreateFollow {
 
     @Test
     @DisplayName("201과 생성된 팔로우를 반환하고, 인증 주체의 id를 followerId로 전달")

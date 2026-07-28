@@ -64,7 +64,7 @@ class FollowServiceTest {
 
   @Nested
   @DisplayName("팔로우 생성")
-  class 팔로우_생성 {
+  class CreateFollow {
 
     @Test
     @DisplayName("정상 요청이면 팔로우를 저장하고 생성 이벤트를 발행한다")

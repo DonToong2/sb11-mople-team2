@@ -46,7 +46,7 @@ class FollowRepositoryTest {
 
   @Nested
   @DisplayName("중복 확인 [existsByFolloweeIdAndFollowerId]")
-  class 중복_확인 {
+  class ExistsByFolloweeIdAndFollowerId {
 
     @Test
     @DisplayName("이미 팔로우 중이면 true 반환")
@@ -93,7 +93,7 @@ class FollowRepositoryTest {
 
   @Nested
   @DisplayName("팔로우 저장 [save]")
-  class 팔로우_저장 {
+  class Save {
 
     @Test
     @DisplayName("저장하면 followee,follower가 조회된다")
