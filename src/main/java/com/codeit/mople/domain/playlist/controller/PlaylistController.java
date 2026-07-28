@@ -8,11 +8,13 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.error.CustomException;
+import com.codeit.mople.global.security.MoplUserDetails;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -50,9 +52,9 @@ public class PlaylistController implements PlaylistApi {
   @PostMapping("/{playlistId}/subscription")
   public ResponseEntity<Void> createSubscribe(
       @PathVariable UUID playlistId,
-      @RequestParam UUID subscriberId
+      @AuthenticationPrincipal MoplUserDetails principal
   ) {
-    playlistService.subscribe(playlistId, subscriberId);
+    playlistService.subscribe(playlistId, principal.getUserId());
     return ResponseEntity.noContent().build();
   }
 }
