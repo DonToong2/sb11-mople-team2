@@ -11,10 +11,11 @@ import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
+import com.codeit.mople.domain.content.exception.ContentErrorCode;
+import com.codeit.mople.domain.content.exception.InvalidContentTypeException;
+import com.codeit.mople.domain.content.exception.InvalidPageRequestException;
 import com.codeit.mople.domain.content.mapper.ContentMapper;
 import com.codeit.mople.domain.content.repository.ContentRepository;
-import com.codeit.mople.domain.exception.ContentErrorCode;
-import com.codeit.mople.global.error.CustomException;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -59,6 +60,7 @@ public class ContentServiceImplTest {
         "테스트 영화", "설명", "http://example.com/images/test.png",
         List.of("액션"), 0.0, 0, 0L);
 
+    given(contentMapper.toEntity(any(), any(), any())).willReturn(savedContent);
     given(contentRepository.save(any(Content.class))).willReturn(savedContent);
     given(contentMapper.toDto(savedContent)).willReturn(expectedResponse);
 
@@ -78,7 +80,7 @@ public class ContentServiceImplTest {
 
     //정의 되지 않은 타입 변환 시 INVALID_CONTENT_TYPE 커스텀 예외 발생
     assertThatThrownBy(() -> contentService.createContent(adminId, request, null))
-        .isInstanceOf(CustomException.class)
+        .isInstanceOf(InvalidContentTypeException.class)
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.INVALID_CONTENT_TYPE);
   }
@@ -102,8 +104,14 @@ public class ContentServiceImplTest {
         "MOVIE", "영화1", "설명", null, List.of(),
         0.0, 0, 0L);
 
+    //가짜 응답 객체
+    ContentPageResponse expectedPageResponse = new ContentPageResponse(
+        List.of(responseDto), null, null, false, 1L, sortBy, sortDirection);
+
     given(contentRepository.findAll(any(PageRequest.class))).willReturn(contentPage);
     given(contentMapper.toDto(content1)).willReturn(responseDto);
+    //매퍼의 toPageResponse가 호출되면 expectedPageResponse를 반환
+    given(contentMapper.toPageResponse(any(), any(), any(), any())).willReturn(expectedPageResponse);
 
     ContentPageResponse response = contentService.getContents(limit, sortDirection, sortBy);
 
@@ -119,10 +127,8 @@ public class ContentServiceImplTest {
   void getContents_Fail_NegativeLimit() {
     int invalidLimit = -1;
 
-    //PageRequest.of(0, -1) 이 실행되면서 INVALID_PAGE_REQUEST 커스텀 예외 발생
+    //PageRequest.of(0, -1) 이 실행되면서 InvalidPageRequestException 예외 발생
     assertThatThrownBy(() -> contentService.getContents(-1, "ASCENDING", "createdAt"))
-        .isInstanceOf(CustomException.class)
-        .extracting("errorCode")
-        .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);
+        .isInstanceOf(InvalidPageRequestException.class);
   }
 }

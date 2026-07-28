@@ -3,17 +3,16 @@ package com.codeit.mople.domain.content.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 import com.codeit.mople.domain.content.dto.ContentCreateRequest;
 import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
+import com.codeit.mople.domain.content.exception.ContentNotFoundException;
 import com.codeit.mople.domain.content.service.ContentService;
-import com.codeit.mople.domain.exception.ContentErrorCode;
-import com.codeit.mople.global.error.CustomException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -218,7 +217,7 @@ public class ContentControllerTest {
     UUID contentId = UUID.randomUUID();
 
     given(contentService.getContent(any(UUID.class)))
-        .willThrow(new CustomException(ContentErrorCode.CONTENT_NOT_FOUND));
+        .willThrow(ContentNotFoundException.withId(contentId));
 
     mockMvc.perform(
         get("/api/contents/{contentId}", contentId)

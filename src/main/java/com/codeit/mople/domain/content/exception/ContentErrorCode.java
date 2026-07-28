@@ -1,4 +1,4 @@
-package com.codeit.mople.domain.exception;
+package com.codeit.mople.domain.content.exception;
 
 import com.codeit.mople.global.error.ErrorCode;
 import lombok.Getter;

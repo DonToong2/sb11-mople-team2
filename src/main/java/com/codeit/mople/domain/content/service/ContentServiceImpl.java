@@ -5,10 +5,10 @@ import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
+import com.codeit.mople.domain.content.exception.InvalidContentTypeException;
+import com.codeit.mople.domain.content.exception.InvalidPageRequestException;
 import com.codeit.mople.domain.content.mapper.ContentMapper;
 import com.codeit.mople.domain.content.repository.ContentRepository;
-import com.codeit.mople.domain.exception.ContentErrorCode;
-import com.codeit.mople.global.error.CustomException;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +38,7 @@ public class ContentServiceImpl implements ContentService {
     try {
       contentType = ContentType.valueOf(request.type().toUpperCase());
     } catch (IllegalArgumentException e) {
-      throw new CustomException(ContentErrorCode.INVALID_CONTENT_TYPE);
+      throw new InvalidContentTypeException();
     }
 
     //TODO: 관리자 권한 검증 추가 예정
@@ -66,7 +66,7 @@ public class ContentServiceImpl implements ContentService {
   public ContentPageResponse getContents(int limit, String sortDirection, String sortBy) {
     //Limit 검증 로직
     if (limit <= 0) {
-      throw new CustomException(ContentErrorCode.INVALID_PAGE_REQUEST);
+      throw new InvalidPageRequestException();
     }
 
     //정렬 방향 설정(ASCENDING(오름차순) 또는 DESCENDING(내림차순))
@@ -86,5 +86,10 @@ public class ContentServiceImpl implements ContentService {
 
     //ContentPageResponse에 맞춰 매퍼를 통해 페이징 응답 객체 생성 및 반환
     return contentMapper.toPageResponse(contentResponses, contentPage, sortBy, sortDirection);
+  }
+
+  @Override
+  public ContentResponse getContent(UUID contentId) {
+    return null;
   }
 }
