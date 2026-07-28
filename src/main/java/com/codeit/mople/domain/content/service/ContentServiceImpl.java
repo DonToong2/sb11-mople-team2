@@ -3,6 +3,7 @@ package com.codeit.mople.domain.content.service;
 import com.codeit.mople.domain.content.dto.ContentCreateRequest;
 import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
+import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.exception.ContentNotFoundException;
@@ -99,5 +100,11 @@ public class ContentServiceImpl implements ContentService {
 
     //조회된 엔티티를 매퍼를 통해 DTO로 변환하여 반환
     return contentMapper.toDto(content);
+  }
+
+  @Override
+  public ContentResponse updateContent(UUID adminId, UUID contentId, ContentUpdateRequest request,
+      MultipartFile thumbnail) {
+    return null;
   }
 }

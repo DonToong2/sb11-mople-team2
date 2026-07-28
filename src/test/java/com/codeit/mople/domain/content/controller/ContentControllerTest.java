@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.codeit.mople.domain.content.dto.ContentCreateRequest;
 import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
+import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.exception.ContentNotFoundException;
 import com.codeit.mople.domain.content.service.ContentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -75,7 +76,8 @@ public class ContentControllerTest {
             multipart(HttpMethod.POST, "/api/contents")
                 .file(requestPart)
                 .file(thumbnailPart)
-                .header("X-User-Id", adminId.toString())
+                //TODO: 추후 JWT 도입 및 관리자 권한 검증 적용 후 주석 제거 예정
+                //.header("X-User-Id", adminId.toString())
                 .contentType(MediaType.MULTIPART_FORM_DATA)
         ).andExpect(status().isCreated())
         .andExpect(jsonPath("$.title").value("테스트 영화"))
@@ -103,12 +105,15 @@ public class ContentControllerTest {
             multipart(HttpMethod.POST, "/api/contents")
                 .file(requestPart)
                 .file(thumbnailPart)
-                .header("X-User-Id", adminId.toString())
+                //TODO: 추후 JWT 도입 및 관리자 권한 검증 적용 후 주석 제거 예정
+                //.header("X-User-Id", adminId.toString())
                 .contentType(MediaType.MULTIPART_FORM_DATA)
         )
         .andExpect(status().isBadRequest());
   }
 
+  //TODO: 추후 JWT 도입 및 관리자 권한 검증 적용 후 주석 해제 후 테스트 복구 예정
+  /*
   @Test
   @DisplayName("콘텐츠 생성 실패 - 필수 헤더(X-User-Id) 누락 시 500 Internal Server Error 반환")
   void createContent_Fail_MissingHeader() throws Exception {
@@ -131,7 +136,7 @@ public class ContentControllerTest {
                 .contentType(MediaType.MULTIPART_FORM_DATA)
         )
         .andExpect(status().isInternalServerError());
-  }
+  }*/
 
   //=========================================================================================
   //콘텐츠 목록 조회 테스트
@@ -224,4 +229,102 @@ public class ContentControllerTest {
             .contentType(MediaType.APPLICATION_JSON)
     ).andExpect(status().isNotFound());
   }
+
+  //=========================================================================================
+  //콘텐츠 수정 테스트
+  //=========================================================================================
+
+  @Test
+  @DisplayName("콘텐츠 수정 성공 - 200 OK")
+  void updateContent_Success() throws Exception {
+    UUID contentId = UUID.randomUUID();
+    UUID adminid = UUID.randomUUID();
+
+    ContentUpdateRequest requestDto = new ContentUpdateRequest(
+        "수정된 영화 제목", "수정된 설명", List.of("스릴러"));
+
+    MockMultipartFile requestPart = new MockMultipartFile(
+        "request", "", MediaType.APPLICATION_JSON_VALUE,
+        objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
+
+    MockMultipartFile thumbnailPart = new MockMultipartFile(
+        "thumbnail", "updated.png", MediaType.IMAGE_PNG_VALUE,
+        "updated image content".getBytes());
+
+    ContentResponse mockResponse = new ContentResponse(
+        contentId, "MOVIE", "수정된 영화 제목", "수정된 설명",
+        "http://example.com/updated.png", List.of("스릴러"),
+        0.0, 0, 0L);
+
+    given(contentService.updateContent(any(), any(), any(), any())).willReturn(mockResponse);
+
+    mockMvc.perform(
+        multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
+            .file(requestPart)
+            .file(thumbnailPart)
+            //TODO: 추후 JWT 도입 및 관리자 권한 적용 시 주석 해제
+            //.header("X-User-Id", adminid, toString())
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+    ).andExpect(status().isOk())
+        .andExpect(jsonPath("$.title").value("수정된 영화 제목"))
+        .andExpect(jsonPath("$.description").value("수정된 설명"));
+  }
+
+  @Test
+  @DisplayName("콘텐츠 수정 실패 - 존재하지 않는 ID 수정 시 404 Not Found")
+  void updateContent_Fail_NotFound() throws Exception {
+    UUID contentId = UUID.randomUUID();
+    UUID adminId = UUID.randomUUID();
+
+    ContentUpdateRequest requestDto = new ContentUpdateRequest(
+        "수정된 영화 제목", "수정된 설명", List.of("스릴러"));
+
+    MockMultipartFile requestPart = new MockMultipartFile(
+        "request", "", MediaType.APPLICATION_JSON_VALUE,
+        objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
+
+    MockMultipartFile thumbnailPart = new MockMultipartFile(
+        "thumbnail", "updated.png", MediaType.IMAGE_PNG_VALUE,
+        "updated image content".getBytes());
+
+    given(contentService.updateContent(any(), any(), any(), any()))
+        .willThrow(ContentNotFoundException.withId(contentId));
+
+    mockMvc.perform(
+        multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
+            .file(requestPart)
+            .file(thumbnailPart)
+            //TODO: 추후 JWT 도입 및 관리자 권한 적용 시 주석 해제
+            //.header("X-User-Id", adminId.toString())
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+    ).andExpect(status().isNotFound());
+  }
+
+  //TODO: 추후 JWT 도입 및 관리자 권한(헤더 등) 검증 적용 시 주석 해제하여 테스트 복구 예정
+  /*
+  @Test
+  @DisplayName("콘텐츠 수정 실패 - 필수 헤더(X-User-Id) 누락 시 500 Internal Server Error 반환")
+  void updateContent_Fail_MissingHeader() throws Exception {
+    UUID contentId = UUID.randomUUID();
+    ContentUpdateRequest requestDto = new ContentUpdateRequest(
+        "수정된 영화 제목", "수정된 설명", List.of("스릴러"));
+
+    MockMultipartFile requestPart = new MockMultipartFile(
+        "request", "", MediaType.APPLICATION_JSON_VALUE,
+        objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
+
+    MockMultipartFile thumbnailPart = new MockMultipartFile(
+        "thumbnail", "updated.png", MediaType.IMAGE_PNG_VALUE,
+        "updated image content".getBytes());
+
+    mockMvc.perform(
+            multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
+                .file(requestPart)
+                .file(thumbnailPart)
+                //.header("X-User-Id", adminId.toString()) 헤더를 의도적으로 누락
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+        )
+        .andExpect(status().isInternalServerError());
+  }
+  */
 }
