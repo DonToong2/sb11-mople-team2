@@ -72,7 +72,7 @@ public class PlaylistServiceTest {
 
     PlaylistResponse response = mock(PlaylistResponse.class);
 
-    // playlist DB 저장 → PlaylistOwnerMapper 생성 → PlaylistMapper 생성 순
+    // playlist DB 저장 → PlaylistOwnerMapper 생성 → PlaylistMapper 호출 순
 
     given(playlistRepository.save(any(Playlist.class)))
         .willReturn(playlist);
