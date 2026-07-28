@@ -71,7 +71,7 @@ public class ConversationServiceTest {
 
       Conversation newConversation = Conversation.createConversation(userA, userB);
       ReflectionTestUtils.setField(newConversation, "id", UUID.randomUUID());
-      given(conversationRepository.save(any(Conversation.class))).willReturn(newConversation);
+      given(conversationRepository.saveAndFlush(any(Conversation.class))).willReturn(newConversation);
 
       //when - userB가 userA에게 요청
       ConversationDto result = conversationService.findOrCreateConversation(userBId, userAId);
@@ -79,7 +79,7 @@ public class ConversationServiceTest {
       //then
       assertThat(result).isNotNull();
       assertThat(result.with().userId()).isEqualTo(userAId);
-      verify(conversationRepository, times(1)).save(any(Conversation.class));
+      verify(conversationRepository, times(1)).saveAndFlush(any(Conversation.class));
     }
 
     @Test
