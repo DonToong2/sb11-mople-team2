@@ -1,7 +1,7 @@
 package com.codeit.mople.domain.conversation.service;
 
-import com.codeit.mople.domain.conversation.dto.ConversationDto;
-import com.codeit.mople.domain.conversation.dto.CursorResponseConversationDto;
+import com.codeit.mople.domain.conversation.dto.response.ConversationDto;
+import com.codeit.mople.domain.conversation.dto.response.CursorResponseConversationDto;
 import com.codeit.mople.domain.conversation.entity.Conversation;
 import com.codeit.mople.domain.conversation.exception.ConversationErrorCode;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
@@ -24,6 +24,7 @@ public class ConversationService {
   private final UserRepository userRepository;
   private final ConversationRepository conversationRepository;
 
+  // TODO: 트랜잭션
   public ConversationDto findOrCreateConversation(UUID requesterId, UUID targetUserId) {
     log.debug("대화방 생성 시작 - requesterId: {}, targetUserId: {}", requesterId, targetUserId);
 

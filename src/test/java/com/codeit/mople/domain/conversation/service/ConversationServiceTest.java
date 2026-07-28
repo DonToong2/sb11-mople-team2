@@ -8,8 +8,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.codeit.mople.domain.conversation.dto.ConversationDto;
-import com.codeit.mople.domain.conversation.dto.CursorResponseConversationDto;
+import com.codeit.mople.domain.conversation.dto.response.ConversationDto;
+import com.codeit.mople.domain.conversation.dto.response.CursorResponseConversationDto;
 import com.codeit.mople.domain.conversation.entity.Conversation;
 import com.codeit.mople.domain.conversation.exception.ConversationErrorCode;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
