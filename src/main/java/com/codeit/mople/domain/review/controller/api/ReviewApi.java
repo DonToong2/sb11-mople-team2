@@ -1,7 +1,7 @@
-package com.codeit.mople.domain.playlist.controller.api;
+package com.codeit.mople.domain.review.controller.api;
 
-import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
-import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
+import com.codeit.mople.domain.review.dto.request.ReviewCreateRequest;
+import com.codeit.mople.domain.review.dto.response.ReviewResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -15,20 +15,20 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(
-    name = "플레이리스트 관리",
-    description = "플레이리스트 관련 API"
+    name = "리뷰 관리",
+    description = "리뷰 관련 API"
 )
-public interface PlaylistApi {
+public interface ReviewApi {
 
   @Operation(
-      summary = "플레이리스트 생성",
-      description = "생성한 플레이리스트는 API 요청자 본인의 플레이리스트로 생성됩니다."
+      summary = "리뷰 생성",
+      description = "생성한 리뷰는 API 요청자 본인의 리뷰로 생성됩니다."
   )
   @ApiResponses({
       @ApiResponse(
           responseCode = "201",
-          description = "성공",
-          content = @Content(schema = @Schema(implementation = PlaylistResponse.class))
+          description = "리뷰 생성 성공",
+          content = @Content(schema = @Schema(implementation = ReviewResponse.class))
       ),
       @ApiResponse(
           responseCode = "400",
@@ -41,24 +41,18 @@ public interface PlaylistApi {
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       ),
       @ApiResponse(
-          responseCode = "403",
-          description = "권한 없음",
-          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
-      ),
-      // TODO 김명근: 인증 구현 후 404 응답 삭제
-      @ApiResponse(
           responseCode = "404",
-          description = "플레이리스트 소유자를 찾을 수 없음",
+          description = "사용자 또는 컨텐츠를 찾을 수 없음",
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       ),
       @ApiResponse(
           responseCode = "500",
           description = "서버 오류",
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
-      )
+      ),
   })
-  ResponseEntity<PlaylistResponse> create(
-      @RequestParam UUID ownerId,
-      @RequestBody PlaylistCreateRequest request
+  ResponseEntity<ReviewResponse> create(
+      @RequestParam UUID authorId, // TODO 김명근: 인증 구현 시 @AuthenticationPrincipal로 대체
+      @RequestBody ReviewCreateRequest request
   );
 }
