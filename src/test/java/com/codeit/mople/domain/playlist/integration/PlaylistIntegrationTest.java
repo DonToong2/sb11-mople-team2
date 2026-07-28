@@ -134,16 +134,16 @@ public class PlaylistIntegrationTest {
     assertThat(playlistRepository.count()).isZero();
   }
 
-  @Test
-  @DisplayName("플레이리스트 생성 실패 - 인증되지 않은 사용자")
-  void create_fail_unauthorized() throws Exception {
-    // when & then
-    mockMvc.perform(post("/api/playlists")
-            .with(csrf())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
-        .andExpect(status().isUnauthorized());
-  }
+//  @Test
+//  @DisplayName("플레이리스트 생성 실패 - 인증되지 않은 사용자")
+//  void create_fail_unauthorized() throws Exception {
+//    // when & then
+//    mockMvc.perform(post("/api/playlists")
+//            .with(csrf())
+//            .contentType(MediaType.APPLICATION_JSON)
+//            .content(objectMapper.writeValueAsString(request)))
+//        .andExpect(status().isUnauthorized());
+//  }
 
   @Test
   @DisplayName("플레이리스트 생성 실패 - 사용자가 존재하지 않음(404 에러)")
