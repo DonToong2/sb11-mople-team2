@@ -64,20 +64,17 @@ public interface PlaylistApi {
       @Valid @RequestBody PlaylistCreateRequest request
   );
 
-  // service 코드 작성하면서 수정 예정
   @Operation(
       summary = "플레이리스트 구독"
   )
   @ApiResponses({
       @ApiResponse(
           responseCode = "200",
-          description = "성공",
-          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+          description = "성공"
       ),
       @ApiResponse(
           responseCode = "204",
-          description = "성공",
-          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+          description = "성공"
       ),
       @ApiResponse(
           responseCode = "400",
@@ -95,7 +92,7 @@ public interface PlaylistApi {
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       ),
   })
-  ResponseEntity<Void> subscribe(
+  ResponseEntity<Void> createSubscribe(
      @PathVariable UUID playlistId,
      @RequestParam UUID subscriberId
   );

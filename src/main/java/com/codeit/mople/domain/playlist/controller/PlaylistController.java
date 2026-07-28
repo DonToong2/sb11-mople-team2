@@ -13,6 +13,7 @@ import java.net.URI;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,7 +37,7 @@ public class PlaylistController implements PlaylistApi {
 
     // TODO 김명근: Custom UserDetails 등 인증 구현 시 해당 findById 삭제(UserRepository Import도 같이 삭제)
     User owner = userRepository.findById(ownerId).orElseThrow(() ->
-            new CustomException(UserErrorCode.USER_NOT_FOUND));
+        new CustomException(UserErrorCode.USER_NOT_FOUND));
 
     PlaylistResponse response = playlistService.create(owner, request);
 
@@ -45,4 +46,13 @@ public class PlaylistController implements PlaylistApi {
         .body(response);
   }
 
+  @Override
+  @PostMapping("/{playlistId}/subscription")
+  public ResponseEntity<Void> createSubscribe(
+      @PathVariable UUID playlistId,
+      @RequestParam UUID subscriberId
+  ) {
+    playlistService.subscribe(playlistId, subscriberId);
+    return ResponseEntity.noContent().build();
+  }
 }
