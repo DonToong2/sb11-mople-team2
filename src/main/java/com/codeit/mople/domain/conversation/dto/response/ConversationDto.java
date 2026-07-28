@@ -1,7 +1,7 @@
-package com.codeit.mople.domain.conversation.dto;
+package com.codeit.mople.domain.conversation.dto.response;
 
 import com.codeit.mople.domain.conversation.entity.Conversation;
-import com.codeit.mople.domain.directmessage.dto.DirectMessageDto;
+import com.codeit.mople.domain.directmessage.dto.response.DirectMessageDto;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.dto.UserSummary;
 import java.util.UUID;
