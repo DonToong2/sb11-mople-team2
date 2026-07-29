@@ -127,6 +127,21 @@ public class AuthServiceTest {
     assertThat(errorCodeForMissingEmail).isEqualTo(errorCodeForWrongPassword);
   }
 
+  @Test
+  @DisplayName("잠긴 계정으로 로그인 시 예외가 발생")
+  void signIn_throwsException_whenAccountIsLocked() {
+    User lockedUser = User.createUser("locked@test.com", "encodedPw", "lockedUser");
+    lockedUser.lock();
+
+    SignInRequest request = new SignInRequest("locked@test.com", "rawPw123");
+    when(userRepository.findByEmail(request.email())).thenReturn(Optional.of(lockedUser));
+    when(passwordEncoder.matches(request.password(), lockedUser.getPassword())).thenReturn(true);
+
+    assertThatThrownBy(() -> authService.signIn(request))
+        .isInstanceOf(CustomException.class)
+        .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.LOCKED_ACCOUNT);
+  }
+
   private AuthErrorCode catchAuthErrorCode(SignInRequest request) {
     try {
       authService.signIn(request);

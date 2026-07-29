@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.codeit.mople.domain.auth.dto.request.SignInRequest;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,6 +35,8 @@ public class AuthControllerTest {
 
   @Autowired
   private PasswordEncoder passwordEncoder;
+  @Autowired
+  private JwtProvider jwtProvider;
 
   @AfterEach
   void tearDown() {
@@ -95,6 +98,12 @@ public class AuthControllerTest {
 
     String oldToken = objectMapper.readTree(firstResponse).get("data").get("accessToken").asText();
 
+    // 재로그인 전, 첫 토큰이 실제로 유효한지 먼저 확인
+    mockMvc.perform(get("/api/users/{userId}", user.getId())
+                    .header("Authorization", "Bearer " + oldToken))
+            .andDo(print())
+            .andExpect(status().isOk());
+
     mockMvc.perform(post("/api/auth/sign-in")
         .contentType("application/json")
         .content(objectMapper.writeValueAsString(request)))
@@ -103,6 +112,46 @@ public class AuthControllerTest {
 
     mockMvc.perform(get("/api/users/{userId}", user.getId())
         .header("Authorization", "Bearer " + oldToken))
+        .andDo(print())
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  @DisplayName("잠긴 계정으로 로그인하면 403을 반환")
+  void signIn_returnsForbidden_whenAccountIsLocked() throws Exception {
+    User user = userRepository.save(User.createUser("locked@test.com", passwordEncoder.encode("rawPw123"), "lockedUser"));
+    user.lock();
+    userRepository.save(user);
+
+    SignInRequest request = new SignInRequest("locked@test.com", "rawPw123");
+
+    mockMvc.perform(post("/api/auth/sign-in")
+        .contentType("application/json")
+        .content(objectMapper.writeValueAsString(request)))
+        .andDo(print())
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("AUTH-004"));
+  }
+
+  @Test
+  @DisplayName("로그인 상태에서 계정이 잠기면 기존 토큰도 인증이 거부됨")
+  void existingToken_becomesInvalid_whenAccountGetsLockedAfterward() throws Exception {
+    User user = userRepository.save(User.createUser("lockAfter@test.com", passwordEncoder.encode("rawPw123"), "tester"));
+    String token = jwtProvider.createAccessToken(user.getId(), user.getSessionVersion());
+
+    // 발급 직후엔 정상 인증됨을 먼저 확인
+    mockMvc.perform(get("/api/users/{userId}", user.getId())
+        .header("Authorization", "Bearer " + token))
+        .andDo(print())
+        .andExpect(status().isOk());
+
+    // 이후 계정이 잠김
+    user.lock();
+    userRepository.save(user);
+
+    // 같은 토큰으로 재요청 -> 401
+    mockMvc.perform(get("/api/users/{userId}", user.getId())
+        .header("Authorization", "Bearer " + token))
         .andDo(print())
         .andExpect(status().isUnauthorized());
   }
