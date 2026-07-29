@@ -287,29 +287,7 @@ public class PlaylistControllerTest {
     }
 
     @Test
-    @DisplayName("플레이리스트 수정 실패 - 플레이리스트가 존재하지 않음(404 에러)")
-    void update_fail_notFoundPlaylist() throws Exception {
-      // given
-
-      // BeforeEach에서 playlistId, updateRequest 초기화
-
-      given(playlistService.update(eq(playlistId), any(PlaylistUpdateRequest.class), eq(ownerId)))
-          .willThrow(new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
-
-      // when & then
-      mockMvc.perform(patch("/api/playlists/{playlistId}", playlistId)
-              .with(user(userDetails))
-              .with(csrf())
-              .contentType(MediaType.APPLICATION_JSON)
-              .content(objectMapper.writeValueAsString(updateRequest))
-          )
-          .andExpect(status().isNotFound());
-
-      verify(playlistService).update(eq(playlistId), any(PlaylistUpdateRequest.class), eq(ownerId));
-    }
-
-    @Test
-    @DisplayName("플레이리스트 수정 실패 - 플레이리스트 소유자가 아님")
+    @DisplayName("플레이리스트 수정 실패 - 플레이리스트 소유자가 아님(403 에러)")
     void update_fail_forbidden() throws Exception {
       // given
 

@@ -3,19 +3,24 @@ package com.codeit.mople.domain.playlist.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
+import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.entity.Playlist;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
+import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -45,23 +50,30 @@ public class PlaylistIntegrationTest {
   @Autowired
   private PlaylistRepository playlistRepository;
 
+  private CustomUserDetails userDetails;
   private User savedOwner;
-  private PlaylistCreateRequest request;
+  private PlaylistCreateRequest createRequest;
   private String title;
   private String description;
 
   private Playlist playlist;
+
+  private PlaylistUpdateRequest updateRequest;
+  private Playlist updatePlaylist;
 
   @BeforeEach
   void setUp() {
     savedOwner = userRepository.save(
         User.createUser("test@test.com", "12345678", "test")
     );
+    userDetails = new CustomUserDetails(savedOwner.getId(), Role.USER);
     title = "새 플레이리스트 (1)";
     description = "새로운 플레이리스트입니다.";
-    request = new PlaylistCreateRequest(title, description);
+    createRequest = new PlaylistCreateRequest(title, description);
 
     playlist = Playlist.create(savedOwner, title, description);
+
+    updateRequest = new PlaylistUpdateRequest("수정한 제목", "수정한 설명");
   }
 
   @Nested
@@ -82,7 +94,7 @@ public class PlaylistIntegrationTest {
               .with(csrf())
               .param("ownerId", savedOwner.getId().toString())
               .contentType(MediaType.APPLICATION_JSON)
-              .content(objectMapper.writeValueAsString(request)))
+              .content(objectMapper.writeValueAsString(createRequest)))
           .andExpect(status().isCreated())
           .andExpect(jsonPath("$.id").exists())
           .andExpect(jsonPath("$.owner.userId").value(savedOwner.getId().toString()))
@@ -169,55 +181,119 @@ public class PlaylistIntegrationTest {
               .with(csrf())
               .param("ownerId", notExistOwnerId.toString())
               .contentType(MediaType.APPLICATION_JSON)
-              .content(objectMapper.writeValueAsString(request)))
+              .content(objectMapper.writeValueAsString(createRequest)))
           .andExpect(status().isNotFound());
 
       // 플레이리스트가 저장되지 말아야 함
       assertThat(playlistRepository.count()).isZero();
     }
 
-    @Nested
-    @DisplayName("플레이리스트 단건 조회")
-    class Find {
+  }
 
-      @Test
-      @DisplayName("플레이리스트 단건 조회 성공")
-      void find_success() throws Exception {
-        // given
+  @Nested
+  @DisplayName("플레이리스트 단건 조회")
+  class Find {
 
-        // BeforeEach에서 playlist 초기화
+    @Test
+    @DisplayName("플레이리스트 단건 조회 성공")
+    void find_success() throws Exception {
+      // given
 
-        Playlist savedPlaylist = playlistRepository.save(playlist);
+      // BeforeEach에서 playlist 초기화
 
-        // when & then
-        MvcResult result =
-            mockMvc.perform(get("/api/playlists/{playlistId}", playlist.getId())
-                    .with(user("test"))
-                    .with(csrf())
-                )
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(savedPlaylist.getId().toString()))
-                .andExpect(jsonPath("$.owner.userId").value(savedOwner.getId().toString()))
-                .andExpect(jsonPath("$.owner.name").value(savedOwner.getName()))
-                .andExpect(jsonPath("$.title").value(title))
-                .andExpect(jsonPath("$.description").value(description))
-                .andExpect(jsonPath("$.subscriberCount").value(0))
-                .andExpect(jsonPath("$.contents").isArray())
-                .andReturn();
+      Playlist savedPlaylist = playlistRepository.save(playlist);
 
-        // DB 검증
-        PlaylistResponse response = objectMapper.readValue(
-            result.getResponse().getContentAsString(), PlaylistResponse.class
-        );
+      // when & then
+      MvcResult result =
+          mockMvc.perform(get("/api/playlists/{playlistId}", playlist.getId())
+                  .with(user("test"))
+                  .with(csrf())
+              )
+              .andExpect(status().isOk())
+              .andExpect(jsonPath("$.id").value(savedPlaylist.getId().toString()))
+              .andExpect(jsonPath("$.owner.userId").value(savedOwner.getId().toString()))
+              .andExpect(jsonPath("$.owner.name").value(savedOwner.getName()))
+              .andExpect(jsonPath("$.title").value(title))
+              .andExpect(jsonPath("$.description").value(description))
+              .andExpect(jsonPath("$.subscriberCount").value(0))
+              .andExpect(jsonPath("$.contents").isArray())
+              .andReturn();
 
-        Playlist findPlaylist = playlistRepository.findById(response.id()).orElseThrow();
+      // DB 검증
+      PlaylistResponse response = objectMapper.readValue(
+          result.getResponse().getContentAsString(), PlaylistResponse.class
+      );
 
-        assertThat(findPlaylist.getOwner()).isEqualTo(savedOwner);
-        assertThat(findPlaylist.getTitle()).isEqualTo(title);
-        assertThat(findPlaylist.getDescription()).isEqualTo(description);
-      }
+      Playlist findPlaylist = playlistRepository.findById(response.id()).orElseThrow();
+
+      assertThat(findPlaylist.getOwner()).isEqualTo(savedOwner);
+      assertThat(findPlaylist.getTitle()).isEqualTo(title);
+      assertThat(findPlaylist.getDescription()).isEqualTo(description);
     }
 
+  }
+
+  @Nested
+  @DisplayName("플레이리스트 수정")
+  class Update {
+
+    @BeforeEach
+    void setUp() {
+      updatePlaylist = playlistRepository.save(playlist);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 수정 성공")
+    void update_success() throws Exception {
+      // given
+
+      // BeforeEach에서 updateRequest 초기화
+
+      // when & then
+      mockMvc.perform(patch("/api/playlists/{playlistId}", updatePlaylist.getId())
+              .with(user(userDetails))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(updateRequest))
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.id").value(updatePlaylist.getId().toString()))
+          .andExpect(jsonPath("$.title").value(updateRequest.title()))
+          .andExpect(jsonPath("$.description").value(updateRequest.description()));
+    }
+
+    @Test
+    @DisplayName("플레이리스트 수정 실패 - 플레이리스트가 존재하지 않음(404 에러)")
+    void update_fail_notFoundPlaylist() throws Exception {
+      // given
+      UUID notExistPlaylistId = UUID.randomUUID();
+
+      // BeforeEach에서 updateRequest 초기화
+
+      // when & then
+      mockMvc.perform(patch("/api/playlists/{playlistId}", notExistPlaylistId)
+              .with(user(userDetails))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(updateRequest))
+          )
+          .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("플레이리스트 수정 실패 - 인증되지 않은 사용자(401 에러)")
+    void update_fail_unauthorized() throws Exception {
+      // given
+
+      // BeforeEach에서 updateRequest 초기화
+
+      // when & then
+      mockMvc.perform(patch("/api/playlists/{playlistId}", updatePlaylist.getId())
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(updateRequest)))
+          .andExpect(status().isUnauthorized());
+    }
   }
 
 }
