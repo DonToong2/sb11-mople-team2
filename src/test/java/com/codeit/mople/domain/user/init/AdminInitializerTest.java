@@ -12,6 +12,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import org.springframework.dao.DataIntegrityViolationException;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -56,6 +58,18 @@ class AdminInitializerTest {
     adminInitializer.run(applicationArguments);
 
     verify(userRepository, never()).save(any(User.class));
+  }
+
+  @Test
+  void 동시_초기화_시_중복_예외가_발생해도_서버가_정상_시작된다() throws Exception {
+    given(userRepository.existsByEmailAndRole("admin@mople.com", Role.ADMIN)).willReturn(false);
+    given(userRepository.existsByEmail("admin@mople.com")).willReturn(false);
+    given(passwordEncoder.encode(anyString())).willReturn("encoded-password");
+    given(userRepository.save(any(User.class))).willThrow(new DataIntegrityViolationException("duplicate key"));
+
+    adminInitializer.run(applicationArguments); // 예외 없이 정상 종료되어야 함
+
+    verify(userRepository, times(1)).save(any(User.class));
   }
 
   @Test
