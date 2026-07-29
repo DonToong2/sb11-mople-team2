@@ -31,4 +31,18 @@ public class AdminService {
     eventPublisher.publishEvent(new UserForceLogoutEvent(userId));
     log.info("권한 변경 완료 - userId: {}, role: {}", userId, role);
   }
+
+  @Transactional
+  public void changeUserLocked(UUID userId, boolean locked) {
+    log.debug("계정 잠금 변경 시작 - userId: {}, locked: {}", userId, locked);
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+    if (locked) {
+      user.lock();
+    } else {
+      user.unlock();
+    }
+    eventPublisher.publishEvent(new UserForceLogoutEvent(userId));
+    log.info("계정 잠금 변경 완료 - userId: {}, locked: {}", userId, locked);
+  }
 }

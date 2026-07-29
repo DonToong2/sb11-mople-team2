@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.user.admin.controller;
 
+import com.codeit.mople.domain.user.admin.dto.LockUpdateRequest;
 import com.codeit.mople.domain.user.admin.dto.RoleUpdateRequest;
 import com.codeit.mople.domain.user.admin.service.AdminService;
 import com.codeit.mople.global.response.ApiResponse;
@@ -25,6 +26,14 @@ public class AdminController {
       @PathVariable UUID userId,
       @Valid @RequestBody RoleUpdateRequest request) {
     adminService.changeUserRole(userId, request.role());
+    return ResponseEntity.ok(ApiResponse.success());
+  }
+
+  @PatchMapping("/{userId}/locked")
+  public ResponseEntity<ApiResponse<Void>> changeLocked(
+      @PathVariable UUID userId,
+      @Valid @RequestBody LockUpdateRequest request) {
+    adminService.changeUserLocked(userId, request.locked());
     return ResponseEntity.ok(ApiResponse.success());
   }
 }
