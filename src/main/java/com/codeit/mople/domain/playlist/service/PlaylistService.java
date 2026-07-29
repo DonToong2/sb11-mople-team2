@@ -131,6 +131,9 @@ public class PlaylistService {
   @Transactional
   public void delete(UUID playlistId, UUID userId) {
 
+    log.debug("플레이리스트 삭제 시도: playlistId={}, userId={}",
+        playlistId, userId);
+
     Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
         new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND)
     );
@@ -139,6 +142,9 @@ public class PlaylistService {
 
     // deleteById도 가능하지만 where id=로 조회 후 delete하기 때문에(불필요한 조회가 발생함) 조회 실행을 뺌
     playlistRepository.delete(playlist);
+
+    log.info("플레이리스트 삭제 완료: playlistId={}, userId={}",
+        playlistId, userId);
 
   }
 

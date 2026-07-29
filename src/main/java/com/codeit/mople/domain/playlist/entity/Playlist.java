@@ -46,22 +46,27 @@ public class Playlist extends BaseTimeEntity {
 
   public void update(String title, String description) {
 
+    // 둘 다 Null일 경우
     if (title == null && description == null) {
       throw new CustomException(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_TITLE);
     }
 
+    // 제목이 빈칸 또는 공백일 경우(설명까지 빈칸일 경우 포함)
     if (title != null && title.isBlank()) {
       throw new CustomException(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_TITLE);
     }
 
+    // 설명이 빈칸 또는 공백일 경우
     if (description != null && description.isBlank()) {
       throw new CustomException(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_DESCRIPTION);
     }
 
+    // 제목이 null이 아니고 비어있지 않을 때(위의 if문에서 걸러짐) 제목 갱신
     if (title != null) {
       this.title = title;
     }
 
+    // 설명이 null이 아니고 비어있지 않을 때(위의 if문에서 걸러짐) 설명 갱신
     if (description != null) {
       this.description = description;
     }
