@@ -9,13 +9,14 @@ import static org.mockito.Mockito.verify;
 
 import com.codeit.mople.domain.conversation.entity.Conversation;
 import com.codeit.mople.domain.conversation.exception.ConversationErrorCode;
+import com.codeit.mople.domain.conversation.exception.ConversationException;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
 import com.codeit.mople.domain.directmessage.dto.response.DirectMessageDto;
 import com.codeit.mople.domain.directmessage.entity.DirectMessage;
 import com.codeit.mople.domain.directmessage.exception.DirectMessageErrorCode;
+import com.codeit.mople.domain.directmessage.exception.DirectMessageException;
 import com.codeit.mople.domain.directmessage.repository.DirectMessageRepository;
 import com.codeit.mople.domain.user.entity.User;
-import com.codeit.mople.global.error.CustomException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -108,7 +109,7 @@ public class DirectMessageServiceTest {
 
       //when & then
       assertThatThrownBy(() -> directMessageService.getDirectMessages(conversationId, userAId))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(ConversationException.class)
           .hasMessageContaining(ConversationErrorCode.CONVERSATION_NOT_FOUND.getMessage());
     }
 
@@ -116,6 +117,7 @@ public class DirectMessageServiceTest {
     @DisplayName("실패: 대화방 참여자가 아닌 제 3자가 조회를 시도하면 예외가 발생한다.")
     void fail_get_direct_messages_access_denied() {
       //given
+      given(conversation.getId()).willReturn(conversationId);
       given(conversationRepository.findById(conversationId)).willReturn(Optional.of(conversation));
       given(conversation.getUserA()).willReturn(userA);
       given(conversation.getUserB()).willReturn(userB);
@@ -124,7 +126,7 @@ public class DirectMessageServiceTest {
 
       //when & then
       assertThatThrownBy(() -> directMessageService.getDirectMessages(conversationId, strangerId))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(ConversationException.class)
           .hasMessageContaining(ConversationErrorCode.ACCESS_DENIED.getMessage());
     }
   }
@@ -162,7 +164,7 @@ public class DirectMessageServiceTest {
 
       //when & then
       assertThatThrownBy(() -> directMessageService.readMessage(wrongConversationId, messageId, userAId))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(DirectMessageException.class)
           .hasMessageContaining(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND.getMessage());
     }
 
@@ -174,7 +176,7 @@ public class DirectMessageServiceTest {
 
       //when & then
       assertThatThrownBy(() -> directMessageService.readMessage(conversationId, messageId, userBId))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(DirectMessageException.class)
           .hasMessageContaining(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND.getMessage());
     }
 
@@ -190,7 +192,7 @@ public class DirectMessageServiceTest {
 
       // when & then: UserA(발신자)가 자기가 보낸 메시지를 읽음 처리하려고 시도
       assertThatThrownBy(() -> directMessageService.readMessage(conversationId, messageId, userAId))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(DirectMessageException.class)
           .hasMessageContaining(DirectMessageErrorCode.UNAUTHORIZED_RECEIVER.getMessage());
     }
   }
