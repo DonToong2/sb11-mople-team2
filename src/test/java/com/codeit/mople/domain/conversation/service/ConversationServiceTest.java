@@ -12,10 +12,10 @@ import com.codeit.mople.domain.conversation.dto.response.ConversationDto;
 import com.codeit.mople.domain.conversation.dto.response.CursorResponseConversationDto;
 import com.codeit.mople.domain.conversation.entity.Conversation;
 import com.codeit.mople.domain.conversation.exception.ConversationErrorCode;
+import com.codeit.mople.domain.conversation.exception.ConversationException;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
-import com.codeit.mople.global.error.CustomException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -106,11 +106,11 @@ public class ConversationServiceTest {
     }
 
     @Test
-    @DisplayName("예외: 자기 자신과 대화를 시도하면 INVALID_PARTICIPANT 예외를 던진다.")
+    @DisplayName("실패: 자기 자신과 대화를 시도하면 INVALID_PARTICIPANT 예외를 던진다.")
     void fail_self_conversation() {
       // when & then
       assertThatThrownBy(() -> conversationService.findOrCreateConversation(userAId, userAId))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(ConversationException.class)
           .hasMessageContaining(ConversationErrorCode.INVALID_PARTICIPANT.getMessage());
     }
   }
@@ -143,7 +143,7 @@ public class ConversationServiceTest {
     }
 
     @Test
-    @DisplayName("예외: 지정한 상대방과의 대화방이 존재하지 않으면 CONVERSATION_NOT_FOUND 예외를 던진다.")
+    @DisplayName("실패: 지정한 상대방과의 대화방이 존재하지 않으면 CONVERSATION_NOT_FOUND 예외를 던진다.")
     void fail_conversation_not_found() {
       //given
       given(userRepository.findById(userAId)).willReturn(Optional.of(userA));
@@ -152,7 +152,7 @@ public class ConversationServiceTest {
 
       //when & then
       assertThatThrownBy(() -> conversationService.getConversationWithUser(userAId, userBId))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(ConversationException.class)
           .hasMessageContaining(ConversationErrorCode.CONVERSATION_NOT_FOUND.getMessage());
     }
   }
@@ -183,7 +183,7 @@ public class ConversationServiceTest {
     }
 
     @Test
-    @DisplayName("예외: 방 참여자가 아닌 유저가 조회 시 ACCESS_DENIED 예외를 던진다.")
+    @DisplayName("실패: 방 참여자가 아닌 유저가 조회 시 ACCESS_DENIED 예외를 던진다.")
     void fail_get_conversation_not_participant() {
       //given
       given(userA.getId()).willReturn(userAId);
@@ -199,7 +199,7 @@ public class ConversationServiceTest {
 
       //when & then
       assertThatThrownBy(() -> conversationService.getConversation(conversationId, strangerId))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(ConversationException.class)
           .hasMessageContaining(ConversationErrorCode.ACCESS_DENIED.getMessage());
     }
   }

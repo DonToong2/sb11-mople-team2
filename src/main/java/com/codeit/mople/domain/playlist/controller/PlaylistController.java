@@ -32,7 +32,7 @@ public class PlaylistController implements PlaylistApi {
   @Override
   @PostMapping
   public ResponseEntity<PlaylistResponse> create(
-      @RequestParam UUID ownerId,
+      @RequestParam UUID ownerId, // TODO 김명근: 인증 구현 시 @AuthenticationPrincipal로 대체
       @Valid @RequestBody PlaylistCreateRequest request
   ) {
 
