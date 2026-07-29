@@ -35,7 +35,7 @@ public class DirectMessageController {
       @PathVariable UUID conversationId,
       @PathVariable UUID directMessageId
   ) {
-    directMessageService.readMessage(directMessageId, TEMP_REQUESTER_ID);
+    directMessageService.readMessage(conversationId, directMessageId, TEMP_REQUESTER_ID);
     return ResponseEntity.noContent().build();
   }
 }

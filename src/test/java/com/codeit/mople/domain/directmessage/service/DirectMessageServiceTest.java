@@ -138,14 +138,32 @@ public class DirectMessageServiceTest {
     void success_read_message() {
       //given
       given(directMessageRepository.findById(messageId)).willReturn(Optional.of(message));
+      given(message.getConversation()).willReturn(conversation);
+      given(conversation.getId()).willReturn(conversationId);
       given(message.getReceiver()).willReturn(userB);
       given(userB.getId()).willReturn(userBId);
 
       //when
-      directMessageService.readMessage(messageId, userBId);
+      directMessageService.readMessage(conversationId, messageId, userBId);
 
       //then
       verify(message).markAsRead();
+    }
+
+    @Test
+    @DisplayName("실패: URL의 대화방 ID와 실제 메시지의 대화방 소속이 다르면 예외가 발생한다.")
+    void fail_read_message_conversation_mismatch() {
+      //given
+      UUID wrongConversationId = UUID.randomUUID();
+
+      given(directMessageRepository.findById(messageId)).willReturn(Optional.of(message));
+      given(message.getConversation()).willReturn(conversation);
+      given(conversation.getId()).willReturn(conversationId);
+
+      //when & then
+      assertThatThrownBy(() -> directMessageService.readMessage(wrongConversationId, messageId, userAId))
+          .isInstanceOf(CustomException.class)
+          .hasMessageContaining(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND.getMessage());
     }
 
     @Test
@@ -155,7 +173,7 @@ public class DirectMessageServiceTest {
       given(directMessageRepository.findById(messageId)).willReturn(Optional.empty());
 
       //when & then
-      assertThatThrownBy(() -> directMessageService.readMessage(messageId, userBId))
+      assertThatThrownBy(() -> directMessageService.readMessage(conversationId, messageId, userBId))
           .isInstanceOf(CustomException.class)
           .hasMessageContaining(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND.getMessage());
     }
@@ -165,11 +183,13 @@ public class DirectMessageServiceTest {
     void fail_read_message_unauthorized() {
       //given
       given(directMessageRepository.findById(messageId)).willReturn(Optional.of(message));
+      given(message.getConversation()).willReturn(conversation);
+      given(conversation.getId()).willReturn(conversationId);
       given(message.getReceiver()).willReturn(userB);
       given(userB.getId()).willReturn(userBId);
 
       // when & then: UserA(발신자)가 자기가 보낸 메시지를 읽음 처리하려고 시도
-      assertThatThrownBy(() -> directMessageService.readMessage(messageId, userAId))
+      assertThatThrownBy(() -> directMessageService.readMessage(conversationId, messageId, userAId))
           .isInstanceOf(CustomException.class)
           .hasMessageContaining(DirectMessageErrorCode.UNAUTHORIZED_RECEIVER.getMessage());
     }

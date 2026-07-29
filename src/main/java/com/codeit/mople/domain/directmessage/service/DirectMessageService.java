@@ -43,11 +43,17 @@ public class DirectMessageService {
 
   // 단건 메시지 읽음 처리
   @Transactional
-  public void readMessage(UUID directMessageId, UUID requesterId) {
+  public void readMessage(UUID conversationId, UUID directMessageId, UUID requesterId) {
     log.debug("단건 DM 읽음 처리 요청 - messageId: {}, requesterId: {}", directMessageId, requesterId);
 
     DirectMessage message = directMessageRepository.findById(directMessageId)
         .orElseThrow(() -> new CustomException(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND));
+
+    if (!message.getConversation().getId().equals(conversationId)) {
+      log.warn("대화방-DM 소속 불일치 - path conversationId: {}, actual conversationId: {}, messageId: {}",
+          conversationId, message.getConversation().getId(), directMessageId);
+      throw new CustomException(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND);
+    }
 
     if (!message.getReceiver().getId().equals(requesterId)) {
       log.warn("수신자가 아닌 유저의 접근, DM 읽음 처리 인가 실패 - messageId: {}, requesterId: {}", directMessageId, requesterId);
