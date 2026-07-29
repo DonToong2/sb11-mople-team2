@@ -26,12 +26,12 @@ public class AdminInitializer implements ApplicationRunner {
   @Override
   @Transactional
   public void run(ApplicationArguments args) {
-    log.debug("어드민 계정 초기화 시작 - email: {}", adminProperties.email());
-    if (userRepository.existsByEmailAndRole(adminProperties.email(), Role.ADMIN)) {
+    log.debug("어드민 계정 초기화 시작");
+    if (userRepository.existsByRole(Role.ADMIN)) {
       return;
     }
     if (userRepository.existsByEmail(adminProperties.email())) {
-      log.warn("어드민 초기화 건너뜀 - 이미 사용 중인 이메일: {}", adminProperties.email());
+      log.warn("어드민 계정이메일이 이미 사용중입니다. : {}", maskEmail(adminProperties.email()));
       return;
     }
     User admin = User.createAdmin(
@@ -40,7 +40,7 @@ public class AdminInitializer implements ApplicationRunner {
         adminProperties.name()
     );
     try {
-      userRepository.save(admin);
+      userRepository.saveAndFlush(admin);
       log.info("어드민 계정을 생성 성공했습니다.: {}", maskEmail(adminProperties.email()));
     } catch (DataIntegrityViolationException e) {
       // 동시에 여러 인스턴스가 시작될 때 다른 인스턴스가 먼저 저장한 경우

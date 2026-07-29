@@ -48,7 +48,7 @@ class AdminInitializerTest {
 
     adminInitializer.run(applicationArguments);
 
-    verify(userRepository, times(1)).save(any(User.class));
+    verify(userRepository, times(1)).saveAndFlush(any(User.class));
   }
 
   @Test
@@ -65,11 +65,11 @@ class AdminInitializerTest {
     given(userRepository.existsByRole(Role.ADMIN)).willReturn(false);
     given(userRepository.existsByEmail("admin@mople.com")).willReturn(false);
     given(passwordEncoder.encode(anyString())).willReturn("encoded-password");
-    given(userRepository.save(any(User.class))).willThrow(new DataIntegrityViolationException("duplicate key"));
+    given(userRepository.saveAndFlush(any(User.class))).willThrow(new DataIntegrityViolationException("duplicate key"));
 
     adminInitializer.run(applicationArguments);
 
-    verify(userRepository, times(1)).save(any(User.class));
+    verify(userRepository, times(1)).saveAndFlush(any(User.class));
   }
 
   @Test
