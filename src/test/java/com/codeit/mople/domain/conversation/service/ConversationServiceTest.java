@@ -8,8 +8,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.codeit.mople.domain.conversation.dto.ConversationDto;
-import com.codeit.mople.domain.conversation.dto.CursorResponseConversationDto;
+import com.codeit.mople.domain.conversation.dto.response.ConversationDto;
+import com.codeit.mople.domain.conversation.dto.response.CursorResponseConversationDto;
 import com.codeit.mople.domain.conversation.entity.Conversation;
 import com.codeit.mople.domain.conversation.exception.ConversationErrorCode;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
@@ -71,7 +71,7 @@ public class ConversationServiceTest {
 
       Conversation newConversation = Conversation.createConversation(userA, userB);
       ReflectionTestUtils.setField(newConversation, "id", UUID.randomUUID());
-      given(conversationRepository.save(any(Conversation.class))).willReturn(newConversation);
+      given(conversationRepository.saveAndFlush(any(Conversation.class))).willReturn(newConversation);
 
       //when - userB가 userA에게 요청
       ConversationDto result = conversationService.findOrCreateConversation(userBId, userAId);
@@ -79,7 +79,7 @@ public class ConversationServiceTest {
       //then
       assertThat(result).isNotNull();
       assertThat(result.with().userId()).isEqualTo(userAId);
-      verify(conversationRepository, times(1)).save(any(Conversation.class));
+      verify(conversationRepository, times(1)).saveAndFlush(any(Conversation.class));
     }
 
     @Test
