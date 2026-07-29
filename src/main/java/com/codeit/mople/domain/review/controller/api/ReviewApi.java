@@ -44,7 +44,7 @@ public interface ReviewApi {
       ),
       @ApiResponse(
           responseCode = "404",
-          description = "컨텐츠를 찾을 수 없음",
+          description = "콘텐츠를 찾을 수 없음",
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       ),
       @ApiResponse(

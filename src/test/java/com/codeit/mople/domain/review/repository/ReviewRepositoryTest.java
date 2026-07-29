@@ -40,14 +40,14 @@ public class ReviewRepositoryTest {
     content1 = new Content(
         ContentType.DRAMA,
         "test",
-        "test 컨텐츠",
+        "test 콘텐츠",
         "test/image.png",
         List.of("공포")
     );
     content2 = new Content(
         ContentType.MOVIE,
         "test",
-        "test 컨텐츠",
+        "test 콘텐츠",
         "test/image.png",
         List.of("코미디")
     );
@@ -66,7 +66,7 @@ public class ReviewRepositoryTest {
   class CountByContentId {
     
     @Test
-    @DisplayName("특정 컨텐츠의 리뷰 개수 조회 성공")
+    @DisplayName("특정 콘텐츠의 리뷰 개수 조회 성공")
     void count_success() {
       // given
 
@@ -89,7 +89,7 @@ public class ReviewRepositoryTest {
     }
     
     @Test
-    @DisplayName("특정 컨텐츠에 리뷰가 없을 경우 0을 반환")
+    @DisplayName("특정 콘텐츠에 리뷰가 없을 경우 0을 반환")
     void count_zero() {
       // given
 
@@ -108,7 +108,7 @@ public class ReviewRepositoryTest {
   class FindAverageRatingByContentId {
 
     @Test
-    @DisplayName("특정 컨텐츠의 평균 평점을 조회")
+    @DisplayName("특정 콘텐츠의 평균 평점을 조회")
     void average_success() {
       // given
 
@@ -127,7 +127,7 @@ public class ReviewRepositoryTest {
     }
 
     @Test
-    @DisplayName("특정 컨텐츠에 리뷰가 없을 경우 null을 반환")
+    @DisplayName("특정 콘텐츠에 리뷰가 없을 경우 null을 반환")
     void average_null() {
       // given
 

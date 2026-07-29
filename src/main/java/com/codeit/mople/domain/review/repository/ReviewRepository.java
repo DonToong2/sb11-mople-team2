@@ -8,11 +8,11 @@ import org.springframework.data.repository.query.Param;
 
 public interface ReviewRepository extends JpaRepository<Review, UUID> {
 
-  // Review 테이블에서 Review의 contentId가 받아온 contentId와 일치하는 행들의 개수를 계산(컨텐츠 리뷰 개수)
+  // Review 테이블에서 Review의 contentId가 받아온 contentId와 일치하는 행들의 개수를 계산(콘텐츠 리뷰 개수)
   long countByContentId(UUID contentId);
 
-  // Review 테이블에서 Review의 특정 contentId가 받아온 contentId와 일치하는 행들의 평균 rating을 계산(컨텐츠 평점 조회)
-  // null값이 될 수 있음(컨텐츠에 리뷰가 하나도 없는 경우)
+  // Review 테이블에서 Review의 특정 contentId가 받아온 contentId와 일치하는 행들의 평균 rating을 계산(콘텐츠 평점 조회)
+  // null값이 될 수 있음(콘텐츠 리뷰가 하나도 없는 경우)
   @Query("""
       select avg(r.rating)
       from Review r

@@ -119,7 +119,7 @@ public class ReviewControllerTest {
   }
 
   @Test
-  @DisplayName("리뷰 생성 실패 - 컨텐츠ID가 없음(400 에러)")
+  @DisplayName("리뷰 생성 실패 - 콘텐츠ID가 없음(400 에러)")
   void create_fail_nullContentId() throws Exception {
     // given
     ReviewCreateRequest invalidRequest = new ReviewCreateRequest(null, reviewText, reviewRating);

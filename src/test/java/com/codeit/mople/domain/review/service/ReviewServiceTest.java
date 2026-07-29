@@ -136,7 +136,7 @@ public class ReviewServiceTest {
   }
 
   @Test
-  @DisplayName("리뷰 생성 실패 - 컨텐츠가 존재하지 않음")
+  @DisplayName("리뷰 생성 실패 - 콘텐츠가 존재하지 않음")
   void create_fail_notFoundContent() {
     // given
 

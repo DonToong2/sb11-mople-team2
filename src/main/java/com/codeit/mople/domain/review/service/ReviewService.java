@@ -41,7 +41,7 @@ public class ReviewService {
     });
 
     Content content = contentRepository.findById(request.contentId()).orElseThrow(() -> {
-      log.warn("리뷰 생성 실패: 컨텐츠를 찾을 수 없습니다. contentId={}", request.contentId());
+      log.warn("리뷰 생성 실패: 콘텐츠를 찾을 수 없습니다. contentId={}", request.contentId());
       return new CustomException(ContentErrorCode.CONTENT_NOT_FOUND);
     });
 
@@ -50,12 +50,12 @@ public class ReviewService {
     Review savedReview = reviewRepository.save(review);
 
     // TODO 김명근: 동시성 문제(Race Condition)는 다음 스프린트 기간 때 개선
-    // 컨텐츠의 리뷰 개수, 평균 평점을 조회
+    // 콘텐츠의 리뷰 개수, 평균 평점을 조회
     long reviewCount = reviewRepository.countByContentId(content.getId());
     Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
 
     content.updateRatingStats(
-        // 컨텐츠가 생성 되었거나 리뷰 삭제 등으로 리뷰가 하나도 없을 경우 0.0점
+        // 콘텐츠가 생성 되었거나 리뷰 삭제 등으로 리뷰가 하나도 없을 경우 0.0점
         averageRating,
         (int) reviewCount
     );

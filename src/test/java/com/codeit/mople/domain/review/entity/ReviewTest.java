@@ -19,7 +19,7 @@ public class ReviewTest {
     Content content = new Content(
         ContentType.DRAMA,
         "test",
-        "test 컨텐츠",
+        "test 콘텐츠",
         "test/image.png",
         List.of("테스트")
     );

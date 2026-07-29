@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record ReviewCreateRequest(
-    @NotNull(message = "컨텐츠 ID는 필수입니다.")
+    @NotNull(message = "콘텐츠 ID는 필수입니다.")
     UUID contentId,
 
     @NotBlank(message = "리뷰 내용을 작성해주세요.")

@@ -77,7 +77,7 @@ public class ReviewIntegrationTest {
     savedContent = contentRepository.save(new Content(
             ContentType.DRAMA,
             "test",
-            "test 컨텐츠",
+            "test 콘텐츠",
             "test/image.png",
             List.of("테스트")
         )
@@ -132,7 +132,7 @@ public class ReviewIntegrationTest {
   }
 
   @Test
-  @DisplayName("리뷰 생성 실패 - 컨텐츠가 존재하지 않음(404 에러)")
+  @DisplayName("리뷰 생성 실패 - 콘텐츠가 존재하지 않음(404 에러)")
   void create_fail_notFoundContent() throws Exception {
     // given
     UUID notExistContentId = UUID.randomUUID();
