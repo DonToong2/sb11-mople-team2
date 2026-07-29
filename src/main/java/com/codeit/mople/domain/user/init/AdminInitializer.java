@@ -26,7 +26,7 @@ public class AdminInitializer implements ApplicationRunner {
   @Override
   @Transactional
   public void run(ApplicationArguments args) {
-    if (userRepository.existsByEmailAndRole(adminProperties.email(), Role.ADMIN)) {
+    if (userRepository.existsByRole(Role.ADMIN)) {
       return;
     }
     if (userRepository.existsByEmail(adminProperties.email())) {
