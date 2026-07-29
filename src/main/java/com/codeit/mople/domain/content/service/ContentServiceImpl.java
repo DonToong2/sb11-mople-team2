@@ -132,7 +132,15 @@ public class ContentServiceImpl implements ContentService {
 
   //콘텐츠 삭제
   @Override
+  @Transactional
   public void deleteContent(UUID adminId, UUID contentId) {
+    //삭제할 콘텐츠 조회
+    Content content = contentRepository.findById(contentId)
+        .orElseThrow(() -> ContentNotFoundException.withId(contentId));
 
+    //TODO: 추후 관리자 권한 검증 로직 추가 예정
+
+    //조회된 엔티티 삭제
+    contentRepository.delete(content);
   }
 }
