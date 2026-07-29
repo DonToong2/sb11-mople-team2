@@ -76,7 +76,7 @@ public class ContentServiceImplTest {
   }
 
   @Test
-  @DisplayName("콘텐츠 생성 실패 - 잘못된 ContentType 전달 시 IllegalArgumentException 발생")
+  @DisplayName("콘텐츠 생성 실패 - 잘못된 ContentType 전달 시 InvalidContentTypeException 발생")
   void createContent_Fail_InvalidType() {
     UUID adminId = UUID.randomUUID();
     ContentCreateRequest request = new ContentCreateRequest("INVALID_TYPE",
@@ -128,7 +128,7 @@ public class ContentServiceImplTest {
   }
 
   @Test
-  @DisplayName("콘텐츠 목록 조회 실패 - limit 값이 0 이하일 경우 IllegalArgumentException 발생")
+  @DisplayName("콘텐츠 목록 조회 실패 - limit 값이 0 이하일 경우 InvalidPageRequestException 발생")
   void getContents_Fail_NegativeLimit() {
     int invalidLimit = -1;
 

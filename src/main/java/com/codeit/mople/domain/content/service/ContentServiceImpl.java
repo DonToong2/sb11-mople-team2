@@ -70,7 +70,7 @@ public class ContentServiceImpl implements ContentService {
   @Transactional(readOnly = true)
   public ContentPageResponse getContents(int page, int limit, String sortDirection, String sortBy) {
     //Limit 검증 로직
-    if (limit <= 0) {
+    if (page < 0 || limit <= 0 || limit > 100) {
       throw new InvalidPageRequestException();
     }
 
