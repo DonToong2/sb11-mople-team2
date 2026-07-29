@@ -30,7 +30,7 @@ public class AdminInitializer implements ApplicationRunner {
       return;
     }
     if (userRepository.existsByEmail(adminProperties.email())) {
-      log.warn("Admin initialization skipped: email already taken by non-admin account: {}", adminProperties.email());
+      log.warn("Admin initialization skipped: email already taken by non-admin account: {}", maskEmail(adminProperties.email()));
       return;
     }
     User admin = User.createAdmin(
@@ -40,10 +40,18 @@ public class AdminInitializer implements ApplicationRunner {
     );
     try {
       userRepository.save(admin);
-      log.info("Admin account initialized: {}", adminProperties.email());
+      log.info("Admin account initialized: {}", maskEmail(adminProperties.email()));
     } catch (DataIntegrityViolationException e) {
       // 동시에 여러 인스턴스가 시작될 때 다른 인스턴스가 먼저 저장한 경우
-      log.warn("Admin initialization skipped: concurrent initialization detected for email: {}", adminProperties.email());
+      log.warn("Admin initialization skipped: concurrent initialization detected for email: {}", maskEmail(adminProperties.email()));
     }
+  }
+
+  private String maskEmail(String email) {
+    int atIndex = email.indexOf('@');
+    if (atIndex <= 1) {
+      return "***" + email.substring(atIndex);
+    }
+    return email.charAt(0) + "***" + email.substring(atIndex);
   }
 }
