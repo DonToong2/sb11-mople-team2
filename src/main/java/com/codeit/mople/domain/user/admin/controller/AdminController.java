@@ -30,6 +30,7 @@ public class AdminController implements AdminApi {
     return ApiResponse.success();
   }
 
+  @Override
   @PatchMapping("/{userId}/locked")
   public ApiResponse<Void> changeLocked(
       @PathVariable UUID userId,
