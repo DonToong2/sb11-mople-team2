@@ -42,6 +42,9 @@ public class AdminInitializer implements ApplicationRunner {
 
   private String maskEmail(String email) {
     int atIndex = email.indexOf('@');
+    if (atIndex < 0) {
+      return "***";
+    }
     if (atIndex <= 1) {
       return "***" + email.substring(atIndex);
     }
