@@ -16,6 +16,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -70,6 +71,16 @@ public class PlaylistController implements PlaylistApi {
         playlistService.update(playlistId, request, userDetails.getUserId());
 
     return ResponseEntity.ok(response);
+  }
+
+  @DeleteMapping("/{playlistId}")
+  public ResponseEntity<Void> delete(
+      @PathVariable UUID playlistId,
+      @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails
+  ) {
+    playlistService.delete(playlistId, userDetails.getUserId());
+
+    return ResponseEntity.noContent().build();
   }
 
 }
