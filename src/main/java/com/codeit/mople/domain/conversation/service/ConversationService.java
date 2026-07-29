@@ -41,9 +41,9 @@ public class ConversationService {
     UUID userBId = (userAId.equals(requesterId)) ? targetUserId : requesterId;
 
     User userA = userRepository.findById(userAId)
-        .orElseThrow(() -> new ConversationException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", userAId)));
+        .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", userAId)));
     User userB = userRepository.findById(userBId)
-        .orElseThrow(() -> new ConversationException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", userBId)));
+        .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", userBId)));
 
     Conversation conversation;
     try {

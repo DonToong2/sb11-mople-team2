@@ -5,7 +5,6 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -14,7 +13,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -25,7 +23,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(CustomException.class)
   public ResponseEntity<ApiResponse<Void>> handleCustomException(CustomException e) {
     ErrorCode errorCode = e.getErrorCode();
-    log.warn("[CustomException] Type: {}, Code: {}, Message: {}, Details: {}", errorCode, errorCode.getCode(), e.getMessage(), e.getDetails());
+    log.warn("[CustomException] Type: {}, Code: {}, Message: {}, Details: {}", e.getClass().getSimpleName(), errorCode.getCode(), e.getMessage(), e.getDetails());
     return ResponseEntity
         .status(errorCode.getStatus())
         .body(ApiResponse.error(errorCode.getCode(), errorCode.getMessage()));
