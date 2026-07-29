@@ -122,6 +122,26 @@ class AdminControllerTest {
     }
 
     @Test
+    @DisplayName("허용되지 않은 role 값이면 400을 반환하고 서비스를 호출하지 않는다")
+    void 허용되지_않은_role_값이면_400을_반환한다() throws Exception {
+      // given
+      String request = "{\"role\": \"INVALID_ROLE\"}";
+
+      // when & then
+      mockMvc.perform(patch("/api/users/{userId}/role", userId)
+              .with(user("admin").roles("ADMIN"))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(request))
+          .andDo(print())
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.success").value(false))
+          .andExpect(jsonPath("$.error.code").value("COMMON-001"));
+
+      verifyNoInteractions(adminService);
+    }
+
+    @Test
     @DisplayName("인증 없이 요청하면 401을 반환한다")
     void 인증_없이_요청하면_401을_반환한다() throws Exception {
       // given
