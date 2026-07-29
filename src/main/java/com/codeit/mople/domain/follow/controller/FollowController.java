@@ -40,13 +40,11 @@ public class FollowController {
 
   @GetMapping("/followed-by-me")
   public ResponseEntity<FollowResponse> isFollowedByMe(@AuthenticationPrincipal CustomUserDetails principal, @RequestParam UUID followeeId) {
-    return null;
+    return ResponseEntity.ok(followService.getFollowByMe(followeeId, principal.getUserId()));
   }
 
   @GetMapping("/count")
   public ResponseEntity<Long> getFollowerCount(@AuthenticationPrincipal CustomUserDetails principal, @RequestParam UUID followeeId) {
-    return null;
+    return ResponseEntity.ok(followService.getFollowCount(followeeId));
   }
-
-
 }
