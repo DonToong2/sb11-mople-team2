@@ -1,8 +1,10 @@
 package com.codeit.mople.domain.playlist.controller.api;
 
+import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -11,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -58,7 +61,8 @@ public interface PlaylistApi {
       )
   })
   ResponseEntity<PlaylistResponse> create(
-      @RequestParam UUID ownerId,
+      @Parameter(hidden = true)
+      @AuthenticationPrincipal CustomUserDetails userDetails,
       @RequestBody PlaylistCreateRequest request
   );
 }

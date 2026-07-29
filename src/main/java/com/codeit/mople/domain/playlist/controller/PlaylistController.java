@@ -32,20 +32,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class PlaylistController implements PlaylistApi {
 
   private final PlaylistService playlistService;
-  private final UserRepository userRepository;
 
   @Override
   @PostMapping
   public ResponseEntity<PlaylistResponse> create(
-      @RequestParam UUID ownerId, // TODO 김명근: 인증 구현 시 @AuthenticationPrincipal로 대체
+      @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails,
       @Valid @RequestBody PlaylistCreateRequest request
   ) {
 
-    // TODO 김명근: Custom UserDetails 등 인증 구현 시 해당 findById 삭제(UserRepository Import도 같이 삭제)
-    User owner = userRepository.findById(ownerId).orElseThrow(() ->
-        new CustomException(UserErrorCode.USER_NOT_FOUND));
-
-    PlaylistResponse response = playlistService.create(owner, request);
+    PlaylistResponse response = playlistService.create(userDetails.getUserId(), request);
 
     return ResponseEntity
         .created(URI.create("/api/playlists/" + response.id()))

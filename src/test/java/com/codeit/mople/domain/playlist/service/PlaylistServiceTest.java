@@ -24,6 +24,8 @@ import com.codeit.mople.domain.playlist.mapper.PlaylistOwnerMapper;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.user.entity.User;
+import com.codeit.mople.domain.user.exception.UserErrorCode;
+import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.error.CustomException;
 import java.util.List;
 import java.util.Optional;
@@ -47,6 +49,9 @@ public class PlaylistServiceTest {
   private PlaylistContentRepository playlistContentRepository;
 
   @Mock
+  private UserRepository userRepository;
+
+  @Mock
   private PlaylistMapper mapper;
 
   @Mock
@@ -62,6 +67,7 @@ public class PlaylistServiceTest {
   private UUID ownerId;
   private String title;
   private String description;
+  private PlaylistCreateRequest createRequest;
 
   private Playlist mockPlaylist;
   private Playlist playlist;
@@ -75,6 +81,7 @@ public class PlaylistServiceTest {
     ownerId = UUID.randomUUID();
     title = "새 플레이리스트 (1)";
     description = "새로운 플레이리스트입니다.";
+    createRequest = new PlaylistCreateRequest(title, description);
 
     mockPlaylist = mock(Playlist.class);
     playlistId = UUID.randomUUID();
@@ -92,9 +99,7 @@ public class PlaylistServiceTest {
     void create_success() {
       // given
 
-      // setUp()에서 owner, ownerId, title, description 초기화
-
-      PlaylistCreateRequest createRequest = new PlaylistCreateRequest(title, description);
+      // setUp()에서 owner, ownerId, title, description, createRequest 초기화
 
       Playlist playlist = Playlist.create(owner, title, description);
 
@@ -106,7 +111,10 @@ public class PlaylistServiceTest {
 
       PlaylistResponse response = mock(PlaylistResponse.class);
 
-      // playlist DB 저장 → PlaylistOwnerMapper 생성 → PlaylistMapper 생성 순
+      // ownerId DB 조회 → playlist DB 저장 → PlaylistOwnerMapper 생성 → PlaylistMapper 생성 순
+
+      given(userRepository.findById(ownerId))
+          .willReturn(Optional.of(owner));
 
       given(playlistRepository.save(any(Playlist.class)))
           .willReturn(playlist);
@@ -123,13 +131,14 @@ public class PlaylistServiceTest {
           .willReturn(response);
 
       // when
-      PlaylistResponse result = playlistService.create(owner, createRequest);
+      PlaylistResponse result = playlistService.create(ownerId, createRequest);
 
       // then
       // 결과 중심(상태 검증)
       assertThat(result).isEqualTo(response);
 
       // 행위 중심(given(...) 메서드가 호출됐는지 검증)
+      verify(userRepository).findById(ownerId);
       verify(playlistRepository).save(any(Playlist.class));
       verify(ownerMapper).toResponse(owner);
       verify(mapper).toResponse(
@@ -138,8 +147,37 @@ public class PlaylistServiceTest {
           eq(false),
           eq(List.of())
       );
-
     }
+
+    @Test
+    @DisplayName("플레이리스트 생성 실패 - 사용자가 존재하지 않음")
+    void create_fail_notFoundUser() {
+      // given
+      UUID notExistOwnerId = UUID.randomUUID();
+
+      // BeforeEach에서 createRequest 초기화
+
+      given(userRepository.findById(notExistOwnerId))
+          .willReturn(Optional.empty());
+
+      // when & then
+      assertThatThrownBy(() ->
+          playlistService.create(notExistOwnerId, createRequest))
+          .isInstanceOf(CustomException.class)
+          .extracting("errorCode")
+          .isEqualTo(UserErrorCode.USER_NOT_FOUND);
+
+      // userRepository.findById() 호출
+      verify(userRepository).findById(notExistOwnerId);
+      
+      // 나머지 PlaylistService.create()의 내부 메서드 미호출
+      verifyNoInteractions(
+          playlistRepository,
+          ownerMapper,
+          mapper
+      );
+    }
+
   }
 
   @Nested

@@ -13,6 +13,8 @@ import com.codeit.mople.domain.playlist.mapper.PlaylistOwnerMapper;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.user.entity.User;
+import com.codeit.mople.domain.user.exception.UserErrorCode;
+import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.error.CustomException;
 import java.util.List;
 import java.util.UUID;
@@ -27,17 +29,20 @@ import org.springframework.transaction.annotation.Transactional;
 public class PlaylistService {
 
   private final PlaylistRepository playlistRepository;
+  private final UserRepository userRepository;
   private final PlaylistContentRepository playlistContentRepository;
   private final PlaylistOwnerMapper ownerMapper;
   private final PlaylistContentMapper playlistContentMapper;
   private final PlaylistMapper mapper;
 
-
   @Transactional
-  public PlaylistResponse create(User owner, PlaylistCreateRequest request) {
+  public PlaylistResponse create(UUID ownerId, PlaylistCreateRequest request) {
 
     log.debug("플레이리스트 생성 시도: ownerId={}, title={}",
-        owner.getId(), request.title());
+        ownerId, request.title());
+
+    User owner = userRepository.findById(ownerId).orElseThrow(() ->
+        new CustomException(UserErrorCode.USER_NOT_FOUND));
 
     Playlist playlist = Playlist.create(owner, request.title(), request.description());
 

@@ -53,10 +53,6 @@ public class PlaylistControllerTest {
   @MockitoBean
   private PlaylistService playlistService;
 
-  // TODO 김명근: Custom UserDetails 등 인증 구현 시 UserRepository MockBean 삭제
-  @MockitoBean
-  private UserRepository userRepository;
-
   private CustomUserDetails userDetails;
   private User owner;
   private UUID ownerId;
@@ -107,19 +103,14 @@ public class PlaylistControllerTest {
           List.of()
       );
 
-      // TODO 김명근: Custom UserDetails 등 인증 구현 시 해당 given() 메서드 삭제
-      given(userRepository.findById(ownerId))
-          .willReturn(Optional.of(owner));
-
-      given(playlistService.create(eq(owner), any(PlaylistCreateRequest.class)))
+      given(playlistService.create(eq(ownerId), any(PlaylistCreateRequest.class)))
           .willReturn(response);
 
       // when & then
       // 결과 중심(상태 검증)
       mockMvc.perform(post("/api/playlists")
-              .with(user("사용자")) // 인증(미호출 시 401 에러)
+              .with(user(userDetails)) // 인증(미호출 시 401 에러)
               .with(csrf()) // 인가(미호출 시 403 에러)
-              .param("ownerId", ownerId.toString())
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(createRequest))
           )
@@ -136,7 +127,7 @@ public class PlaylistControllerTest {
           );
 
       // 행위 중심(PlaylistService.create() 메서드가 호출되었는지 검증)
-      verify(playlistService).create(eq(owner), any(PlaylistCreateRequest.class));
+      verify(playlistService).create(eq(ownerId), any(PlaylistCreateRequest.class));
     }
 
     @Test
@@ -149,9 +140,8 @@ public class PlaylistControllerTest {
 
       // when & then
       mockMvc.perform(post("/api/playlists")
-              .with(user("사용자"))
+              .with(user(userDetails))
               .with(csrf())
-              .param("ownerId", ownerId.toString())
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(invalidRequest))
           )
@@ -171,9 +161,8 @@ public class PlaylistControllerTest {
 
       // when & then
       mockMvc.perform(post("/api/playlists")
-              .with(user("사용자"))
+              .with(user(userDetails))
               .with(csrf())
-              .param("ownerId", ownerId.toString())
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(invalidRequest))
           )

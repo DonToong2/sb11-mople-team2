@@ -90,9 +90,8 @@ public class PlaylistIntegrationTest {
       // when & then
       // 상태 검증
       MvcResult result = mockMvc.perform(post("/api/playlists")
-              .with(user("사용자"))
+              .with(user(userDetails))
               .with(csrf())
-              .param("ownerId", savedOwner.getId().toString())
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(createRequest)))
           .andExpect(status().isCreated())
@@ -128,9 +127,8 @@ public class PlaylistIntegrationTest {
 
       // when & then
       mockMvc.perform(post("/api/playlists")
-              .with(user("사용자"))
+              .with(user(userDetails))
               .with(csrf())
-              .param("ownerId", savedOwner.getId().toString())
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(invalidRequest)))
           .andExpect(status().isBadRequest());
@@ -146,9 +144,8 @@ public class PlaylistIntegrationTest {
 
       // when & then
       mockMvc.perform(post("/api/playlists")
-              .with(user("사용자"))
+              .with(user(userDetails))
               .with(csrf())
-              .param("ownerId", savedOwner.getId().toString())
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(invalidRequest)))
           .andExpect(status().isBadRequest());
@@ -156,37 +153,18 @@ public class PlaylistIntegrationTest {
       assertThat(playlistRepository.count()).isZero();
     }
 
-//  @Test
-//  @DisplayName("플레이리스트 생성 실패 - 인증되지 않은 사용자")
-//  void create_fail_unauthorized() throws Exception {
-//    // when & then
-//    mockMvc.perform(post("/api/playlists")
-//            .with(csrf())
-//            .contentType(MediaType.APPLICATION_JSON)
-//            .content(objectMapper.writeValueAsString(request)))
-//        .andExpect(status().isUnauthorized());
-//  }
+  @Test
+  @DisplayName("플레이리스트 생성 실패 - 인증되지 않은 사용자")
+  void create_fail_unauthorized() throws Exception {
+    // when & then
+    mockMvc.perform(post("/api/playlists")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(createRequest)))
+        .andExpect(status().isUnauthorized());
 
-    @Test
-    @DisplayName("플레이리스트 생성 실패 - 사용자가 존재하지 않음(404 에러)")
-    void create_fail_notFoundUser() throws Exception {
-      // given
-      UUID notExistOwnerId = UUID.randomUUID();
-
-      // BeforeEach에서 PlaylistCreateRequest 초기화
-
-      // when & then
-      mockMvc.perform(post("/api/playlists")
-              .with(user("사용자"))
-              .with(csrf())
-              .param("ownerId", notExistOwnerId.toString())
-              .contentType(MediaType.APPLICATION_JSON)
-              .content(objectMapper.writeValueAsString(createRequest)))
-          .andExpect(status().isNotFound());
-
-      // 플레이리스트가 저장되지 말아야 함
-      assertThat(playlistRepository.count()).isZero();
-    }
+    assertThat(playlistRepository.count()).isZero();
+  }
 
   }
 
