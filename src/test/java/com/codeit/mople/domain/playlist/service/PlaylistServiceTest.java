@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
+import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistContentResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistOwnerResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
@@ -60,8 +61,11 @@ public class PlaylistServiceTest {
   private String title;
   private String description;
 
+  private Playlist mockPlaylist;
   private Playlist playlist;
   private UUID playlistId;
+
+  private PlaylistUpdateRequest updateRequest;
 
   @BeforeEach
   void setUp() {
@@ -70,8 +74,11 @@ public class PlaylistServiceTest {
     title = "새 플레이리스트 (1)";
     description = "새로운 플레이리스트입니다.";
 
-    playlist = mock(Playlist.class);
+    mockPlaylist = mock(Playlist.class);
     playlistId = UUID.randomUUID();
+    playlist = Playlist.create(owner, title, description);
+
+    updateRequest = new PlaylistUpdateRequest("수정한 제목", "수정한 설명");
   }
 
   @Nested
@@ -85,7 +92,7 @@ public class PlaylistServiceTest {
 
       // setUp()에서 owner, ownerId, title, description 초기화
 
-      PlaylistCreateRequest request = new PlaylistCreateRequest(title, description);
+      PlaylistCreateRequest createRequest = new PlaylistCreateRequest(title, description);
 
       Playlist playlist = Playlist.create(owner, title, description);
 
@@ -114,7 +121,7 @@ public class PlaylistServiceTest {
           .willReturn(response);
 
       // when
-      PlaylistResponse result = playlistService.create(owner, request);
+      PlaylistResponse result = playlistService.create(owner, createRequest);
 
       // then
       // 결과 중심(상태 검증)
@@ -152,9 +159,9 @@ public class PlaylistServiceTest {
       PlaylistResponse response = mock(PlaylistResponse.class);
 
       given(playlistRepository.findById(playlistId))
-          .willReturn(Optional.of(playlist));
+          .willReturn(Optional.of(mockPlaylist));
 
-      given(playlist.getOwner())
+      given(mockPlaylist.getOwner())
           .willReturn(owner);
       given(ownerMapper.toResponse(owner))
           .willReturn(ownerResponse);
@@ -165,7 +172,7 @@ public class PlaylistServiceTest {
           .willReturn(playlistContentResponse);
 
       given(mapper.toResponse(
-          eq(playlist),
+          eq(mockPlaylist),
           eq(ownerResponse),
           eq(false),
           eq(List.of(playlistContentResponse))
@@ -183,7 +190,7 @@ public class PlaylistServiceTest {
       verify(playlistContentRepository).findAllByPlaylistIdOrderByCreatedAtAsc(playlistId);
       verify(playlistContentMapper).toResponse(playlistContent);
       verify(mapper).toResponse(
-          eq(playlist),
+          eq(mockPlaylist),
           eq(ownerResponse),
           eq(false),
           eq(List.of(playlistContentResponse))
@@ -204,6 +211,100 @@ public class PlaylistServiceTest {
           .isInstanceOf(CustomException.class);
 
       verify(playlistRepository).findById(notExistPlaylistId);
+      verifyNoInteractions(
+          ownerMapper,
+          playlistContentRepository,
+          playlistContentMapper,
+          mapper
+      );
+    }
+  }
+
+  @Nested
+  @DisplayName("플레이리스트 수정")
+  class Update {
+
+    @Test
+    @DisplayName("플레이리스트 수정 성공")
+    void update_success() {
+      // given
+
+      // BeforeEach에서 updateRequest 초기화
+
+      PlaylistOwnerResponse ownerResponse =
+          mock(PlaylistOwnerResponse.class);
+
+      PlaylistResponse response =
+          mock(PlaylistResponse.class);
+
+      given(playlistRepository.findById(playlistId))
+          .willReturn(Optional.of(playlist));
+
+      given(owner.getId())
+          .willReturn(ownerId);
+
+      given(ownerMapper.toResponse(owner))
+          .willReturn(ownerResponse);
+
+      given(playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlistId))
+          .willReturn(List.of());
+
+      given(mapper.toResponse(
+          eq(playlist),
+          eq(ownerResponse),
+          eq(false),
+          eq(List.of())
+      ))
+          .willReturn(response);
+
+      // when
+      PlaylistResponse result = playlistService.update(playlistId, updateRequest, ownerId);
+
+      // then
+      assertThat(result).isEqualTo(response);
+      assertThat(playlist.getTitle()).isEqualTo("수정한 제목");
+      assertThat(playlist.getDescription()).isEqualTo("수정한 설명");
+    }
+
+    @Test
+    @DisplayName("플레이리스트 수정 실패 - 플레이리스트가 존재하지 않음")
+    void update_fail_notFoundPlaylist() {
+      // given
+      given(playlistRepository.findById(playlistId))
+          .willReturn(Optional.empty());
+
+      // when & then
+      assertThatThrownBy(() -> playlistService.update(playlistId, updateRequest, ownerId))
+          .isInstanceOf(CustomException.class);
+
+      verify(playlistRepository).findById(playlistId);
+
+      verifyNoInteractions(
+          ownerMapper,
+          playlistContentRepository,
+          playlistContentMapper,
+          mapper
+      );
+    }
+
+    @Test
+    @DisplayName("플레이리스트 수정 실패 - 소유자가 아님")
+    void update_fail_forbidden() {
+      // given
+      UUID nowOwnerId = UUID.randomUUID();
+
+      given(playlistRepository.findById(playlistId))
+          .willReturn(Optional.of(playlist));
+
+      given(owner.getId())
+          .willReturn(ownerId);
+
+      // when & then
+      assertThatThrownBy(() -> playlistService.update(playlistId, updateRequest, nowOwnerId))
+          .isInstanceOf(CustomException.class);
+
+      verify(playlistRepository).findById(playlistId);
+
       verifyNoInteractions(
           ownerMapper,
           playlistContentRepository,
