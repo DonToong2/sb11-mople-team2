@@ -1,8 +1,8 @@
 package com.codeit.mople.domain.follow.controller.api;
 
+import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.follow.dto.FollowRequest;
 import com.codeit.mople.domain.follow.dto.FollowResponse;
-import com.codeit.mople.global.security.MoplUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -31,6 +31,6 @@ public interface FollowApi {
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))),
   })
   public ResponseEntity<FollowResponse> createFollow(
-      @Parameter(hidden = true) @AuthenticationPrincipal MoplUserDetails principal,
+      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails principal,
       @Valid @RequestBody FollowRequest followRequest);
 }

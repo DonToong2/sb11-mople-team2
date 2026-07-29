@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.playlist.controller;
 
+import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.playlist.controller.api.PlaylistApi;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
@@ -8,7 +9,6 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.error.CustomException;
-import com.codeit.mople.global.security.MoplUserDetails;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
@@ -52,7 +52,7 @@ public class PlaylistController implements PlaylistApi {
   @PostMapping("/{playlistId}/subscription")
   public ResponseEntity<Void> createSubscribe(
       @PathVariable UUID playlistId,
-      @AuthenticationPrincipal MoplUserDetails principal
+      @AuthenticationPrincipal CustomUserDetails principal
   ) {
     playlistService.subscribe(playlistId, principal.getUserId());
     return ResponseEntity.noContent().build();
