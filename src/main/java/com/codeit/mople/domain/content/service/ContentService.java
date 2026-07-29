@@ -11,9 +11,15 @@ import com.codeit.mople.domain.content.exception.InvalidContentTypeException;
 import com.codeit.mople.domain.content.exception.InvalidPageRequestException;
 import com.codeit.mople.domain.content.mapper.ContentMapper;
 import com.codeit.mople.domain.content.repository.ContentRepository;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -22,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ContentService{
@@ -33,12 +40,14 @@ public class ContentService{
   @Transactional
   public ContentResponse createContent(UUID adminId, ContentCreateRequest request,
       MultipartFile thumbnail) {
+    log.debug("콘텐트 생성 시작 - adminId: {}, type: {}, title: {}", adminId, request.type(), request.title());
 
     //ContentType 변환 방어 로직
     ContentType contentType;
     try {
       contentType = ContentType.valueOf(request.type().toUpperCase());
     } catch (IllegalArgumentException e) {
+      log.warn("콘텐츠 생성 실패(잘못된 ContentType) - type: {}", request.type());
       throw new InvalidContentTypeException();
     }
 
@@ -47,11 +56,29 @@ public class ContentService{
     //썸네일 이미지 업로드 처리(현재는 임시 URL 처리)
     String uploadedThumbnailUrl = null;
     if (thumbnail != null && !thumbnail.isEmpty()) {
-      String originalFilename = thumbnail.getOriginalFilename();
-      String safeFilename = UUID.randomUUID() + "_" + (originalFilename != null ?
-          originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_") : "unnamed");
-      //TODO: 추후 AWS S3 등에 업로드하고 반한된 URL 사용 예정
-      uploadedThumbnailUrl = "http://example.com/images/" + safeFilename;
+      try {
+        String originalFilename = thumbnail.getOriginalFilename();
+        String safeFilename = UUID.randomUUID() + "_" + (originalFilename != null ?
+            originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_") : "unnamed");
+
+        // 로컬 저장 경로 설정 (프로젝트 루트의 uploads 폴더)
+        String uploadDir = "uploads/";
+        File dir = new File(uploadDir);
+        if (!dir.exists()) {
+          dir.mkdirs(); // 폴더가 없으면 생성
+        }
+
+        // 실제 파일 저장
+        Path filePath = Paths.get(uploadDir, safeFilename);
+        Files.write(filePath, thumbnail.getBytes());
+
+        //TODO: 추후 AWS S3 등에 업로드하고 반한된 URL 사용 예정
+        uploadedThumbnailUrl = "/uploads/" + safeFilename;
+        log.debug("썸네일 임시 저장 완료 - url: {}", uploadedThumbnailUrl);
+      } catch (IOException e) {
+        log.error("썸네일 파일 업로드 중 예상치 못한 오류 발생", e);
+        throw new RuntimeException("파일 업로드에 실패했습니다.", e);
+      }
     }
 
     //Request DTO 데이터를 바탕으로 매퍼를 통해 Content 엔티티 생성
@@ -60,6 +87,8 @@ public class ContentService{
     //DB에 엔티티 저장
     Content savedContent = contentRepository.save(content);
 
+    log.info("콘텐츠 생성 완료 - contentId: {}, title: {}", savedContent.getId(), savedContent.getTitle());
+
     //저장된 엔티티 데이터를 ContentResponse 구조로 변환하여 반환
     return contentMapper.toDto(savedContent);
   }
@@ -67,8 +96,11 @@ public class ContentService{
   //콘텐츠 목록 조회
   @Transactional(readOnly = true)
   public ContentPageResponse getContents(int page, int limit, String sortDirection, String sortBy) {
+    log.debug("콘텐츠 목록 조회 시작 - page: {}, limit: {}, sortBy: {}, sortDirection: {}", page, limit, sortBy, sortDirection);
+
     //Limit 검증 로직
     if (page < 0 || limit <= 0 || limit > 100) {
+      log.warn("콘텐츠 목록 조회 실패(잘못된 페이징 조건) - page: {}, limit: {}", page, limit);
       throw new InvalidPageRequestException();
     }
 
@@ -76,6 +108,7 @@ public class ContentService{
     List<String> allowedSortFields = List.of("createdAt", "updatedAt", "title",
         "averageRating", "watcherCount", "reviewCount");
     if (!allowedSortFields.contains(sortBy)) {
+      log.debug("허용되지 않은 정렬 필드 기본값(createdAt) 처리 - 원래 전달된 sortBy: {}", sortBy);
       sortBy = "createdAt";
     }
 
@@ -96,6 +129,8 @@ public class ContentService{
     List<ContentResponse> contentResponses = contentPage.getContent().stream()
         .map(contentMapper::toDto).toList();
 
+    log.debug("콘텐츠 목록 조회 완료 - 조회된 데이터 개수: {}", contentResponses.size());
+
     //ContentPageResponse에 맞춰 매퍼를 통해 페이징 응답 객체 생성 및 반환
     return contentMapper.toPageResponse(
         contentResponses, contentPage, sortBy, normalizedSortDirection);
@@ -104,9 +139,16 @@ public class ContentService{
   //콘텐츠 단건 조회
   @Transactional(readOnly = true)
   public ContentResponse getContent(UUID contentId) {
+    log.debug("콘텐츠 단건 조회 시작 - contentId: {}", contentId);
+
     //ID로 DB에서 콘텐츠 조회
     Content content = contentRepository.findById(contentId)
-        .orElseThrow(() -> ContentNotFoundException.withId(contentId));
+        .orElseThrow(() -> {
+          log.warn("콘텐츠 단건 조회 실패(존재하지 않는 ID) - contentId: {}", contentId);
+          return ContentNotFoundException.withId(contentId);
+        });
+
+    log.debug("콘텐츠 단건 조회 완료 - contentId: {}", content.getId());
 
     //조회된 엔티티를 매퍼를 통해 DTO로 변환하여 반환
     return contentMapper.toDto(content);
@@ -116,18 +158,41 @@ public class ContentService{
   @Transactional
   public ContentResponse updateContent(UUID adminId, UUID contentId, ContentUpdateRequest request,
       MultipartFile thumbnail) {
+    log.debug("콘텐츠 수정 시작 - adminId: {}, contentId: {}, updateTitle: {}", adminId, contentId, request.title());
+
     //수정할 콘텐츠 조회(없으면 404 예외 발생)
     Content content = contentRepository.findById(contentId)
-        .orElseThrow(() -> ContentNotFoundException.withId(contentId));
+        .orElseThrow(() -> {
+          log.warn("콘텐츠 수정 실패(존재하지 않는 ID) - contentId: {}", contentId);
+          return ContentNotFoundException.withId(contentId);
+        });
 
     //썸네일 수정(새로운 파일이 들어온 경우에만 업데이트)
     String uploadedThumbnailUrl = content.getThumbnailUrl(); //기존 URL 유지
     if (thumbnail != null && !thumbnail.isEmpty()) {
-      String originalFilename = thumbnail.getOriginalFilename();
-      String safeFilename = UUID.randomUUID() + "_" + (originalFilename != null ?
-          originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_") : "unnamed");
-      //TODO: 추후 S3 업로드 로직으로 교체
-      uploadedThumbnailUrl = "http://example.com/images/updated_" + safeFilename;
+      try {
+        String originalFilename = thumbnail.getOriginalFilename();
+        String safeFilename = UUID.randomUUID() + "_" + (originalFilename != null ?
+            originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_") : "unnamed");
+
+        // 로컬 저장 경로 설정 (프로젝트 루트의 uploads 폴더)
+        String uploadDir = "uploads/";
+        File dir = new File(uploadDir);
+        if (!dir.exists()) {
+          dir.mkdirs(); // 폴더가 없으면 생성
+        }
+
+        // 실제 파일 저장
+        Path filePath = Paths.get(uploadDir, safeFilename);
+        Files.write(filePath, thumbnail.getBytes());
+
+        //TODO: 추후 S3 업로드 로직으로 교체
+        uploadedThumbnailUrl = "/uploads/" + safeFilename;
+        log.debug("수정용 썸네일 임시 저장 완료 - url: {}", uploadedThumbnailUrl);
+      } catch (IOException e) {
+        log.error("수정용 썸네일 파일 업로드 중 예상치 못한 오류 발생", e);
+        throw new RuntimeException("파일 업로드에 실패했습니다.", e);
+      }
     }
 
     //엔티티 상태 변경(JPA 변경 감지 활용)
@@ -138,6 +203,8 @@ public class ContentService{
         request.tags()
     );
 
+    log.info("콘텐츠 수정 완료 - contentId: {}", content.getId());
+
     //수정된 엔티티를 DTO로 변환하여 반환
     return contentMapper.toDto(content);
   }
@@ -145,13 +212,20 @@ public class ContentService{
   //콘텐츠 삭제
   @Transactional
   public void deleteContent(UUID adminId, UUID contentId) {
+    log.debug("콘텐츠 삭제 시작 - adminId: {}, contentId: {}", adminId, contentId);
+
     //삭제할 콘텐츠 조회
     Content content = contentRepository.findById(contentId)
-        .orElseThrow(() -> ContentNotFoundException.withId(contentId));
+        .orElseThrow(() -> {
+          log.warn("콘텐츠 삭제 실패(존재하지 않는 ID) - contentId: {}", contentId);
+          return ContentNotFoundException.withId(contentId);
+        });
 
     //TODO: 추후 관리자 권한 검증 로직 추가 예정
 
     //조회된 엔티티 삭제
     contentRepository.delete(content);
+
+    log.info("콘텐츠 삭제 완료 - contentId: {}", contentId);
   }
 }
