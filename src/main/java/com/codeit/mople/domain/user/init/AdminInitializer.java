@@ -39,7 +39,7 @@ public class AdminInitializer implements ApplicationRunner {
         adminProperties.name()
     );
     try {
-      userRepository.save(admin);
+      userRepository.saveAndFlush(admin);
       log.info("어드민 계정을 생성 성공했습니다.: {}", maskEmail(adminProperties.email()));
     } catch (DataIntegrityViolationException e) {
       // 동시에 여러 인스턴스가 시작될 때 다른 인스턴스가 먼저 저장한 경우
