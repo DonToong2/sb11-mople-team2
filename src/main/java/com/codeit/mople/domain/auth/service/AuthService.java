@@ -29,6 +29,10 @@ public class AuthService {
       throw new CustomException(AuthErrorCode.INVALID_CREDENTIALS);
     }
 
+    if(user.isLocked()) {
+      throw new CustomException(AuthErrorCode.LOCKED_ACCOUNT);
+    }
+
     long newSessionVersion = user.increaseSessionVersion();
 
     String accessToken = jwtProvider.createAccessToken(user.getId(), newSessionVersion);

@@ -36,7 +36,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         long tokenSessionVersion = jwtProvider.getSessionVersion(token);
 
         Optional<User> userOpt = userRepository.findById(userId);
-        if(userOpt.isPresent() && userOpt.get().getSessionVersion() == tokenSessionVersion) {
+        if(userOpt.isPresent()
+               && userOpt.get().getSessionVersion() == tokenSessionVersion
+               && !userOpt.get().isLocked()) {
           User user = userOpt.get();
           CustomUserDetails principal = new CustomUserDetails(user.getId(), user.getRole());
           var authentication = new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
