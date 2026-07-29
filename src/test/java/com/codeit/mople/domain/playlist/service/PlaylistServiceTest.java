@@ -155,7 +155,11 @@ public class PlaylistServiceTest {
   void subscribe_duplicate() {
     UUID playlistId = UUID.randomUUID();
     UUID subscriberId = UUID.randomUUID();
+    Playlist playlist = Playlist.create(owner, title, description);
+    User subscriber = mock(User.class);
 
+    given(playlistRepository.findById(playlistId)).willReturn(Optional.of(playlist));
+    given(userRepository.findById(subscriberId)).willReturn(Optional.of(subscriber));
     given(playlistSubscriptionRepository.existsByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(true);
 
     assertThatThrownBy(() -> playlistService.subscribe(playlistId, subscriberId))
@@ -172,7 +176,6 @@ public class PlaylistServiceTest {
     UUID playlistId = UUID.randomUUID();
     UUID subscriberId = UUID.randomUUID();
 
-    given(playlistSubscriptionRepository.existsByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(false);
     given(playlistRepository.findById(playlistId)).willReturn(Optional.empty());
 
     assertThatThrownBy(() -> playlistService.subscribe(playlistId, subscriberId))
@@ -190,14 +193,31 @@ public class PlaylistServiceTest {
     UUID subscriberId = UUID.randomUUID();
     Playlist playlist = Playlist.create(owner, title, description);
 
-    given(playlistSubscriptionRepository.existsByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(false);
     given(playlistRepository.findById(playlistId)).willReturn(Optional.of(playlist));
     given(userRepository.findById(subscriberId)).willReturn(Optional.empty());
 
     assertThatThrownBy(() -> playlistService.subscribe(playlistId, subscriberId))
         .isInstanceOf(CustomException.class)
-        .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.USER_NOT_FOUND);
+        .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_NOT_FOUND);
 
+    verify(playlistSubscriptionRepository, never()).save(any());
+    verify(publisher, never()).publishEvent(any());
+  }
+
+  @Test
+  @DisplayName("본인 플레이리스트 구독 차단")
+  void subscribe_selfSubScribe() {
+    UUID playlistId = UUID.randomUUID();
+    Playlist playlist = Playlist.create(owner, title, description);
+
+    given(owner.getId()).willReturn(ownerId);
+    given(playlistRepository.findById(playlistId)).willReturn(Optional.of(playlist));
+
+    assertThatThrownBy(() -> playlistService.subscribe(playlistId, ownerId))
+        .isInstanceOf(CustomException.class)
+        .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_DUPLICATE);
+
+    verify(userRepository, never()).findById(any());
     verify(playlistSubscriptionRepository, never()).save(any());
     verify(publisher, never()).publishEvent(any());
   }

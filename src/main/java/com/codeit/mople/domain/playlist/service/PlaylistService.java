@@ -65,14 +65,24 @@ public class PlaylistService {
 
     log.debug("플레이리스트 구독 시도: playlistId={}, subscriberId={}", playlistId, subscriberId);
 
+    // 존재확인
+    Playlist playlist = playlistRepository.findById(playlistId)
+        .orElseThrow(() -> new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
+
+    // 본인 구독 차단
+    if (subscriberId.equals(playlist.getOwner().getId())) {
+      throw new CustomException(PlaylistErrorCode.PLAYLIST_DUPLICATE);
+    }
+
+    // 존재확인
+    User subscriber = userRepository.findById(subscriberId)
+        .orElseThrow(() -> new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
+
+    // 중복 구독 차단
     if (playlistSubscriptionRepository.existsByPlaylistIdAndSubscriberId(playlistId, subscriberId)) {
       throw new CustomException(PlaylistErrorCode.PLAYLIST_DUPLICATE);
     }
 
-    Playlist playlist = playlistRepository.findById(playlistId)
-        .orElseThrow(() -> new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
-    User subscriber = userRepository.findById(subscriberId)
-        .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
     PlaylistSubscription saved = playlistSubscriptionRepository.save(
         PlaylistSubscription.create(playlist, subscriber));
 

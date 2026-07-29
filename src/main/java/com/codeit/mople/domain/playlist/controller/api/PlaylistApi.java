@@ -72,10 +72,6 @@ public interface PlaylistApi {
   )
   @ApiResponses({
       @ApiResponse(
-          responseCode = "200",
-          description = "성공"
-      ),
-      @ApiResponse(
           responseCode = "204",
           description = "성공"
       ),
