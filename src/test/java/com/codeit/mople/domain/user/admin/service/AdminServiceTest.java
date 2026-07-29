@@ -1,11 +1,13 @@
 package com.codeit.mople.domain.user.admin.service;
 
+import com.codeit.mople.domain.user.dto.response.UserDto;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.error.CustomException;
 import com.codeit.mople.global.event.UserForceLogoutEvent;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -20,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import org.springframework.data.domain.Sort;
 
 @ExtendWith(MockitoExtension.class)
 class AdminServiceTest {
@@ -32,6 +35,30 @@ class AdminServiceTest {
 
   @Mock
   private ApplicationEventPublisher eventPublisher;
+
+  @Test
+  void 사용자_목록_조회_성공() {
+    User user1 = User.createUser("a@test.com", "encoded", "유저1");
+    User user2 = User.createAdmin("b@test.com", "encoded", "어드민");
+    given(userRepository.findAll(Sort.by("createdAt").ascending()))
+        .willReturn(List.of(user1, user2));
+
+    List<UserDto> result = adminService.getUserList();
+
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0).email()).isEqualTo("a@test.com");
+    assertThat(result.get(1).role()).isEqualTo(Role.ADMIN);
+  }
+
+  @Test
+  void 사용자_없으면_빈_목록_반환() {
+    given(userRepository.findAll(Sort.by("createdAt").ascending()))
+        .willReturn(List.of());
+
+    List<UserDto> result = adminService.getUserList();
+
+    assertThat(result).isEmpty();
+  }
 
   @Test
   void 권한_변경_성공_및_강제로그아웃_이벤트_발행() {
