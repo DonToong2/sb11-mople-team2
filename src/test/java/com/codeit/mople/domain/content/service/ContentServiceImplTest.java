@@ -18,6 +18,7 @@ import com.codeit.mople.domain.content.exception.InvalidContentTypeException;
 import com.codeit.mople.domain.content.exception.InvalidPageRequestException;
 import com.codeit.mople.domain.content.mapper.ContentMapper;
 import com.codeit.mople.domain.content.repository.ContentRepository;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -190,7 +191,7 @@ public class ContentServiceImplTest {
 
     //기존 데이터
     Content content = new Content(ContentType.MOVIE, "기존 제목", "기존 설명",
-        "http://example.com/old.png", List.of("액션"));
+        "http://example.com/old.png", new ArrayList<>(List.of("액션")));
 
     //수정된 응답 DTO 가정
     ContentResponse expectedResponse = new ContentResponse(contentId, "MOVIE",
