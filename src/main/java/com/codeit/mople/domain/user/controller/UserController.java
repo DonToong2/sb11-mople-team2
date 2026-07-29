@@ -26,7 +26,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "사용자 관리", description = "유저 관련 API")
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -36,19 +35,16 @@ public class UserController {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @Operation(summary = "사용자 등록(회원가입)")
   public ApiResponse<UserDto> signUp(@Valid @RequestBody UserCreateRequest request) {
     return ApiResponse.success(userService.signUp(request));
   }
 
   @GetMapping("/{userId}")
-  @Operation(summary = "사용자 상세 조회")
   public ApiResponse<UserDto> getUser(@PathVariable UUID userId) {
     return ApiResponse.success(userService.getUser(userId));
   }
 
   @PatchMapping(value = "/{userId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @Operation(summary = "프로필 변경", description = "본인의 프로필만 변경할 수 있습니다.")
   public ApiResponse<UserDto> updateProfile(
       @PathVariable UUID userId,
       @AuthenticationPrincipal CustomUserDetails principal,
@@ -59,7 +55,6 @@ public class UserController {
 
   @PatchMapping("/{userId}/password")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @Operation(summary = "비밀번호 변경", description = "본인의 비밀번호만 변경할 수 있습니다.")
   public void changePassword(
       @PathVariable UUID userId,
       @AuthenticationPrincipal CustomUserDetails principal,
