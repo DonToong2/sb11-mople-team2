@@ -35,6 +35,13 @@ public class User extends BaseEntity {
   @Column(nullable = false)
   private boolean locked;
 
+  /**
+   * TODO: Phase5 — Redis 기반 세션 관리로 전환 시 이 컬럼 제거 예정
+   * (Redis에 "현재 유효한 토큰"을 저장하는 방식으로 대체)
+   */
+  @Column(nullable = false)
+  private long sessionVersion = 0L;
+
   private User(String email, String password, String name, Role role) {
     this.email = Objects.requireNonNull(email, "email");
     this.password = Objects.requireNonNull(password, "password");
@@ -65,6 +72,16 @@ public class User extends BaseEntity {
   // 어드민 기능
   public void changeRole(Role role) {
     this.role = Objects.requireNonNull(role, "role");
+  }
+
+  /**
+   * 로그인 시 호출하여 세션 버전을 증가시킵니다.
+   * TODO: Phase5 — Redis 기반 세션 관리로 전환 시 이 필드/메서드 제거 예정
+   *
+   * @return 증가된 이후의 세션 버전 값
+   */
+  public long increaseSessionVersion() {
+    return ++this.sessionVersion;
   }
 
   public void lock() {

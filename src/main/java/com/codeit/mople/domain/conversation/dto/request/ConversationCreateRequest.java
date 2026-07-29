@@ -1,4 +1,4 @@
-package com.codeit.mople.domain.conversation.dto;
+package com.codeit.mople.domain.conversation.dto.request;
 
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
