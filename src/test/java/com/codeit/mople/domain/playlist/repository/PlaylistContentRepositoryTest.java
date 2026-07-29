@@ -1,0 +1,119 @@
+package com.codeit.mople.domain.playlist.repository;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.entity.ContentType;
+import com.codeit.mople.domain.playlist.entity.Playlist;
+import com.codeit.mople.domain.playlist.entity.PlaylistContent;
+import com.codeit.mople.domain.user.entity.User;
+import com.codeit.mople.global.config.JpaAuditingConfig;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.context.annotation.Import;
+
+@Import(JpaAuditingConfig.class)
+@DataJpaTest
+public class PlaylistContentRepositoryTest {
+
+  @Autowired
+  private TestEntityManager entityManager;
+
+  @Autowired
+  private PlaylistContentRepository playlistContentRepository;
+  
+  private User author;
+  private Playlist playlist;
+  private Content content1;
+  private Content content2;
+  private PlaylistContent playlistContent1;
+  private PlaylistContent playlistContent2;
+
+  @BeforeEach
+  void setUp() {
+    author = User.createUser(
+        "test@test.com",
+        "12345678",
+        "test"
+    );
+
+    playlist = Playlist.create(
+        author,
+        "테스트 플레이리스트",
+        "설명"
+    );
+
+    content1 = new Content(
+        ContentType.MOVIE,
+        "A 콘텐츠",
+        "A 설명",
+        "a.png",
+        List.of("tagA")
+    );
+
+    content2 = new Content(
+        ContentType.MOVIE,
+        "A 콘텐츠",
+        "A 설명",
+        "a.png",
+        List.of("tagA")
+    );
+
+    playlistContent1 =
+        PlaylistContent.create(
+            playlist,
+            content1
+        );
+    playlistContent2 =
+        PlaylistContent.create(
+            playlist,
+            content2
+        );
+  }
+
+  @Nested
+  @DisplayName("플레이리스트에 콘텐츠를 추가한 순서대로 조회")
+  class FindAllByPlaylistIdOrderByCreatedAtAsc {
+
+    @Test
+    @DisplayName("플레이리스트에 콘텐츠를 추가한 순서대로 조회 성공")
+    void findAllByPlaylistIdOrderByCreatedAtAsc_success() {
+      // given
+      
+      // BeforeEach에서 author, playlist, content1, content2, playlistContent1, playlistContent2 초기화
+
+      // author, playlist, content 저장
+      entityManager.persist(author);
+      entityManager.persist(playlist);
+      entityManager.persist(content1);
+      entityManager.persist(content2);
+
+      // playlist에 첫번째 content 등록
+      entityManager.persist(playlistContent2);
+      entityManager.flush();
+
+      // playlist에 두번째 content 등록
+      entityManager.persist(playlistContent1);
+      entityManager.flush();
+
+      // when
+      List<PlaylistContent> result =
+          playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlist.getId());
+
+      // then
+      assertThat(result).hasSize(2);
+
+      assertThat(result.get(0).getContent().getId())
+          .isEqualTo(content2.getId());
+      assertThat(result.get(1).getContent().getId())
+          .isEqualTo(content1.getId());
+    }
+  }
+
+}
