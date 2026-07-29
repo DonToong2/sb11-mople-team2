@@ -140,6 +140,7 @@ sourceSets {
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
+    options.compilerArgs << '-parameters'
     options.getGeneratedSourceOutputDirectory().set(file(querydslDir))
 }
 
