@@ -185,15 +185,27 @@ public class ContentControllerTest {
   }
 
   @Test
-  @DisplayName("콘텐츠 목록 조회 실패 - 필수 파라미터(limit) 누락 시 400 Bad Request")
-  void getContents_Fail_MissingParam() throws Exception {
-    //limit 파라미터를 의도적으로 누락
+  @DisplayName("콘텐츠 목록 조회 성공 - 파라미터 누락 시 기본값이 적용되어 200 OK")
+  void getContents_Success_WithDefaultParams() throws Exception {
+    ContentResponse content1 = new ContentResponse(
+        UUID.randomUUID(), "MOVIE", "테스트 영화1", "설명 1",
+        "http://example.com/test1.png", List.of("액션"),
+        0.0, 0, 0L);
+
+    ContentPageResponse mockPageResponse = new ContentPageResponse(
+        List.of(content1), null, null, false, 1L, "createdAt", "DESCENDING"
+    );
+
+    // 파라미터가 누락되었을 때 기본값(10, DESCENDING, createdAt)이 잘 주입되어 서비스가 호출되는지 모킹
+    given(contentService.getContents(10, "DESCENDING", "createdAt")).willReturn(mockPageResponse);
+
     mockMvc.perform(
-        get("/api/contents")
-            .param("sortDirection", "ASCENDING")
-            .param("sortBy", "createdAt")
-            .contentType(MediaType.APPLICATION_JSON)
-    ).andExpect(status().isInternalServerError());
+            get("/api/contents")
+                // 파라미터(param)를 모두 의도적으로 누락
+                .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(1))
+        .andExpect(jsonPath("$.sortBy").value("createdAt"));
   }
 
   //=========================================================================================

@@ -48,8 +48,11 @@ public class ContentServiceImpl implements ContentService {
     //썸네일 이미지 업로드 처리(현재는 임시 URL 처리)
     String uploadedThumbnailUrl = null;
     if (thumbnail != null && !thumbnail.isEmpty()) {
+      String originalFilename = thumbnail.getOriginalFilename();
+      String safeFilename = UUID.randomUUID() + "_" + (originalFilename != null ?
+          originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_") : "unnamed");
       //TODO: 추후 AWS S3 등에 업로드하고 반한된 URL 사용 예정
-      uploadedThumbnailUrl = "http://example.com/images/" + thumbnail.getOriginalFilename();
+      uploadedThumbnailUrl = "http://example.com/images/" + safeFilename;
     }
 
     //Request DTO 데이터를 바탕으로 매퍼를 통해 Content 엔티티 생성
@@ -69,6 +72,13 @@ public class ContentServiceImpl implements ContentService {
     //Limit 검증 로직
     if (limit <= 0) {
       throw new InvalidPageRequestException();
+    }
+
+    //허용된 정렬 필드가 아닐 경우 기본값(createdAt) 처리
+    List<String> allowedSortFields = List.of("createdAt", "updatedAt", "title",
+        "averageRating", "watcherCount", "reviewCount");
+    if (!allowedSortFields.contains(sortBy)) {
+      sortBy = "createdAt";
     }
 
     //정렬 방향 설정(ASCENDING(오름차순) 또는 DESCENDING(내림차순))
@@ -114,8 +124,11 @@ public class ContentServiceImpl implements ContentService {
     //썸네일 수정(새로운 파일이 들어온 경우에만 업데이트)
     String uploadedThumbnailUrl = content.getThumbnailUrl(); //기존 URL 유지
     if (thumbnail != null && !thumbnail.isEmpty()) {
+      String originalFilename = thumbnail.getOriginalFilename();
+      String safeFilename = UUID.randomUUID() + "_" + (originalFilename != null ?
+          originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_") : "unnamed");
       //TODO: 추후 S3 업로드 로직으로 교체
-      uploadedThumbnailUrl = "http://example.com/images/updated_" + thumbnail.getOriginalFilename();
+      uploadedThumbnailUrl = "http://example.com/images/updated_" + safeFilename;
     }
 
     //엔티티 상태 변경(JPA 변경 감지 활용)

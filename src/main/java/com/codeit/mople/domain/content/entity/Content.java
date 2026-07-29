@@ -70,6 +70,11 @@ public class Content extends BaseTimeEntity {
     this.title = title;
     this.description = description;
     this.thumbnailUrl = thumbnailUrl;
-    this.tags = tags;
+
+    //Hibernate 컬렉션 래퍼 유지를 위한 clear/addAll 적용
+    if (tags != null) {
+      this.tags.clear();
+      this.tags.addAll(tags);
+    }
   }
 }
