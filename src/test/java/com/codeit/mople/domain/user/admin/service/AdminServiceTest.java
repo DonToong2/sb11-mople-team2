@@ -57,7 +57,7 @@ class AdminServiceTest {
 
     @Test
     @DisplayName("USER을 ADMIN으로 권한 변경 할 수 있고 강제 로그아웃 이벤트를 발행한다")
-    void USER을 ADMIN으로 권한 변경 할 수 있고 강제 로그아웃 이벤트를 발행한다() {
+    void USER을_ADMIN으로_권한_변경_할_수_있고_강제_로그아웃_이벤트를_발행한다() {
       // given
       given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
