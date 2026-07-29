@@ -1,6 +1,8 @@
 package com.codeit.mople.domain.playlist.entity;
 
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
+import com.codeit.mople.domain.playlist.exception.PlaylistUpdateBlankDescriptionException;
+import com.codeit.mople.domain.playlist.exception.PlaylistUpdateBlankTitleException;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.entity.BaseTimeEntity;
 import com.codeit.mople.global.error.CustomException;
@@ -48,17 +50,17 @@ public class Playlist extends BaseTimeEntity {
 
     // 둘 다 Null일 경우
     if (title == null && description == null) {
-      throw new CustomException(PlaylistErrorCode.PLAYLIST_UPDATE_BLANK_TITLE);
+      throw new PlaylistUpdateBlankTitleException();
     }
 
     // 제목이 빈칸 또는 공백일 경우(설명까지 빈칸일 경우 포함)
     if (title != null && title.isBlank()) {
-      throw new CustomException(PlaylistErrorCode.PLAYLIST_UPDATE_BLANK_TITLE);
+      throw new PlaylistUpdateBlankTitleException();
     }
 
     // 설명이 빈칸 또는 공백일 경우
     if (description != null && description.isBlank()) {
-      throw new CustomException(PlaylistErrorCode.PLAYLIST_UPDATE_BLANK_DESCRIPTION);
+      throw new PlaylistUpdateBlankDescriptionException();
     }
 
     // 제목이 null이 아니고 비어있지 않을 때(위의 if문에서 걸러짐) 제목 갱신

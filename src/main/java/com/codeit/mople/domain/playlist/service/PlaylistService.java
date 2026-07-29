@@ -5,7 +5,8 @@ import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistContentResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.entity.Playlist;
-import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
+import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
+import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
 import com.codeit.mople.domain.playlist.mapper.PlaylistContentMapper;
 import com.codeit.mople.domain.playlist.mapper.PlaylistMapper;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
@@ -16,6 +17,7 @@ import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.UserSummary;
 import com.codeit.mople.global.error.CustomException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +41,7 @@ public class PlaylistService {
     log.debug("플레이리스트 생성 시도: ownerId={}, title={}",
         ownerId, request.title());
 
+    // TODO 김명근: User 예외 계층 생성 시 리팩토링
     User owner = userRepository.findById(ownerId).orElseThrow(() ->
         new CustomException(UserErrorCode.USER_NOT_FOUND));
 
@@ -68,7 +71,7 @@ public class PlaylistService {
         playlistId);
 
     Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
-        new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND)
+        new PlaylistNotFoundException(playlistId)
     );
 
     UserSummary ownerResponse = toUserSummary(playlist.getOwner());
@@ -103,7 +106,7 @@ public class PlaylistService {
 
     // Playlist 조회
     Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
-        new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND)
+        new PlaylistNotFoundException(playlistId)
     );
 
     // 플레이리스트 소유자가 맞는지 검증
@@ -138,7 +141,7 @@ public class PlaylistService {
         playlistId, userId);
 
     Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
-        new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND)
+        new PlaylistNotFoundException(playlistId)
     );
 
     validateOwner(playlist, userId);
@@ -161,7 +164,7 @@ public class PlaylistService {
 
   private void validateOwner(Playlist playlist, UUID userId) {
     if (!playlist.getOwner().getId().equals(userId)) {
-      throw new CustomException(PlaylistErrorCode.PLAYLIST_FORBIDDEN);
+      throw new PlaylistForbiddenException(playlist.getId());
     }
   }
 }

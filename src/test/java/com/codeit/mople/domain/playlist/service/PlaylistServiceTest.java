@@ -17,6 +17,8 @@ import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.entity.Playlist;
 import com.codeit.mople.domain.playlist.entity.PlaylistContent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
+import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
+import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
 import com.codeit.mople.domain.playlist.mapper.PlaylistContentMapper;
 import com.codeit.mople.domain.playlist.mapper.PlaylistMapper;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
@@ -160,6 +162,7 @@ public class PlaylistServiceTest {
           .willReturn(Optional.empty());
 
       // when & then
+      // TODO 김명근: User 예외 계층 생성 시 리팩토링
       assertThatThrownBy(() ->
           playlistService.create(notExistOwnerId, createRequest))
           .isInstanceOf(CustomException.class)
@@ -254,7 +257,9 @@ public class PlaylistServiceTest {
 
       // when & then
       assertThatThrownBy(() -> playlistService.find(notExistPlaylistId))
-          .isInstanceOf(CustomException.class);
+          .isInstanceOf(PlaylistNotFoundException.class)
+          .extracting("errorCode")
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_NOT_FOUND);
 
       verify(playlistRepository).findById(notExistPlaylistId);
       verifyNoInteractions(
@@ -326,7 +331,9 @@ public class PlaylistServiceTest {
 
       // when & then
       assertThatThrownBy(() -> playlistService.update(playlistId, updateRequest, ownerId))
-          .isInstanceOf(CustomException.class);
+          .isInstanceOf(PlaylistNotFoundException.class)
+          .extracting("errorCode")
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_NOT_FOUND);
 
       verify(playlistRepository).findById(playlistId);
 
@@ -344,14 +351,22 @@ public class PlaylistServiceTest {
       UUID noOwnerId = UUID.randomUUID();
 
       given(playlistRepository.findById(playlistId))
-          .willReturn(Optional.of(playlist));
+          .willReturn(Optional.of(mockPlaylist));
+
+      given(mockPlaylist.getId())
+          .willReturn(playlistId);
+
+      given(mockPlaylist.getOwner())
+          .willReturn(owner);
 
       given(owner.getId())
           .willReturn(ownerId);
 
       // when & then
       assertThatThrownBy(() -> playlistService.update(playlistId, updateRequest, noOwnerId))
-          .isInstanceOf(CustomException.class);
+          .isInstanceOf(PlaylistForbiddenException.class)
+          .extracting("errorCode")
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_FORBIDDEN);
 
       verify(playlistRepository).findById(playlistId);
 
@@ -403,7 +418,7 @@ public class PlaylistServiceTest {
       assertThatThrownBy(() ->
           playlistService.delete(playlistId, ownerId)
       )
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(PlaylistNotFoundException.class)
           .extracting("errorCode")
           .isEqualTo(PlaylistErrorCode.PLAYLIST_NOT_FOUND);
 
@@ -422,17 +437,23 @@ public class PlaylistServiceTest {
 
       // BeforeEach에서 playlist, playlistId 초기화
 
+      given(mockPlaylist.getId())
+          .willReturn(playlistId);
+
+      given(mockPlaylist.getOwner())
+          .willReturn(owner);
+
       given(owner.getId())
           .willReturn(ownerId);
 
       given(playlistRepository.findById(playlistId))
-          .willReturn(Optional.of(playlist));
+          .willReturn(Optional.of(mockPlaylist));
 
       // when & then
       assertThatThrownBy(() ->
           playlistService.delete(playlistId, noOwnerId)
       )
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(PlaylistForbiddenException.class)
           .extracting("errorCode")
           .isEqualTo(PlaylistErrorCode.PLAYLIST_FORBIDDEN);
 

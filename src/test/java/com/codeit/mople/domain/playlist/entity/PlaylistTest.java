@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
+import com.codeit.mople.domain.playlist.exception.PlaylistUpdateBlankDescriptionException;
+import com.codeit.mople.domain.playlist.exception.PlaylistUpdateBlankTitleException;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.error.CustomException;
 import org.junit.jupiter.api.BeforeEach;
@@ -113,9 +115,9 @@ public class PlaylistTest {
       // when & then
       assertThatThrownBy(() ->
           playlist.update(" ", "수정한 설명"))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(PlaylistUpdateBlankTitleException.class)
           .extracting("errorCode")
-          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_TITLE);
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_BLANK_TITLE);
     }
 
     @Test
@@ -128,7 +130,7 @@ public class PlaylistTest {
       // when & then
       assertThatThrownBy(() ->
           playlist.update("수정한 제목", " "))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(PlaylistUpdateBlankDescriptionException.class)
           .extracting("errorCode")
           .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_BLANK_DESCRIPTION);
     }
@@ -143,7 +145,7 @@ public class PlaylistTest {
       // when & then
       assertThatThrownBy(() ->
           playlist.update(null, null))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(PlaylistUpdateBlankTitleException.class)
           .extracting("errorCode")
           .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_BLANK_TITLE);
     }
@@ -158,7 +160,7 @@ public class PlaylistTest {
       // when & then
       assertThatThrownBy(() ->
           playlist.update(null, ""))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(PlaylistUpdateBlankDescriptionException.class)
           .extracting("errorCode")
           .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_BLANK_DESCRIPTION);
     }
@@ -173,7 +175,7 @@ public class PlaylistTest {
       // when & then
       assertThatThrownBy(() ->
           playlist.update("", null))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(PlaylistUpdateBlankTitleException.class)
           .extracting("errorCode")
           .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_BLANK_TITLE);
     }
@@ -188,7 +190,7 @@ public class PlaylistTest {
       // when & then
       assertThatThrownBy(() ->
           playlist.update("", ""))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(PlaylistUpdateBlankTitleException.class)
           .extracting("errorCode")
           .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_BLANK_TITLE);
     }
