@@ -42,4 +42,14 @@ public class Playlist extends BaseTimeEntity {
     return new Playlist(owner, title, description);
   }
 
+  public void update(String title, String description) {
+    if (title != null) {
+      this.title = title;
+    }
+    
+    if (description != null) {
+      this.description = description;
+    }
+  }
+
 }
