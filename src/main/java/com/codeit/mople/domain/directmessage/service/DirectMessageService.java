@@ -2,13 +2,15 @@ package com.codeit.mople.domain.directmessage.service;
 
 import com.codeit.mople.domain.conversation.entity.Conversation;
 import com.codeit.mople.domain.conversation.exception.ConversationErrorCode;
+import com.codeit.mople.domain.conversation.exception.ConversationException;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
 import com.codeit.mople.domain.directmessage.dto.response.DirectMessageDto;
 import com.codeit.mople.domain.directmessage.entity.DirectMessage;
 import com.codeit.mople.domain.directmessage.exception.DirectMessageErrorCode;
+import com.codeit.mople.domain.directmessage.exception.DirectMessageException;
 import com.codeit.mople.domain.directmessage.repository.DirectMessageRepository;
-import com.codeit.mople.global.error.CustomException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +31,7 @@ public class DirectMessageService {
   public List<DirectMessageDto> getDirectMessages(UUID conversationId, UUID requesterId) {
     log.debug("특정 DM 목록 조회 요청 - conversationId: {}, requesterId: {}", conversationId, requesterId);
     Conversation conversation = conversationRepository.findById(conversationId)
-        .orElseThrow(() -> new CustomException(ConversationErrorCode.CONVERSATION_NOT_FOUND));
+        .orElseThrow(() -> new ConversationException(ConversationErrorCode.CONVERSATION_NOT_FOUND, Map.of("conversationId", conversationId)));
 
     validateConversationParticipant(conversation, requesterId);
 
@@ -47,17 +49,23 @@ public class DirectMessageService {
     log.debug("단건 DM 읽음 처리 요청 - messageId: {}, requesterId: {}", directMessageId, requesterId);
 
     DirectMessage message = directMessageRepository.findById(directMessageId)
-        .orElseThrow(() -> new CustomException(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND));
+        .orElseThrow(() -> new DirectMessageException(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND, Map.of("directMessageId", directMessageId)));
 
     if (!message.getConversation().getId().equals(conversationId)) {
       log.warn("대화방-DM 소속 불일치 - path conversationId: {}, actual conversationId: {}, messageId: {}",
           conversationId, message.getConversation().getId(), directMessageId);
-      throw new CustomException(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND);
+      throw new DirectMessageException(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND,
+          Map.of("pathConversationId", conversationId,
+              "actualConversationId", message.getConversation().getId(),
+              "directMessageId", directMessageId));
     }
 
     if (!message.getReceiver().getId().equals(requesterId)) {
       log.warn("수신자가 아닌 유저의 접근, DM 읽음 처리 인가 실패 - messageId: {}, requesterId: {}", directMessageId, requesterId);
-      throw new CustomException(DirectMessageErrorCode.UNAUTHORIZED_RECEIVER);
+      throw new DirectMessageException(DirectMessageErrorCode.UNAUTHORIZED_RECEIVER,
+          Map.of("actualReceiverId", message.getReceiver().getId(),
+              "requesterId", requesterId,
+              "directMessageId", directMessageId));
     }
 
     if (message.isRead()) {
@@ -73,7 +81,7 @@ public class DirectMessageService {
   private void validateConversationParticipant(Conversation conversation, UUID requesterId) {
     if (!conversation.getUserA().getId().equals(requesterId) &&
     !conversation.getUserB().getId().equals(requesterId)) {
-      throw new CustomException(ConversationErrorCode.ACCESS_DENIED);
+      throw new ConversationException(ConversationErrorCode.ACCESS_DENIED, Map.of("conversationId", conversation.getId(), "requesterId", requesterId));
     }
   }
 }
