@@ -3,6 +3,7 @@ package com.codeit.mople.domain.playlist.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -20,7 +21,6 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -247,7 +247,7 @@ public class PlaylistIntegrationTest {
     void update_success() throws Exception {
       // given
 
-      // BeforeEach에서 updateRequest 초기화
+      // BeforeEach에서 updateRequest, userDetails 초기화
 
       // when & then
       mockMvc.perform(patch("/api/playlists/{playlistId}", updatePlaylist.getId())
@@ -268,7 +268,7 @@ public class PlaylistIntegrationTest {
       // given
       UUID notExistPlaylistId = UUID.randomUUID();
 
-      // BeforeEach에서 updateRequest 초기화
+      // BeforeEach에서 updateRequest, userDetails 초기화
 
       // when & then
       mockMvc.perform(patch("/api/playlists/{playlistId}", notExistPlaylistId)
@@ -296,4 +296,57 @@ public class PlaylistIntegrationTest {
     }
   }
 
+  @Nested
+  @DisplayName("플레이리스트 삭제")
+  class Delete {
+
+    @BeforeEach
+    void setUp() {
+      updatePlaylist = playlistRepository.save(playlist);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 삭제 성공")
+    void delete_success() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails 초기화
+
+      // when & then
+      mockMvc.perform(delete("/api/playlists/{playlistId}", updatePlaylist.getId())
+              .with(user(userDetails))
+              .with(csrf())
+          )
+          .andExpect(status().isNoContent());
+
+      // DB 검증
+      assertThat(playlistRepository.findById(updatePlaylist.getId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("플레이리스트 삭제 실패 - 플레이리스트가 존재하지 않음(404 에러)")
+    void delete_fail_notFoundPlaylist() throws Exception {
+      // given
+      UUID notExistPlaylistId = UUID.randomUUID();
+
+      // BeforeEach에서 userDetails 초기화
+
+      // when & then
+      mockMvc.perform(delete("/api/playlists/{playlistId}", notExistPlaylistId)
+              .with(user(userDetails))
+              .with(csrf())
+          )
+          .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("플레이리스트 삭제 실패 - 인증되지 않은 사용자(401 에러)")
+    void delete_fail_unauthorized() throws Exception {
+      // when & then
+      mockMvc.perform(delete("/api/playlists/{playlistId}", updatePlaylist.getId())
+              .with(csrf())
+          )
+          .andExpect(status().isUnauthorized());
+    }
+  }
 }
