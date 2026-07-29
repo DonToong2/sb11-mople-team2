@@ -13,19 +13,18 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistContentResponse;
-import com.codeit.mople.domain.playlist.dto.response.PlaylistOwnerResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.entity.Playlist;
 import com.codeit.mople.domain.playlist.entity.PlaylistContent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.mapper.PlaylistContentMapper;
 import com.codeit.mople.domain.playlist.mapper.PlaylistMapper;
-import com.codeit.mople.domain.playlist.mapper.PlaylistOwnerMapper;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.global.dto.UserSummary;
 import com.codeit.mople.global.error.CustomException;
 import java.util.List;
 import java.util.Optional;
@@ -53,9 +52,6 @@ public class PlaylistServiceTest {
 
   @Mock
   private PlaylistMapper mapper;
-
-  @Mock
-  private PlaylistOwnerMapper ownerMapper;
 
   @Mock
   private PlaylistContentMapper playlistContentMapper;
@@ -103,10 +99,17 @@ public class PlaylistServiceTest {
 
       Playlist playlist = Playlist.create(owner, title, description);
 
-      PlaylistOwnerResponse ownerResponse = new PlaylistOwnerResponse(
+      given(owner.getId())
+          .willReturn(ownerId);
+      given(owner.getName())
+          .willReturn("test");
+      given(owner.getProfileImageUrl())
+          .willReturn(null);
+
+      UserSummary ownerResponse = new UserSummary(
           ownerId,
-          "사용자",
-          "profileImageUrl"
+          "test",
+          null
       );
 
       PlaylistResponse response = mock(PlaylistResponse.class);
@@ -118,9 +121,6 @@ public class PlaylistServiceTest {
 
       given(playlistRepository.save(any(Playlist.class)))
           .willReturn(playlist);
-
-      given(ownerMapper.toResponse(owner))
-          .willReturn(ownerResponse);
 
       given(mapper.toResponse(
           any(Playlist.class),
@@ -140,7 +140,6 @@ public class PlaylistServiceTest {
       // 행위 중심(given(...) 메서드가 호출됐는지 검증)
       verify(userRepository).findById(ownerId);
       verify(playlistRepository).save(any(Playlist.class));
-      verify(ownerMapper).toResponse(owner);
       verify(mapper).toResponse(
           any(Playlist.class),
           eq(ownerResponse),
@@ -173,7 +172,6 @@ public class PlaylistServiceTest {
       // 나머지 PlaylistService.create()의 내부 메서드 미호출
       verifyNoInteractions(
           playlistRepository,
-          ownerMapper,
           mapper
       );
     }
@@ -191,7 +189,18 @@ public class PlaylistServiceTest {
 
       // BeforeEach에서 owner, playlist, playlistId를 초기화
 
-      PlaylistOwnerResponse ownerResponse = mock(PlaylistOwnerResponse.class);
+      given(owner.getId())
+          .willReturn(ownerId);
+      given(owner.getName())
+          .willReturn("test");
+      given(owner.getProfileImageUrl())
+          .willReturn(null);
+
+      UserSummary ownerResponse = new UserSummary(
+          ownerId,
+          "test",
+          null
+      );
 
       PlaylistContent playlistContent = mock(PlaylistContent.class);
       PlaylistContentResponse playlistContentResponse = mock(PlaylistContentResponse.class);
@@ -203,8 +212,6 @@ public class PlaylistServiceTest {
 
       given(mockPlaylist.getOwner())
           .willReturn(owner);
-      given(ownerMapper.toResponse(owner))
-          .willReturn(ownerResponse);
 
       given(playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlistId))
           .willReturn(List.of(playlistContent));
@@ -226,7 +233,6 @@ public class PlaylistServiceTest {
       assertThat(result).isEqualTo(response);
 
       verify(playlistRepository).findById(playlistId);
-      verify(ownerMapper).toResponse(owner);
       verify(playlistContentRepository).findAllByPlaylistIdOrderByCreatedAtAsc(playlistId);
       verify(playlistContentMapper).toResponse(playlistContent);
       verify(mapper).toResponse(
@@ -252,7 +258,6 @@ public class PlaylistServiceTest {
 
       verify(playlistRepository).findById(notExistPlaylistId);
       verifyNoInteractions(
-          ownerMapper,
           playlistContentRepository,
           playlistContentMapper,
           mapper
@@ -271,20 +276,24 @@ public class PlaylistServiceTest {
 
       // BeforeEach에서 updateRequest 초기화
 
-      PlaylistOwnerResponse ownerResponse =
-          mock(PlaylistOwnerResponse.class);
+      given(owner.getId())
+          .willReturn(ownerId);
+      given(owner.getName())
+          .willReturn("test");
+      given(owner.getProfileImageUrl())
+          .willReturn(null);
+
+      UserSummary ownerResponse = new UserSummary(
+          ownerId,
+          "test",
+          null
+      );
 
       PlaylistResponse response =
           mock(PlaylistResponse.class);
 
       given(playlistRepository.findById(playlistId))
           .willReturn(Optional.of(playlist));
-
-      given(owner.getId())
-          .willReturn(ownerId);
-
-      given(ownerMapper.toResponse(owner))
-          .willReturn(ownerResponse);
 
       given(playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlistId))
           .willReturn(List.of());
@@ -304,6 +313,8 @@ public class PlaylistServiceTest {
       assertThat(result).isEqualTo(response);
       assertThat(playlist.getTitle()).isEqualTo("수정한 제목");
       assertThat(playlist.getDescription()).isEqualTo("수정한 설명");
+
+      verify(playlistRepository).findById(playlistId);
     }
 
     @Test
@@ -320,7 +331,6 @@ public class PlaylistServiceTest {
       verify(playlistRepository).findById(playlistId);
 
       verifyNoInteractions(
-          ownerMapper,
           playlistContentRepository,
           playlistContentMapper,
           mapper
@@ -346,7 +356,6 @@ public class PlaylistServiceTest {
       verify(playlistRepository).findById(playlistId);
 
       verifyNoInteractions(
-          ownerMapper,
           playlistContentRepository,
           playlistContentMapper,
           mapper
@@ -365,11 +374,11 @@ public class PlaylistServiceTest {
 
       // BeforeEach에서 playlist, playlistId 초기화
 
-      given(playlistRepository.findById(playlistId))
-          .willReturn(Optional.of(playlist));
-
       given(owner.getId())
           .willReturn(ownerId);
+
+      given(playlistRepository.findById(playlistId))
+          .willReturn(Optional.of(playlist));
 
       // when
       playlistService.delete(playlistId, ownerId);
@@ -413,11 +422,11 @@ public class PlaylistServiceTest {
 
       // BeforeEach에서 playlist, playlistId 초기화
 
-      given(playlistRepository.findById(playlistId))
-          .willReturn(Optional.of(playlist));
-
       given(owner.getId())
           .willReturn(ownerId);
+
+      given(playlistRepository.findById(playlistId))
+          .willReturn(Optional.of(playlist));
 
       // when & then
       assertThatThrownBy(() ->

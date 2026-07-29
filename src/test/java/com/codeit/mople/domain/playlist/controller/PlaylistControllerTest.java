@@ -18,18 +18,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
-import com.codeit.mople.domain.playlist.dto.response.PlaylistOwnerResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.service.PlaylistService;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
-import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.global.dto.UserSummary;
 import com.codeit.mople.global.error.CustomException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -86,7 +84,7 @@ public class PlaylistControllerTest {
 
       // BeforeEach에서 ownerId, createRequest, title, description, playlistId 초기화
 
-      PlaylistOwnerResponse ownerResponse = new PlaylistOwnerResponse(
+      UserSummary ownerResponse = new UserSummary(
           ownerId,
           "test",
           null
@@ -184,7 +182,7 @@ public class PlaylistControllerTest {
 
       // BeforeEach에서 playlistId, title, description, userDetails 초기화
 
-      PlaylistOwnerResponse ownerResponse = new PlaylistOwnerResponse(
+      UserSummary ownerResponse = new UserSummary(
           ownerId,
           "test",
           null
@@ -248,7 +246,7 @@ public class PlaylistControllerTest {
 
       // BeforeEach에서 playlistId, updateRequest, userDetails 초기화
 
-      PlaylistOwnerResponse ownerResponse = new PlaylistOwnerResponse(
+      UserSummary ownerResponse = new UserSummary(
           ownerId,
           "test",
           null

@@ -3,18 +3,17 @@ package com.codeit.mople.domain.playlist.service;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistContentResponse;
-import com.codeit.mople.domain.playlist.dto.response.PlaylistOwnerResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.entity.Playlist;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.mapper.PlaylistContentMapper;
 import com.codeit.mople.domain.playlist.mapper.PlaylistMapper;
-import com.codeit.mople.domain.playlist.mapper.PlaylistOwnerMapper;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.global.dto.UserSummary;
 import com.codeit.mople.global.error.CustomException;
 import java.util.List;
 import java.util.UUID;
@@ -31,7 +30,6 @@ public class PlaylistService {
   private final PlaylistRepository playlistRepository;
   private final UserRepository userRepository;
   private final PlaylistContentRepository playlistContentRepository;
-  private final PlaylistOwnerMapper ownerMapper;
   private final PlaylistContentMapper playlistContentMapper;
   private final PlaylistMapper mapper;
 
@@ -48,7 +46,7 @@ public class PlaylistService {
 
     Playlist savedPlaylist = playlistRepository.save(playlist);
 
-    PlaylistOwnerResponse ownerResponse = ownerMapper.toResponse(owner);
+    UserSummary ownerResponse = toUserSummary(owner);
 
     PlaylistResponse response = mapper.toResponse(
         savedPlaylist,
@@ -73,7 +71,7 @@ public class PlaylistService {
         new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND)
     );
 
-    PlaylistOwnerResponse ownerResponse = ownerMapper.toResponse(playlist.getOwner());
+    UserSummary ownerResponse = toUserSummary(playlist.getOwner());
 
     // 콘텐츠를 플레이리스트에 추가한 순서대로 표시(콘텐츠를 B, E, A, C 순으로 추가했을 경우 추가한 순서 그대로)
     List<PlaylistContentResponse> contents =
@@ -113,7 +111,7 @@ public class PlaylistService {
 
     playlist.update(request.title(), request.description());
 
-    PlaylistOwnerResponse ownerResponse = ownerMapper.toResponse(playlist.getOwner());
+    UserSummary ownerResponse = toUserSummary(playlist.getOwner());
 
     List<PlaylistContentResponse> contents =
         playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlistId).stream()
@@ -151,6 +149,14 @@ public class PlaylistService {
     log.info("플레이리스트 삭제 완료: playlistId={}, userId={}",
         playlistId, userId);
 
+  }
+
+  private UserSummary toUserSummary(User user) {
+    return new UserSummary(
+        user.getId(),
+        user.getName(),
+        user.getProfileImageUrl()
+    );
   }
 
   private void validateOwner(Playlist playlist, UUID userId) {
