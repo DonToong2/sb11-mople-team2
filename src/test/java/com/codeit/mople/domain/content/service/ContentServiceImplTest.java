@@ -223,4 +223,38 @@ public class ContentServiceImplTest {
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.CONTENT_NOT_FOUND);
   }
+
+  //=========================================================================================
+  //콘텐츠 삭제 테스트
+  //=========================================================================================
+
+  @Test
+  @DisplayName("콘텐츠 삭제 성공 - 존재하는 ID로 요청 시 정상 삭제 수행")
+  void deleteContent_Success() {
+    UUID contentId = UUID.randomUUID();
+    UUID adminId = UUID.randomUUID();
+
+    Content content = new Content(ContentType.MOVIE, "삭제할 영화", "설명", null, List.of());
+
+    given(contentRepository.findById(any(UUID.class))).willReturn(Optional.of(content));
+
+    //TODO: 추후 관리자 권한 검증 로직 추가 시 권한 관령 Mock 설정 추가 예정
+    contentService.deleteContent(adminId, contentId);
+
+    verify(contentRepository).delete(content);
+  }
+
+  @Test
+  @DisplayName("콘텐츠 삭제 실패 - 존재하지 않는 ID 삭제 시 ContentNotFoundException 발생")
+  void deleteContent_Fail_NotFound() {
+    UUID contentId = UUID.randomUUID();
+    UUID adminId = UUID.randomUUID();
+
+    given(contentRepository.findById(any(UUID.class))).willReturn(Optional.empty());
+
+    assertThatThrownBy(() -> contentService.deleteContent(adminId, contentId))
+        .isInstanceOf(ContentNotFoundException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.CONTENT_NOT_FOUND);
+  }
 }
