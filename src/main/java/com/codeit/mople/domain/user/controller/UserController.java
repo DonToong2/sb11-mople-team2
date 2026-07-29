@@ -1,16 +1,20 @@
 package com.codeit.mople.domain.user.controller;
 
+import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.user.dto.request.ChangePasswordRequest;
 import com.codeit.mople.domain.user.dto.request.UserCreateRequest;
 import com.codeit.mople.domain.user.dto.request.UserUpdateRequest;
 import com.codeit.mople.domain.user.dto.response.UserDto;
 import com.codeit.mople.domain.user.service.UserService;
 import com.codeit.mople.global.response.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -22,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "사용자 관리", description = "유저 관련 API")
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -31,31 +36,35 @@ public class UserController {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary = "사용자 등록(회원가입)")
   public ApiResponse<UserDto> signUp(@Valid @RequestBody UserCreateRequest request) {
     return ApiResponse.success(userService.signUp(request));
   }
 
   @GetMapping("/{userId}")
+  @Operation(summary = "사용자 상세 조회")
   public ApiResponse<UserDto> getUser(@PathVariable UUID userId) {
     return ApiResponse.success(userService.getUser(userId));
   }
 
   @PatchMapping(value = "/{userId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @Operation(summary = "프로필 변경", description = "본인의 프로필만 변경할 수 있습니다.")
   public ApiResponse<UserDto> updateProfile(
       @PathVariable UUID userId,
-      @RequestHeader("X-User-Id") UUID requesterId,
+      @AuthenticationPrincipal CustomUserDetails principal,
       @Valid @ModelAttribute UserUpdateRequest request
   ) {
-    return ApiResponse.success(userService.updateProfile(userId, requesterId, request));
+    return ApiResponse.success(userService.updateProfile(userId, principal.getUserId(), request));
   }
 
   @PatchMapping("/{userId}/password")
   @ResponseStatus(HttpStatus.NO_CONTENT)
+  @Operation(summary = "비밀번호 변경", description = "본인의 비밀번호만 변경할 수 있습니다.")
   public void changePassword(
       @PathVariable UUID userId,
-      @RequestHeader("X-User-Id") UUID requesterId,
+      @AuthenticationPrincipal CustomUserDetails principal,
       @Valid @RequestBody ChangePasswordRequest request
   ) {
-    userService.changePassword(userId, requesterId, request);
+    userService.changePassword(userId, principal.getUserId(), request);
   }
 }
