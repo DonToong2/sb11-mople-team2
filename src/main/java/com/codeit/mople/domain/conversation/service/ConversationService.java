@@ -1,7 +1,7 @@
 package com.codeit.mople.domain.conversation.service;
 
-import com.codeit.mople.domain.conversation.dto.ConversationDto;
-import com.codeit.mople.domain.conversation.dto.CursorResponseConversationDto;
+import com.codeit.mople.domain.conversation.dto.response.ConversationDto;
+import com.codeit.mople.domain.conversation.dto.response.CursorResponseConversationDto;
 import com.codeit.mople.domain.conversation.entity.Conversation;
 import com.codeit.mople.domain.conversation.exception.ConversationErrorCode;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
@@ -15,15 +15,18 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ConversationService {
 
   private final UserRepository userRepository;
   private final ConversationRepository conversationRepository;
 
+  @Transactional
   public ConversationDto findOrCreateConversation(UUID requesterId, UUID targetUserId) {
     log.debug("대화방 생성 시작 - requesterId: {}, targetUserId: {}", requesterId, targetUserId);
 
@@ -45,7 +48,7 @@ public class ConversationService {
       conversation = conversationRepository.findByUserAAndUserB(userA, userB)
           .orElseGet(() -> {
             log.info("기존 대화방 없음, 새 대화방 생성 - userAId: {}, userBId: {}", userAId, userBId);
-            return conversationRepository.save(Conversation.createConversation(userA, userB));
+            return conversationRepository.saveAndFlush(Conversation.createConversation(userA, userB));
           });
     } catch (DataIntegrityViolationException e) {
       log.info("동시 대화방 생성 충돌 발생, 기존 방 재조회 시도 - userAId: {}, userBId: {}", userAId, userBId);
