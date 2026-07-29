@@ -1,8 +1,11 @@
 package com.codeit.mople.domain.playlist.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.user.entity.User;
+import com.codeit.mople.global.error.CustomException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -99,6 +102,97 @@ public class PlaylistTest {
       assertThat(playlist.getDescription())
           .isEqualTo("수정한 설명");
     }
+
+    @Test
+    @DisplayName("플레이리스트 수정 실패 - 제목에 공백만 존재")
+    void update_fail_blankTitle() {
+      // given
+
+      // BeforeEach에서 owner, playlist 초기화
+
+      // when & then
+      assertThatThrownBy(() ->
+          playlist.update(" ", "수정한 설명"))
+          .isInstanceOf(CustomException.class)
+          .extracting("errorCode")
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_TITLE);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 수정 실패 - 설명에 공백만 존재")
+    void update_fail_blankDescription() {
+      // given
+
+      // BeforeEach에서 owner, playlist 초기화
+
+      // when & then
+      assertThatThrownBy(() ->
+          playlist.update("수정한 제목", " "))
+          .isInstanceOf(CustomException.class)
+          .extracting("errorCode")
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_DESCRIPTION);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 수정 실패 - 제목과 설명이 비어있음")
+    void update_fail_empty() {
+      // given
+
+      // BeforeEach에서 owner, playlist 초기화
+
+      // when & then
+      assertThatThrownBy(() ->
+          playlist.update(null, null))
+          .isInstanceOf(CustomException.class)
+          .extracting("errorCode")
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_TITLE);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 수정 실패 - 제목은 비어있고 설명이 공백")
+    void update_fail_emptyTitleBlankDescription() {
+      // given
+
+      // BeforeEach에서 owner, playlist 초기화
+
+      // when & then
+      assertThatThrownBy(() ->
+          playlist.update(null, ""))
+          .isInstanceOf(CustomException.class)
+          .extracting("errorCode")
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_DESCRIPTION);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 수정 실패 - 제목은 공백이고 설명이 비어있음")
+    void update_fail_blankTitleEmptyDescription() {
+      // given
+
+      // BeforeEach에서 owner, playlist 초기화
+
+      // when & then
+      assertThatThrownBy(() ->
+          playlist.update("", null))
+          .isInstanceOf(CustomException.class)
+          .extracting("errorCode")
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_TITLE);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 수정 실패 - 제목과 설명이 공백만 존재")
+    void update_fail_blank() {
+      // given
+
+      // BeforeEach에서 owner, playlist 초기화
+
+      // when & then
+      assertThatThrownBy(() ->
+          playlist.update("", ""))
+          .isInstanceOf(CustomException.class)
+          .extracting("errorCode")
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_TITLE);
+    }
+
   }
 
 }

@@ -1,7 +1,9 @@
 package com.codeit.mople.domain.playlist.entity;
 
+import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.entity.BaseTimeEntity;
+import com.codeit.mople.global.error.CustomException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -43,10 +45,23 @@ public class Playlist extends BaseTimeEntity {
   }
 
   public void update(String title, String description) {
+
+    if (title == null && description == null) {
+      throw new CustomException(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_TITLE);
+    }
+
+    if (title != null && title.isBlank()) {
+      throw new CustomException(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_TITLE);
+    }
+
+    if (description != null && description.isBlank()) {
+      throw new CustomException(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_DESCRIPTION);
+    }
+
     if (title != null) {
       this.title = title;
     }
-    
+
     if (description != null) {
       this.description = description;
     }
