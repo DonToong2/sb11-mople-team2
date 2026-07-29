@@ -59,6 +59,6 @@ public interface PlaylistApi {
   })
   ResponseEntity<PlaylistResponse> create(
       @RequestParam UUID ownerId,
-      @Valid @RequestBody PlaylistCreateRequest request
+      @RequestBody PlaylistCreateRequest request
   );
 }

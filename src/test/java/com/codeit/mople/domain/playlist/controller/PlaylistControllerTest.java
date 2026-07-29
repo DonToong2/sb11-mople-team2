@@ -17,6 +17,8 @@ import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.service.PlaylistService;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.global.config.SecurityConfig;
+import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
@@ -27,10 +29,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+@Import(SecurityConfig.class)
 @WebMvcTest(PlaylistController.class)
 public class PlaylistControllerTest {
 
@@ -39,6 +43,9 @@ public class PlaylistControllerTest {
 
   @Autowired
   private ObjectMapper objectMapper;
+
+  @MockitoBean
+  private JwtProvider jwtProvider;
 
   @MockitoBean
   private PlaylistService playlistService;
@@ -98,8 +105,8 @@ public class PlaylistControllerTest {
     // when & then
     // 결과 중심(상태 검증)
     mockMvc.perform(post("/api/playlists")
-            .with(user("사용자")) // 인증(미호출 시 401 에러)
-            .with(csrf()) // 인가(미호출 시 403 에러)
+            .with(user("test")) // 인증(미호출 시 401 에러)
+            .with(csrf())
             .param("ownerId", ownerId.toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request))
@@ -128,7 +135,7 @@ public class PlaylistControllerTest {
 
     // when & then
     mockMvc.perform(post("/api/playlists")
-            .with(user("사용자"))
+            .with(user("test"))
             .with(csrf())
             .param("ownerId", ownerId.toString())
             .contentType(MediaType.APPLICATION_JSON)
@@ -148,7 +155,7 @@ public class PlaylistControllerTest {
 
     // when & then
     mockMvc.perform(post("/api/playlists")
-            .with(user("사용자"))
+            .with(user("test"))
             .with(csrf())
             .param("ownerId", ownerId.toString())
             .contentType(MediaType.APPLICATION_JSON)
