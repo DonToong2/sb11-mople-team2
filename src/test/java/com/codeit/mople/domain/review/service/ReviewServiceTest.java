@@ -84,8 +84,17 @@ public class ReviewServiceTest {
     given(contentRepository.findById(contentId))
         .willReturn(Optional.of(content));
 
+    // content는 mock 객체이고 서비스 코드에서 content.getId()를 사용하기 때문에 Id를 Stub 해줘야 함
+    given(content.getId()).willReturn(contentId);
+
     given(reviewRepository.save(any(Review.class)))
         .willReturn(review);
+
+    given(reviewRepository.countByContentId(contentId))
+        .willReturn(1L);
+
+    given(reviewRepository.findAverageRatingByContentId(contentId))
+        .willReturn(request.rating());
 
     given(reviewMapper.toResponse(review))
         .willReturn(response);
@@ -99,6 +108,11 @@ public class ReviewServiceTest {
     verify(userRepository).findById(authorId);
     verify(contentRepository).findById(contentId);
     verify(reviewRepository).save(any(Review.class));
+    verify(reviewRepository).countByContentId(contentId);
+    verify(reviewRepository).findAverageRatingByContentId(contentId);
+
+    verify(content).updateRatingStats(request.rating(), 1);
+
     verify(reviewMapper).toResponse(review);
   }
 

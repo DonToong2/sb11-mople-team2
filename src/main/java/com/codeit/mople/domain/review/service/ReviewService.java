@@ -56,7 +56,7 @@ public class ReviewService {
 
     content.updateRatingStats(
         // 컨텐츠가 생성 되었거나 리뷰 삭제 등으로 리뷰가 하나도 없을 경우 0.0점
-        averageRating == null ? 0.0 : averageRating,
+        averageRating,
         (int) reviewCount
     );
 
