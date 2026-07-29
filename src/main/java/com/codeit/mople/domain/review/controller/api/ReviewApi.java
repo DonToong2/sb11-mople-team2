@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.review.controller.api;
 
+import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.review.dto.request.ReviewCreateRequest;
 import com.codeit.mople.domain.review.dto.response.ReviewResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -42,7 +44,7 @@ public interface ReviewApi {
       ),
       @ApiResponse(
           responseCode = "404",
-          description = "사용자 또는 컨텐츠를 찾을 수 없음",
+          description = "컨텐츠를 찾을 수 없음",
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       ),
       @ApiResponse(
@@ -52,7 +54,7 @@ public interface ReviewApi {
       ),
   })
   ResponseEntity<ReviewResponse> create(
-      @RequestParam UUID authorId, // TODO 김명근: 인증 구현 시 @AuthenticationPrincipal로 대체
+      @AuthenticationPrincipal CustomUserDetails userDetails,
       @RequestBody ReviewCreateRequest request
   );
 }

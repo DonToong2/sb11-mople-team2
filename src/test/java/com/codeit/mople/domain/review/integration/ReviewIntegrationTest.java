@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.repository.ContentRepository;
@@ -14,9 +15,11 @@ import com.codeit.mople.domain.review.dto.request.ReviewCreateRequest;
 import com.codeit.mople.domain.review.dto.response.ReviewResponse;
 import com.codeit.mople.domain.review.entity.Review;
 import com.codeit.mople.domain.review.repository.ReviewRepository;
+import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.config.SecurityConfig;
+import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
@@ -28,6 +31,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +48,9 @@ public class ReviewIntegrationTest {
   @Autowired
   private ObjectMapper objectMapper;
 
+  @MockitoBean
+  private JwtProvider jwtProvider;
+
   @Autowired
   private ContentRepository contentRepository;
 
@@ -53,6 +60,7 @@ public class ReviewIntegrationTest {
   @Autowired
   private ReviewRepository reviewRepository;
 
+  private CustomUserDetails userDetails;
   private User savedAuthor;
   private Content savedContent;
   private ReviewCreateRequest request;
@@ -64,6 +72,8 @@ public class ReviewIntegrationTest {
     savedAuthor = userRepository.save(
         User.createUser("test@test.com", "12345678", "test")
     );
+    userDetails = new CustomUserDetails(savedAuthor.getId(), Role.USER);
+
     savedContent = contentRepository.save(new Content(
             ContentType.DRAMA,
             "test",
@@ -88,9 +98,8 @@ public class ReviewIntegrationTest {
 
     // when & then
     MvcResult result = mockMvc.perform(post("/api/reviews")
-            .with(user("test"))
+            .with(user(userDetails))
             .with(csrf())
-            .param("authorId", savedAuthor.getId().toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request))
         )
@@ -133,9 +142,8 @@ public class ReviewIntegrationTest {
 
     // when & then
     mockMvc.perform(post("/api/reviews")
-            .with(user("test"))
+            .with(user(userDetails))
             .with(csrf())
-            .param("authorId", savedAuthor.getId().toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(invalidRequest))
         )
@@ -145,22 +153,19 @@ public class ReviewIntegrationTest {
   }
 
   @Test
-  @DisplayName("리뷰 생성 실패 - 사용자가 존재하지 않음(404 에러)")
-  void create_fail_notFoundUser() throws Exception {
+  @DisplayName("리뷰 생성 실패 - 인증되지 않은 사용자(401 에러)")
+  void create_fail_unauthorized() throws Exception {
     // given
-    UUID notExistAuthorId = UUID.randomUUID();
 
     // BeforeEach에서 request 초기화
 
     // when & then
     mockMvc.perform(post("/api/reviews")
-            .with(user("test"))
             .with(csrf())
-            .param("authorId", notExistAuthorId.toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request))
         )
-        .andExpect(status().isNotFound());
+        .andExpect(status().isUnauthorized());
 
     assertThat(reviewRepository.count()).isZero();
   }

@@ -18,6 +18,7 @@ import com.codeit.mople.domain.playlist.service.PlaylistService;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.config.SecurityConfig;
+import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
@@ -42,6 +43,9 @@ public class PlaylistControllerTest {
 
   @Autowired
   private ObjectMapper objectMapper;
+
+  @MockitoBean
+  private JwtProvider jwtProvider;
 
   @MockitoBean
   private PlaylistService playlistService;

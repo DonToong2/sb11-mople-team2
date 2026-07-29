@@ -14,6 +14,7 @@ import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.config.SecurityConfig;
+import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +25,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +41,9 @@ public class PlaylistIntegrationTest {
 
   @Autowired
   private ObjectMapper objectMapper;
+
+  @MockitoBean
+  private JwtProvider jwtProvider;
 
   @Autowired
   private UserRepository userRepository;
@@ -132,6 +137,7 @@ public class PlaylistIntegrationTest {
     // when & then
     mockMvc.perform(post("/api/playlists")
             .with(user("test"))
+            .with(csrf())
             .param("ownerId", savedOwner.getId().toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(invalidRequest)))
