@@ -104,16 +104,26 @@ public class AuthControllerTest {
             .andDo(print())
             .andExpect(status().isOk());
 
-    mockMvc.perform(post("/api/auth/sign-in")
-        .contentType("application/json")
-        .content(objectMapper.writeValueAsString(request)))
-        .andDo(print())
-        .andExpect(status().isOk());
+    String secondResponse = mockMvc.perform(post("/api/auth/sign-in")
+                    .contentType("application/json")
+                    .content(objectMapper.writeValueAsString(request)))
+            .andDo(print())
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
 
+    String newToken = objectMapper.readTree(secondResponse).get("data").get("accessToken").asText();
+
+    // 이전 토큰은 무효화됨
     mockMvc.perform(get("/api/users/{userId}", user.getId())
         .header("Authorization", "Bearer " + oldToken))
         .andDo(print())
         .andExpect(status().isUnauthorized());
+
+    // 새로 발급된 토큰은 정상적으로 인증됨
+    mockMvc.perform(get("/api/users/{userId}", user.getId())
+        .header("Authorization", "Bearer " + newToken))
+        .andDo(print())
+        .andExpect(status().isOk());
   }
 
   @Test
