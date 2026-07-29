@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +38,12 @@ public class AdminInitializer implements ApplicationRunner {
         passwordEncoder.encode(adminProperties.password()),
         adminProperties.name()
     );
-    userRepository.save(admin);
-    log.info("Admin account initialized: {}", adminProperties.email());
+    try {
+      userRepository.save(admin);
+      log.info("Admin account initialized: {}", adminProperties.email());
+    } catch (DataIntegrityViolationException e) {
+      // 동시에 여러 인스턴스가 시작될 때 다른 인스턴스가 먼저 저장한 경우
+      log.warn("Admin initialization skipped: concurrent initialization detected for email: {}", adminProperties.email());
+    }
   }
 }
