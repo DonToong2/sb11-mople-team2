@@ -6,9 +6,8 @@ import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
-import com.codeit.mople.domain.content.exception.ContentNotFoundException;
-import com.codeit.mople.domain.content.exception.InvalidContentTypeException;
-import com.codeit.mople.domain.content.exception.InvalidPageRequestException;
+import com.codeit.mople.domain.content.exception.ContentErrorCode;
+import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.mapper.ContentMapper;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import java.io.File;
@@ -17,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +48,7 @@ public class ContentService{
       contentType = ContentType.valueOf(request.type().toUpperCase());
     } catch (IllegalArgumentException e) {
       log.warn("콘텐츠 생성 실패(잘못된 ContentType) - type: {}", request.type());
-      throw new InvalidContentTypeException();
+      throw new ContentException(ContentErrorCode.INVALID_CONTENT_TYPE, Map.of("type", request.type()));
     }
 
     //TODO: 관리자 권한 검증 추가 예정
@@ -101,7 +101,8 @@ public class ContentService{
     //Limit 검증 로직
     if (page < 0 || limit <= 0 || limit > 100) {
       log.warn("콘텐츠 목록 조회 실패(잘못된 페이징 조건) - page: {}, limit: {}", page, limit);
-      throw new InvalidPageRequestException();
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST,
+          Map.of("page", page, "limit", limit));
     }
 
     //허용된 정렬 필드가 아닐 경우 기본값(createdAt) 처리
@@ -145,7 +146,7 @@ public class ContentService{
     Content content = contentRepository.findById(contentId)
         .orElseThrow(() -> {
           log.warn("콘텐츠 단건 조회 실패(존재하지 않는 ID) - contentId: {}", contentId);
-          return ContentNotFoundException.withId(contentId);
+          return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
         });
 
     log.debug("콘텐츠 단건 조회 완료 - contentId: {}", content.getId());
@@ -164,8 +165,7 @@ public class ContentService{
     Content content = contentRepository.findById(contentId)
         .orElseThrow(() -> {
           log.warn("콘텐츠 수정 실패(존재하지 않는 ID) - contentId: {}", contentId);
-          return ContentNotFoundException.withId(contentId);
-        });
+          return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));        });
 
     //썸네일 수정(새로운 파일이 들어온 경우에만 업데이트)
     String uploadedThumbnailUrl = content.getThumbnailUrl(); //기존 URL 유지
@@ -218,7 +218,7 @@ public class ContentService{
     Content content = contentRepository.findById(contentId)
         .orElseThrow(() -> {
           log.warn("콘텐츠 삭제 실패(존재하지 않는 ID) - contentId: {}", contentId);
-          return ContentNotFoundException.withId(contentId);
+          return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
         });
 
     //TODO: 추후 관리자 권한 검증 로직 추가 예정

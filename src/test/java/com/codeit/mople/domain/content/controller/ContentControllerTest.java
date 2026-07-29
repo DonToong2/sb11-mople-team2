@@ -15,11 +15,13 @@ import com.codeit.mople.domain.content.dto.ContentCreateRequest;
 import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
-import com.codeit.mople.domain.content.exception.ContentNotFoundException;
+import com.codeit.mople.domain.content.exception.ContentErrorCode;
+import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.service.ContentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -237,7 +239,8 @@ public class ContentControllerTest {
     UUID contentId = UUID.randomUUID();
 
     given(contentService.getContent(any(UUID.class)))
-        .willThrow(ContentNotFoundException.withId(contentId));
+        .willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
+            Map.of("contentId", contentId)));
 
     mockMvc.perform(
         get("/api/contents/{contentId}", contentId)
@@ -302,8 +305,9 @@ public class ContentControllerTest {
         "thumbnail", "updated.png", MediaType.IMAGE_PNG_VALUE,
         "updated image content".getBytes());
 
-    given(contentService.updateContent(any(), any(), any(), any()))
-        .willThrow(ContentNotFoundException.withId(contentId));
+    given(contentService.updateContent(any(), any(), any(), any())).willThrow(
+        new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
+            Map.of("contentId", contentId)));
 
     mockMvc.perform(
         multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
@@ -369,8 +373,8 @@ public class ContentControllerTest {
     UUID contentId = UUID.randomUUID();
     UUID adminId = UUID.randomUUID();
 
-    willThrow(ContentNotFoundException.withId(contentId))
-        .given(contentService).deleteContent(any(), any());
+    willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
+        Map.of("contentId", contentId))).given(contentService).deleteContent(any(), any());
 
     mockMvc.perform(
         delete("/api/contents/{contentId}", contentId)

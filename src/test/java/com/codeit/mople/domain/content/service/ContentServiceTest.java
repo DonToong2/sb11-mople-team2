@@ -13,9 +13,7 @@ import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
-import com.codeit.mople.domain.content.exception.ContentNotFoundException;
-import com.codeit.mople.domain.content.exception.InvalidContentTypeException;
-import com.codeit.mople.domain.content.exception.InvalidPageRequestException;
+import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.mapper.ContentMapper;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import java.util.ArrayList;
@@ -84,7 +82,7 @@ public class ContentServiceTest {
 
     //정의 되지 않은 타입 변환 시 INVALID_CONTENT_TYPE 커스텀 예외 발생
     assertThatThrownBy(() -> contentService.createContent(adminId, request, null))
-        .isInstanceOf(InvalidContentTypeException.class)
+        .isInstanceOf(ContentException.class)
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.INVALID_CONTENT_TYPE);
   }
@@ -134,7 +132,9 @@ public class ContentServiceTest {
 
     //PageRequest.of(0, -1) 이 실행되면서 InvalidPageRequestException 예외 발생
     assertThatThrownBy(() -> contentService.getContents(0, -1, "ASCENDING", "createdAt"))
-        .isInstanceOf(InvalidPageRequestException.class);
+        .isInstanceOf(ContentException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);
   }
 
   //=========================================================================================
@@ -169,7 +169,7 @@ public class ContentServiceTest {
     given(contentRepository.findById(any(UUID.class))).willReturn(Optional.empty());
 
     assertThatThrownBy(() -> contentService.getContent(contentId))
-        .isInstanceOf(ContentNotFoundException.class)
+        .isInstanceOf(ContentException.class)
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.CONTENT_NOT_FOUND);
   }
@@ -220,7 +220,7 @@ public class ContentServiceTest {
 
     //TODO: 추후 관리자 권한 검증 로직 실패(권한 없음) 예외 처리 테스트도 추가 예정
     assertThatThrownBy(() -> contentService.updateContent(adminId, contentId, request, null))
-        .isInstanceOf(ContentNotFoundException.class)
+        .isInstanceOf(ContentException.class)
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.CONTENT_NOT_FOUND);
   }
@@ -254,7 +254,7 @@ public class ContentServiceTest {
     given(contentRepository.findById(any(UUID.class))).willReturn(Optional.empty());
 
     assertThatThrownBy(() -> contentService.deleteContent(adminId, contentId))
-        .isInstanceOf(ContentNotFoundException.class)
+        .isInstanceOf(ContentException.class)
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.CONTENT_NOT_FOUND);
   }
