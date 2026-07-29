@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -16,6 +17,7 @@ import com.codeit.mople.domain.playlist.dto.response.PlaylistOwnerResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.entity.Playlist;
 import com.codeit.mople.domain.playlist.entity.PlaylistContent;
+import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.mapper.PlaylistContentMapper;
 import com.codeit.mople.domain.playlist.mapper.PlaylistMapper;
 import com.codeit.mople.domain.playlist.mapper.PlaylistOwnerMapper;
@@ -291,7 +293,7 @@ public class PlaylistServiceTest {
     @DisplayName("플레이리스트 수정 실패 - 플레이리스트 소유자가 아님")
     void update_fail_forbidden() {
       // given
-      UUID nowOwnerId = UUID.randomUUID();
+      UUID noOwnerId = UUID.randomUUID();
 
       given(playlistRepository.findById(playlistId))
           .willReturn(Optional.of(playlist));
@@ -300,7 +302,7 @@ public class PlaylistServiceTest {
           .willReturn(ownerId);
 
       // when & then
-      assertThatThrownBy(() -> playlistService.update(playlistId, updateRequest, nowOwnerId))
+      assertThatThrownBy(() -> playlistService.update(playlistId, updateRequest, noOwnerId))
           .isInstanceOf(CustomException.class);
 
       verify(playlistRepository).findById(playlistId);
@@ -311,6 +313,80 @@ public class PlaylistServiceTest {
           playlistContentMapper,
           mapper
       );
+    }
+  }
+
+  @Nested
+  @DisplayName("플레이리스트 삭제")
+  class Delete {
+
+    @Test
+    @DisplayName("플레이리스트 삭제 성공")
+    void delete_success() {
+      // given
+
+      // BeforeEach에서 playlist, playlistId 초기화
+      given(playlistRepository.findById(playlistId))
+          .willReturn(Optional.of(playlist));
+
+      given(owner.getId())
+          .willReturn(ownerId);
+
+      // when
+      playlistService.delete(playlistId, ownerId);
+
+      // then
+      // void 타입이기 때문에 assert 메서드 불필요
+      verify(playlistRepository).findById(playlistId);
+      verify(playlistRepository).delete(playlist);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 삭제 실패 - 플레이리스트가 존재하지 않음")
+    void delete_fail_notFoundPlaylist() {
+      // given
+      given(playlistRepository.findById(playlistId))
+          .willReturn(Optional.empty());
+
+      // when & then
+      assertThatThrownBy(() ->
+          playlistService.delete(playlistId, ownerId)
+      )
+          .isInstanceOf(CustomException.class)
+          .extracting("errorCode")
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_NOT_FOUND);
+
+      verify(playlistRepository).findById(playlistId);
+
+      // playlistRepository.delete() 메서드는 호출되지 않음
+      verify(playlistRepository, never())
+          .delete(any(Playlist.class));
+    }
+
+    @Test
+    @DisplayName("플레이리스트 삭제 실패 - 플레이리스트 소유자가 아님")
+    void delete_fail_forbidden() {
+      // given
+      UUID noOwnerId = UUID.randomUUID();
+
+      given(playlistRepository.findById(playlistId))
+          .willReturn(Optional.of(playlist));
+
+      given(owner.getId())
+          .willReturn(ownerId);
+
+      // when & then
+      assertThatThrownBy(() ->
+          playlistService.delete(playlistId, noOwnerId)
+      )
+          .isInstanceOf(CustomException.class)
+          .extracting("errorCode")
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_FORBIDDEN);
+
+      verify(playlistRepository).findById(playlistId);
+
+      verify(playlistRepository, never())
+          .delete(any(Playlist.class));
     }
   }
 
