@@ -34,7 +34,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.mock.web.MockMultipartFile;
 
 @ExtendWith(MockitoExtension.class)
-public class ContentServiceImplTest {
+public class ContentServiceTest {
 
   @Mock
   private ContentRepository contentRepository;
@@ -43,7 +43,7 @@ public class ContentServiceImplTest {
   private ContentMapper contentMapper;
 
   @InjectMocks
-  private ContentServiceImpl contentService;
+  private ContentService contentService;
 
   //=========================================================================================
   //콘텐츠 생성 테스트
