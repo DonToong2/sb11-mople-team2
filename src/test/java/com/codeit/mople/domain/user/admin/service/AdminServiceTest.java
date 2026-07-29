@@ -111,4 +111,55 @@ class AdminServiceTest {
       verify(eventPublisher, never()).publishEvent(any());
     }
   }
+
+  @Nested
+  @DisplayName("계정 잠금 상태 변경")
+  class ChangeUserLocked {
+
+    @Test
+    @DisplayName("locked(true)이면 계정을 잠금하고 강제 로그아웃 이벤트를 발행한다")
+    void locked_true이면_계정을_잠금하고_강제_로그아웃_이벤트를_발행한다() {
+      // given
+      given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+      // when
+      adminService.changeUserLocked(userId, true);
+
+      // then
+      assertThat(user.isLocked()).isTrue();
+      verify(eventPublisher).publishEvent(eventCaptor.capture());
+      assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
+    }
+
+    @Test
+    @DisplayName("locked(false)이면 계정 잠금을 해제하고 강제 로그아웃 이벤트를 발행한다")
+    void locked_false이면_계정_잠금을_해제하고_강제_로그아웃_이벤트를_발행한다() {
+      // given
+      user.lock();
+      given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+      // when
+      adminService.changeUserLocked(userId, false);
+
+      // then
+      assertThat(user.isLocked()).isFalse();
+      verify(eventPublisher).publishEvent(eventCaptor.capture());
+      assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 사용자 id로 요청하면 USER_NOT_FOUND 예외가 발생한다")
+    void 존재하지_않는_사용자_id로_요청하면_USER_NOT_FOUND_예외가_발생한다() {
+      // given
+      given(userRepository.findById(userId)).willReturn(Optional.empty());
+
+      // when & then
+      assertThatExceptionOfType(CustomException.class)
+          .isThrownBy(() -> adminService.changeUserLocked(userId, true))
+          .extracting(CustomException::getErrorCode)
+          .isEqualTo(UserErrorCode.USER_NOT_FOUND);
+
+      verify(eventPublisher, never()).publishEvent(any());
+    }
+  }
 }
