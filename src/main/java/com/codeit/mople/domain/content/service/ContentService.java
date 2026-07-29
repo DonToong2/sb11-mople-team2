@@ -36,6 +36,14 @@ public class ContentService{
   private final ContentRepository contentRepository;
   private final ContentMapper contentMapper;
 
+  //허용할 이미지 MIME 타입 및 확장자 정의
+  private static final List<String> ALLOWED_MIME_TYPES = List.of(
+      "image/jpeg", "image/png", "image/webp", "image/gif"
+  );
+  private static final List<String> ALLOWED_EXTENSIONS = List.of(
+      "jpg", "jpeg", "png", "webp", "gif"
+  );
+
   //콘텐츠 생성
   @Transactional
   public ContentResponse createContent(UUID adminId, ContentCreateRequest request,
@@ -57,9 +65,8 @@ public class ContentService{
     String uploadedThumbnailUrl = null;
     if (thumbnail != null && !thumbnail.isEmpty()) {
       try {
-        String originalFilename = thumbnail.getOriginalFilename();
-        String safeFilename = UUID.randomUUID() + "_" + (originalFilename != null ?
-            originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_") : "unnamed");
+        String extension = validateAndGetExtension(thumbnail);
+        String safeFilename = UUID.randomUUID() + "." + extension;
 
         // 로컬 저장 경로 설정 (프로젝트 루트의 uploads 폴더)
         String uploadDir = "uploads/";
@@ -171,9 +178,8 @@ public class ContentService{
     String uploadedThumbnailUrl = content.getThumbnailUrl(); //기존 URL 유지
     if (thumbnail != null && !thumbnail.isEmpty()) {
       try {
-        String originalFilename = thumbnail.getOriginalFilename();
-        String safeFilename = UUID.randomUUID() + "_" + (originalFilename != null ?
-            originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_") : "unnamed");
+        String extension = validateAndGetExtension(thumbnail);
+        String safeFilename = UUID.randomUUID() + "." + extension;
 
         // 로컬 저장 경로 설정 (프로젝트 루트의 uploads 폴더)
         String uploadDir = "uploads/";
@@ -227,5 +233,28 @@ public class ContentService{
     contentRepository.delete(content);
 
     log.info("콘텐츠 삭제 완료 - contentId: {}", contentId);
+  }
+
+  //썸네일 파일 MIME 타입 및 확장자 유효성 검사 검증 메서드
+  private String validateAndGetExtension(MultipartFile file) {
+    String contentType = file.getContentType();
+    if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
+      log.warn("이미지 업로드 실패 - 허용되지 않은 Content-Type: {}", contentType);
+      throw new ContentException(ContentErrorCode.INVALID_IMAGE_FILE, Map.of("contentType", contentType != null ? contentType : "null"));
+    }
+
+    String originalFilename = file.getOriginalFilename();
+    if (originalFilename == null || !originalFilename.contains(".")) {
+      log.warn("이미지 업로드 실패 - 확장자가 없는 파일명: {}", originalFilename);
+      throw new ContentException(ContentErrorCode.INVALID_IMAGE_FILE, Map.of("originalFilename", originalFilename != null ? originalFilename : "null"));
+    }
+
+    String extension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.contains(extension)) {
+      log.warn("이미지 업로드 실패 - 허용되지 않은 확장자: {}", extension);
+      throw new ContentException(ContentErrorCode.INVALID_IMAGE_FILE, Map.of("extension", extension));
+    }
+
+    return extension;
   }
 }

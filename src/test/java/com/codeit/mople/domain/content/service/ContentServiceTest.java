@@ -57,9 +57,9 @@ public class ContentServiceTest {
         "test.png", "image/png", "dummy".getBytes());
 
     Content savedContent = new Content(ContentType.MOVIE, "테스트 영화", "설명",
-        "http://example.com/images/test.png", List.of("액션"));
+        "/uploads/test.png", List.of("액션"));
     ContentResponse expectedResponse = new ContentResponse(UUID.randomUUID(), "MOVIE",
-        "테스트 영화", "설명", "http://example.com/images/test.png",
+        "테스트 영화", "설명", "/uploads/test.png",
         List.of("액션"), 0.0, 0, 0L);
 
     given(contentMapper.toEntity(any(), any(), any())).willReturn(savedContent);
@@ -74,17 +74,32 @@ public class ContentServiceTest {
   }
 
   @Test
-  @DisplayName("콘텐츠 생성 실패 - 잘못된 ContentType 전달 시 InvalidContentTypeException 발생")
+  @DisplayName("콘텐츠 생성 실패 - 잘못된 ContentType 전달 시 ContentException 발생")
   void createContent_Fail_InvalidType() {
     UUID adminId = UUID.randomUUID();
     ContentCreateRequest request = new ContentCreateRequest("INVALID_TYPE",
         "테스트", "설명", List.of());
 
-    //정의 되지 않은 타입 변환 시 INVALID_CONTENT_TYPE 커스텀 예외 발생
     assertThatThrownBy(() -> contentService.createContent(adminId, request, null))
         .isInstanceOf(ContentException.class)
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.INVALID_CONTENT_TYPE);
+  }
+
+  @Test
+  @DisplayName("콘텐츠 생성 실패 - 이미지 파일이 아닌 형식(txt 등) 업로드 시 INVALID_IMAGE_FILE 예외 발생")
+  void createContent_Fail_InvalidImageFile() {
+    UUID adminId = UUID.randomUUID();
+    ContentCreateRequest request = new ContentCreateRequest("MOVIE", "테스트 영화", "설명", List.of());
+
+    // txt 파일 업로드 시도
+    MockMultipartFile invalidFile = new MockMultipartFile("thumbnail",
+        "test.txt", "text/plain", "dummy content".getBytes());
+
+    assertThatThrownBy(() -> contentService.createContent(adminId, request, invalidFile))
+        .isInstanceOf(ContentException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.INVALID_IMAGE_FILE);
   }
 
   //=========================================================================================
@@ -100,21 +115,18 @@ public class ContentServiceTest {
 
     Content content1 = new Content(ContentType.MOVIE, "영화1",
         "설명", null, List.of());
-    Page<Content> contentPage = new PageImpl<>(List.of(content1)); // 가짜 페이지 데이터 생성
+    Page<Content> contentPage = new PageImpl<>(List.of(content1));
 
     ContentResponse responseDto = new ContentResponse(UUID.randomUUID(),
         "MOVIE", "영화1", "설명", null, List.of(),
         0.0, 0, 0L);
 
-    //가짜 응답 객체
     ContentPageResponse expectedPageResponse = new ContentPageResponse(
         List.of(responseDto), null, null, false, 1L, sortBy, sortDirection);
 
     given(contentRepository.findAll(any(PageRequest.class))).willReturn(contentPage);
     given(contentMapper.toDto(content1)).willReturn(responseDto);
-    //매퍼의 toPageResponse가 호출되면 expectedPageResponse를 반환
-    given(contentMapper.toPageResponse(any(), any(), any(), any())).willReturn(
-        expectedPageResponse);
+    given(contentMapper.toPageResponse(any(), any(), any(), any())).willReturn(expectedPageResponse);
 
     ContentPageResponse response = contentService.getContents(0, limit, sortDirection, sortBy);
 
@@ -126,11 +138,8 @@ public class ContentServiceTest {
   }
 
   @Test
-  @DisplayName("콘텐츠 목록 조회 실패 - limit 값이 0 이하일 경우 InvalidPageRequestException 발생")
+  @DisplayName("콘텐츠 목록 조회 실패 - limit 값이 0 이하일 경우 ContentException 발생")
   void getContents_Fail_NegativeLimit() {
-    int invalidLimit = -1;
-
-    //PageRequest.of(0, -1) 이 실행되면서 InvalidPageRequestException 예외 발생
     assertThatThrownBy(() -> contentService.getContents(0, -1, "ASCENDING", "createdAt"))
         .isInstanceOf(ContentException.class)
         .extracting("errorCode")
@@ -162,7 +171,7 @@ public class ContentServiceTest {
   }
 
   @Test
-  @DisplayName("콘텐츠 단건 조회 실패 - 존재하지 않는 ID 조회 시 ContentNotFoundException 발생")
+  @DisplayName("콘텐츠 단건 조회 실패 - 존재하지 않는 ID 조회 시 ContentException 발생")
   void getContent_Fail_NotFound() {
     UUID contentId = UUID.randomUUID();
 
@@ -189,19 +198,16 @@ public class ContentServiceTest {
     MockMultipartFile thumbnail = new MockMultipartFile("thumbnail",
         "update.png", "image/png", "dummy".getBytes());
 
-    //기존 데이터
     Content content = new Content(ContentType.MOVIE, "기존 제목", "기존 설명",
-        "http://example.com/old.png", new ArrayList<>(List.of("액션")));
+        "/uploads/old.png", new ArrayList<>(List.of("액션")));
 
-    //수정된 응답 DTO 가정
     ContentResponse expectedResponse = new ContentResponse(contentId, "MOVIE",
-        "수정된 제목", "수정된 설명", "http://example.com/update.png",
+        "수정된 제목", "수정된 설명", "/uploads/update.png",
         List.of("스릴러"), 0.0, 0, 0L);
 
     given(contentRepository.findById(any(UUID.class))).willReturn(Optional.of(content));
     given(contentMapper.toDto(content)).willReturn(expectedResponse);
 
-    //TODO: 추후 관리자 권한 검증 로직이 서비스에 추가되면 adminId 검증 관련 Mock 설정 추가 예정
     ContentResponse response = contentService.updateContent(adminId, contentId, request, thumbnail);
 
     assertThat(response).isNotNull();
@@ -209,7 +215,7 @@ public class ContentServiceTest {
   }
 
   @Test
-  @DisplayName("콘텐츠 수정 실패 - 존재하지 않는 ID 수정 시 ContentNotFoundException 발생")
+  @DisplayName("콘텐츠 수정 실패 - 존재하지 않는 ID 수정 시 ContentException 발생")
   void updateContent_Fail_NotFound() {
     UUID contentId = UUID.randomUUID();
     UUID adminId = UUID.randomUUID();
@@ -218,7 +224,6 @@ public class ContentServiceTest {
 
     given(contentRepository.findById(any(UUID.class))).willReturn(Optional.empty());
 
-    //TODO: 추후 관리자 권한 검증 로직 실패(권한 없음) 예외 처리 테스트도 추가 예정
     assertThatThrownBy(() -> contentService.updateContent(adminId, contentId, request, null))
         .isInstanceOf(ContentException.class)
         .extracting("errorCode")
@@ -239,14 +244,13 @@ public class ContentServiceTest {
 
     given(contentRepository.findById(any(UUID.class))).willReturn(Optional.of(content));
 
-    //TODO: 추후 관리자 권한 검증 로직 추가 시 권한 관령 Mock 설정 추가 예정
     contentService.deleteContent(adminId, contentId);
 
     verify(contentRepository).delete(content);
   }
 
   @Test
-  @DisplayName("콘텐츠 삭제 실패 - 존재하지 않는 ID 삭제 시 ContentNotFoundException 발생")
+  @DisplayName("콘텐츠 삭제 실패 - 존재하지 않는 ID 삭제 시 ContentException 발생")
   void deleteContent_Fail_NotFound() {
     UUID contentId = UUID.randomUUID();
     UUID adminId = UUID.randomUUID();
