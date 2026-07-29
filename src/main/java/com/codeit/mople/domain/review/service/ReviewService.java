@@ -50,7 +50,7 @@ public class ReviewService {
     Review savedReview = reviewRepository.save(review);
 
     // TODO 김명근: 동시성 문제(Race Condition)는 다음 스프린트 기간 때 개선
-    // 컨텐츠의 리뷰 개수, 평점을 조회
+    // 컨텐츠의 리뷰 개수, 평균 평점을 조회
     long reviewCount = reviewRepository.countByContentId(content.getId());
     Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
 
