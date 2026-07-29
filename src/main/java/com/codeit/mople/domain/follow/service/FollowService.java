@@ -60,4 +60,23 @@ public class FollowService {
     return followMapper.toFollowResponse(saved);
   }
 
+  @Transactional
+  public void unFollow(UUID followId, UUID followerId) {
+
+    log.debug("팔로우 취소 시도: followId={}, followerId={}", followId, followerId);
+
+    // 해당 followId가 있는지 검증
+     Follow follow = followRepository.findById(followId)
+         .orElseThrow(() -> new CustomException(FollowErrorCode.FOLLOW_NOT_FOUND));
+
+     // 본인의 팔로우만 언팔 가능
+     if (!follow.getFollower().getId().equals(followerId)) {
+       throw new CustomException(FollowErrorCode.FOLLOW_NOT_FOUND);
+     }
+
+     // 해당 팔로우(row) 삭제
+     followRepository.delete(follow);
+     log.info("팔로우 취소 성공: followId={}, followerId={}", followId, followerId);
+  }
+
 }
