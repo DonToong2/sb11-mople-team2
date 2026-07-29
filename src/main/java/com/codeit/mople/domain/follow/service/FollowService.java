@@ -71,7 +71,7 @@ public class FollowService {
 
      // 본인의 팔로우만 언팔 가능
      if (!follow.getFollower().getId().equals(followerId)) {
-       throw new CustomException(FollowErrorCode.FOLLOW_NOT_FOUND);
+       throw new CustomException(FollowErrorCode.FOLLOW_NOT_OWNER);
      }
 
      // 해당 팔로우(row) 삭제

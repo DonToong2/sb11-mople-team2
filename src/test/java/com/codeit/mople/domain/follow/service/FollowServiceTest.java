@@ -221,7 +221,7 @@ class FollowServiceTest {
     assertThatExceptionOfType(CustomException.class)
         .isThrownBy(() -> followService.unFollow(followId, followerId))
         .extracting(CustomException::getErrorCode)
-        .isEqualTo(FollowErrorCode.FOLLOW_NOT_FOUND);
+        .isEqualTo(FollowErrorCode.FOLLOW_NOT_OWNER);
 
     verify(followRepository, never()).delete(any(Follow.class));
   }
