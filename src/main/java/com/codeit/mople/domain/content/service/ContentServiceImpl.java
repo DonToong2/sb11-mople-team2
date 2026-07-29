@@ -68,7 +68,7 @@ public class ContentServiceImpl implements ContentService {
   //콘텐츠 목록 조회
   @Override
   @Transactional(readOnly = true)
-  public ContentPageResponse getContents(int limit, String sortDirection, String sortBy) {
+  public ContentPageResponse getContents(int page, int limit, String sortDirection, String sortBy) {
     //Limit 검증 로직
     if (limit <= 0) {
       throw new InvalidPageRequestException();
@@ -87,7 +87,7 @@ public class ContentServiceImpl implements ContentService {
         : Direction.ASC;
 
     //PageRequest 객체 생성(첫 페이지(0) 부터 limit 개수만큼 조회)
-    PageRequest pageRequest = PageRequest.of(0, limit, Sort.by(direction, sortBy));
+    PageRequest pageRequest = PageRequest.of(page, limit, Sort.by(direction, sortBy));
 
     //DB 조회
     Page<Content> contentPage = contentRepository.findAll(pageRequest);

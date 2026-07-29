@@ -47,10 +47,11 @@ public class ContentController {
   //콘텐츠 목록 조회
   @GetMapping
   public ResponseEntity<ContentPageResponse> getContents(
+      @RequestParam(value = "page", defaultValue = "0") int page,
       @RequestParam(value = "limit", defaultValue = "10") int limit,
       @RequestParam(value = "sortDirection", defaultValue = "DESCENDING") String sortDirection,
       @RequestParam(value = "sortBy", defaultValue = "createdAt") String sortBy) {
-    ContentPageResponse response = contentService.getContents(limit, sortDirection, sortBy);
+    ContentPageResponse response = contentService.getContents(page, limit, sortDirection, sortBy);
     return ResponseEntity.ok(response);
   }
 

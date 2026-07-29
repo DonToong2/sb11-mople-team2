@@ -118,7 +118,7 @@ public class ContentServiceImplTest {
     given(contentMapper.toPageResponse(any(), any(), any(), any())).willReturn(
         expectedPageResponse);
 
-    ContentPageResponse response = contentService.getContents(limit, sortDirection, sortBy);
+    ContentPageResponse response = contentService.getContents(0, limit, sortDirection, sortBy);
 
     assertThat(response).isNotNull();
     assertThat(response.data()).hasSize(1);
@@ -133,7 +133,7 @@ public class ContentServiceImplTest {
     int invalidLimit = -1;
 
     //PageRequest.of(0, -1) 이 실행되면서 InvalidPageRequestException 예외 발생
-    assertThatThrownBy(() -> contentService.getContents(-1, "ASCENDING", "createdAt"))
+    assertThatThrownBy(() -> contentService.getContents(0, -1, "ASCENDING", "createdAt"))
         .isInstanceOf(InvalidPageRequestException.class);
   }
 

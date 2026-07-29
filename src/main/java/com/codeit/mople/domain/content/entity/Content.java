@@ -11,6 +11,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -55,7 +56,9 @@ public class Content extends BaseTimeEntity {
     this.title = title;
     this.description = description;
     this.thumbnailUrl = thumbnailUrl;
-    this.tags = tags;
+
+    //생성 시 복사본(new ArrayList)을 사용하여 불변 리스트 참조 방지
+    this.tags = tags != null ? new ArrayList<>(tags) : new ArrayList<>();
   }
 
   //새로운 리뷰가 작성되거나 삭제 될 때,

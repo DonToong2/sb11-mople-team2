@@ -169,7 +169,7 @@ public class ContentControllerTest {
         "ASCENDING"
     );
 
-    given(contentService.getContents(anyInt(), any(), any())).willReturn(mockPageResponse);
+    given(contentService.getContents(anyInt(), anyInt(), any(), any())).willReturn(mockPageResponse);
 
     mockMvc.perform(
             get("/api/contents")
@@ -197,7 +197,7 @@ public class ContentControllerTest {
     );
 
     // 파라미터가 누락되었을 때 기본값(10, DESCENDING, createdAt)이 잘 주입되어 서비스가 호출되는지 모킹
-    given(contentService.getContents(10, "DESCENDING", "createdAt")).willReturn(mockPageResponse);
+    given(contentService.getContents(0, 10, "DESCENDING", "createdAt")).willReturn(mockPageResponse);
 
     mockMvc.perform(
             get("/api/contents")
