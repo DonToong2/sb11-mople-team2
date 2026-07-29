@@ -128,6 +128,20 @@ public class PlaylistService {
     return response;
   }
 
+  @Transactional
+  public void delete(UUID playlistId, UUID userId) {
+
+    Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
+        new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND)
+    );
+
+    validateOwner(playlist, userId);
+
+    // deleteById도 가능하지만 where id=로 조회 후 delete하기 때문에(불필요한 조회가 발생함) 조회 실행을 뺌
+    playlistRepository.delete(playlist);
+
+  }
+
   private void validateOwner(Playlist playlist, UUID userId) {
     if (!playlist.getOwner().getId().equals(userId)) {
       throw new CustomException(PlaylistErrorCode.PLAYLIST_FORBIDDEN);
