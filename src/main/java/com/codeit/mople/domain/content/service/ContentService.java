@@ -80,7 +80,9 @@ public class ContentService{
     }
 
     //정렬 방향 설정(ASCENDING(오름차순) 또는 DESCENDING(내림차순))
-    Sort.Direction direction = sortDirection.equalsIgnoreCase("DESCENDING")
+    String normalizedSortDirection =
+        "DESCENDING".equalsIgnoreCase(sortDirection) ? "DESCENDING" : "ASCENDING";
+    Sort.Direction direction = normalizedSortDirection.equals("DESCENDING")
         ? Direction.DESC
         : Direction.ASC;
 
@@ -95,7 +97,8 @@ public class ContentService{
         .map(contentMapper::toDto).toList();
 
     //ContentPageResponse에 맞춰 매퍼를 통해 페이징 응답 객체 생성 및 반환
-    return contentMapper.toPageResponse(contentResponses, contentPage, sortBy, sortDirection);
+    return contentMapper.toPageResponse(
+        contentResponses, contentPage, sortBy, normalizedSortDirection);
   }
 
   //콘텐츠 단건 조회
