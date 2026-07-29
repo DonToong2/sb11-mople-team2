@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +39,20 @@ public class AdminInitializer implements ApplicationRunner {
         passwordEncoder.encode(adminProperties.password()),
         adminProperties.name()
     );
-    userRepository.save(admin);
-    log.info("어드민 계정 초기화 완료 - email: {}", adminProperties.email());
+    try {
+      userRepository.save(admin);
+      log.info("어드민 계정을 생성 성공했습니다.: {}", maskEmail(adminProperties.email()));
+    } catch (DataIntegrityViolationException e) {
+      // 동시에 여러 인스턴스가 시작될 때 다른 인스턴스가 먼저 저장한 경우
+      log.warn("어드민 계정 동시 초기화가 감지되었습니다.- 다른 인스턴스가 먼저 저장했습니다. : {}", maskEmail(adminProperties.email()));
+    }
+  }
+
+  private String maskEmail(String email) {
+    int atIndex = email.indexOf('@');
+    if (atIndex <= 1) {
+      return "***" + email.substring(atIndex);
+    }
+    return email.charAt(0) + "***" + email.substring(atIndex);
   }
 }
