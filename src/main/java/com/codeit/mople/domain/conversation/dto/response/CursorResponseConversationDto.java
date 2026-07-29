@@ -1,4 +1,4 @@
-package com.codeit.mople.domain.conversation.dto;
+package com.codeit.mople.domain.conversation.dto.response;
 
 import java.util.List;
 import java.util.UUID;
