@@ -130,7 +130,7 @@ public class PlaylistTest {
           playlist.update("수정한 제목", " "))
           .isInstanceOf(CustomException.class)
           .extracting("errorCode")
-          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_DESCRIPTION);
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_BLANK_DESCRIPTION);
     }
 
     @Test
@@ -145,7 +145,7 @@ public class PlaylistTest {
           playlist.update(null, null))
           .isInstanceOf(CustomException.class)
           .extracting("errorCode")
-          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_TITLE);
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_BLANK_TITLE);
     }
 
     @Test
@@ -160,7 +160,7 @@ public class PlaylistTest {
           playlist.update(null, ""))
           .isInstanceOf(CustomException.class)
           .extracting("errorCode")
-          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_DESCRIPTION);
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_BLANK_DESCRIPTION);
     }
 
     @Test
@@ -175,7 +175,7 @@ public class PlaylistTest {
           playlist.update("", null))
           .isInstanceOf(CustomException.class)
           .extracting("errorCode")
-          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_TITLE);
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_BLANK_TITLE);
     }
 
     @Test
@@ -190,7 +190,7 @@ public class PlaylistTest {
           playlist.update("", ""))
           .isInstanceOf(CustomException.class)
           .extracting("errorCode")
-          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_EMPTY_TITLE);
+          .isEqualTo(PlaylistErrorCode.PLAYLIST_UPDATE_BLANK_TITLE);
     }
 
   }
