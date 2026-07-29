@@ -61,6 +61,9 @@ public class PlaylistService {
   @Transactional(readOnly = true)
   public PlaylistResponse find(UUID playlistId) {
 
+    log.debug("플레이리스트 조회 시도: playlistId={}",
+        playlistId);
+
     Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
         new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND)
     );
@@ -79,6 +82,9 @@ public class PlaylistService {
         false,
         contents);
 
+    log.info("플레이리스트 조회 완료: playlistId={}, contentCount={}",
+        playlistId, contents.size());
+
     return response;
   }
 
@@ -88,6 +94,9 @@ public class PlaylistService {
       PlaylistUpdateRequest request,
       UUID userId
   ) {
+
+    log.debug("플레이리스트 수정 시도: playlistId={}, userId={}",
+        playlistId, userId);
 
     // Playlist 조회
     Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
@@ -112,6 +121,9 @@ public class PlaylistService {
         false,
         contents
     );
+
+    log.info("플레이리스트 수정 완료: playlistId={}, userId={}",
+        playlistId, userId);
 
     return response;
   }
