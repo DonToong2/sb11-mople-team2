@@ -7,16 +7,20 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
+import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistOwnerResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.service.PlaylistService;
+import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.error.CustomException;
@@ -51,21 +55,26 @@ public class PlaylistControllerTest {
   @MockitoBean
   private UserRepository userRepository;
 
+  private CustomUserDetails userDetails;
   private User owner;
   private UUID ownerId;
-  private PlaylistCreateRequest request;
+  private PlaylistCreateRequest createRequest;
   private String title;
   private String description;
   private UUID playlistId;
+  private PlaylistUpdateRequest updateRequest;
 
   @BeforeEach
   void setUp() {
     owner = User.createUser("test@test.com", "12345678", "test");
     ownerId = UUID.randomUUID();
+    userDetails = new CustomUserDetails(ownerId, Role.USER);
     title = "새 플레이리스트 (1)";
     description = "새로운 플레이리스트입니다.";
-    request = new PlaylistCreateRequest(title, description);
+    createRequest = new PlaylistCreateRequest(title, description);
     playlistId = UUID.randomUUID();
+
+    updateRequest = new PlaylistUpdateRequest("수정한 제목", "수정한 설명");
   }
 
   @Nested
@@ -110,7 +119,7 @@ public class PlaylistControllerTest {
               .with(csrf()) // 인가(미호출 시 403 에러)
               .param("ownerId", ownerId.toString())
               .contentType(MediaType.APPLICATION_JSON)
-              .content(objectMapper.writeValueAsString(request))
+              .content(objectMapper.writeValueAsString(createRequest))
           )
           .andExpect(status().isCreated())
           .andExpect(jsonPath("$.id").value(playlistId.toString()))
@@ -227,6 +236,98 @@ public class PlaylistControllerTest {
           .andExpect(status().isNotFound());
 
       verify(playlistService).find(notExistPlaylistId);
+    }
+
+  }
+
+  @Nested
+  @DisplayName("플레이리스트 수정")
+  class Update {
+
+    @Test
+    @DisplayName("플레이리스트 수정 성공")
+    void update_success() throws Exception {
+      // given
+
+      // BeforeEach에서 playlistId, updateRequest 초기화
+
+      PlaylistOwnerResponse ownerResponse = new PlaylistOwnerResponse(
+          ownerId,
+          "test",
+          null
+      );
+
+      PlaylistResponse response = new PlaylistResponse(
+          playlistId,
+          ownerResponse,
+          title,
+          description,
+          Instant.now(),
+          0L,
+          false,
+          List.of()
+      );
+
+      given(playlistService.update(eq(playlistId), any(PlaylistUpdateRequest.class), eq(ownerId)))
+          .willReturn(response);
+
+      // when & then
+      mockMvc.perform(patch("/api/playlists/{playlistId}", playlistId)
+              .with(user(userDetails))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(updateRequest))
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.id").value(playlistId.toString()))
+          .andExpect(jsonPath("$.title").value(title))
+          .andExpect(jsonPath("$.description").value(description));
+
+      verify(playlistService).update(eq(playlistId), any(PlaylistUpdateRequest.class), eq(ownerId));
+    }
+
+    @Test
+    @DisplayName("플레이리스트 수정 실패 - 플레이리스트가 존재하지 않음(404 에러)")
+    void update_fail_notFoundPlaylist() throws Exception {
+      // given
+
+      // BeforeEach에서 playlistId, updateRequest 초기화
+
+      given(playlistService.update(eq(playlistId), any(PlaylistUpdateRequest.class), eq(ownerId)))
+          .willThrow(new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
+
+      // when & then
+      mockMvc.perform(patch("/api/playlists/{playlistId}", playlistId)
+              .with(user(userDetails))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(updateRequest))
+          )
+          .andExpect(status().isNotFound());
+
+      verify(playlistService).update(eq(playlistId), any(PlaylistUpdateRequest.class), eq(ownerId));
+    }
+
+    @Test
+    @DisplayName("플레이리스트 수정 실패 - 플레이리스트 소유자가 아님")
+    void update_fail_forbidden() throws Exception {
+      // given
+
+      // BeforeEach에서 playlistId, updateRequest 초기화
+
+      given(playlistService.update(eq(playlistId), any(PlaylistUpdateRequest.class), eq(ownerId)))
+          .willThrow(new CustomException(PlaylistErrorCode.PLAYLIST_FORBIDDEN));
+
+      // when & then
+      mockMvc.perform(patch("/api/playlists/{playlistId}", playlistId)
+              .with(user(userDetails))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(updateRequest))
+          )
+          .andExpect(status().isForbidden());
+
+      verify(playlistService).update(eq(playlistId), any(PlaylistUpdateRequest.class), eq(ownerId));
     }
 
   }

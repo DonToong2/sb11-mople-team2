@@ -288,7 +288,7 @@ public class PlaylistServiceTest {
     }
 
     @Test
-    @DisplayName("플레이리스트 수정 실패 - 소유자가 아님")
+    @DisplayName("플레이리스트 수정 실패 - 플레이리스트 소유자가 아님")
     void update_fail_forbidden() {
       // given
       UUID nowOwnerId = UUID.randomUUID();

@@ -64,7 +64,7 @@ public class PlaylistController implements PlaylistApi {
   public ResponseEntity<PlaylistResponse> update(
       @PathVariable UUID playlistId,
       @RequestBody PlaylistUpdateRequest request,
-      @AuthenticationPrincipal CustomUserDetails userDetails
+      @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails
   ) {
     PlaylistResponse response =
         playlistService.update(playlistId, request, userDetails.getUserId());
