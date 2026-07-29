@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.playlist.service;
 
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
+import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistContentResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistOwnerResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
@@ -81,4 +82,43 @@ public class PlaylistService {
     return response;
   }
 
+  @Transactional
+  public PlaylistResponse update(
+      UUID playlistId,
+      PlaylistUpdateRequest request,
+      UUID userId
+  ) {
+
+    // Playlist 조회
+    Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
+        new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND)
+    );
+
+    // 플레이리스트 소유자가 맞는지 검증
+    validateOwner(playlist, userId);
+
+    playlist.update(request.title(), request.description());
+
+    PlaylistOwnerResponse ownerResponse = ownerMapper.toResponse(playlist.getOwner());
+
+    List<PlaylistContentResponse> contents =
+        playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlistId).stream()
+            .map(playlistContentMapper::toResponse)
+            .toList();
+
+    PlaylistResponse response = mapper.toResponse(
+        playlist,
+        ownerResponse,
+        false,
+        contents
+    );
+
+    return response;
+  }
+
+  private void validateOwner(Playlist playlist, UUID userId) {
+    if (!playlist.getOwner().getId().equals(userId)) {
+      throw new CustomException(PlaylistErrorCode.PLAYLIST_FORBIDDEN);
+    }
+  }
 }
