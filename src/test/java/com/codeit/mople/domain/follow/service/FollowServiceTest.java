@@ -168,4 +168,62 @@ class FollowServiceTest {
       verify(publisher, never()).publishEvent(any(FollowCreatedEvent.class));
     }
   }
+
+  @Test
+  @DisplayName("팔로우 취소 성공")
+  void unFollow_success() {
+    UUID followId = UUID.randomUUID();
+    User followee = mock(User.class);
+    User follower = mock(User.class);
+    given(follower.getId()).willReturn(followerId);
+
+    Follow follow = Follow.create(followee, follower);
+    given(followRepository.findById(followId)).willReturn(Optional.of(follow));
+
+    // when
+    followService.unFollow(followId, followerId);
+
+    // then
+    verify(followRepository).delete(follow);
+  }
+
+  @Test
+  @DisplayName("팔로우 정보가 없으면 예외 발생")
+  void unFollow_notFound() {
+    // given: 팔로우Id 조회해서 없으면 empty 반환해
+    UUID followId = UUID.randomUUID();
+    given(followRepository.findById(followId)).willReturn(Optional.empty());
+
+    // when & then
+    assertThatExceptionOfType(CustomException.class)
+        .isThrownBy(() -> followService.unFollow(followId, followerId))
+        .extracting(CustomException::getErrorCode)
+        .isEqualTo(FollowErrorCode.FOLLOW_NOT_FOUND);
+
+    verify(followRepository, never()).delete(any(Follow.class));
+  }
+
+  @Test
+  @DisplayName("본인의 팔로우가 아니면 예외 발생")
+  void unFollow_notOwner() {
+    // given
+    UUID followId = UUID.randomUUID();
+    UUID otherUserId = UUID.randomUUID();
+
+    User followee = mock(User.class);
+    User follower = mock(User.class);
+    given(follower.getId()).willReturn(otherUserId);
+
+    Follow follow = Follow.create(followee, follower);
+    given(followRepository.findById(followId)).willReturn(Optional.of(follow));
+
+    // when & then
+    assertThatExceptionOfType(CustomException.class)
+        .isThrownBy(() -> followService.unFollow(followId, followerId))
+        .extracting(CustomException::getErrorCode)
+        .isEqualTo(FollowErrorCode.FOLLOW_NOT_FOUND);
+
+    verify(followRepository, never()).delete(any(Follow.class));
+  }
+
 }
