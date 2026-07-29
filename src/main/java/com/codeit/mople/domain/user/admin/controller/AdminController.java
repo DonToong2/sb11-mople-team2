@@ -1,12 +1,12 @@
 package com.codeit.mople.domain.user.admin.controller;
 
+import com.codeit.mople.domain.user.admin.controller.api.AdminApi;
 import com.codeit.mople.domain.user.admin.dto.RoleUpdateRequest;
 import com.codeit.mople.domain.user.admin.service.AdminService;
 import com.codeit.mople.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,15 +16,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-public class AdminController {
+public class AdminController implements AdminApi {
 
   private final AdminService adminService;
 
+  @Override
   @PatchMapping("/{userId}/role")
-  public ResponseEntity<ApiResponse<Void>> changeRole(
+  public ApiResponse<Void> changeRole(
       @PathVariable UUID userId,
       @Valid @RequestBody RoleUpdateRequest request) {
     adminService.changeUserRole(userId, request.role());
-    return ResponseEntity.ok(ApiResponse.success());
+    return ApiResponse.success();
   }
 }
