@@ -326,6 +326,7 @@ public class PlaylistServiceTest {
       // given
 
       // BeforeEach에서 playlist, playlistId 초기화
+
       given(playlistRepository.findById(playlistId))
           .willReturn(Optional.of(playlist));
 
@@ -345,6 +346,9 @@ public class PlaylistServiceTest {
     @DisplayName("플레이리스트 삭제 실패 - 플레이리스트가 존재하지 않음")
     void delete_fail_notFoundPlaylist() {
       // given
+
+      // BeforeEach에서 playlist, playlistId 초기화
+
       given(playlistRepository.findById(playlistId))
           .willReturn(Optional.empty());
 
@@ -368,6 +372,8 @@ public class PlaylistServiceTest {
     void delete_fail_forbidden() {
       // given
       UUID noOwnerId = UUID.randomUUID();
+
+      // BeforeEach에서 playlist, playlistId 초기화
 
       given(playlistRepository.findById(playlistId))
           .willReturn(Optional.of(playlist));

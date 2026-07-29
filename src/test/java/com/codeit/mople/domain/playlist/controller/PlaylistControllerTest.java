@@ -3,10 +3,12 @@ package com.codeit.mople.domain.playlist.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -86,7 +88,7 @@ public class PlaylistControllerTest {
     void create_success() throws Exception {
       // given
 
-      // setUp()에서 ownerId, request, title, description, playlistId 초기화
+      // BeforeEach에서 ownerId, createRequest, title, description, playlistId 초기화
 
       PlaylistOwnerResponse ownerResponse = new PlaylistOwnerResponse(
           ownerId,
@@ -143,6 +145,8 @@ public class PlaylistControllerTest {
       // given
       PlaylistCreateRequest invalidRequest = new PlaylistCreateRequest("", description);
 
+      // BeforeEach에서 ownerId 초기화
+
       // when & then
       mockMvc.perform(post("/api/playlists")
               .with(user("사용자"))
@@ -162,6 +166,8 @@ public class PlaylistControllerTest {
     void create_fail_blankDescription() throws Exception {
       // given
       PlaylistCreateRequest invalidRequest = new PlaylistCreateRequest(title, "");
+
+      // BeforeEach에서 ownerId 초기화
 
       // when & then
       mockMvc.perform(post("/api/playlists")
@@ -187,7 +193,7 @@ public class PlaylistControllerTest {
     void find_success() throws Exception {
       // given
 
-      // BeforeEach에서 playlistId 초기화
+      // BeforeEach에서 playlistId, title, description, userDetails 초기화
 
       PlaylistOwnerResponse ownerResponse = new PlaylistOwnerResponse(
           ownerId,
@@ -211,7 +217,7 @@ public class PlaylistControllerTest {
 
       // when & then
       mockMvc.perform(get("/api/playlists/{playlistId}", playlistId)
-              .with(user("test"))
+              .with(user(userDetails))
               .with(csrf())
           )
           .andExpect(status().isOk());
@@ -228,9 +234,11 @@ public class PlaylistControllerTest {
       given(playlistService.find(notExistPlaylistId))
           .willThrow(new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
 
+      // BeforeEach에서 userDetails 초기화
+
       // when & then
       mockMvc.perform(get("/api/playlists/{playlistId}", notExistPlaylistId)
-              .with(user("test"))
+              .with(user(userDetails))
               .with(csrf())
           )
           .andExpect(status().isNotFound());
@@ -249,7 +257,7 @@ public class PlaylistControllerTest {
     void update_success() throws Exception {
       // given
 
-      // BeforeEach에서 playlistId, updateRequest 초기화
+      // BeforeEach에서 playlistId, updateRequest, userDetails 초기화
 
       PlaylistOwnerResponse ownerResponse = new PlaylistOwnerResponse(
           ownerId,
@@ -291,7 +299,7 @@ public class PlaylistControllerTest {
     void update_fail_forbidden() throws Exception {
       // given
 
-      // BeforeEach에서 playlistId, updateRequest 초기화
+      // BeforeEach에서 playlistId, updateRequest, userDetails 초기화
 
       given(playlistService.update(eq(playlistId), any(PlaylistUpdateRequest.class), eq(ownerId)))
           .willThrow(new CustomException(PlaylistErrorCode.PLAYLIST_FORBIDDEN));
@@ -306,6 +314,49 @@ public class PlaylistControllerTest {
           .andExpect(status().isForbidden());
 
       verify(playlistService).update(eq(playlistId), any(PlaylistUpdateRequest.class), eq(ownerId));
+    }
+
+  }
+
+  @Nested
+  @DisplayName("플레이리스트 삭제")
+  class Delete {
+
+    @Test
+    @DisplayName("플레이리스트 삭제 성공")
+    void delete_success() throws Exception {
+      // given
+
+      // BeforeEach에서 playlistId, ownerId, userDetails 초기화
+
+      // when & then
+      mockMvc.perform(delete("/api/playlists/{playlistId}", playlistId)
+              .with(user(userDetails))
+              .with(csrf())
+          )
+          .andExpect(status().isNoContent());
+
+      verify(playlistService).delete(eq(playlistId), eq(ownerId));
+    }
+
+    @Test
+    @DisplayName("플레이리스트 삭제 실패 - 플레이리스트 소유자가 아님(403 에러)")
+    void delete_fail_forbidden() throws Exception {
+      // given
+
+      // BeforeEach에서 playlistId, ownerId, userDetails 초기화
+
+      doThrow(new CustomException(PlaylistErrorCode.PLAYLIST_FORBIDDEN))
+          .when(playlistService).delete(eq(playlistId), eq(ownerId));
+
+      // when & then
+      mockMvc.perform(delete("/api/playlists/{playlistId}", playlistId)
+              .with(user(userDetails))
+              .with(csrf())
+          )
+          .andExpect(status().isForbidden());
+
+      verify(playlistService).delete(eq(playlistId), eq(ownerId));
     }
 
   }
