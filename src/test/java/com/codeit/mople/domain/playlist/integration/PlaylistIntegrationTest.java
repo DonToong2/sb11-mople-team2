@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -48,6 +50,8 @@ public class PlaylistIntegrationTest {
   private String title;
   private String description;
 
+  private Playlist playlist;
+
   @BeforeEach
   void setUp() {
     savedOwner = userRepository.save(
@@ -56,83 +60,89 @@ public class PlaylistIntegrationTest {
     title = "새 플레이리스트 (1)";
     description = "새로운 플레이리스트입니다.";
     request = new PlaylistCreateRequest(title, description);
+
+    playlist = Playlist.create(savedOwner, title, description);
   }
 
-  @Test
-  @DisplayName("플레이리스트 생성 성공")
-  void create_success() throws Exception {
-    // given
+  @Nested
+  @DisplayName("플레이리스트 생성")
+  class Create {
 
-    // BeforeEach에서 DB에 저장된 사용자, PlaylistCreateRequest 초기화
+    @Test
+    @DisplayName("플레이리스트 생성 성공")
+    void create_success() throws Exception {
+      // given
 
-    // when & then
-    // 상태 검증
-    MvcResult result = mockMvc.perform(post("/api/playlists")
-            .with(user("사용자"))
-            .with(csrf())
-            .param("ownerId", savedOwner.getId().toString())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.id").exists())
-        .andExpect(jsonPath("$.owner.userId").value(savedOwner.getId().toString()))
-        .andExpect(jsonPath("$.owner.name").value(savedOwner.getName()))
-        .andExpect(jsonPath("$.owner.profileImageUrl").value(savedOwner.getProfileImageUrl()))
-        .andExpect(jsonPath("$.title").value(title))
-        .andExpect(jsonPath("$.description").value(description))
-        .andExpect(jsonPath("$.subscriberCount").value(0L))
-        .andExpect(jsonPath("$.subscribedByMe").value(false))
-        .andExpect(jsonPath("$.contents").isArray())
-        .andReturn();
+      // BeforeEach에서 DB에 저장된 사용자, PlaylistCreateRequest 초기화
 
-    // DB 검증
-    // 응답 추출
-    PlaylistResponse response = objectMapper.readValue(
-        result.getResponse().getContentAsString(), PlaylistResponse.class
-    );
+      // when & then
+      // 상태 검증
+      MvcResult result = mockMvc.perform(post("/api/playlists")
+              .with(user("사용자"))
+              .with(csrf())
+              .param("ownerId", savedOwner.getId().toString())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isCreated())
+          .andExpect(jsonPath("$.id").exists())
+          .andExpect(jsonPath("$.owner.userId").value(savedOwner.getId().toString()))
+          .andExpect(jsonPath("$.owner.name").value(savedOwner.getName()))
+          .andExpect(jsonPath("$.owner.profileImageUrl").value(savedOwner.getProfileImageUrl()))
+          .andExpect(jsonPath("$.title").value(title))
+          .andExpect(jsonPath("$.description").value(description))
+          .andExpect(jsonPath("$.subscriberCount").value(0L))
+          .andExpect(jsonPath("$.subscribedByMe").value(false))
+          .andExpect(jsonPath("$.contents").isArray())
+          .andReturn();
 
-    Playlist playlist = playlistRepository.findById(response.id()).orElseThrow();
+      // DB 검증
+      // 응답 추출
+      PlaylistResponse response = objectMapper.readValue(
+          result.getResponse().getContentAsString(), PlaylistResponse.class
+      );
 
-    assertThat(playlist.getOwner()).isEqualTo(savedOwner);
-    assertThat(playlist.getTitle()).isEqualTo(title);
-    assertThat(playlist.getDescription()).isEqualTo(description);
-  }
+      Playlist playlist = playlistRepository.findById(response.id()).orElseThrow();
 
-  @Test
-  @DisplayName("플레이리스트 생성 실패 - 제목이 비어있음(400 에러)")
-  void create_fail_blankTitle() throws Exception {
-    // given
-    PlaylistCreateRequest invalidRequest = new PlaylistCreateRequest("", description);
+      assertThat(playlist.getOwner()).isEqualTo(savedOwner);
+      assertThat(playlist.getTitle()).isEqualTo(title);
+      assertThat(playlist.getDescription()).isEqualTo(description);
+    }
 
-    // when & then
-    mockMvc.perform(post("/api/playlists")
-            .with(user("사용자"))
-            .with(csrf())
-            .param("ownerId", savedOwner.getId().toString())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(invalidRequest)))
-        .andExpect(status().isBadRequest());
+    @Test
+    @DisplayName("플레이리스트 생성 실패 - 제목이 비어있음(400 에러)")
+    void create_fail_blankTitle() throws Exception {
+      // given
+      PlaylistCreateRequest invalidRequest = new PlaylistCreateRequest("", description);
 
-    assertThat(playlistRepository.count()).isZero();
-  }
+      // when & then
+      mockMvc.perform(post("/api/playlists")
+              .with(user("사용자"))
+              .with(csrf())
+              .param("ownerId", savedOwner.getId().toString())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(invalidRequest)))
+          .andExpect(status().isBadRequest());
 
-  @Test
-  @DisplayName("플레이리스트 생성 실패 - 설명이 비어있음(400 에러)")
-  void create_fail_blankDescription() throws Exception {
-    // given
-    PlaylistCreateRequest invalidRequest = new PlaylistCreateRequest(title, "");
+      assertThat(playlistRepository.count()).isZero();
+    }
 
-    // when & then
-    mockMvc.perform(post("/api/playlists")
-            .with(user("사용자"))
-            .with(csrf())
-            .param("ownerId", savedOwner.getId().toString())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(invalidRequest)))
-        .andExpect(status().isBadRequest());
+    @Test
+    @DisplayName("플레이리스트 생성 실패 - 설명이 비어있음(400 에러)")
+    void create_fail_blankDescription() throws Exception {
+      // given
+      PlaylistCreateRequest invalidRequest = new PlaylistCreateRequest(title, "");
 
-    assertThat(playlistRepository.count()).isZero();
-  }
+      // when & then
+      mockMvc.perform(post("/api/playlists")
+              .with(user("사용자"))
+              .with(csrf())
+              .param("ownerId", savedOwner.getId().toString())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(invalidRequest)))
+          .andExpect(status().isBadRequest());
+
+      assertThat(playlistRepository.count()).isZero();
+    }
 
 //  @Test
 //  @DisplayName("플레이리스트 생성 실패 - 인증되지 않은 사용자")
@@ -145,25 +155,69 @@ public class PlaylistIntegrationTest {
 //        .andExpect(status().isUnauthorized());
 //  }
 
-  @Test
-  @DisplayName("플레이리스트 생성 실패 - 사용자가 존재하지 않음(404 에러)")
-  void create_fail_notFoundUser() throws Exception {
-    // given
-    UUID notExistOwnerId = UUID.randomUUID();
+    @Test
+    @DisplayName("플레이리스트 생성 실패 - 사용자가 존재하지 않음(404 에러)")
+    void create_fail_notFoundUser() throws Exception {
+      // given
+      UUID notExistOwnerId = UUID.randomUUID();
 
-    // BeforeEach에서 PlaylistCreateRequest 초기화
+      // BeforeEach에서 PlaylistCreateRequest 초기화
 
-    // when & then
-    mockMvc.perform(post("/api/playlists")
-            .with(user("사용자"))
-            .with(csrf())
-            .param("ownerId", notExistOwnerId.toString())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
-        .andExpect(status().isNotFound());
+      // when & then
+      mockMvc.perform(post("/api/playlists")
+              .with(user("사용자"))
+              .with(csrf())
+              .param("ownerId", notExistOwnerId.toString())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isNotFound());
 
-    // 플레이리스트가 저장되지 말아야 함
-    assertThat(playlistRepository.count()).isZero();
+      // 플레이리스트가 저장되지 말아야 함
+      assertThat(playlistRepository.count()).isZero();
+    }
+
+    @Nested
+    @DisplayName("플레이리스트 단건 조회")
+    class Find {
+
+      @Test
+      @DisplayName("플레이리스트 단건 조회 성공")
+      void find_success() throws Exception {
+        // given
+
+        // BeforeEach에서 playlist 초기화
+
+        Playlist savedPlaylist = playlistRepository.save(playlist);
+
+        // when & then
+        MvcResult result =
+            mockMvc.perform(get("/api/playlists/{playlistId}", playlist.getId())
+                    .with(user("test"))
+                    .with(csrf())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(savedPlaylist.getId().toString()))
+                .andExpect(jsonPath("$.owner.userId").value(savedOwner.getId().toString()))
+                .andExpect(jsonPath("$.owner.name").value(savedOwner.getName()))
+                .andExpect(jsonPath("$.title").value(title))
+                .andExpect(jsonPath("$.description").value(description))
+                .andExpect(jsonPath("$.subscriberCount").value(0))
+                .andExpect(jsonPath("$.contents").isArray())
+                .andReturn();
+
+        // DB 검증
+        PlaylistResponse response = objectMapper.readValue(
+            result.getResponse().getContentAsString(), PlaylistResponse.class
+        );
+
+        Playlist findPlaylist = playlistRepository.findById(response.id()).orElseThrow();
+
+        assertThat(findPlaylist.getOwner()).isEqualTo(savedOwner);
+        assertThat(findPlaylist.getTitle()).isEqualTo(title);
+        assertThat(findPlaylist.getDescription()).isEqualTo(description);
+      }
+    }
+
   }
 
 }

@@ -228,6 +228,7 @@ public class PlaylistControllerTest {
 
       verify(playlistService).find(notExistPlaylistId);
     }
+
   }
 
 }
