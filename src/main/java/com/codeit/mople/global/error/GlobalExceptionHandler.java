@@ -5,15 +5,16 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -23,8 +24,8 @@ public class GlobalExceptionHandler {
   // 직접 정의한 비즈니스 예외
   @ExceptionHandler(CustomException.class)
   public ResponseEntity<ApiResponse<Void>> handleCustomException(CustomException e) {
-    log.warn("CustomException: {}", e.getMessage());
     ErrorCode errorCode = e.getErrorCode();
+    log.warn("[CustomException] Type: {}, Code: {}, Message: {}, Details: {}", errorCode, errorCode.getCode(), e.getMessage(), e.getDetails());
     return ResponseEntity
         .status(errorCode.getStatus())
         .body(ApiResponse.error(errorCode.getCode(), errorCode.getMessage()));
@@ -38,7 +39,7 @@ public class GlobalExceptionHandler {
         .findFirst()
         .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
         .orElse(CommonErrorCode.INVALID_INPUT.getMessage());
-    log.warn("Validation failed: {}", message);
+    log.warn("[Validation failed] Message: {}", message);
     return ResponseEntity
         .status(CommonErrorCode.INVALID_INPUT.getStatus())
         .body(ApiResponse.error(CommonErrorCode.INVALID_INPUT.getCode(), message));
@@ -48,7 +49,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(ConstraintViolationException.class)
   public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(
       ConstraintViolationException e) {
-    log.warn("ConstraintViolation: {}", e.getMessage());
+    log.warn("[ConstraintViolation] Message: {}", e.getMessage());
     return ResponseEntity
         .status(CommonErrorCode.INVALID_INPUT.getStatus())
         .body(ApiResponse.error(CommonErrorCode.INVALID_INPUT.getCode(), e.getMessage()));
@@ -57,7 +58,7 @@ public class GlobalExceptionHandler {
   // 예상 못 한 모든 예외
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
-    log.error("Unhandled exception", e);
+    log.error("[Unhandled exception] Message: {}", e.getMessage(), e);
     CommonErrorCode errorCode = CommonErrorCode.INTERNAL_SERVER_ERROR;
     return ResponseEntity
         .status(errorCode.getStatus())
@@ -72,10 +73,10 @@ public class GlobalExceptionHandler {
     ErrorCode errorCode = resolveConstraint(e);
 
     if (errorCode == null) {
-      log.error("매핑되지 않은 제약 위반", e);
+      log.error("[Unhandled DataIntegrityViolation] Message: {}", e.getMessage(), e);
       errorCode = CommonErrorCode.INTERNAL_SERVER_ERROR;
     } else {
-      log.warn("제약 위반 -> {}", errorCode.getCode());
+      log.warn("[DataIntegrityViolation] Code: {}, Message: {}", errorCode.getCode(), errorCode.getMessage());
     }
 
     return ResponseEntity
