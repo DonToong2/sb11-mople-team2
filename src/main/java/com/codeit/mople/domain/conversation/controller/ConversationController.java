@@ -1,8 +1,8 @@
 package com.codeit.mople.domain.conversation.controller;
 
-import com.codeit.mople.domain.conversation.dto.ConversationCreateRequest;
-import com.codeit.mople.domain.conversation.dto.ConversationDto;
-import com.codeit.mople.domain.conversation.dto.CursorResponseConversationDto;
+import com.codeit.mople.domain.conversation.dto.request.ConversationCreateRequest;
+import com.codeit.mople.domain.conversation.dto.response.ConversationDto;
+import com.codeit.mople.domain.conversation.dto.response.CursorResponseConversationDto;
 import com.codeit.mople.domain.conversation.service.ConversationService;
 import jakarta.validation.Valid;
 import java.util.UUID;
