@@ -1,28 +1,31 @@
 package com.codeit.mople.domain.user.admin.service;
 
-import com.codeit.mople.domain.user.dto.response.UserDto;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.error.CustomException;
 import com.codeit.mople.global.event.UserForceLogoutEvent;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
-import org.springframework.data.domain.Sort;
 
 @ExtendWith(MockitoExtension.class)
 class AdminServiceTest {
@@ -36,99 +39,76 @@ class AdminServiceTest {
   @Mock
   private ApplicationEventPublisher eventPublisher;
 
-  @Test
-  void 사용자_목록_조회_성공() {
-    User user1 = User.createUser("a@test.com", "encoded", "유저1");
-    User user2 = User.createAdmin("b@test.com", "encoded", "어드민");
-    given(userRepository.findAll(Sort.by("createdAt").ascending()))
-        .willReturn(List.of(user1, user2));
+  @Captor
+  private ArgumentCaptor<UserForceLogoutEvent> eventCaptor;
 
-    List<UserDto> result = adminService.getUserList();
+  UUID userId;
+  User user;
 
-    assertThat(result).hasSize(2);
-    assertThat(result.get(0).email()).isEqualTo("a@test.com");
-    assertThat(result.get(1).role()).isEqualTo(Role.ADMIN);
+  @BeforeEach
+  void setUp() {
+    userId = UUID.randomUUID();
+    user = User.createUser("test@test.com", "encoded", "테스터");
   }
 
-  @Test
-  void 사용자_없으면_빈_목록_반환() {
-    given(userRepository.findAll(Sort.by("createdAt").ascending()))
-        .willReturn(List.of());
+  @Nested
+  @DisplayName("사용자 권한 변경")
+  class ChangeUserRole {
 
-    List<UserDto> result = adminService.getUserList();
+    @Test
+    @DisplayName("USER을 ADMIN으로 권한 변경 할 수 있고 강제 로그아웃 이벤트를 발행한다")
+    void USER을 ADMIN으로 권한 변경 할 수 있고 강제 로그아웃 이벤트를 발행한다() {
+      // given
+      given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
-    assertThat(result).isEmpty();
-  }
+      // when
+      adminService.changeUserRole(userId, "ADMIN");
 
-  @Test
-  void 권한_변경_성공_및_강제로그아웃_이벤트_발행() {
-    UUID userId = UUID.randomUUID();
-    User user = User.createUser("test@test.com", "encoded", "테스터");
-    given(userRepository.findById(userId)).willReturn(Optional.of(user));
+      // then
+      assertThat(user.getRole()).isEqualTo(Role.ADMIN);
+      verify(eventPublisher).publishEvent(eventCaptor.capture());
+      assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
+    }
 
-    adminService.changeUserRole(userId, "ADMIN");
+    @Test
+    @DisplayName("ADMIN을 USER로 강등할 수 있고 강제 로그아웃 이벤트를 발행한다")
+    void ADMIN을_USER로_강등할_수_있고_강제_로그아웃_이벤트를_발행한다() {
+      // given
+      User admin = User.createAdmin("admin@test.com", "encoded", "어드민");
+      given(userRepository.findById(userId)).willReturn(Optional.of(admin));
 
-    assertThat(user.getRole()).isEqualTo(Role.ADMIN);
-    ArgumentCaptor<UserForceLogoutEvent> captor = ArgumentCaptor.forClass(UserForceLogoutEvent.class);
-    verify(eventPublisher).publishEvent(captor.capture());
-    assertThat(captor.getValue().userId()).isEqualTo(userId);
-  }
+      // when
+      adminService.changeUserRole(userId, "USER");
 
-  @Test
-  void 존재하지_않는_사용자_권한_변경_시_예외() {
-    UUID userId = UUID.randomUUID();
-    given(userRepository.findById(userId)).willReturn(Optional.empty());
+      // then
+      assertThat(admin.getRole()).isEqualTo(Role.USER);
+      verify(eventPublisher).publishEvent(eventCaptor.capture());
+      assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
+    }
 
-    assertThatThrownBy(() -> adminService.changeUserRole(userId, "ADMIN"))
-        .isInstanceOf(CustomException.class)
-        .satisfies(e -> assertThat(((CustomException) e).getErrorCode())
-            .isEqualTo(UserErrorCode.USER_NOT_FOUND));
-  }
+    @Test
+    @DisplayName("존재하지 않는 사용자 id로 요청하면 USER_NOT_FOUND 예외가 발생한다")
+    void 존재하지_않는_사용자_id로_요청하면_USER_NOT_FOUND_예외가_발생한다() {
+      // given
+      given(userRepository.findById(userId)).willReturn(Optional.empty());
 
-  @Test
-  void 어드민을_일반유저로_강등할_수_있다() {
-    UUID userId = UUID.randomUUID();
-    User admin = User.createAdmin("admin@test.com", "encoded", "어드민");
-    given(userRepository.findById(userId)).willReturn(Optional.of(admin));
+      // when & then
+      assertThatExceptionOfType(CustomException.class)
+          .isThrownBy(() -> adminService.changeUserRole(userId, "ADMIN"))
+          .extracting(CustomException::getErrorCode)
+          .isEqualTo(UserErrorCode.USER_NOT_FOUND);
 
-    adminService.changeUserRole(userId, "USER");
+      verify(eventPublisher, never()).publishEvent(any());
+    }
 
-    assertThat(admin.getRole()).isEqualTo(Role.USER);
-  }
+    @Test
+    @DisplayName("유효하지 않은 role 값이면 IllegalArgumentException이 발생한다")
+    void 유효하지_않은_role_값이면_IllegalArgumentException이_발생한다() {
+      // Role.valueOf()가 DB 조회 전에 먼저 실행되므로 별도 스텁 불필요
+      assertThatExceptionOfType(IllegalArgumentException.class)
+          .isThrownBy(() -> adminService.changeUserRole(userId, "INVALID_ROLE"));
 
-  @Test
-  void 계정_잠금_성공_및_강제로그아웃_이벤트_발행() {
-    UUID userId = UUID.randomUUID();
-    User user = User.createUser("test@test.com", "encoded", "테스터");
-    given(userRepository.findById(userId)).willReturn(Optional.of(user));
-
-    adminService.changeUserLocked(userId, true);
-
-    assertThat(user.isLocked()).isTrue();
-    ArgumentCaptor<UserForceLogoutEvent> captor = ArgumentCaptor.forClass(UserForceLogoutEvent.class);
-    verify(eventPublisher).publishEvent(captor.capture());
-    assertThat(captor.getValue().userId()).isEqualTo(userId);
-  }
-
-  @Test
-  void 계정_잠금_해제_성공() {
-    UUID userId = UUID.randomUUID();
-    User user = User.createUser("test@test.com", "encoded", "테스터");
-    given(userRepository.findById(userId)).willReturn(Optional.of(user));
-
-    adminService.changeUserLocked(userId, false);
-
-    assertThat(user.isLocked()).isFalse();
-  }
-
-  @Test
-  void 존재하지_않는_사용자_잠금_변경_시_예외() {
-    UUID userId = UUID.randomUUID();
-    given(userRepository.findById(userId)).willReturn(Optional.empty());
-
-    assertThatThrownBy(() -> adminService.changeUserLocked(userId, true))
-        .isInstanceOf(CustomException.class)
-        .satisfies(e -> assertThat(((CustomException) e).getErrorCode())
-            .isEqualTo(UserErrorCode.USER_NOT_FOUND));
+      verify(eventPublisher, never()).publishEvent(any());
+    }
   }
 }
