@@ -217,7 +217,6 @@ public class ContentService{
       return uploadedThumbnailUrl;
     } catch (IOException e) {
       log.error("썸네일 파일 업로드 중 예상치 못한 오류 발생", e);
-      // 🌟 일반 RuntimeException 대신 도메인 커스텀 예외 던지기
       throw new ContentException(ContentErrorCode.IMAGE_UPLOAD_FAILED,
           Map.of("filename", thumbnail.getOriginalFilename() != null ? thumbnail.getOriginalFilename() : "null"));
     }
