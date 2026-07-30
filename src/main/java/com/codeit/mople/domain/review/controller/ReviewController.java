@@ -40,11 +40,11 @@ public class ReviewController {
 
   @PatchMapping("/{reviewId}")
   public ResponseEntity<ReviewResponse> update(
-      @AuthenticationPrincipal UUID authorId,
+      @AuthenticationPrincipal CustomUserDetails userDetails,
       @PathVariable UUID reviewId,
       @Valid @RequestBody ReviewUpdateRequest request
   ) {
-    ReviewResponse response = reviewService.update(reviewId, request, authorId);
+    ReviewResponse response = reviewService.update(reviewId, request, userDetails.getUserId());
 
     return ResponseEntity.ok(response);
   }
