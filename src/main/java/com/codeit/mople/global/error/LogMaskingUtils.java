@@ -1,6 +1,7 @@
 package com.codeit.mople.global.error;
 
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -18,8 +19,9 @@ public class LogMaskingUtils {
     }
     Map<String, Object> masked = new LinkedHashMap<>();
     for (Map.Entry<String, Object> entry : details.entrySet()) {
-      if(SENSITIVE_KEYS.contains(entry.getKey().toLowerCase())) {
-        masked.put(entry.getKey(), maskValue(String.valueOf(entry.getValue())));
+      if(SENSITIVE_KEYS.contains(entry.getKey().toLowerCase(Locale.ROOT))) {
+        Object value = entry.getValue();
+        masked.put(entry.getKey(), value == null ? null : maskValue(String.valueOf(value)));
       } else {
         masked.put(entry.getKey(), entry.getValue());
       }
@@ -28,7 +30,7 @@ public class LogMaskingUtils {
   }
 
   private static String maskValue(String value) {
-    if(value == null || value.length() <= 2) {
+    if(value.length() <= 2) {
       return "***";
     }
     int visibleLength = Math.min(2, value.length() / 3);
