@@ -510,6 +510,7 @@ public class PlaylistServiceTest {
       // then
       verify(playlistSubscriptionRepository).save(any(PlaylistSubscription.class));
       verify(publisher).publishEvent(any(PlaylistSubscriptionCreateEvent.class));
+      assertThat(playlist.getSubscriberCount()).isEqualTo(1L);
     }
 
     @Test
@@ -596,8 +597,12 @@ public class PlaylistServiceTest {
       UUID playlistId = UUID.randomUUID();
       UUID subscriberId = UUID.randomUUID();
 
-      PlaylistSubscription subscription = mock(PlaylistSubscription.class);
+      Playlist playlist = Playlist.create(owner, title, description);
+      playlist.increaseSubscriberCount();
+      playlist.increaseSubscriberCount();
 
+      PlaylistSubscription subscription = mock(PlaylistSubscription.class);
+      given(subscription.getPlaylist()).willReturn(playlist);
       given(playlistSubscriptionRepository.findByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(Optional.of(subscription));
 
       // when
@@ -605,6 +610,7 @@ public class PlaylistServiceTest {
 
       // then
       verify(playlistSubscriptionRepository).delete(subscription);
+      assertThat(playlist.getSubscriberCount()).isEqualTo(1L);
     }
 
     @Test

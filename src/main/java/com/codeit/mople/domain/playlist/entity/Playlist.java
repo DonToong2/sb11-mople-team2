@@ -74,4 +74,13 @@ public class Playlist extends BaseTimeEntity {
     }
   }
 
+  public void increaseSubscriberCount() {
+    this.subscriberCount++;
+  }
+
+  public void decreaseSubscriberCount() {
+    if (this.subscriberCount > 0) {
+      this.subscriberCount--;
+    }
+  }
 }
