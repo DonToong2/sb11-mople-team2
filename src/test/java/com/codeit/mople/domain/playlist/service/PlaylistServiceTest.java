@@ -527,7 +527,7 @@ public class PlaylistServiceTest {
 
       assertThatThrownBy(() -> playlistService.subscribe(playlistId, subscriberId))
           .isInstanceOf(CustomException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_DUPLICATE);
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_DUPLICATE);
 
       verify(playlistSubscriptionRepository, never()).save(any());
       verify(publisher, never()).publishEvent(any());
@@ -543,7 +543,7 @@ public class PlaylistServiceTest {
 
       assertThatThrownBy(() -> playlistService.subscribe(playlistId, subscriberId))
           .isInstanceOf(CustomException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_NOT_FOUND);
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_NOT_FOUND);
 
       verify(playlistSubscriptionRepository, never()).save(any());
       verify(publisher, never()).publishEvent(any());
@@ -561,7 +561,7 @@ public class PlaylistServiceTest {
 
       assertThatThrownBy(() -> playlistService.subscribe(playlistId, subscriberId))
           .isInstanceOf(CustomException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_NOT_FOUND);
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_UNAUTHORIZED);
 
       verify(playlistSubscriptionRepository, never()).save(any());
       verify(publisher, never()).publishEvent(any());
@@ -578,7 +578,7 @@ public class PlaylistServiceTest {
 
       assertThatThrownBy(() -> playlistService.subscribe(playlistId, ownerId))
           .isInstanceOf(CustomException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_DUPLICATE);
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_SELF_NOT_FOUND);
 
       verify(userRepository, never()).findById(any());
       verify(playlistSubscriptionRepository, never()).save(any());
