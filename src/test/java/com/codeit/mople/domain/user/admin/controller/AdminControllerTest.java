@@ -177,6 +177,26 @@ class AdminControllerTest {
 
       verifyNoInteractions(adminService);
     }
+
+    @Test
+    @DisplayName("자신의 계정에 요청하면 400을 반환한다")
+    void 자신의_계정에_요청하면_400을_반환한다() throws Exception {
+      // given
+      RoleUpdateRequest request = new RoleUpdateRequest("USER");
+      willThrow(new CustomException(UserErrorCode.CANNOT_MODIFY_SELF))
+          .given(adminService).changeUserRole(any(UUID.class), anyString());
+
+      // when & then
+      mockMvc.perform(patch("/api/users/{userId}/role", userId)
+              .with(user("admin").roles("ADMIN"))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(request)))
+          .andDo(print())
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.success").value(false))
+          .andExpect(jsonPath("$.error.code").value("USER-006"));
+    }
   }
 
   @Nested
@@ -275,6 +295,26 @@ class AdminControllerTest {
           .andExpect(status().isForbidden());
 
       verifyNoInteractions(adminService);
+    }
+
+    @Test
+    @DisplayName("자신의 계정에 요청하면 400을 반환한다")
+    void 자신의_계정에_요청하면_400을_반환한다() throws Exception {
+      // given
+      LockUpdateRequest request = new LockUpdateRequest(true);
+      willThrow(new CustomException(UserErrorCode.CANNOT_MODIFY_SELF))
+          .given(adminService).changeUserLocked(any(UUID.class), anyBoolean());
+
+      // when & then
+      mockMvc.perform(patch("/api/users/{userId}/locked", userId)
+              .with(user("admin").roles("ADMIN"))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(request)))
+          .andDo(print())
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.success").value(false))
+          .andExpect(jsonPath("$.error.code").value("USER-006"));
     }
   }
 }
