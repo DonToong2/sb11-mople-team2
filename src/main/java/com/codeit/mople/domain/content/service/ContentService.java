@@ -59,8 +59,6 @@ public class ContentService{
       throw new ContentException(ContentErrorCode.INVALID_CONTENT_TYPE, Map.of("type", request.type()));
     }
 
-    //TODO: 관리자 권한 검증 추가 예정
-
     //썸네일 이미지 업로드 처리(현재는 임시 URL 처리)
     String uploadedThumbnailUrl = null;
     if (thumbnail != null && !thumbnail.isEmpty()) {
@@ -184,8 +182,6 @@ public class ContentService{
           log.warn("콘텐츠 삭제 실패(존재하지 않는 ID) - contentId: {}", contentId);
           return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
         });
-
-    //TODO: 추후 관리자 권한 검증 로직 추가 예정
 
     //조회된 엔티티 삭제
     contentRepository.delete(content);

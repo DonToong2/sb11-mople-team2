@@ -5,12 +5,14 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.content.dto.ContentCreateRequest;
 import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
@@ -18,6 +20,7 @@ import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.service.ContentService;
+import com.codeit.mople.domain.user.entity.Role;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -59,6 +62,8 @@ public class ContentControllerTest {
     UUID adminId = UUID.randomUUID();
     UUID contentId = UUID.randomUUID();
 
+    CustomUserDetails mockAdmin = new CustomUserDetails(adminId, Role.ADMIN);
+
     ContentCreateRequest requestDto = new ContentCreateRequest(
         "MOVIE", "테스트 영화", "설명", List.of("액션"));
 
@@ -81,8 +86,7 @@ public class ContentControllerTest {
             multipart(HttpMethod.POST, "/api/contents")
                 .file(requestPart)
                 .file(thumbnailPart)
-                //TODO: 추후 JWT 도입 및 관리자 권한 검증 적용 후 주석 제거 예정
-                //.header("X-User-Id", adminId.toString())
+                .with(user(mockAdmin))
                 .contentType(MediaType.MULTIPART_FORM_DATA)
         ).andExpect(status().isCreated())
         .andExpect(jsonPath("$.title").value("테스트 영화"))
@@ -94,6 +98,9 @@ public class ContentControllerTest {
   @DisplayName("콘텐츠 생성 실패 - 필수 값(제목) 누락 시 400 Bad Request")
   void createContent_Fail_Validation() throws Exception {
     UUID adminId = UUID.randomUUID();
+
+    CustomUserDetails mockAdmin = new CustomUserDetails(adminId, Role.ADMIN);
+
     //title을 빈 문자열("")로 설정하여 @NotBlank 검증 실패
     ContentCreateRequest requestDto = new ContentCreateRequest(
         "MOVIE", "", "설명", List.of("액션"));
@@ -110,38 +117,11 @@ public class ContentControllerTest {
             multipart(HttpMethod.POST, "/api/contents")
                 .file(requestPart)
                 .file(thumbnailPart)
-                //TODO: 추후 JWT 도입 및 관리자 권한 검증 적용 후 주석 제거 예정
-                //.header("X-User-Id", adminId.toString())
+                .with(user(mockAdmin))
                 .contentType(MediaType.MULTIPART_FORM_DATA)
         )
         .andExpect(status().isBadRequest());
   }
-
-  //TODO: 추후 JWT 도입 및 관리자 권한 검증 적용 후 주석 해제 후 테스트 복구 예정
-  /*
-  @Test
-  @DisplayName("콘텐츠 생성 실패 - 필수 헤더(X-User-Id) 누락 시 500 Internal Server Error 반환")
-  void createContent_Fail_MissingHeader() throws Exception {
-    ContentCreateRequest requestDto = new ContentCreateRequest(
-        "MOVIE", "테스트 영화", "설명", List.of("액션"));
-
-    MockMultipartFile requestPart = new MockMultipartFile(
-        "request", "", MediaType.APPLICATION_JSON_VALUE,
-        objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
-
-    MockMultipartFile thumbnailPart = new MockMultipartFile(
-        "thumbnail", "test.png", MediaType.IMAGE_PNG_VALUE,
-        "dummy image content".getBytes());
-
-    mockMvc.perform(
-            multipart(HttpMethod.POST, "/api/contents")
-                .file(requestPart)
-                .file(thumbnailPart)
-                // .header("X-User-Id", adminId.toString()) 헤더를 의도적으로 누락
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-        )
-        .andExpect(status().isInternalServerError());
-  }*/
 
   //=========================================================================================
   //콘텐츠 목록 조회 테스트
@@ -256,7 +236,9 @@ public class ContentControllerTest {
   @DisplayName("콘텐츠 수정 성공 - 200 OK")
   void updateContent_Success() throws Exception {
     UUID contentId = UUID.randomUUID();
-    UUID adminid = UUID.randomUUID();
+    UUID adminId = UUID.randomUUID();
+
+    CustomUserDetails mockAdmin = new CustomUserDetails(adminId, Role.ADMIN);
 
     ContentUpdateRequest requestDto = new ContentUpdateRequest(
         "수정된 영화 제목", "수정된 설명", List.of("스릴러"));
@@ -280,8 +262,7 @@ public class ContentControllerTest {
         multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
             .file(requestPart)
             .file(thumbnailPart)
-            //TODO: 추후 JWT 도입 및 관리자 권한 적용 시 주석 해제
-            //.header("X-User-Id", adminId, toString())
+            .with(user(mockAdmin))
             .contentType(MediaType.MULTIPART_FORM_DATA)
     ).andExpect(status().isOk())
         .andExpect(jsonPath("$.title").value("수정된 영화 제목"))
@@ -293,6 +274,8 @@ public class ContentControllerTest {
   void updateContent_Fail_NotFound() throws Exception {
     UUID contentId = UUID.randomUUID();
     UUID adminId = UUID.randomUUID();
+
+    CustomUserDetails mockAdmin = new CustomUserDetails(adminId, Role.ADMIN);
 
     ContentUpdateRequest requestDto = new ContentUpdateRequest(
         "수정된 영화 제목", "수정된 설명", List.of("스릴러"));
@@ -313,39 +296,10 @@ public class ContentControllerTest {
         multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
             .file(requestPart)
             .file(thumbnailPart)
-            //TODO: 추후 JWT 도입 및 관리자 권한 적용 시 주석 해제
-            //.header("X-User-Id", adminId.toString())
+            .with(user(mockAdmin))
             .contentType(MediaType.MULTIPART_FORM_DATA)
     ).andExpect(status().isNotFound());
   }
-
-  //TODO: 추후 JWT 도입 및 관리자 권한(헤더 등) 검증 적용 시 주석 해제하여 테스트 복구 예정
-  /*
-  @Test
-  @DisplayName("콘텐츠 수정 실패 - 필수 헤더(X-User-Id) 누락 시 500 Internal Server Error 반환")
-  void updateContent_Fail_MissingHeader() throws Exception {
-    UUID contentId = UUID.randomUUID();
-    ContentUpdateRequest requestDto = new ContentUpdateRequest(
-        "수정된 영화 제목", "수정된 설명", List.of("스릴러"));
-
-    MockMultipartFile requestPart = new MockMultipartFile(
-        "request", "", MediaType.APPLICATION_JSON_VALUE,
-        objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
-
-    MockMultipartFile thumbnailPart = new MockMultipartFile(
-        "thumbnail", "updated.png", MediaType.IMAGE_PNG_VALUE,
-        "updated image content".getBytes());
-
-    mockMvc.perform(
-            multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
-                .file(requestPart)
-                .file(thumbnailPart)
-                //.header("X-User-Id", adminId.toString()) 헤더를 의도적으로 누락
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-        )
-        .andExpect(status().isInternalServerError());
-  }
-  */
 
   //=========================================================================================
   //콘텐츠 삭제 테스트
@@ -357,12 +311,13 @@ public class ContentControllerTest {
     UUID contentId = UUID.randomUUID();
     UUID adminId = UUID.randomUUID();
 
+    CustomUserDetails mockAdmin = new CustomUserDetails(adminId, Role.ADMIN);
+
     willDoNothing().given(contentService).deleteContent(any(), any());
 
     mockMvc.perform(
         delete("/api/contents/{contentId}", contentId)
-            //TODO: 추후 JWT 도입 및 관리자 권한 적용 시 주석 해제
-            //.header("X-User-Id", adminId.toString())
+            .with(user(mockAdmin))
             .contentType(MediaType.APPLICATION_JSON)
     ).andExpect(status().isOk());
   }
@@ -373,13 +328,14 @@ public class ContentControllerTest {
     UUID contentId = UUID.randomUUID();
     UUID adminId = UUID.randomUUID();
 
+    CustomUserDetails mockAdmin = new CustomUserDetails(adminId, Role.ADMIN);
+
     willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
         Map.of("contentId", contentId))).given(contentService).deleteContent(any(), any());
 
     mockMvc.perform(
         delete("/api/contents/{contentId}", contentId)
-            //TODO: 추후 JWT 도입 및 관리자 권한 적용 시 주석 해제
-            //.header("X-User-Id", adminId.toString())
+            .with(user(mockAdmin))
             .contentType(MediaType.APPLICATION_JSON)
     ).andExpect(status().isNotFound());
   }

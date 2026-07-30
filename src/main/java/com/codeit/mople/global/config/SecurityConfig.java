@@ -38,6 +38,9 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
             .requestMatchers(HttpMethod.PATCH, "/api/users/*/role").hasRole("ADMIN")
             .requestMatchers(HttpMethod.PATCH, "/api/users/*/locked").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.POST, "/api/contents/**").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.PATCH, "/api/contents/**").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.DELETE, "/api/contents/**").hasRole("ADMIN")
             .anyRequest().authenticated()
         )
         .addFilterBefore(
