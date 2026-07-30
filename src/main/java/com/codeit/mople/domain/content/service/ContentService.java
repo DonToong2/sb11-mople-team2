@@ -64,28 +64,7 @@ public class ContentService{
     //썸네일 이미지 업로드 처리(현재는 임시 URL 처리)
     String uploadedThumbnailUrl = null;
     if (thumbnail != null && !thumbnail.isEmpty()) {
-      try {
-        String extension = validateAndGetExtension(thumbnail);
-        String safeFilename = UUID.randomUUID() + "." + extension;
-
-        // 로컬 저장 경로 설정 (프로젝트 루트의 uploads 폴더)
-        String uploadDir = "uploads/";
-        File dir = new File(uploadDir);
-        if (!dir.exists()) {
-          dir.mkdirs(); // 폴더가 없으면 생성
-        }
-
-        // 실제 파일 저장
-        Path filePath = Paths.get(uploadDir, safeFilename);
-        Files.write(filePath, thumbnail.getBytes());
-
-        //TODO: 추후 AWS S3 등에 업로드하고 반한된 URL 사용 예정
-        uploadedThumbnailUrl = "/uploads/" + safeFilename;
-        log.debug("썸네일 임시 저장 완료 - url: {}", uploadedThumbnailUrl);
-      } catch (IOException e) {
-        log.error("썸네일 파일 업로드 중 예상치 못한 오류 발생", e);
-        throw new RuntimeException("파일 업로드에 실패했습니다.", e);
-      }
+      uploadedThumbnailUrl = saveThumbnail(thumbnail);
     }
 
     //Request DTO 데이터를 바탕으로 매퍼를 통해 Content 엔티티 생성
@@ -177,28 +156,7 @@ public class ContentService{
     //썸네일 수정(새로운 파일이 들어온 경우에만 업데이트)
     String uploadedThumbnailUrl = content.getThumbnailUrl(); //기존 URL 유지
     if (thumbnail != null && !thumbnail.isEmpty()) {
-      try {
-        String extension = validateAndGetExtension(thumbnail);
-        String safeFilename = UUID.randomUUID() + "." + extension;
-
-        // 로컬 저장 경로 설정 (프로젝트 루트의 uploads 폴더)
-        String uploadDir = "uploads/";
-        File dir = new File(uploadDir);
-        if (!dir.exists()) {
-          dir.mkdirs(); // 폴더가 없으면 생성
-        }
-
-        // 실제 파일 저장
-        Path filePath = Paths.get(uploadDir, safeFilename);
-        Files.write(filePath, thumbnail.getBytes());
-
-        //TODO: 추후 S3 업로드 로직으로 교체
-        uploadedThumbnailUrl = "/uploads/" + safeFilename;
-        log.debug("수정용 썸네일 임시 저장 완료 - url: {}", uploadedThumbnailUrl);
-      } catch (IOException e) {
-        log.error("수정용 썸네일 파일 업로드 중 예상치 못한 오류 발생", e);
-        throw new RuntimeException("파일 업로드에 실패했습니다.", e);
-      }
+      uploadedThumbnailUrl = saveThumbnail(thumbnail);
     }
 
     //엔티티 상태 변경(JPA 변경 감지 활용)
@@ -233,6 +191,36 @@ public class ContentService{
     contentRepository.delete(content);
 
     log.info("콘텐츠 삭제 완료 - contentId: {}", contentId);
+  }
+
+  //썸네일 검증 및 파일 시스템 저장 메서드
+  private String saveThumbnail(MultipartFile thumbnail) {
+    String extension = validateAndGetExtension(thumbnail);
+    String safeFilename = UUID.randomUUID() + "." + extension;
+
+    // 로컬 저장 경로 설정 (프로젝트 루트의 uploads 폴더)
+    String uploadDir = "uploads/";
+    File dir = new File(uploadDir);
+    if (!dir.exists()) {
+      dir.mkdirs(); // 폴더가 없으면 생성
+    }
+
+    try {
+      // 실제 파일 저장
+      Path filePath = Paths.get(uploadDir, safeFilename);
+      Files.write(filePath, thumbnail.getBytes());
+
+      //TODO: 추후 AWS S3 등에 업로드하고 반환된 URL 사용 예정
+      String uploadedThumbnailUrl = "/uploads/" + safeFilename;
+      log.debug("썸네일 임시 저장 완료 - url: {}", uploadedThumbnailUrl);
+
+      return uploadedThumbnailUrl;
+    } catch (IOException e) {
+      log.error("썸네일 파일 업로드 중 예상치 못한 오류 발생", e);
+      // 🌟 일반 RuntimeException 대신 도메인 커스텀 예외 던지기
+      throw new ContentException(ContentErrorCode.IMAGE_UPLOAD_FAILED,
+          Map.of("filename", thumbnail.getOriginalFilename() != null ? thumbnail.getOriginalFilename() : "null"));
+    }
   }
 
   //썸네일 파일 MIME 타입 및 확장자 유효성 검사 검증 메서드

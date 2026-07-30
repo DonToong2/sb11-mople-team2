@@ -281,7 +281,7 @@ public class ContentControllerTest {
             .file(requestPart)
             .file(thumbnailPart)
             //TODO: 추후 JWT 도입 및 관리자 권한 적용 시 주석 해제
-            //.header("X-User-Id", adminid, toString())
+            //.header("X-User-Id", adminId, toString())
             .contentType(MediaType.MULTIPART_FORM_DATA)
     ).andExpect(status().isOk())
         .andExpect(jsonPath("$.title").value("수정된 영화 제목"))
