@@ -103,6 +103,9 @@ public class ReviewService {
   @Transactional
   public void delete(UUID reviewId, UUID authorId) {
 
+    log.debug("리뷰 삭제 시도: reviewId={}, authorId={}",
+        reviewId, authorId);
+
     Review review = reviewRepository.findById(reviewId).orElseThrow(() ->
         new ReviewException(ReviewErrorCode.REVIEW_NOT_FOUND)
     );
@@ -121,6 +124,9 @@ public class ReviewService {
         reviewCount == 0 ? 0.0 : averageRating,
         (int) reviewCount
     );
+
+    log.info("리뷰 삭제 완료: reviewId={}, authorId={}, contentId{}, averageRating={}, reviewCount={}",
+        reviewId, authorId, content.getId(), averageRating, reviewCount);
 
   }
 
