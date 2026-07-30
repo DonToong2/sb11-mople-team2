@@ -18,7 +18,6 @@ public record ReviewUpdateRequest (
 
     @DecimalMin(value = "1.0", message = "별점은 1점 이상이어야 합니다.")
     @DecimalMax(value = "5.0", message = "별점은 5점 이하여야 합니다.")
-    @NotNull(message = "별점을 선택해주세요.")
     Double rating
 ) {
 
