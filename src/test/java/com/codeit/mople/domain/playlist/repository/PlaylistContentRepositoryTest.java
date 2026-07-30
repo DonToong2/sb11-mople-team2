@@ -51,18 +51,18 @@ public class PlaylistContentRepositoryTest {
 
     content1 = new Content(
         ContentType.MOVIE,
-        "A 콘텐츠",
-        "A 설명",
-        "a.png",
-        List.of("tagA")
+        "타이타닉",
+        "설명1",
+        "타이타닉.png",
+        List.of("로맨스")
     );
 
     content2 = new Content(
-        ContentType.MOVIE,
-        "A 콘텐츠",
-        "A 설명",
-        "a.png",
-        List.of("tagA")
+        ContentType.DRAMA,
+        "전설의 고향",
+        "설명2",
+        "전설의 고향.png",
+        List.of("호러")
     );
 
     playlistContent1 =
@@ -113,6 +113,38 @@ public class PlaylistContentRepositoryTest {
           .isEqualTo(content2.getId());
       assertThat(result.get(1).getContent().getId())
           .isEqualTo(content1.getId());
+    }
+
+  }
+
+  @Nested
+  @DisplayName("플레이리스트에 속해있는 콘텐츠들을 삭제")
+  class DeleteAllByPlaylistId {
+
+    @Test
+    @DisplayName("플레이리스트에 속해있는 콘텐츠들을 삭제 성공")
+    void deleteAllByPlaylistId_success() {
+      // given
+      entityManager.persist(author);
+      entityManager.persist(playlist);
+      entityManager.persist(content1);
+      entityManager.persist(content2);
+
+      entityManager.persist(playlistContent1);
+      entityManager.persist(playlistContent2);
+      entityManager.flush();
+
+      // when
+      playlistContentRepository.deleteAllByPlaylistId(playlist.getId());
+
+      // DB 삭제 후 1차 캐시가 비워지기 때문에 DB 삭제 메서드 후 호출
+      entityManager.clear();
+
+      // then
+      List<PlaylistContent> result =
+          playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlist.getId());
+
+      assertThat(result).isEmpty();
     }
   }
 

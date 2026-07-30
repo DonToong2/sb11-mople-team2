@@ -395,12 +395,15 @@ public class PlaylistServiceTest {
       given(playlistRepository.findById(playlistId))
           .willReturn(Optional.of(playlist));
 
+      // playlistContentRepository.deleteAllByPlaylist(playlistId)는 void 타입이기 때문에 given X(반환값이 없기 때문)
+
       // when
       playlistService.delete(playlistId, ownerId);
 
       // then
       // void 타입이기 때문에 assert 메서드 불필요
       verify(playlistRepository).findById(playlistId);
+      verify(playlistContentRepository).deleteAllByPlaylistId(playlistId);
       verify(playlistRepository).delete(playlist);
     }
 
@@ -423,6 +426,10 @@ public class PlaylistServiceTest {
           .isEqualTo(PlaylistErrorCode.PLAYLIST_NOT_FOUND);
 
       verify(playlistRepository).findById(playlistId);
+
+      // playlistContentRepository.deleteAllByPlaylistId() 메서드는 호출되지 않음
+      verify(playlistContentRepository, never())
+          .deleteAllByPlaylistId(playlistId);
 
       // playlistRepository.delete() 메서드는 호출되지 않음
       verify(playlistRepository, never())
@@ -458,6 +465,9 @@ public class PlaylistServiceTest {
           .isEqualTo(PlaylistErrorCode.PLAYLIST_FORBIDDEN);
 
       verify(playlistRepository).findById(playlistId);
+
+      verify(playlistContentRepository, never())
+          .deleteAllByPlaylistId(playlistId);
 
       verify(playlistRepository, never())
           .delete(any(Playlist.class));
