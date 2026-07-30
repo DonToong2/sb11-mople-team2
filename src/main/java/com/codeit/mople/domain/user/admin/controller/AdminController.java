@@ -24,6 +24,7 @@ public class AdminController implements AdminApi {
 
   private final AdminService adminService;
 
+  @Override
   @GetMapping
   public ApiResponse<List<UserDto>> getUserList() {
     return ApiResponse.success(adminService.getUserList());
