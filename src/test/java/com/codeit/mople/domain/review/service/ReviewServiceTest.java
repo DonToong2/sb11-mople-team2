@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -78,96 +79,102 @@ public class ReviewServiceTest {
     updateRequest = new ReviewUpdateRequest("수정된 내용", 3.0);
   }
 
-  @Test
-  @DisplayName("리뷰 생성 성공")
-  void create_success() {
-    // given
+  @Nested
+  @DisplayName("리뷰 생성")
+  class Create {
 
-    // BeforeEach에서 author, authorId, content, contentId, Review Create Request 초기화
+    @Test
+    @DisplayName("리뷰 생성 성공")
+    void create_success() {
+      // given
 
-    Review review = Review.create(content, author, createRequest.text(), createRequest.rating());
+      // BeforeEach에서 author, authorId, content, contentId, Review Create Request 초기화
 
-    ReviewResponse response = mock(ReviewResponse.class);
+      Review review = Review.create(content, author, createRequest.text(), createRequest.rating());
 
-    // User 조회 → Content 조회 → Review 저장 → ReviewMapper 호출 순
-    given(userRepository.findById(authorId))
-        .willReturn(Optional.of(author));
+      ReviewResponse response = mock(ReviewResponse.class);
 
-    given(contentRepository.findById(contentId))
-        .willReturn(Optional.of(content));
+      // User 조회 → Content 조회 → Review 저장 → ReviewMapper 호출 순
+      given(userRepository.findById(authorId))
+          .willReturn(Optional.of(author));
 
-    // content는 mock 객체이고 서비스 코드에서 content.getId()를 사용하기 때문에 Id를 Stub 해줘야 함
-    given(content.getId()).willReturn(contentId);
+      given(contentRepository.findById(contentId))
+          .willReturn(Optional.of(content));
 
-    given(reviewRepository.save(any(Review.class)))
-        .willReturn(review);
+      // content는 mock 객체이고 서비스 코드에서 content.getId()를 사용하기 때문에 Id를 Stub 해줘야 함
+      given(content.getId()).willReturn(contentId);
 
-    given(reviewRepository.countByContentId(contentId))
-        .willReturn(1L);
+      given(reviewRepository.save(any(Review.class)))
+          .willReturn(review);
 
-    given(reviewRepository.findAverageRatingByContentId(contentId))
-        .willReturn(createRequest.rating());
+      given(reviewRepository.countByContentId(contentId))
+          .willReturn(1L);
 
-    given(reviewMapper.toResponse(review))
-        .willReturn(response);
+      given(reviewRepository.findAverageRatingByContentId(contentId))
+          .willReturn(createRequest.rating());
 
-    // when
-    ReviewResponse result = reviewService.create(authorId, createRequest);
+      given(reviewMapper.toResponse(review))
+          .willReturn(response);
 
-    // then
-    assertThat(result).isEqualTo(response);
+      // when
+      ReviewResponse result = reviewService.create(authorId, createRequest);
 
-    verify(userRepository).findById(authorId);
-    verify(contentRepository).findById(contentId);
-    verify(reviewRepository).save(any(Review.class));
-    verify(reviewRepository).countByContentId(contentId);
-    verify(reviewRepository).findAverageRatingByContentId(contentId);
+      // then
+      assertThat(result).isEqualTo(response);
 
-    verify(content).updateRatingStats(createRequest.rating(), 1);
+      verify(userRepository).findById(authorId);
+      verify(contentRepository).findById(contentId);
+      verify(reviewRepository).save(any(Review.class));
+      verify(reviewRepository).countByContentId(contentId);
+      verify(reviewRepository).findAverageRatingByContentId(contentId);
 
-    verify(reviewMapper).toResponse(review);
-  }
+      verify(content).updateRatingStats(createRequest.rating(), 1);
 
-  @Test
-  @DisplayName("리뷰 생성 실패 - 사용자가 존재하지 않음")
-  void create_fail_notFoundUser() {
-    // given
+      verify(reviewMapper).toResponse(review);
+    }
 
-    // BeforeEach에서 authorId 초기화
+    @Test
+    @DisplayName("리뷰 생성 실패 - 사용자가 존재하지 않음")
+    void create_fail_notFoundUser() {
+      // given
 
-    given(userRepository.findById(authorId))
-        .willReturn(Optional.empty());
+      // BeforeEach에서 authorId 초기화
 
-    // when & then
-    assertThatThrownBy(() ->
-        reviewService.create(authorId, createRequest))
-        .isInstanceOf(CustomException.class);
+      given(userRepository.findById(authorId))
+          .willReturn(Optional.empty());
 
-    verify(userRepository).findById(authorId);
-    verifyNoInteractions(contentRepository, reviewRepository, reviewMapper);
-  }
+      // when & then
+      assertThatThrownBy(() ->
+          reviewService.create(authorId, createRequest))
+          .isInstanceOf(CustomException.class);
 
-  @Test
-  @DisplayName("리뷰 생성 실패 - 콘텐츠가 존재하지 않음")
-  void create_fail_notFoundContent() {
-    // given
+      verify(userRepository).findById(authorId);
+      verifyNoInteractions(contentRepository, reviewRepository, reviewMapper);
+    }
 
-    // BeforeEach에서 authorId 초기화
+    @Test
+    @DisplayName("리뷰 생성 실패 - 콘텐츠가 존재하지 않음")
+    void create_fail_notFoundContent() {
+      // given
 
-    given(userRepository.findById(authorId))
-        .willReturn(Optional.of(author));
+      // BeforeEach에서 authorId 초기화
 
-    given(contentRepository.findById(contentId))
-        .willReturn(Optional.empty());
+      given(userRepository.findById(authorId))
+          .willReturn(Optional.of(author));
 
-    // when & then
-    assertThatThrownBy(() ->
-        reviewService.create(authorId, createRequest))
-        .isInstanceOf(CustomException.class);
+      given(contentRepository.findById(contentId))
+          .willReturn(Optional.empty());
 
-    verify(userRepository).findById(authorId);
-    verify(contentRepository).findById(contentId);
-    verifyNoInteractions(reviewRepository, reviewMapper);
+      // when & then
+      assertThatThrownBy(() ->
+          reviewService.create(authorId, createRequest))
+          .isInstanceOf(CustomException.class);
+
+      verify(userRepository).findById(authorId);
+      verify(contentRepository).findById(contentId);
+      verifyNoInteractions(reviewRepository, reviewMapper);
+    }
+
   }
 
   @Nested
@@ -261,6 +268,95 @@ public class ReviewServiceTest {
           .isInstanceOf(ReviewException.class)
           .extracting("errorCode")
           .isEqualTo(ReviewErrorCode.REVIEW_FORBIDDEN);
+    }
+
+  }
+
+  @Nested
+  @DisplayName("리뷰 삭제")
+  class Delete {
+
+    @Test
+    @DisplayName("리뷰 삭제 성공")
+    void delete_success() {
+      // given
+      
+      // BeforeEach에서 review, reviewId, authorId 초기화
+      
+      given(reviewRepository.findById(reviewId))
+          .willReturn(Optional.of(review));
+      
+      given(author.getId())
+          .willReturn(authorId);
+      
+      given(content.getId())
+          .willReturn(contentId);
+      
+      // reviewRepository.delete() 메서드는 void이기 때문에 값을 반환하지 않음
+
+      // 콘텐츠 개수는 0개여야 하고
+      given(reviewRepository.countByContentId(contentId))
+          .willReturn(0L);
+
+      // 콘텐츠 개수가 0개이기 때문에 0.0점을 반환
+      given(reviewRepository.findAverageRatingByContentId(contentId))
+          .willReturn(0.0);
+      
+      // when
+      reviewService.delete(reviewId, authorId);
+      
+      // then
+      verify(reviewRepository).findById(reviewId);
+      verify(reviewRepository).delete(review);
+      verify(content).updateRatingStats(0.0, 0);
+    }
+
+    @Test
+    @DisplayName("리뷰 삭제 실패 - 리뷰가 존재하지 않음")
+    void delete_fail_notFoundReview() {
+      // given
+      given(reviewRepository.findById(reviewId))
+          .willReturn(Optional.empty());
+
+      // when & then
+      assertThatThrownBy(() ->
+          reviewService.delete(reviewId, authorId)
+      )
+          .isInstanceOf(ReviewException.class)
+          .extracting("errorCode")
+          .isEqualTo(ReviewErrorCode.REVIEW_NOT_FOUND);
+
+      verify(reviewRepository).findById(reviewId);
+
+      verify(reviewRepository, never()).delete(any(Review.class));
+      verifyNoInteractions(content);
+    }
+
+    @Test
+    @DisplayName("리뷰 삭제 실패 - 리뷰 작성자가 아님")
+    void delete_fail_forbidden() {
+      // given
+      UUID noAuthorId = UUID.randomUUID();
+
+      given(reviewRepository.findById(reviewId))
+          .willReturn(Optional.of(review));
+
+      given(author.getId())
+          .willReturn(authorId);
+
+      // when & then
+      assertThatThrownBy(() ->
+          reviewService.delete(reviewId, noAuthorId)
+      )
+          .isInstanceOf(ReviewException.class)
+          .extracting("errorCode")
+          .isEqualTo(ReviewErrorCode.REVIEW_FORBIDDEN);
+
+      verify(reviewRepository).findById(reviewId);
+      verify(author).getId();
+
+      verify(reviewRepository, never()).delete(any(Review.class));
+      verifyNoInteractions(content);
     }
   }
 
