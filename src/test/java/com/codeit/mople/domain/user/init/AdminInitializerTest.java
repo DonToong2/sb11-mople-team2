@@ -68,7 +68,6 @@ class AdminInitializerTest {
 
   @Test
   void 어드민_이메일을_일반유저가_사용중이면_생성하지_않는다() throws Exception {
-    given(userRepository.existsByRole(Role.ADMIN)).willReturn(false);
     given(userRepository.existsByEmail("admin@mople.com")).willReturn(true);
 
     adminInitializer.run(applicationArguments);

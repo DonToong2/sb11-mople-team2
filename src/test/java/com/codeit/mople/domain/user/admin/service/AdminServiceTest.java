@@ -14,8 +14,11 @@ import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.error.CustomException;
 import com.codeit.mople.global.event.UserForceLogoutEvent;
+import com.codeit.mople.domain.user.dto.response.UserDto;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Sort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -69,6 +72,27 @@ class AdminServiceTest {
   }
 
   @Nested
+  @DisplayName("사용자 목록 조회")
+  class GetUserList {
+
+    @Test
+    @DisplayName("전체 사용자 목록을 가입일 오름차순으로 반환한다")
+    void 전체_사용자_목록을_가입일_오름차순으로_반환한다() {
+      // given
+      User user1 = User.createUser("user1@test.com", "encoded", "유저1");
+      User user2 = User.createAdmin("admin@test.com", "encoded", "어드민");
+      given(userRepository.findAll(Sort.by("createdAt").ascending()))
+          .willReturn(List.of(user1, user2));
+
+      // when
+      List<UserDto> result = adminService.getUserList();
+
+      // then
+      assertThat(result).hasSize(2);
+    }
+  }
+
+  @Nested
   @DisplayName("사용자 권한 변경")
   class ChangeUserRole {
 
@@ -101,6 +125,20 @@ class AdminServiceTest {
       assertThat(admin.getRole()).isEqualTo(Role.USER);
       verify(eventPublisher).publishEvent(eventCaptor.capture());
       assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
+    }
+
+    @Test
+    @DisplayName("같은 권한으로 변경하면 강제 로그아웃 이벤트를 발행하지 않는다")
+    void 같은_권한으로_변경하면_강제_로그아웃_이벤트를_발행하지_않는다() {
+      // given - user는 기본 USER 역할
+      given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+      // when
+      adminService.changeUserRole(userId, "USER");
+
+      // then
+      assertThat(user.getRole()).isEqualTo(Role.USER);
+      verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
