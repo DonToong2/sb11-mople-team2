@@ -70,10 +70,18 @@ public class Content extends BaseTimeEntity {
 
   //관리자가 콘텐츠의 기본 정보를 수정할 때 사용하는 메서드
   public void updateContentInfo(String title, String description, String thumbnailUrl, List<String> tags) {
-    this.title = title;
-    this.description = description;
-    this.thumbnailUrl = thumbnailUrl;
+    if (title != null) {
+      this.title = title;
+    }
 
+    if (description != null) {
+      this.description = description;
+    }
+
+    if (thumbnailUrl != null) {
+      this.thumbnailUrl = thumbnailUrl;
+    }
+    
     //Hibernate 컬렉션 래퍼 유지를 위한 clear/addAll 적용
     if (tags != null) {
       this.tags.clear();
