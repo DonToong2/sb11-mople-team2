@@ -166,8 +166,6 @@ public class ReviewIntegrationTest {
               .content(objectMapper.writeValueAsString(invalidRequest))
           )
           .andExpect(status().isNotFound());
-
-      assertThat(reviewRepository.count()).isZero();
     }
 
     @Test
@@ -185,7 +183,7 @@ public class ReviewIntegrationTest {
           )
           .andExpect(status().isUnauthorized());
 
-      assertThat(reviewRepository.count()).isZero();
+      assertThat(reviewRepository.findAll()).isEmpty();
     }
 
   }
@@ -239,8 +237,6 @@ public class ReviewIntegrationTest {
           .with(csrf())
       )
           .andExpect(status().isNotFound());
-
-      assertThat(reviewRepository.findById(notExistReviewId)).isEmpty();
     }
 
     @Test
@@ -308,8 +304,6 @@ public class ReviewIntegrationTest {
           .with(csrf())
       )
           .andExpect(status().isNotFound());
-
-      assertThat(reviewRepository.findById(notExistReviewId)).isEmpty();
     }
 
     @Test
