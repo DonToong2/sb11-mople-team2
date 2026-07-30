@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum FollowErrorCode implements ErrorCode {
 
-  FOLLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "FOLLOW-001", "팔로우 정보를 찾을 수 없습니다."),
+  FOLLOW_NOT_FOUND(HttpStatus.BAD_REQUEST, "FOLLOW-001", "팔로우 정보를 찾을 수 없습니다."),
   FOLLOW_DUPLICATE(HttpStatus.BAD_REQUEST, "FOLLOW-002", "이미 팔로우 중인 사용자입니다."),
   FOLLOW_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "FOLLOW-003", "자기 자신을 팔로우할 수 없습니다."),
   FOLLOW_NOT_OWNER(HttpStatus.FORBIDDEN, "FOLLOW-004", "본인의 팔로우만 취소할 수 있습니다."),
