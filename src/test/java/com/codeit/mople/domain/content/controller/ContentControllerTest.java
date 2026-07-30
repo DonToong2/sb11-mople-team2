@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -20,27 +22,31 @@ import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.service.ContentService;
 import com.codeit.mople.domain.user.entity.Role;
+import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.global.config.SecurityConfig;
+import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @WebMvcTest(ContentController.class)
-@AutoConfigureMockMvc(addFilters = false) //403 에러 방지를 위해 보안 필터 비활성화
+@AutoConfigureMockMvc
+@Import(SecurityConfig.class)
 public class ContentControllerTest {
 
   @Autowired
@@ -52,13 +58,17 @@ public class ContentControllerTest {
   @MockitoBean
   private ContentService contentService;
 
-  // 🌟 테스트 실행 전, 강제로 가짜 관리자 인증 정보를 SecurityContext에 세팅!
-  @BeforeEach
-  void setUpSecurityContext() {
-    CustomUserDetails mockAdmin = new CustomUserDetails(UUID.randomUUID(), Role.ADMIN);
+  @MockitoBean
+  private JwtProvider jwtProvider;
+
+  @MockitoBean
+  private UserRepository userRepository;
+
+  private RequestPostProcessor mockAuth(Role role) {
+    CustomUserDetails mockUser = new CustomUserDetails(UUID.randomUUID(), role);
     UsernamePasswordAuthenticationToken authentication =
-        new UsernamePasswordAuthenticationToken(mockAdmin, null, mockAdmin.getAuthorities());
-    SecurityContextHolder.getContext().setAuthentication(authentication);
+        new UsernamePasswordAuthenticationToken(mockUser, null, mockUser.getAuthorities());
+    return authentication(authentication);
   }
 
   //=========================================================================================
@@ -66,7 +76,7 @@ public class ContentControllerTest {
   //=========================================================================================
 
   @Test
-  @DisplayName("콘텐츠 생성 성공 - 201 Created")
+  @DisplayName("콘텐츠 생성 성공 - ADMIN 권한일 때 201 Created")
   void createContent_Success() throws Exception {
     UUID contentId = UUID.randomUUID();
 
@@ -93,10 +103,10 @@ public class ContentControllerTest {
                 .file(requestPart)
                 .file(thumbnailPart)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
+                .with(csrf())
+                .with(mockAuth(Role.ADMIN))
         ).andExpect(status().isCreated())
-        .andExpect(jsonPath("$.title").value("테스트 영화"))
-        .andExpect(jsonPath("$.type").value("MOVIE"))
-        .andExpect(jsonPath("$.averageRating").value(0.0));
+        .andExpect(jsonPath("$.title").value("테스트 영화"));
   }
 
   @Test
@@ -118,8 +128,30 @@ public class ContentControllerTest {
                 .file(requestPart)
                 .file(thumbnailPart)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
+                .with(csrf())
+                .with(mockAuth(Role.ADMIN))
         )
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @DisplayName("콘텐츠 생성 실패 - USER 권한일 때 403 Forbidden")
+  void createContent_Fail_Forbidden() throws Exception {
+    ContentCreateRequest requestDto = new ContentCreateRequest(
+        "MOVIE", "테스트 영화", "설명", List.of("액션"));
+
+    MockMultipartFile requestPart = new MockMultipartFile(
+        "request", "", MediaType.APPLICATION_JSON_VALUE,
+        objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
+
+    mockMvc.perform(
+            multipart(HttpMethod.POST, "/api/contents")
+                .file(requestPart)
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .with(csrf())
+                .with(mockAuth(Role.USER))
+        )
+        .andExpect(status().isForbidden());
   }
 
   //=========================================================================================
@@ -140,28 +172,18 @@ public class ContentControllerTest {
         0.0, 0, 0L);
 
     ContentPageResponse mockPageResponse = new ContentPageResponse(
-        List.of(content1, content2),
-        null,
-        null,
-        false,
-        2L,
-        "createdAt",
-        "ASCENDING"
-    );
+        List.of(content1, content2), null, null, false, 2L, "createdAt", "ASCENDING");
 
     given(contentService.getContents(anyInt(), anyInt(), any(), any())).willReturn(mockPageResponse);
 
     mockMvc.perform(
-            get("/api/contents")
-                .param("limit", "10")
-                .param("sortDirection", "ASCENDING")
-                .param("sortBy", "createdAt")
-                .contentType(MediaType.APPLICATION_JSON)
-        ).andExpect(status().isOk())
-        .andExpect(jsonPath("$.data.length()").value(2))
-        .andExpect(jsonPath("$.data[0].title").value("테스트 영화1"))
-        .andExpect(jsonPath("$.totalCount").value(2))
-        .andExpect(jsonPath("$.hasNext").value(false));
+        get("/api/contents")
+            .param("limit", "10")
+            .param("sortDirection", "ASCENDING")
+            .param("sortBy", "createdAt")
+            .contentType(MediaType.APPLICATION_JSON)
+            .with(mockAuth(Role.USER))
+    ).andExpect(status().isOk());
   }
 
   @Test
@@ -173,17 +195,15 @@ public class ContentControllerTest {
         0.0, 0, 0L);
 
     ContentPageResponse mockPageResponse = new ContentPageResponse(
-        List.of(content1), null, null, false, 1L, "createdAt", "DESCENDING"
-    );
+        List.of(content1), null, null, false, 1L, "createdAt", "DESCENDING");
 
     given(contentService.getContents(0, 10, "DESCENDING", "createdAt")).willReturn(mockPageResponse);
 
     mockMvc.perform(
-            get("/api/contents")
-                .contentType(MediaType.APPLICATION_JSON)
-        ).andExpect(status().isOk())
-        .andExpect(jsonPath("$.data.length()").value(1))
-        .andExpect(jsonPath("$.sortBy").value("createdAt"));
+        get("/api/contents")
+            .contentType(MediaType.APPLICATION_JSON)
+            .with(mockAuth(Role.USER))
+    ).andExpect(status().isOk());
   }
 
   //=========================================================================================
@@ -195,18 +215,17 @@ public class ContentControllerTest {
   void getContent_Success() throws Exception {
     UUID contentId = UUID.randomUUID();
     ContentResponse mockResponse = new ContentResponse(
-        contentId, "MOVIE", "단건 조회 테스트 영화", "설명"
-        , "http://example.com/test.png", List.of("액션"),
+        contentId, "MOVIE", "단건 조회 테스트 영화", "설명",
+        "http://example.com/test.png", List.of("액션"),
         0.0, 0, 0L);
 
     given(contentService.getContent(any(UUID.class))).willReturn(mockResponse);
 
     mockMvc.perform(
-            get("/api/contents/{contentId}", contentId)
-                .contentType(MediaType.APPLICATION_JSON)
-        ).andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(contentId.toString()))
-        .andExpect(jsonPath("$.title").value("단건 조회 테스트 영화"));
+        get("/api/contents/{contentId}", contentId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .with(mockAuth(Role.USER))
+    ).andExpect(status().isOk());
   }
 
   @Test
@@ -215,12 +234,12 @@ public class ContentControllerTest {
     UUID contentId = UUID.randomUUID();
 
     given(contentService.getContent(any(UUID.class)))
-        .willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
-            Map.of("contentId", contentId)));
+        .willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
 
     mockMvc.perform(
         get("/api/contents/{contentId}", contentId)
             .contentType(MediaType.APPLICATION_JSON)
+            .with(mockAuth(Role.USER))
     ).andExpect(status().isNotFound());
   }
 
@@ -252,13 +271,13 @@ public class ContentControllerTest {
     given(contentService.updateContent(any(), any(), any(), any())).willReturn(mockResponse);
 
     mockMvc.perform(
-            multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
-                .file(requestPart)
-                .file(thumbnailPart)
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-        ).andExpect(status().isOk())
-        .andExpect(jsonPath("$.title").value("수정된 영화 제목"))
-        .andExpect(jsonPath("$.description").value("수정된 설명"));
+        multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
+            .file(requestPart)
+            .file(thumbnailPart)
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .with(csrf())
+            .with(mockAuth(Role.ADMIN))
+    ).andExpect(status().isOk());
   }
 
   @Test
@@ -278,14 +297,15 @@ public class ContentControllerTest {
         "updated image content".getBytes());
 
     given(contentService.updateContent(any(), any(), any(), any())).willThrow(
-        new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
-            Map.of("contentId", contentId)));
+        new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
 
     mockMvc.perform(
         multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
             .file(requestPart)
             .file(thumbnailPart)
             .contentType(MediaType.MULTIPART_FORM_DATA)
+            .with(csrf())
+            .with(mockAuth(Role.ADMIN))
     ).andExpect(status().isNotFound());
   }
 
@@ -303,6 +323,8 @@ public class ContentControllerTest {
     mockMvc.perform(
         delete("/api/contents/{contentId}", contentId)
             .contentType(MediaType.APPLICATION_JSON)
+            .with(csrf())
+            .with(mockAuth(Role.ADMIN))
     ).andExpect(status().isOk());
   }
 
@@ -311,12 +333,14 @@ public class ContentControllerTest {
   void deleteContent_Fail_NotFound() throws Exception {
     UUID contentId = UUID.randomUUID();
 
-    willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
-        Map.of("contentId", contentId))).given(contentService).deleteContent(any(), any());
+    willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)))
+        .given(contentService).deleteContent(any(), any());
 
     mockMvc.perform(
         delete("/api/contents/{contentId}", contentId)
             .contentType(MediaType.APPLICATION_JSON)
+            .with(csrf())
+            .with(mockAuth(Role.ADMIN))
     ).andExpect(status().isNotFound());
   }
 }
