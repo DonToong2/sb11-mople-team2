@@ -71,7 +71,7 @@ public class UserServiceTest {
     when(userRepository.existsByEmail(request.email())).thenReturn(true);
 
     assertThatThrownBy(() -> userService.signUp(request))
-        .isInstanceOf(CustomException.class)
+        .isInstanceOf(UserException.class)
         .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.DUPLICATE_EMAIL)
         .satisfies(e -> {
           UserException ue = (UserException) e;
