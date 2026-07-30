@@ -44,7 +44,7 @@ public class FollowController {
   }
 
   @GetMapping("/count")
-  public ResponseEntity<Long> getFollowerCount(@AuthenticationPrincipal CustomUserDetails principal, @RequestParam UUID followeeId) {
+  public ResponseEntity<Long> getFollowerCount(@RequestParam UUID followeeId) {
     return ResponseEntity.ok(followService.getFollowCount(followeeId));
   }
 }
