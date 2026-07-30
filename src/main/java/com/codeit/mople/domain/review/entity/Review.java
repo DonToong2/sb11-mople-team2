@@ -49,7 +49,7 @@ public class Review extends BaseEntity {
     if (text != null) {
       this.text = text;
     }
-    
+
     if (rating != null) {
       this.rating = rating;
     }
