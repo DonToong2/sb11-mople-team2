@@ -93,4 +93,9 @@ public interface PlaylistApi {
      @PathVariable UUID playlistId,
      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails principal
   );
+
+  ResponseEntity<Void> cancelSubscribe(
+      @PathVariable UUID playlistId,
+      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails principal
+  );
 }
