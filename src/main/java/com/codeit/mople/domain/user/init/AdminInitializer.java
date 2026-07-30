@@ -5,9 +5,11 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -37,7 +39,24 @@ public class AdminInitializer implements ApplicationRunner {
         passwordEncoder.encode(adminProperties.password()),
         adminProperties.name()
     );
-    adminInserter.insert(admin, maskEmail(adminProperties.email()));
+    try {
+      adminInserter.insert(admin, maskEmail(adminProperties.email()));
+    } catch (DataIntegrityViolationException e) {
+      if (isEmailUniqueViolation(e)) {
+        log.warn("어드민 계정 동시 초기화가 감지되었습니다. - 다른 인스턴스가 먼저 저장했습니다. : {}",
+            maskEmail(adminProperties.email()));
+        return;
+      }
+      throw e;
+    }
+  }
+
+  private boolean isEmailUniqueViolation(DataIntegrityViolationException e) {
+    if (!(e.getCause() instanceof ConstraintViolationException cause)) {
+      return false;
+    }
+    String constraintName = cause.getConstraintName();
+    return "uq_users_email".equals(constraintName);
   }
 
   private String maskEmail(String email) {
