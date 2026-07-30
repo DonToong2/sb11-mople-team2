@@ -13,6 +13,8 @@ import com.codeit.mople.domain.playlist.entity.Playlist;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.global.config.SecurityConfig;
+import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,11 +23,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+@Import(SecurityConfig.class)
 @Transactional
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -36,6 +41,9 @@ public class PlaylistIntegrationTest {
 
   @Autowired
   private ObjectMapper objectMapper;
+
+  @MockitoBean
+  private JwtProvider jwtProvider;
 
   @Autowired
   private UserRepository userRepository;
@@ -68,13 +76,13 @@ public class PlaylistIntegrationTest {
     // when & then
     // 상태 검증
     MvcResult result = mockMvc.perform(post("/api/playlists")
-            .with(user("사용자"))
+            .with(user("test"))
             .with(csrf())
             .param("ownerId", savedOwner.getId().toString())
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.id").exists())
+        .andExpect(jsonPath("$.id").isNotEmpty())
         .andExpect(jsonPath("$.owner.userId").value(savedOwner.getId().toString()))
         .andExpect(jsonPath("$.owner.name").value(savedOwner.getName()))
         .andExpect(jsonPath("$.owner.profileImageUrl").value(savedOwner.getProfileImageUrl()))
@@ -85,12 +93,16 @@ public class PlaylistIntegrationTest {
         .andExpect(jsonPath("$.contents").isArray())
         .andReturn();
 
-    // DB 검증
     // 응답 추출
     PlaylistResponse response = objectMapper.readValue(
         result.getResponse().getContentAsString(), PlaylistResponse.class
     );
 
+    // 헤더 검증
+    assertThat(result.getResponse().getHeader("Location"))
+        .isEqualTo("/api/playlists/" + response.id());
+
+    // DB 검증
     Playlist playlist = playlistRepository.findById(response.id()).orElseThrow();
 
     assertThat(playlist.getOwner()).isEqualTo(savedOwner);
@@ -106,7 +118,7 @@ public class PlaylistIntegrationTest {
 
     // when & then
     mockMvc.perform(post("/api/playlists")
-            .with(user("사용자"))
+            .with(user("test"))
             .with(csrf())
             .param("ownerId", savedOwner.getId().toString())
             .contentType(MediaType.APPLICATION_JSON)
@@ -124,7 +136,7 @@ public class PlaylistIntegrationTest {
 
     // when & then
     mockMvc.perform(post("/api/playlists")
-            .with(user("사용자"))
+            .with(user("test"))
             .with(csrf())
             .param("ownerId", savedOwner.getId().toString())
             .contentType(MediaType.APPLICATION_JSON)
@@ -139,7 +151,6 @@ public class PlaylistIntegrationTest {
 //  void create_fail_unauthorized() throws Exception {
 //    // when & then
 //    mockMvc.perform(post("/api/playlists")
-//            .with(csrf())
 //            .contentType(MediaType.APPLICATION_JSON)
 //            .content(objectMapper.writeValueAsString(request)))
 //        .andExpect(status().isUnauthorized());
@@ -155,7 +166,7 @@ public class PlaylistIntegrationTest {
 
     // when & then
     mockMvc.perform(post("/api/playlists")
-            .with(user("사용자"))
+            .with(user("test"))
             .with(csrf())
             .param("ownerId", notExistOwnerId.toString())
             .contentType(MediaType.APPLICATION_JSON)

@@ -5,13 +5,13 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
@@ -22,9 +22,9 @@ public class AdminInitializer implements ApplicationRunner {
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
   private final AdminProperties adminProperties;
+  private final AdminInserter adminInserter;
 
   @Override
-  @Transactional
   public void run(ApplicationArguments args) {
     log.debug("어드민 계정 초기화 시작");
     if (userRepository.existsByRole(Role.ADMIN)) {
@@ -40,16 +40,33 @@ public class AdminInitializer implements ApplicationRunner {
         adminProperties.name()
     );
     try {
-      userRepository.saveAndFlush(admin);
-      log.info("어드민 계정을 생성 성공했습니다.: {}", maskEmail(adminProperties.email()));
+      adminInserter.insert(admin, maskEmail(adminProperties.email()));
     } catch (DataIntegrityViolationException e) {
-      // 동시에 여러 인스턴스가 시작될 때 다른 인스턴스가 먼저 저장한 경우
-      log.warn("어드민 계정 동시 초기화가 감지되었습니다.- 다른 인스턴스가 먼저 저장했습니다. : {}", maskEmail(adminProperties.email()));
+      if (isEmailUniqueViolation(e)) {
+        log.warn("어드민 계정 동시 초기화가 감지되었습니다. - 다른 인스턴스가 먼저 저장했습니다. : {}",
+            maskEmail(adminProperties.email()));
+        return;
+      }
+      throw e;
     }
+  }
+
+  private boolean isEmailUniqueViolation(DataIntegrityViolationException e) {
+    Throwable cause = e;
+    while (cause != null) {
+      if (cause instanceof ConstraintViolationException cve) {
+        return "uq_users_email".equals(cve.getConstraintName());
+      }
+      cause = cause.getCause();
+    }
+    return false;
   }
 
   private String maskEmail(String email) {
     int atIndex = email.indexOf('@');
+    if (atIndex < 0) {
+      return "***";
+    }
     if (atIndex <= 1) {
       return "***" + email.substring(atIndex);
     }
