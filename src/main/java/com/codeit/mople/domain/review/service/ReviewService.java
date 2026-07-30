@@ -100,6 +100,30 @@ public class ReviewService {
     return response;
   }
 
+  @Transactional
+  public void delete(UUID reviewId, UUID authorId) {
+
+    Review review = reviewRepository.findById(reviewId).orElseThrow(() ->
+        new ReviewException(ReviewErrorCode.REVIEW_NOT_FOUND)
+    );
+
+    validateAuthor(review, authorId);
+
+    Content content = review.getContent();
+
+    reviewRepository.delete(review);
+
+    long reviewCount = reviewRepository.countByContentId(content.getId());
+    Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
+
+    // 리뷰 삭제 후 리뷰가 0개일 때 평균 평점을 0점으로(averageRating null 방지)
+    content.updateRatingStats(
+        reviewCount == 0 ? 0.0 : averageRating,
+        (int) reviewCount
+    );
+
+  }
+
   private void validateAuthor(Review review, UUID authorId) {
     if (!review.getAuthor().getId().equals(authorId)) {
       throw new ReviewException(ReviewErrorCode.REVIEW_FORBIDDEN);
