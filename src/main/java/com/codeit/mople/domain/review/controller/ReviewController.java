@@ -11,6 +11,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,6 +48,16 @@ public class ReviewController {
     ReviewResponse response = reviewService.update(reviewId, request, userDetails.getUserId());
 
     return ResponseEntity.ok(response);
+  }
+
+  @DeleteMapping("/{reviewId}")
+  public ResponseEntity<Void> delete(
+      @AuthenticationPrincipal CustomUserDetails userDetails,
+      @PathVariable UUID reviewId
+  ) {
+    reviewService.delete(reviewId, userDetails.getUserId());
+
+    return ResponseEntity.noContent().build();
   }
 
 }
