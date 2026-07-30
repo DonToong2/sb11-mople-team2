@@ -44,4 +44,16 @@ public class Review extends BaseEntity {
     return new Review(content, author, text, rating);
   }
 
+  public void update(String text, Double rating) {
+
+    if (text != null) {
+      this.text = text;
+    }
+    
+    if (rating != null) {
+      this.rating = rating;
+    }
+
+  }
+
 }
