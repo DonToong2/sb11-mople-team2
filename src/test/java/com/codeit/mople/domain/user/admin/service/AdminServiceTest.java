@@ -89,6 +89,13 @@ class AdminServiceTest {
 
       // then
       assertThat(result).hasSize(2);
+      assertThat(result.get(0).email()).isEqualTo("user1@test.com");
+      assertThat(result.get(0).name()).isEqualTo("유저1");
+      assertThat(result.get(0).role()).isEqualTo(Role.USER);
+      assertThat(result.get(0).locked()).isFalse();
+      assertThat(result.get(1).email()).isEqualTo("admin@test.com");
+      assertThat(result.get(1).name()).isEqualTo("어드민");
+      assertThat(result.get(1).role()).isEqualTo(Role.ADMIN);
     }
   }
 
