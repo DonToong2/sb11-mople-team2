@@ -195,7 +195,7 @@ public class PlaylistService {
     log.info("플레이리스트 구독 성공: playlistSubscriptionId={}, playlistId={}, subscriberId={}",
         saved.getId(), playlistId, subscriberId);
 
-    publisher.publishEvent(new PlaylistSubscriptionCreateEvent(playlistId, subscriberId));
+    publisher.publishEvent(new PlaylistSubscriptionCreateEvent(playlist.getOwner().getId(), playlistId, subscriberId));
   }
   @Transactional
   public void unSubscribe(UUID playlistId, UUID subscriberId) {
