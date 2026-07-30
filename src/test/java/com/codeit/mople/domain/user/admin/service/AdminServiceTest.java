@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
@@ -15,6 +16,7 @@ import com.codeit.mople.global.error.CustomException;
 import com.codeit.mople.global.event.UserForceLogoutEvent;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -26,6 +28,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @ExtendWith(MockitoExtension.class)
 class AdminServiceTest {
@@ -42,13 +47,25 @@ class AdminServiceTest {
   @Captor
   private ArgumentCaptor<UserForceLogoutEvent> eventCaptor;
 
-  UUID userId;
+  UUID userId;   // 대상 유저
+  UUID adminId;  // 현재 로그인한 어드민 (요청자)
   User user;
 
   @BeforeEach
   void setUp() {
     userId = UUID.randomUUID();
+    adminId = UUID.randomUUID();
     user = User.createUser("test@test.com", "encoded", "테스터");
+
+    CustomUserDetails principal = new CustomUserDetails(adminId, Role.ADMIN);
+    Authentication auth = new UsernamePasswordAuthenticationToken(
+        principal, null, principal.getAuthorities());
+    SecurityContextHolder.getContext().setAuthentication(auth);
+  }
+
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
   }
 
   @Nested
@@ -110,6 +127,17 @@ class AdminServiceTest {
 
       verify(eventPublisher, never()).publishEvent(any());
     }
+
+    @Test
+    @DisplayName("자신의 권한을 변경하려 하면 CANNOT_MODIFY_SELF 예외가 발생한다")
+    void 자신의_권한을_변경하려_하면_CANNOT_MODIFY_SELF_예외가_발생한다() {
+      assertThatExceptionOfType(CustomException.class)
+          .isThrownBy(() -> adminService.changeUserRole(adminId, "USER"))
+          .extracting(CustomException::getErrorCode)
+          .isEqualTo(UserErrorCode.CANNOT_MODIFY_SELF);
+
+      verify(eventPublisher, never()).publishEvent(any());
+    }
   }
 
   @Nested
@@ -158,6 +186,17 @@ class AdminServiceTest {
           .isThrownBy(() -> adminService.changeUserLocked(userId, true))
           .extracting(CustomException::getErrorCode)
           .isEqualTo(UserErrorCode.USER_NOT_FOUND);
+
+      verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("자신의 계정을 잠금하려 하면 CANNOT_MODIFY_SELF 예외가 발생한다")
+    void 자신의_계정을_잠금하려_하면_CANNOT_MODIFY_SELF_예외가_발생한다() {
+      assertThatExceptionOfType(CustomException.class)
+          .isThrownBy(() -> adminService.changeUserLocked(adminId, true))
+          .extracting(CustomException::getErrorCode)
+          .isEqualTo(UserErrorCode.CANNOT_MODIFY_SELF);
 
       verify(eventPublisher, never()).publishEvent(any());
     }
