@@ -6,9 +6,10 @@ import com.codeit.mople.domain.user.dto.request.UserUpdateRequest;
 import com.codeit.mople.domain.user.dto.response.UserDto;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
+import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
-import com.codeit.mople.global.error.CustomException;
 import com.codeit.mople.global.storage.FileStorageService;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,7 +29,7 @@ public class UserService {
   @Transactional
   public UserDto signUp(UserCreateRequest request) {
     if(userRepository.existsByEmail(request.email())) {
-      throw new CustomException(UserErrorCode.DUPLICATE_EMAIL);
+      throw new UserException(UserErrorCode.DUPLICATE_EMAIL, Map.of("email", request.email()));
     }
     String encodedPassword = passwordEncoder.encode(request.password());
     User user = User.createUser(request.email(), encodedPassword, request.name());
@@ -66,12 +67,12 @@ public class UserService {
 
   private User findUserOrThrow(UUID userId) {
     return userRepository.findById(userId)
-        .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+        .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
   }
 
   private void validateOwner(UUID targetUserId, UUID requesterId) {
     if(!targetUserId.equals(requesterId)) {
-      throw new CustomException(UserErrorCode.FORBIDDEN_ACCESS);
+      throw new UserException(UserErrorCode.FORBIDDEN_ACCESS);
     }
   }
 }
