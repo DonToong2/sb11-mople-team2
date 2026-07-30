@@ -3,6 +3,7 @@ package com.codeit.mople.domain.review.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -262,6 +263,70 @@ public class ReviewIntegrationTest {
       assertThat(review.getText()).isEqualTo(reviewText);
       assertThat(review.getRating()).isEqualTo(reviewRating);
     }
+
+  }
+
+  @Nested
+  @DisplayName("리뷰 삭제")
+  class Delete {
+
+    @Test
+    @DisplayName("리뷰 삭제 성공")
+    void delete_success() throws Exception {
+      // given
+      savedReview = reviewRepository.save(review);
+
+      // BeforeEach에서 userDetails 초기화
+
+      // when & then
+      mockMvc.perform(delete("/api/reviews/{reviewId}", savedReview.getId())
+          .with(user(userDetails))
+          .with(csrf())
+      )
+          .andExpect(status().isNoContent());
+
+      // DB에 리뷰 검증(행이 하나도 없어야 함)
+      assertThat(reviewRepository.findById(savedReview.getId())).isEmpty();
+
+      // 컨텐츠의 리뷰 개수와 평균 평점 검증
+      Content content = contentRepository.findById(savedContent.getId()).orElseThrow();
+      assertThat(content.getReviewCount()).isEqualTo(0); // == isZero()
+      assertThat(content.getAverageRating()).isEqualTo(0.0);
+    }
+
+    @Test
+    @DisplayName("리뷰 삭제 실패 - 리뷰가 존재하지 않음(404 에러)")
+    void delete_fail_notFoundReview() throws Exception {
+      // given
+      UUID notExistReviewId = UUID.randomUUID();
+
+      // BeforeEach에서 userDetails 초기화
+
+      // when & then
+      mockMvc.perform(delete("/api/reviews/{reviewId}", notExistReviewId)
+          .with(user(userDetails))
+          .with(csrf())
+      )
+          .andExpect(status().isNotFound());
+
+      assertThat(reviewRepository.findById(notExistReviewId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("리뷰 삭제 실패 - 인증되지 않은 사용자(401 에러)")
+    void delete_fail_unauthorized() throws Exception {
+      // given
+      savedReview = reviewRepository.save(review);
+
+      // when & then
+      mockMvc.perform(delete("/api/reviews/{reviewId}", savedReview.getId())
+          .with(csrf())
+      )
+          .andExpect(status().isUnauthorized());
+
+      assertThat(reviewRepository.findById(savedReview.getId())).isNotEmpty();
+    }
+
   }
 
 }
