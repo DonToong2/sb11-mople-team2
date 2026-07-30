@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -26,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,13 +34,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(ContentController.class)
 @AutoConfigureMockMvc(addFilters = false) //403 에러 방지를 위해 보안 필터 비활성화
-@WithMockUser //가짜 인증 사용자 설정
 public class ContentControllerTest {
 
   @Autowired
@@ -52,6 +52,15 @@ public class ContentControllerTest {
   @MockitoBean
   private ContentService contentService;
 
+  // 🌟 테스트 실행 전, 강제로 가짜 관리자 인증 정보를 SecurityContext에 세팅!
+  @BeforeEach
+  void setUpSecurityContext() {
+    CustomUserDetails mockAdmin = new CustomUserDetails(UUID.randomUUID(), Role.ADMIN);
+    UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(mockAdmin, null, mockAdmin.getAuthorities());
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+  }
+
   //=========================================================================================
   //콘텐츠 생성 테스트
   //=========================================================================================
@@ -59,10 +68,7 @@ public class ContentControllerTest {
   @Test
   @DisplayName("콘텐츠 생성 성공 - 201 Created")
   void createContent_Success() throws Exception {
-    UUID adminId = UUID.randomUUID();
     UUID contentId = UUID.randomUUID();
-
-    CustomUserDetails mockAdmin = new CustomUserDetails(adminId, Role.ADMIN);
 
     ContentCreateRequest requestDto = new ContentCreateRequest(
         "MOVIE", "테스트 영화", "설명", List.of("액션"));
@@ -86,7 +92,6 @@ public class ContentControllerTest {
             multipart(HttpMethod.POST, "/api/contents")
                 .file(requestPart)
                 .file(thumbnailPart)
-                .with(user(mockAdmin))
                 .contentType(MediaType.MULTIPART_FORM_DATA)
         ).andExpect(status().isCreated())
         .andExpect(jsonPath("$.title").value("테스트 영화"))
@@ -97,11 +102,6 @@ public class ContentControllerTest {
   @Test
   @DisplayName("콘텐츠 생성 실패 - 필수 값(제목) 누락 시 400 Bad Request")
   void createContent_Fail_Validation() throws Exception {
-    UUID adminId = UUID.randomUUID();
-
-    CustomUserDetails mockAdmin = new CustomUserDetails(adminId, Role.ADMIN);
-
-    //title을 빈 문자열("")로 설정하여 @NotBlank 검증 실패
     ContentCreateRequest requestDto = new ContentCreateRequest(
         "MOVIE", "", "설명", List.of("액션"));
 
@@ -117,7 +117,6 @@ public class ContentControllerTest {
             multipart(HttpMethod.POST, "/api/contents")
                 .file(requestPart)
                 .file(thumbnailPart)
-                .with(user(mockAdmin))
                 .contentType(MediaType.MULTIPART_FORM_DATA)
         )
         .andExpect(status().isBadRequest());
@@ -125,7 +124,6 @@ public class ContentControllerTest {
 
   //=========================================================================================
   //콘텐츠 목록 조회 테스트
-  //TODO: 추후 커서 페이지네이션 적용 예정
   //=========================================================================================
 
   @Test
@@ -143,7 +141,7 @@ public class ContentControllerTest {
 
     ContentPageResponse mockPageResponse = new ContentPageResponse(
         List.of(content1, content2),
-        null, //당장 커서를 사용 안 하므로 null
+        null,
         null,
         false,
         2L,
@@ -178,12 +176,10 @@ public class ContentControllerTest {
         List.of(content1), null, null, false, 1L, "createdAt", "DESCENDING"
     );
 
-    // 파라미터가 누락되었을 때 기본값(10, DESCENDING, createdAt)이 잘 주입되어 서비스가 호출되는지 모킹
     given(contentService.getContents(0, 10, "DESCENDING", "createdAt")).willReturn(mockPageResponse);
 
     mockMvc.perform(
             get("/api/contents")
-                // 파라미터(param)를 모두 의도적으로 누락
                 .contentType(MediaType.APPLICATION_JSON)
         ).andExpect(status().isOk())
         .andExpect(jsonPath("$.data.length()").value(1))
@@ -206,9 +202,9 @@ public class ContentControllerTest {
     given(contentService.getContent(any(UUID.class))).willReturn(mockResponse);
 
     mockMvc.perform(
-        get("/api/contents/{contentId}", contentId)
-            .contentType(MediaType.APPLICATION_JSON)
-    ).andExpect(status().isOk())
+            get("/api/contents/{contentId}", contentId)
+                .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(contentId.toString()))
         .andExpect(jsonPath("$.title").value("단건 조회 테스트 영화"));
   }
@@ -236,9 +232,6 @@ public class ContentControllerTest {
   @DisplayName("콘텐츠 수정 성공 - 200 OK")
   void updateContent_Success() throws Exception {
     UUID contentId = UUID.randomUUID();
-    UUID adminId = UUID.randomUUID();
-
-    CustomUserDetails mockAdmin = new CustomUserDetails(adminId, Role.ADMIN);
 
     ContentUpdateRequest requestDto = new ContentUpdateRequest(
         "수정된 영화 제목", "수정된 설명", List.of("스릴러"));
@@ -259,12 +252,11 @@ public class ContentControllerTest {
     given(contentService.updateContent(any(), any(), any(), any())).willReturn(mockResponse);
 
     mockMvc.perform(
-        multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
-            .file(requestPart)
-            .file(thumbnailPart)
-            .with(user(mockAdmin))
-            .contentType(MediaType.MULTIPART_FORM_DATA)
-    ).andExpect(status().isOk())
+            multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
+                .file(requestPart)
+                .file(thumbnailPart)
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+        ).andExpect(status().isOk())
         .andExpect(jsonPath("$.title").value("수정된 영화 제목"))
         .andExpect(jsonPath("$.description").value("수정된 설명"));
   }
@@ -273,9 +265,6 @@ public class ContentControllerTest {
   @DisplayName("콘텐츠 수정 실패 - 존재하지 않는 ID 수정 시 404 Not Found")
   void updateContent_Fail_NotFound() throws Exception {
     UUID contentId = UUID.randomUUID();
-    UUID adminId = UUID.randomUUID();
-
-    CustomUserDetails mockAdmin = new CustomUserDetails(adminId, Role.ADMIN);
 
     ContentUpdateRequest requestDto = new ContentUpdateRequest(
         "수정된 영화 제목", "수정된 설명", List.of("스릴러"));
@@ -296,7 +285,6 @@ public class ContentControllerTest {
         multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
             .file(requestPart)
             .file(thumbnailPart)
-            .with(user(mockAdmin))
             .contentType(MediaType.MULTIPART_FORM_DATA)
     ).andExpect(status().isNotFound());
   }
@@ -309,15 +297,11 @@ public class ContentControllerTest {
   @DisplayName("콘텐츠 삭제 성공 - 200 OK")
   void deleteContent_Success() throws Exception {
     UUID contentId = UUID.randomUUID();
-    UUID adminId = UUID.randomUUID();
-
-    CustomUserDetails mockAdmin = new CustomUserDetails(adminId, Role.ADMIN);
 
     willDoNothing().given(contentService).deleteContent(any(), any());
 
     mockMvc.perform(
         delete("/api/contents/{contentId}", contentId)
-            .with(user(mockAdmin))
             .contentType(MediaType.APPLICATION_JSON)
     ).andExpect(status().isOk());
   }
@@ -326,16 +310,12 @@ public class ContentControllerTest {
   @DisplayName("콘텐츠 삭제 실패 - 존재하지 않는 ID 삭제 시 404 Not Found")
   void deleteContent_Fail_NotFound() throws Exception {
     UUID contentId = UUID.randomUUID();
-    UUID adminId = UUID.randomUUID();
-
-    CustomUserDetails mockAdmin = new CustomUserDetails(adminId, Role.ADMIN);
 
     willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
         Map.of("contentId", contentId))).given(contentService).deleteContent(any(), any());
 
     mockMvc.perform(
         delete("/api/contents/{contentId}", contentId)
-            .with(user(mockAdmin))
             .contentType(MediaType.APPLICATION_JSON)
     ).andExpect(status().isNotFound());
   }
