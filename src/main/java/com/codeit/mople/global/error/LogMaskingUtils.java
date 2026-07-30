@@ -19,7 +19,8 @@ public class LogMaskingUtils {
     }
     Map<String, Object> masked = new LinkedHashMap<>();
     for (Map.Entry<String, Object> entry : details.entrySet()) {
-      if(SENSITIVE_KEYS.contains(entry.getKey().toLowerCase(Locale.ROOT))) {
+      String key = entry.getKey();
+      if(key != null && SENSITIVE_KEYS.contains(entry.getKey().toLowerCase(Locale.ROOT))) {
         Object value = entry.getValue();
         masked.put(entry.getKey(), value == null ? null : maskValue(String.valueOf(value)));
       } else {
