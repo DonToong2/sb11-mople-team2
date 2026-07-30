@@ -3,10 +3,13 @@ package com.codeit.mople.domain.review.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -353,6 +356,47 @@ public class ReviewControllerTest {
           .andExpect(status().isForbidden());
 
       verify(reviewService).update(eq(reviewId), any(ReviewUpdateRequest.class), eq(authorId));
+    }
+
+  }
+
+  @Nested
+  @DisplayName("리뷰 삭제")
+  class Delete {
+
+    @Test
+    @DisplayName("리뷰 삭제 성공")
+    void delete_success() throws Exception {
+      // given
+
+      // BeforeEach에서 reviewId, userDetails 초기화
+
+      doNothing().when(reviewService).delete(reviewId, authorId);
+
+      // when & then
+      mockMvc.perform(delete("/api/reviews/{reviewId}", reviewId)
+              .with(user(userDetails))
+              .with(csrf()))
+          .andExpect(status().isNoContent());
+
+      verify(reviewService).delete(reviewId, authorId);
+    }
+
+    @Test
+    @DisplayName("리뷰 삭제 실패 - 리뷰 작성자가 아님(403 에러)")
+    void delete_fail_forbidden() throws Exception {
+      // given
+
+      doThrow(new ReviewException(ReviewErrorCode.REVIEW_FORBIDDEN))
+          .when(reviewService).delete(reviewId, authorId);
+
+      // when & then
+      mockMvc.perform(delete("/api/reviews/{reviewId}", reviewId)
+              .with(user(userDetails))
+              .with(csrf()))
+          .andExpect(status().isForbidden());
+
+      verify(reviewService).delete(reviewId, authorId);
     }
 
   }
