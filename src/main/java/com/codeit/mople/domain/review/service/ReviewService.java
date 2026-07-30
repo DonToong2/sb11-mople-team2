@@ -72,6 +72,9 @@ public class ReviewService {
   @Transactional
   public ReviewResponse update(UUID reviewId, ReviewUpdateRequest request, UUID authorId) {
 
+    log.debug("리뷰 수정 시도: reviewId={}, authorId={}, text={}, rating={}",
+        reviewId, authorId, request.text(), request.rating());
+
     Review review = reviewRepository.findById(reviewId).orElseThrow(() ->
         new ReviewException(ReviewErrorCode.REVIEW_NOT_FOUND)
     );
@@ -90,6 +93,9 @@ public class ReviewService {
     content.updateRatingStats(averageRating, (int) reviewCount);
 
     ReviewResponse response = reviewMapper.toResponse(review);
+
+    log.info("리뷰 수정 완료: reviewId={}, authorId={}, text={}, rating={}",
+        reviewId, authorId, request.text(), request.rating());
 
     return response;
   }
