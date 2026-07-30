@@ -9,10 +9,10 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum ReviewErrorCode implements ErrorCode {
 
+  REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "PLAYLIST-001", "리뷰를 찾을 수 없습니다."),
+  REVIEW_FORBIDDEN(HttpStatus.NOT_FOUND, "PLAYLIST-002", "리뷰에 대한 접근 권한이 없습니다.");
 
-
-  private HttpStatus status;
-  private String code;
-  private String message;
-
+  private final HttpStatus status;
+  private final String code;
+  private final String message;
 }
