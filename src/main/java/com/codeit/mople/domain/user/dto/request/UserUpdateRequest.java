@@ -4,7 +4,7 @@ import jakarta.validation.constraints.Size;
 import org.springframework.web.multipart.MultipartFile;
 
 public record UserUpdateRequest (
-    @Size(min = 1, max = 20)
+    @Size(min = 1, max = 20, message = "이름은 최소 1자, 최대 20자여야 합니다.")
     String name,
     MultipartFile profileImage
 ) {}
