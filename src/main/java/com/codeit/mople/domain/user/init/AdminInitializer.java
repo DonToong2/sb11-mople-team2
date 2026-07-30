@@ -52,11 +52,14 @@ public class AdminInitializer implements ApplicationRunner {
   }
 
   private boolean isEmailUniqueViolation(DataIntegrityViolationException e) {
-    if (!(e.getCause() instanceof ConstraintViolationException cause)) {
-      return false;
+    Throwable cause = e;
+    while (cause != null) {
+      if (cause instanceof ConstraintViolationException cve) {
+        return "uq_users_email".equals(cve.getConstraintName());
+      }
+      cause = cause.getCause();
     }
-    String constraintName = cause.getConstraintName();
-    return "uq_users_email".equals(constraintName);
+    return false;
   }
 
   private String maskEmail(String email) {
