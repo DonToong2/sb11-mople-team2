@@ -15,7 +15,7 @@ public enum PlaylistErrorCode implements ErrorCode {
   PLAYLIST_UPDATE_BLANK_TITLE(HttpStatus.BAD_REQUEST, "PLAYLIST-004", "제목을 입력해주세요."),
   PLAYLIST_UPDATE_BLANK_DESCRIPTION(HttpStatus.BAD_REQUEST, "PLAYLIST-005", "설명을 입력해주세요."),
   SUBSCRIBE_NOT_FOUND(HttpStatus.BAD_REQUEST, "PLAYLIST-006", "플레이리스트를 찾을 수 없습니다."),
-  SUBSCRIBE_SELF_NOT_FOUND(HttpStatus.BAD_REQUEST,"PLAYLIST-007","본인의 플레이리스트는 구독할 수 없습니다."),
+  SUBSCRIBE_NOT_ALLOWED(HttpStatus.BAD_REQUEST,"PLAYLIST-007","본인의 플레이리스트는 구독할 수 없습니다."),
   SUBSCRIBE_UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "PLAYLIST-008", "인증이 필요합니다."),
   SUBSCRIBE_DUPLICATE(HttpStatus.BAD_REQUEST, "PLAYLIST-009", "이미 구독한 플레이리스트입니다."),
   UNSUBSCRIBE_NOT_FOUND(HttpStatus.BAD_REQUEST,"PLAYLIST-010","구독하지 않은 플레이리스트입니다.");

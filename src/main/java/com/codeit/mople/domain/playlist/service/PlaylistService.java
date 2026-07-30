@@ -177,7 +177,7 @@ public class PlaylistService {
 
     // 본인 구독 차단
     if (subscriberId.equals(playlist.getOwner().getId())) {
-      throw new CustomException(PlaylistErrorCode.SUBSCRIBE_SELF_NOT_FOUND);
+      throw new CustomException(PlaylistErrorCode.SUBSCRIBE_NOT_ALLOWED);
     }
 
     // 존재확인
