@@ -10,7 +10,7 @@ import org.springframework.http.HttpStatus;
 public enum PlaylistErrorCode implements ErrorCode {
 
   PLAYLIST_UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "PLAYLIST-001", "인증이 필요합니다."),
-  PLAYLIST_NOT_FOUND(HttpStatus.BAD_REQUEST, "PLAYLIST-002", "플레이리스트를 찾을 수 없습니다."),
+  PLAYLIST_NOT_FOUND(HttpStatus.NOT_FOUND, "PLAYLIST-002", "플레이리스트를 찾을 수 없습니다."),
   PLAYLIST_FORBIDDEN(HttpStatus.FORBIDDEN, "PLAYLIST-003", "플레이리스트에 대한 접근 권한이 없습니다."),
   PLAYLIST_UPDATE_BLANK_TITLE(HttpStatus.BAD_REQUEST, "PLAYLIST-004", "제목을 입력해주세요."),
   PLAYLIST_UPDATE_BLANK_DESCRIPTION(HttpStatus.BAD_REQUEST, "PLAYLIST-005", "설명을 입력해주세요."),
