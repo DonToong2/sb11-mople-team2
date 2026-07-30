@@ -283,6 +283,8 @@ public class ReviewControllerTest {
       // given
       ReviewUpdateRequest invalidRequest = new ReviewUpdateRequest(" ", newRating);
 
+      // BeforeEach에서 reviewId, userDetails 초기화
+
       // when & then
       mockMvc.perform(patch("/api/reviews/{reviewId}", reviewId)
               .contentType(MediaType.APPLICATION_JSON)
@@ -299,6 +301,8 @@ public class ReviewControllerTest {
     void update_fail_underRating() throws Exception {
       // given
       ReviewUpdateRequest invalidRequest = new ReviewUpdateRequest(newText, 0.0);
+
+      // BeforeEach에서 reviewId, userDetails 초기화
 
       // when & then
       mockMvc.perform(patch("/api/reviews/{reviewId}", reviewId)
@@ -317,6 +321,8 @@ public class ReviewControllerTest {
       // given
       ReviewUpdateRequest invalidRequest = new ReviewUpdateRequest(newText, 6.0);
 
+      // BeforeEach에서 reviewId, userDetails 초기화
+
       // when & then
       mockMvc.perform(patch("/api/reviews/{reviewId}", reviewId)
               .contentType(MediaType.APPLICATION_JSON)
@@ -332,6 +338,8 @@ public class ReviewControllerTest {
     @DisplayName("리뷰 수정 실패 - 리뷰 작성자가 아님(403 에러)")
     void update_fail_forbidden() throws Exception {
       // given
+
+      // BeforeEach에서 authorid, reviewId, userDetails 초기화
 
       given(reviewService.update(eq(reviewId), any(ReviewUpdateRequest.class), eq(authorId)))
           .willThrow(new ReviewException(ReviewErrorCode.REVIEW_FORBIDDEN));

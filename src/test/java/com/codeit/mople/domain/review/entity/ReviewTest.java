@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 
 public class ReviewTest {
 
-  private User user;
   private User author;
   private Content content;
 
@@ -26,7 +25,7 @@ public class ReviewTest {
 
   @BeforeEach
   void setUp() {
-    user = User.createUser("test@test.com", "12345678", "test");
+    author = User.createUser("test@test.com", "12345678", "test");
     content = new Content(
         ContentType.DRAMA,
         "test",
@@ -34,7 +33,6 @@ public class ReviewTest {
         "test/image.png",
         List.of("테스트")
     );
-    author = User.createUser("test@test.com", "12345678", "test");
 
     text = "리뷰 내용";
     rating = 5.0;
@@ -67,6 +65,7 @@ public class ReviewTest {
   @Nested
   @DisplayName("리뷰 수정")
   class Update {
+
     @BeforeEach
     void setUp() {
       review = Review.create(content, author, text, rating);
