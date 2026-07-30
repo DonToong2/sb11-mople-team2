@@ -1,16 +1,20 @@
 package com.codeit.mople.domain.user.controller;
 
+import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.user.dto.request.ChangePasswordRequest;
 import com.codeit.mople.domain.user.dto.request.UserCreateRequest;
 import com.codeit.mople.domain.user.dto.request.UserUpdateRequest;
 import com.codeit.mople.domain.user.dto.response.UserDto;
 import com.codeit.mople.domain.user.service.UserService;
 import com.codeit.mople.global.response.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -43,19 +47,19 @@ public class UserController {
   @PatchMapping(value = "/{userId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ApiResponse<UserDto> updateProfile(
       @PathVariable UUID userId,
-      @RequestHeader("X-User-Id") UUID requesterId,
+      @AuthenticationPrincipal CustomUserDetails principal,
       @Valid @ModelAttribute UserUpdateRequest request
   ) {
-    return ApiResponse.success(userService.updateProfile(userId, requesterId, request));
+    return ApiResponse.success(userService.updateProfile(userId, principal.getUserId(), request));
   }
 
   @PatchMapping("/{userId}/password")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void changePassword(
       @PathVariable UUID userId,
-      @RequestHeader("X-User-Id") UUID requesterId,
+      @AuthenticationPrincipal CustomUserDetails principal,
       @Valid @RequestBody ChangePasswordRequest request
   ) {
-    userService.changePassword(userId, requesterId, request);
+    userService.changePassword(userId, principal.getUserId(), request);
   }
 }

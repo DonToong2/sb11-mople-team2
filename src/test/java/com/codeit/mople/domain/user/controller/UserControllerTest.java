@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.user.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -9,10 +10,10 @@ import com.codeit.mople.domain.user.dto.request.ChangePasswordRequest;
 import com.codeit.mople.domain.user.dto.request.UserCreateRequest;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,9 +41,16 @@ public class UserControllerTest {
   @Autowired
   private PasswordEncoder passwordEncoder;
 
+  @Autowired
+  private JwtProvider jwtProvider;
+
   @AfterEach
   void tearDown() {
     userRepository.deleteAll();
+  }
+
+  private String tokenFor(User user) {
+    return jwtProvider.createAccessToken(user.getId(), user.getSessionVersion());
   }
 
   @Test
@@ -94,11 +102,12 @@ public class UserControllerTest {
 
   @Test
   @DisplayName("사용자 상세 조회 성공")
-  @Disabled("JWT 인증 완성 전까지 임시 비활성화 - SecurityConfig에서 인증 필요 처리됨")
   void getUser_success() throws Exception {
     User user = userRepository.save(User.createUser("get@test.com", "encoded", "getUser"));
+    String token = tokenFor(user);
 
-    mockMvc.perform(get("/api/users/{userId}", user.getId()))
+    mockMvc.perform(get("/api/users/{userId}", user.getId())
+            .header("Authorization", "Bearer " + token))
         .andDo(print())
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.email").value("get@test.com"));
@@ -106,9 +115,12 @@ public class UserControllerTest {
 
   @Test
   @DisplayName("존재하지 않는 사용자를 조회하면 404를 반환")
-  @Disabled("JWT 인증 완성 전까지 임시 비활성화 - SecurityConfig에서 인증 필요 처리됨")
   void getUser_returnsNotFound_whenUserNotExists() throws Exception {
-    mockMvc.perform(get("/api/users/{userId}", UUID.randomUUID()))
+    User requester = userRepository.save(User.createUser("requester@test.com", "encoded", "requester"));
+    String token = tokenFor(requester);
+
+    mockMvc.perform(get("/api/users/{userId}", UUID.randomUUID())
+            .header("Authorization", "Bearer " + token))
         .andDo(print())
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.error.code").value("USER-001"));
@@ -116,14 +128,15 @@ public class UserControllerTest {
 
   @Test
   @DisplayName("이름만 전달하면 이름만 변경")
-  @Disabled("JWT 인증 완성 전까지 임시 비활성화 - SecurityConfig에서 인증 필요 처리됨")
   void updateProfile_success_nameOnly() throws Exception {
     User user = userRepository.save(User.createUser("update@test.com", "encoded", "oldName"));
+    String token = tokenFor(user);
 
     mockMvc.perform(multipart("/api/users/{userId}", user.getId())
         .param("name", "newName")
-        .header("X-User-Id", user.getId().toString())
-        .with(req -> { req.setMethod("PATCH"); return req; }))
+        .header("Authorization", "Bearer " + token)
+        .with(req -> { req.setMethod("PATCH"); return req; })
+        .with(csrf()))
         .andDo(print())
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.name").value("newName"));
@@ -131,16 +144,17 @@ public class UserControllerTest {
 
   @Test
   @DisplayName("이름과 프로필 이미지를 함께 전달하면 둘 다 변경")
-  @Disabled("JWT 인증 완성 전까지 임시 비활성화 - SecurityConfig에서 인증 필요 처리됨")
   void updateProfile_success_withImage() throws Exception {
     User user = userRepository.save(User.createUser("update2@test.com", "encoded", "oldName"));
+    String token = tokenFor(user);
     MockMultipartFile image = new MockMultipartFile("profileImage", "test.jpg", "image/jpeg", "content".getBytes());
 
     mockMvc.perform(multipart("/api/users/{userId}", user.getId())
         .file(image)
         .param("name", "newName")
-        .header("X-User-Id", user.getId().toString())
-        .with(req -> { req.setMethod("PATCH"); return req; }))
+        .header("Authorization", "Bearer " + token)
+        .with(req -> { req.setMethod("PATCH"); return req; })
+        .with(csrf()))
         .andDo(print())
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.name").value("newName"))
@@ -149,30 +163,32 @@ public class UserControllerTest {
 
   @Test
   @DisplayName("이름이 최대 길이를 초과하면 400을 반환")
-  @Disabled("JWT 인증 완성 전까지 임시 비활성화 - SecurityConfig에서 인증 필요 처리됨")
   void updateProfile_returnsBadRequest_whenNameTooLong() throws Exception {
     User user = userRepository.save(User.createUser("longname@test.com", "encoded", "oldName"));
+    String token = tokenFor(user);
     String tooLongName = "a".repeat(21);
 
     mockMvc.perform(multipart("/api/users/{userId}", user.getId())
         .param("name", tooLongName)
-        .header("X-User-Id", user.getId().toString())
-        .with(req -> { req.setMethod("PATCH"); return req; }))
+        .header("Authorization", "Bearer " + token)
+        .with(req -> { req.setMethod("PATCH"); return req; })
+        .with(csrf()))
         .andDo(print())
         .andExpect(status().isBadRequest());
   }
 
   @Test
   @DisplayName("본인이 아닌 사용자가 프로필을 수정하면 403을 반환")
-  @Disabled("JWT 인증 완성 전까지 임시 비활성화 - SecurityConfig에서 인증 필요 처리됨")
   void updateProfile_returnsForbidden_whenNotOwner() throws Exception {
-    User user = userRepository.save(User.createUser("owner@test.com", "encoded", "owner"));
-    UUID otherUserId = UUID.randomUUID();
+    User owner = userRepository.save(User.createUser("owner@test.com", "encoded", "owner"));
+    User attacker = userRepository.save(User.createUser("attacker@test.com", "encoded", "attacker"));
+    String attackerToken = tokenFor(attacker);
 
-    mockMvc.perform(multipart("/api/users/{userId}", user.getId())
+    mockMvc.perform(multipart("/api/users/{userId}", owner.getId())
         .param("name", "newName")
-        .header("X-User-Id", otherUserId.toString())
-        .with(req -> { req.setMethod("PATCH"); return req; }))
+        .header("Authorization", "Bearer " + attackerToken)
+        .with(req -> { req.setMethod("PATCH"); return req; })
+        .with(csrf()))
         .andDo(print())
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.error.code").value("USER-005"));
@@ -180,32 +196,52 @@ public class UserControllerTest {
 
   @Test
   @DisplayName("비밀번호 변경 성공")
-  @Disabled("JWT 인증 완성 전까지 임시 비활성화 - SecurityConfig에서 인증 필요 처리됨")
   void changePassword_success() throws Exception {
     User user = userRepository.save(User.createUser("pw@test.com", passwordEncoder.encode("oldPw123"), "testUser"));
+    String token = tokenFor(user);
     ChangePasswordRequest request = new ChangePasswordRequest("newPw123");
 
     mockMvc.perform(patch("/api/users/{userId}/password", user.getId())
-        .header("X-User-Id", user.getId().toString())
+        .header("Authorization", "Bearer " + token)
         .contentType("application/json")
-        .content(objectMapper.writeValueAsString(request)))
+        .content(objectMapper.writeValueAsString(request))
+        .with(csrf()))
         .andDo(print())
         .andExpect(status().isNoContent());
+
+    User updateUser = userRepository.findById(user.getId()).orElseThrow();
+    assertThat(passwordEncoder.matches("newPw123", updateUser.getPassword())).isTrue();
   }
 
   @Test
   @DisplayName("본인이 아닌 사용자가 비밀번호를 변경하면 403을 반환")
-  @Disabled("JWT 인증 완성 전까지 임시 비활성화 - SecurityConfig에서 인증 필요 처리됨")
   void changePassword_returnsForbidden_whenNotOwner() throws Exception {
-    User user = userRepository.save(User.createUser("pw2@test.com", "encoded", "testUser"));
-    UUID otherUserId = UUID.randomUUID();
+    User owner = userRepository.save(User.createUser("pw2@test.com", "encoded", "testUser"));
+    User attacker = userRepository.save(User.createUser("attacker2@test.com", "encoded", "attacker"));
+    String attackerToken = tokenFor(attacker);
     ChangePasswordRequest request = new ChangePasswordRequest("newPw123");
 
-    mockMvc.perform(patch("/api/users/{userId}/password", user.getId())
-        .header("X-User-Id", otherUserId.toString())
+    mockMvc.perform(patch("/api/users/{userId}/password", owner.getId())
+        .header("Authorization", "Bearer " + attackerToken)
         .contentType("application/json")
-        .content(objectMapper.writeValueAsString(request)))
+        .content(objectMapper.writeValueAsString(request))
+        .with(csrf()))
         .andDo(print())
         .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @DisplayName("CSRF 토큰 없이 프로필 수정 시 403을 반환한다")
+  void updateProfile_returnsForbidden_whenNoCsrf() throws Exception {
+    User user = userRepository.save(User.createUser("nocsrf@test.com", "encoded", "테스트"));
+    String token = tokenFor(user);
+
+    mockMvc.perform(multipart("/api/users/{userId}", user.getId())
+            .param("name", "newName")
+            .header("Authorization", "Bearer " + token)
+            .with(req -> { req.setMethod("PATCH"); return req; }))
+        // .with(csrf()) 없음!
+        .andDo(print())
+        .andExpect(status().isForbidden());  // 403이 나오면 CSRF가 진짜 살아있는 것
   }
 }
