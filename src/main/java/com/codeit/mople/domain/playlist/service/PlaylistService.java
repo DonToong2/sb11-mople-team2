@@ -8,6 +8,7 @@ import com.codeit.mople.domain.playlist.entity.Playlist;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.playlist.event.PlaylistSubscriptionCreateEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
+import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
 import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
 import com.codeit.mople.domain.playlist.mapper.PlaylistContentMapper;
@@ -195,6 +196,17 @@ public class PlaylistService {
         saved.getId(), playlistId, subscriberId);
 
     publisher.publishEvent(new PlaylistSubscriptionCreateEvent(playlistId, subscriberId));
+  }
+  @Transactional
+  public void unSubscribe(UUID playlistId, UUID subscriberId) {
+    log.debug("플레이리스트 구독 취소 시도: playlistId={}, subscriberId={}", playlistId, subscriberId);
+
+    // 구독 존재 검증
+    PlaylistSubscription playlistSubscription = playlistSubscriptionRepository.findByPlaylistIdAndSubscriberId(playlistId, subscriberId)
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.UNSUBSCRIBE_NOT_FOUND, Map.of("playlistId", playlistId, "subscriberId", subscriberId)));
+
+    playlistSubscriptionRepository.delete(playlistSubscription);
+    log.info("플레이리스트 구독 취소 성공: playlist={}, subscriberId={}", playlistId, subscriberId);
   }
 
   private UserSummary toUserSummary(User user) {
