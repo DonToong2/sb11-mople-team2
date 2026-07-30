@@ -10,13 +10,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(
     name = "플레이리스트 관리",
@@ -62,7 +60,8 @@ public interface PlaylistApi {
       )
   })
   ResponseEntity<PlaylistResponse> create(
-      @RequestParam UUID ownerId,
+      @Parameter(hidden = true)
+      @AuthenticationPrincipal CustomUserDetails userDetails,
       @RequestBody PlaylistCreateRequest request
   );
 

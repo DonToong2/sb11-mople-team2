@@ -5,12 +5,16 @@ import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistContentResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.entity.Playlist;
+import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
+import com.codeit.mople.domain.playlist.event.PlaylistSubscriptionCreateEvent;
+import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
 import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
 import com.codeit.mople.domain.playlist.mapper.PlaylistContentMapper;
 import com.codeit.mople.domain.playlist.mapper.PlaylistMapper;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
+import com.codeit.mople.domain.playlist.repository.PlaylistSubscriptionRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
@@ -21,6 +25,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,8 +37,11 @@ public class PlaylistService {
   private final PlaylistRepository playlistRepository;
   private final UserRepository userRepository;
   private final PlaylistContentRepository playlistContentRepository;
+  private final PlaylistSubscriptionRepository playlistSubscriptionRepository;
   private final PlaylistContentMapper playlistContentMapper;
   private final PlaylistMapper mapper;
+
+  private final ApplicationEventPublisher publisher;
 
   @Transactional
   public PlaylistResponse create(UUID ownerId, PlaylistCreateRequest request) {
@@ -145,7 +153,7 @@ public class PlaylistService {
     );
 
     validateOwner(playlist, userId);
-    
+
     // 플레이리리스트 삭제 전 플레이리스트 안에 들어있던 컨텐츠들을 삭제
     playlistContentRepository.deleteAllByPlaylistId(playlistId);
 
@@ -155,6 +163,38 @@ public class PlaylistService {
     log.info("플레이리스트 삭제 완료: playlistId={}, userId={}",
         playlistId, userId);
 
+  }
+
+  @Transactional
+  public void subscribe(UUID playlistId, UUID subscriberId) {
+
+    log.debug("플레이리스트 구독 시도: playlistId={}, subscriberId={}", playlistId, subscriberId);
+
+    // 존재확인
+    Playlist playlist = playlistRepository.findById(playlistId)
+        .orElseThrow(() -> new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
+
+    // 본인 구독 차단
+    if (subscriberId.equals(playlist.getOwner().getId())) {
+      throw new CustomException(PlaylistErrorCode.PLAYLIST_DUPLICATE);
+    }
+
+    // 존재확인
+    User subscriber = userRepository.findById(subscriberId)
+        .orElseThrow(() -> new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
+
+    // 중복 구독 차단
+    if (playlistSubscriptionRepository.existsByPlaylistIdAndSubscriberId(playlistId, subscriberId)) {
+      throw new CustomException(PlaylistErrorCode.PLAYLIST_DUPLICATE);
+    }
+
+    PlaylistSubscription saved = playlistSubscriptionRepository.save(
+        PlaylistSubscription.create(playlist, subscriber));
+
+    log.info("플레이리스트 구독 성공: playlistSubscriptionId={}, playlistId={}, subscriberId={}",
+        saved.getId(), playlistId, subscriberId);
+
+    publisher.publishEvent(new PlaylistSubscriptionCreateEvent(playlistId, subscriberId));
   }
 
   private UserSummary toUserSummary(User user) {

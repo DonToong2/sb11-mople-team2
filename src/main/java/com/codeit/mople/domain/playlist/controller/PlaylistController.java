@@ -6,10 +6,6 @@ import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.service.PlaylistService;
-import com.codeit.mople.domain.user.entity.User;
-import com.codeit.mople.domain.user.exception.UserErrorCode;
-import com.codeit.mople.domain.user.repository.UserRepository;
-import com.codeit.mople.global.error.CustomException;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
@@ -23,7 +19,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -75,6 +70,16 @@ public class PlaylistController implements PlaylistApi {
   ) {
     playlistService.delete(playlistId, userDetails.getUserId());
 
+    return ResponseEntity.noContent().build();
+  }
+
+  @Override
+  @PostMapping("/{playlistId}/subscription")
+  public ResponseEntity<Void> createSubscribe(
+      @PathVariable UUID playlistId,
+      @AuthenticationPrincipal CustomUserDetails principal
+  ) {
+    playlistService.subscribe(playlistId, principal.getUserId());
     return ResponseEntity.noContent().build();
   }
 
