@@ -19,6 +19,7 @@ import com.codeit.mople.domain.playlist.entity.PlaylistContent;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.playlist.event.PlaylistSubscriptionCreateEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
+import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
 import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
 import com.codeit.mople.domain.playlist.mapper.PlaylistContentMapper;
@@ -533,7 +534,7 @@ public class PlaylistServiceTest {
 
     @Test
     @DisplayName("플래이리스트가 없으면 예외")
-    void subscribe_playlistNotfound() {
+    void subscribe_playlistNotFound() {
       UUID playlistId = UUID.randomUUID();
       UUID subscriberId = UUID.randomUUID();
 
@@ -583,6 +584,43 @@ public class PlaylistServiceTest {
       verify(publisher, never()).publishEvent(any());
     }
 
+  }
+
+  @Nested
+  @DisplayName("플레이리스트 구독 취소")
+  class UnSubscribe {
+
+    @Test
+    @DisplayName("플레이리스트 구독 취소 성공")
+    void unSubscribe_success() {
+      UUID playlistId = UUID.randomUUID();
+      UUID subscriberId = UUID.randomUUID();
+
+      PlaylistSubscription subscription = mock(PlaylistSubscription.class);
+
+      given(playlistSubscriptionRepository.findByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(Optional.of(subscription));
+
+      // when
+      playlistService.unSubscribe(playlistId, subscriberId);
+
+      // then
+      verify(playlistSubscriptionRepository).delete(subscription);
+    }
+
+    @Test
+    @DisplayName("구독하지 않은 플레이리스트면 예외")
+    void unSubscribe_notFound() {
+      UUID playlistId = UUID.randomUUID();
+      UUID subscriberId = UUID.randomUUID();
+
+      given(playlistSubscriptionRepository.findByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(Optional.empty());
+
+      assertThatThrownBy(() -> playlistService.unSubscribe(playlistId, subscriberId))
+          .isInstanceOf(PlaylistException.class)
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.UNSUBSCRIBE_NOT_FOUND);
+
+      verify(playlistSubscriptionRepository, never()).delete(any(PlaylistSubscription.class));
+    }
   }
 
 }
