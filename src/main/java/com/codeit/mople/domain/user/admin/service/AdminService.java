@@ -28,8 +28,11 @@ public class AdminService {
     Role role = Role.valueOf(roleStr.toUpperCase());
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+    Role previousRole = user.getRole();
     user.changeRole(role);
-    eventPublisher.publishEvent(new UserForceLogoutEvent(userId));
+    if (previousRole != role) {
+      eventPublisher.publishEvent(new UserForceLogoutEvent(userId));
+    }
     log.info("권한 변경 완료 - userId: {}, role: {}", userId, role);
   }
 }
