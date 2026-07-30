@@ -12,6 +12,7 @@ import com.codeit.mople.domain.user.dto.request.UserUpdateRequest;
 import com.codeit.mople.domain.user.dto.response.UserDto;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
+import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.error.CustomException;
 import com.codeit.mople.global.storage.FileStorageService;
@@ -64,14 +65,18 @@ public class UserServiceTest {
   }
 
   @Test
-  @DisplayName("이메일 중복 시 예외 발생")
+  @DisplayName("이메일 중복 시 예외 발생 및 중복된 이메일 정보 포함")
   void signUp_throwsException_whenEmailDuplicated() {
     UserCreateRequest request = new UserCreateRequest("dup@test.com", "rawPw123", "testUser");
     when(userRepository.existsByEmail(request.email())).thenReturn(true);
 
     assertThatThrownBy(() -> userService.signUp(request))
-        .isInstanceOf(CustomException.class)
-        .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.DUPLICATE_EMAIL);
+        .isInstanceOf(UserException.class)
+        .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.DUPLICATE_EMAIL)
+        .satisfies(e -> {
+          UserException ue = (UserException) e;
+          assertThat(ue.getDetails()).containsEntry("email", "dup@test.com");
+        });
   }
 
   @Test
@@ -92,7 +97,7 @@ public class UserServiceTest {
     when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> userService.getUser(userId))
-        .isInstanceOf(CustomException.class)
+        .isInstanceOf(UserException.class)
         .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.USER_NOT_FOUND);
   }
 
@@ -105,7 +110,7 @@ public class UserServiceTest {
     UserUpdateRequest request = new UserUpdateRequest("newName", null);
 
     assertThatThrownBy(() -> userService.updateProfile(userId, otherUserId, request))
-        .isInstanceOf(CustomException.class)
+        .isInstanceOf(UserException.class)
         .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.FORBIDDEN_ACCESS);
   }
 
@@ -177,7 +182,7 @@ public class UserServiceTest {
     ChangePasswordRequest request = new ChangePasswordRequest("newPw123");
 
     assertThatThrownBy(() -> userService.changePassword(userId, otherUserId, request))
-        .isInstanceOf(CustomException.class)
+        .isInstanceOf(UserException.class)
         .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.FORBIDDEN_ACCESS);
   }
 }
