@@ -37,7 +37,7 @@ public class UserController {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  public ApiResponse<UserDto> signUp(@Valid @RequestBody UserCreateRequest request) {
+  public ApiResponse<UserDto> signUp(@Valid @ModelAttribute UserCreateRequest request) {
     return ApiResponse.success(userService.signUp(request));
   }
 
@@ -65,7 +65,7 @@ public class UserController {
   public void changePassword(
       @PathVariable UUID userId,
       @AuthenticationPrincipal CustomUserDetails principal,
-      @Valid @RequestBody ChangePasswordRequest request
+      @Valid @ModelAttribute ChangePasswordRequest request
   ) {
     userService.changePassword(userId, principal.getUserId(), request);
   }
