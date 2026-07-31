@@ -86,7 +86,7 @@ public class UserControllerTest {
   }
 
   @Test
-  @DisplayName("이메일이 중복되면 409를 반환")
+  @DisplayName("이메일이 중복되면 409를 반환하고 중복된 이메일 정보를 포함")
   void signUp_returnsConflict_whenEmailDuplicated() throws Exception {
     userRepository.save(User.createUser("dup@test.com", "encoded", "oldUser"));
 
@@ -97,7 +97,8 @@ public class UserControllerTest {
         .content(objectMapper.writeValueAsString(request)))
         .andDo(print())
         .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.error.code").value("USER-002"));
+        .andExpect(jsonPath("$.error.code").value("USER-002"))
+        .andExpect(jsonPath("$.error.details.email").value("dup@test.com"));
   }
 
   @Test

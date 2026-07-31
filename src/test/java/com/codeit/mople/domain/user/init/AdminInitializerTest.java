@@ -1,4 +1,4 @@
-package com.codeit.mople.domain.user.init;
+﻿package com.codeit.mople.domain.user.init;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -45,8 +45,8 @@ class AdminInitializerTest {
 
   @Test
   void 어드민_계정이_없으면_생성한다() throws Exception {
-    given(userRepository.existsByRole(Role.ADMIN)).willReturn(false);
     given(userRepository.existsByEmail("admin@mople.com")).willReturn(false);
+    given(userRepository.existsByRole(Role.ADMIN)).willReturn(false);
     given(passwordEncoder.encode(anyString())).willReturn("encoded-password");
 
     adminInitializer.run(applicationArguments);
@@ -56,6 +56,7 @@ class AdminInitializerTest {
 
   @Test
   void 어드민_계정이_이미_있으면_생성하지_않는다() throws Exception {
+    given(userRepository.existsByEmail("admin@mople.com")).willReturn(false);
     given(userRepository.existsByRole(Role.ADMIN)).willReturn(true);
 
     adminInitializer.run(applicationArguments);
@@ -65,7 +66,6 @@ class AdminInitializerTest {
 
   @Test
   void 어드민_이메일을_일반유저가_사용중이면_생성하지_않는다() throws Exception {
-    given(userRepository.existsByRole(Role.ADMIN)).willReturn(false);
     given(userRepository.existsByEmail("admin@mople.com")).willReturn(true);
 
     adminInitializer.run(applicationArguments);
