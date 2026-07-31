@@ -19,7 +19,8 @@ import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.entity.Playlist;
 import com.codeit.mople.domain.playlist.entity.PlaylistContent;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
-import com.codeit.mople.domain.playlist.event.PlaylistSubscriptionCreateEvent;
+import com.codeit.mople.domain.playlist.event.PlaylistContentAddedEvent;
+import com.codeit.mople.domain.playlist.event.PlaylistSubscribedEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
@@ -514,7 +515,7 @@ public class PlaylistServiceTest {
 
       // then
       verify(playlistSubscriptionRepository).save(any(PlaylistSubscription.class));
-      verify(publisher).publishEvent(any(PlaylistSubscriptionCreateEvent.class));
+      verify(publisher).publishEvent(any(PlaylistSubscribedEvent.class));
       assertThat(playlist.getSubscriberCount()).isEqualTo(1L);
     }
 
@@ -655,6 +656,7 @@ public class PlaylistServiceTest {
       playlistService.addContent(playlistId, contentId, ownerId);
 
       // then
+      verify(publisher).publishEvent(any(PlaylistContentAddedEvent.class));
       verify(playlistContentRepository).save(any(PlaylistContent.class));
     }
 
@@ -670,6 +672,7 @@ public class PlaylistServiceTest {
           .isInstanceOf(PlaylistException.class)
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PY_CONTENT_PLAY_NOT_FOUND);
 
+      verify(publisher, never()).publishEvent(any());
       verify(playlistContentRepository, never()).save(any());
     }
 
@@ -687,6 +690,7 @@ public class PlaylistServiceTest {
           .isInstanceOf(PlaylistException.class)
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PY_CONTENT_CONTENT_NOT_FOUND);
 
+      verify(publisher, never()).publishEvent(any());
       verify(playlistContentRepository, never()).save(any());
     }
 
@@ -708,6 +712,7 @@ public class PlaylistServiceTest {
           .isInstanceOf(PlaylistException.class)
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PY_CONTENT_DUPLICATE);
 
+      verify(publisher, never()).publishEvent(any());
       verify(playlistContentRepository, never()).save(any());
     }
 
@@ -731,6 +736,7 @@ public class PlaylistServiceTest {
           .isInstanceOf(PlaylistException.class)
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_FORBIDDEN);
 
+      verify(publisher, never()).publishEvent(any());
       verify(playlistContentRepository, never()).existsByPlaylistIdAndContentId(any(), any());
       verify(playlistContentRepository, never()).save(any());
     }
@@ -757,6 +763,7 @@ public class PlaylistServiceTest {
       playlistService.removeContent(playlistId, contentId, ownerId);
 
       // then
+      verify(publisher, never()).publishEvent(any());
       verify(playlistContentRepository).delete(playlistContent);
     }
 

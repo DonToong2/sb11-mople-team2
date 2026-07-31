@@ -9,7 +9,8 @@ import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.entity.Playlist;
 import com.codeit.mople.domain.playlist.entity.PlaylistContent;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
-import com.codeit.mople.domain.playlist.event.PlaylistSubscriptionCreateEvent;
+import com.codeit.mople.domain.playlist.event.PlaylistContentAddedEvent;
+import com.codeit.mople.domain.playlist.event.PlaylistSubscribedEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
@@ -201,7 +202,7 @@ public class PlaylistService {
     log.info("플레이리스트 구독 성공: playlistSubscriptionId={}, playlistId={}, subscriberId={}",
         saved.getId(), playlistId, subscriberId);
 
-    publisher.publishEvent(new PlaylistSubscriptionCreateEvent(playlist.getOwner().getId(), playlistId, subscriberId));
+    publisher.publishEvent(new PlaylistSubscribedEvent(playlist.getOwner().getId(), playlistId, subscriberId));
   }
 
   @Transactional
@@ -242,6 +243,8 @@ public class PlaylistService {
 
     log.info("플레이리스트에 콘텐츠 추가 성공: playlistContentId={}, playlistId={}, contentId={}, ownerId={}",
         playlistContent.getId(), playlistId, contentId, ownerId);
+
+    publisher.publishEvent(new PlaylistContentAddedEvent(playlistId, contentId));
   }
 
   @Transactional
@@ -263,7 +266,6 @@ public class PlaylistService {
         playlistContent.getId(), playlistId, contentId, ownerId);
     playlistContentRepository.delete(playlistContent);
   }
-
 
   private UserSummary toUserSummary(User user) {
     return new UserSummary(
