@@ -1,10 +1,13 @@
 package com.codeit.mople.domain.playlist.service;
 
+import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistContentResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.entity.Playlist;
+import com.codeit.mople.domain.playlist.entity.PlaylistContent;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.playlist.event.PlaylistSubscriptionCreateEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
@@ -38,6 +41,7 @@ public class PlaylistService {
   private final PlaylistRepository playlistRepository;
   private final UserRepository userRepository;
   private final PlaylistContentRepository playlistContentRepository;
+  private final ContentRepository contentRepository;
   private final PlaylistSubscriptionRepository playlistSubscriptionRepository;
   private final PlaylistContentMapper playlistContentMapper;
   private final PlaylistMapper mapper;
@@ -169,7 +173,8 @@ public class PlaylistService {
   @Transactional
   public void subscribe(UUID playlistId, UUID subscriberId) {
 
-    log.debug("플레이리스트 구독 시도: playlistId={}, subscriberId={}", playlistId, subscriberId);
+    log.debug("플레이리스트 구독 시도: playlistId={}, subscriberId={}"
+        , playlistId, subscriberId);
 
     // 존재확인
     Playlist playlist = playlistRepository.findById(playlistId)
@@ -201,7 +206,8 @@ public class PlaylistService {
 
   @Transactional
   public void unSubscribe(UUID playlistId, UUID subscriberId) {
-    log.debug("플레이리스트 구독 취소 시도: playlistId={}, subscriberId={}", playlistId, subscriberId);
+    log.debug("플레이리스트 구독 취소 시도: playlistId={}, subscriberId={}"
+        , playlistId, subscriberId);
 
     // 구독 존재 검증
     PlaylistSubscription playlistSubscription = playlistSubscriptionRepository.findByPlaylistIdAndSubscriberId(playlistId, subscriberId)
@@ -210,8 +216,52 @@ public class PlaylistService {
     playlistSubscription.getPlaylist().decreaseSubscriberCount();
     playlistSubscriptionRepository.delete(playlistSubscription);
 
-    log.info("플레이리스트 구독 취소 성공: playlist={}, subscriberId={}", playlistId, subscriberId);
+    log.info("플레이리스트 구독 취소 성공: playlist={}, subscriberId={}"
+        , playlistId, subscriberId);
   }
+
+  @Transactional
+  public void addContent(UUID playlistId, UUID contentId, UUID ownerId) {
+    log.debug("플레이리스트에 콘텐츠 추가 시도: playlistId={}, contentId={}, ownerId={}"
+        , playlistId, contentId, ownerId);
+
+    Playlist playlist = playlistRepository.findById(playlistId)
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_PLAY_NOT_FOUND, Map.of("playlistId", playlistId)));
+    Content content = contentRepository.findById(contentId)
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
+    // 소유자 검증
+    validateOwner(playlist, ownerId);
+
+    // 중복 검증
+    if (playlistContentRepository.existsByPlaylistIdAndContentId(playlistId, contentId)) {
+      throw new PlaylistException(PlaylistErrorCode.PY_CONTENT_DUPLICATE);
+    }
+
+    PlaylistContent playlistContent = PlaylistContent.create(playlist, content);
+    playlistContentRepository.save(playlistContent);
+
+    log.info("플레이리스트에 콘텐츠 추가 성공: playlistContentId={}, playlistId={}, contentId={}, ownerId={}"
+        , playlistContent.getId(), playlistId, contentId, ownerId);
+  }
+
+  @Transactional
+  public void removeContent(UUID playlistId, UUID contentId, UUID ownerId) {
+    log.debug("플레이리스트에 콘텐츠 삭제 시도: playlistId={}, contentId={}, ownerId={}"
+        , playlistId, contentId, ownerId);
+
+    Playlist playlist = playlistRepository.findById(playlistId)
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_PLAY_NOT_FOUND, Map.of("playlistId", playlistId)));
+
+    // 소유자 검증
+    validateOwner(playlist, ownerId);
+
+    // 플레이리스트에 콘텐츠 존재 검증
+    PlaylistContent playlistContent = playlistContentRepository.findByPlaylistIdAndContentId(playlistId, contentId)
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.UN_PY_CONTENT_NOT_FOUND, Map.of("playlistId", playlistId, "contentId", contentId)));
+
+    playlistContentRepository.delete(playlistContent);
+  }
+
 
   private UserSummary toUserSummary(User user) {
     return new UserSummary(
