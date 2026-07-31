@@ -125,7 +125,7 @@ public class ReviewService {
         (int) reviewCount
     );
 
-    log.info("리뷰 삭제 완료: reviewId={}, authorId={}, contentId{}, averageRating={}, reviewCount={}",
+    log.info("리뷰 삭제 완료: reviewId={}, authorId={}, contentId={}, averageRating={}, reviewCount={}",
         reviewId, authorId, content.getId(), averageRating, reviewCount);
 
   }
