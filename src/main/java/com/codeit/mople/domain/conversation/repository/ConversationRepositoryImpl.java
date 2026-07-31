@@ -6,6 +6,7 @@ import static com.codeit.mople.domain.directmessage.entity.QDirectMessage.direct
 import com.codeit.mople.domain.conversation.dto.request.ConversationCursorRequest;
 import com.codeit.mople.domain.conversation.entity.Conversation;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.Instant;
 import java.util.List;
@@ -26,13 +27,11 @@ public class ConversationRepositoryImpl implements ConversationRepositoryCustom{
 
     return queryFactory
         .selectFrom(conversation)
-        .distinct() // 대화 내용 검색 조인 시 중복 행 발생 제거
         .leftJoin(conversation.userA).fetchJoin()
         .leftJoin(conversation.userB).fetchJoin()
         .leftJoin(conversation.lastMessage).fetchJoin()
         // DTO에서 상대방(sender) 정보 스냅샷 매핑 처리를 위해 Fetch Join 적용
         .leftJoin(conversation.lastMessage.sender).fetchJoin()
-        .leftJoin(directMessage).on(directMessage.conversation.eq(conversation))
         .where(
             isMyConversation(requesterId),
             containsKeyword(request.keywordLike(), requesterId),
@@ -70,7 +69,14 @@ public class ConversationRepositoryImpl implements ConversationRepositoryCustom{
         .and(conversation.userB.name.containsIgnoreCase(keywordLike));
 
     // 조건3. 메시지 내용 중에 키워드 포함 여부
-    BooleanExpression containsMessage = directMessage.content.containsIgnoreCase(keywordLike);
+    // EXISTS 서브 쿼리를 태워 쿼리 성능 최적화
+    BooleanExpression containsMessage = JPAExpressions
+        .selectOne()
+        .from(directMessage)
+        .where(
+            directMessage.conversation.eq(conversation),
+            directMessage.content.containsIgnoreCase(keywordLike)
+        ).exists();
 
     return searchUserA.or(searchUserB).or(containsMessage);
   }
