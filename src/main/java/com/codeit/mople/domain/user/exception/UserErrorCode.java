@@ -13,7 +13,8 @@ public enum UserErrorCode implements ErrorCode {
   DUPLICATE_EMAIL(HttpStatus.CONFLICT, "USER-002", "이미 사용 중인 이메일입니다."),
   LOCKED_ACCOUNT(HttpStatus.FORBIDDEN, "USER-003", "잠긴 계정입니다."),
   PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "USER-004", "현재 비밀번호가 일치하지 않습니다."),
-  FORBIDDEN_ACCESS(HttpStatus.FORBIDDEN, "USER-005", "본인만 접근할 수 있습니다.");
+  FORBIDDEN_ACCESS(HttpStatus.FORBIDDEN, "USER-005", "본인만 접근할 수 있습니다."),
+  INVALID_CURSOR(HttpStatus.BAD_REQUEST, "USER-005", "유효하지 않은 커서 값입니다.");
 
   private final HttpStatus status;
   private final String code;

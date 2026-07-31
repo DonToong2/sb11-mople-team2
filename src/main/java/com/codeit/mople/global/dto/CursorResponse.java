@@ -27,13 +27,12 @@ public record CursorResponse<T>(
     String nextCursor = null;
     UUID nextIdAfter = null;
 
-    if (hasNext && !data.isEmpty()) {
+    if(hasNext && !data.isEmpty()) {
       T last = data.get(data.size() - 1);
       nextCursor = cursorExtractor.apply(last);
       nextIdAfter = idExtractor.apply(last);
     }
 
-    // totalCount는 현재 반환 데이터 개수 또는 전체 개수 처리
     return new CursorResponse<>(data, nextCursor, nextIdAfter, hasNext, data.size(), sortBy, sortDirection);
   }
 }

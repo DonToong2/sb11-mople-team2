@@ -47,7 +47,7 @@ public interface PlaylistApi {
           description = "권한 없음",
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       ),
-      // TODO 김명근: 인증 구현 후 404 응답 삭제
+      // TODO 김명근: Swagger 반영 논의 결정 후 해당 인터페이스 리팩토링 예정
       @ApiResponse(
           responseCode = "404",
           description = "플레이리스트 소유자를 찾을 수 없음",
