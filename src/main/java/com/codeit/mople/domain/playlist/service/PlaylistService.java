@@ -8,6 +8,7 @@ import com.codeit.mople.domain.playlist.entity.Playlist;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.playlist.event.PlaylistSubscriptionCreateEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
+import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
 import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
@@ -15,6 +16,7 @@ import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistSubscriptionRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
+import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.UserSummary;
 import com.codeit.mople.global.error.CustomException;
@@ -46,7 +48,7 @@ public class PlaylistService {
 
     // TODO 김명근: User 예외 계층 생성 시 리팩토링
     User owner = userRepository.findById(ownerId).orElseThrow(() ->
-        new CustomException(UserErrorCode.USER_NOT_FOUND));
+        new UserException(UserErrorCode.USER_NOT_FOUND));
 
     Playlist playlist = Playlist.create(owner, request.title(), request.description());
 
@@ -73,6 +75,7 @@ public class PlaylistService {
     log.debug("플레이리스트 조회 시도: playlistId={}",
         playlistId);
 
+    // TODO 김명근: 세부 예외 계층 제거 후 중간 예외 계층만 사용하기로 변경
     Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
         new PlaylistNotFoundException(playlistId)
     );
@@ -167,20 +170,20 @@ public class PlaylistService {
 
     // 존재확인
     Playlist playlist = playlistRepository.findById(playlistId)
-        .orElseThrow(() -> new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
 
     // 본인 구독 차단
     if (subscriberId.equals(playlist.getOwner().getId())) {
-      throw new CustomException(PlaylistErrorCode.PLAYLIST_DUPLICATE);
+      throw new PlaylistException(PlaylistErrorCode.PLAYLIST_DUPLICATE);
     }
 
     // 존재확인
     User subscriber = userRepository.findById(subscriberId)
-        .orElseThrow(() -> new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
 
     // 중복 구독 차단
     if (playlistSubscriptionRepository.existsByPlaylistIdAndSubscriberId(playlistId, subscriberId)) {
-      throw new CustomException(PlaylistErrorCode.PLAYLIST_DUPLICATE);
+      throw new PlaylistException(PlaylistErrorCode.PLAYLIST_DUPLICATE);
     }
 
     PlaylistSubscription saved = playlistSubscriptionRepository.save(
