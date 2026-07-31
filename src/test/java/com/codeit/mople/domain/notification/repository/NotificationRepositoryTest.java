@@ -7,6 +7,7 @@ import com.codeit.mople.domain.notification.entity.Notification;
 import com.codeit.mople.domain.notification.entity.NotificationType;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.config.JpaAuditingConfig;
+import com.codeit.mople.global.config.QueryDslConfig;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -20,7 +21,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 
 @DataJpaTest
-@Import(JpaAuditingConfig.class)
+@Import({JpaAuditingConfig.class, QueryDslConfig.class})
 @DisplayName("NotificationRepository 테스트")
 class NotificationRepositoryTest {
 
