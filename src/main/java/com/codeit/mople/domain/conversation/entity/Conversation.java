@@ -58,14 +58,18 @@ public class Conversation extends BaseEntity {
 
   public void updateLastReadAt(UUID userId, Instant readAt) {
     if (this.userA.getId().equals(userId)) {
-      this.userALastReadAt = readAt;
+      if (this.userALastReadAt == null || readAt.isAfter(this.userALastReadAt)) {
+        this.userALastReadAt = readAt;
+      }
     } else if (this.userB.getId().equals(userId)) {
-      this.userBLastReadAt = readAt;
+      if (this.userBLastReadAt == null || readAt.isAfter(this.userBLastReadAt)) {
+        this.userBLastReadAt = readAt;
+      }
     }
   }
 
   public void updateLastMessage(DirectMessage message) {
-    this.lastMessage  = message;
+    this.lastMessage = message;
   }
 
   public Instant getMyLastReadAt(UUID requesterId) {
