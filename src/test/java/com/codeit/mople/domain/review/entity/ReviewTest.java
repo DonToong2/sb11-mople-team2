@@ -106,7 +106,7 @@ public class ReviewTest {
 
     @Test
     @DisplayName("리뷰 수정 성공 - 평점만 수정")
-    void update_success_onlyTitle() {
+    void update_success_onlyRating() {
       // given
 
       // BeforeEach에서 user, author, content, text, rating을 통해 review와 newRating을 초기화
