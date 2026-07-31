@@ -597,14 +597,14 @@ public class PlaylistServiceTest {
       UUID playlistId = UUID.randomUUID();
       UUID subscriberId = UUID.randomUUID();
 
-      PlaylistSubscription subscription = mock(PlaylistSubscription.class);
-      given(playlistSubscriptionRepository.findByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(Optional.of(subscription));
+      given(playlistSubscriptionRepository.deleteByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(1);
+      given(playlistRepository.decreaseSubscriberCount(playlistId)).willReturn(1);
 
       // when
       playlistService.unSubscribe(playlistId, subscriberId);
 
       // then
-      verify(playlistSubscriptionRepository).delete(subscription);
+      verify(playlistSubscriptionRepository).deleteByPlaylistIdAndSubscriberId(playlistId, subscriberId);
       verify(playlistRepository).decreaseSubscriberCount(playlistId);
     }
 
@@ -614,13 +614,13 @@ public class PlaylistServiceTest {
       UUID playlistId = UUID.randomUUID();
       UUID subscriberId = UUID.randomUUID();
 
-      given(playlistSubscriptionRepository.findByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(Optional.empty());
+      given(playlistSubscriptionRepository.deleteByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(0);
 
       assertThatThrownBy(() -> playlistService.unSubscribe(playlistId, subscriberId))
           .isInstanceOf(PlaylistException.class)
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.UNSUBSCRIBE_NOT_FOUND);
 
-      verify(playlistSubscriptionRepository, never()).delete(any(PlaylistSubscription.class));
+      verify(playlistRepository, never()).decreaseSubscriberCount(any());
     }
   }
 
