@@ -8,7 +8,6 @@ import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
-import com.codeit.mople.domain.content.mapper.ContentMapper;
 import com.codeit.mople.domain.content.repository.ContentQueryRepository;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import java.io.File;
@@ -33,7 +32,6 @@ public class ContentService{
 
   private final ContentRepository contentRepository;
   private final ContentQueryRepository contentQueryRepository;
-  private final ContentMapper contentMapper;
 
   //허용할 이미지 MIME 타입 및 확장자 정의
   private static final List<String> ALLOWED_MIME_TYPES = List.of(
