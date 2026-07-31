@@ -10,7 +10,6 @@ import com.codeit.mople.domain.playlist.event.PlaylistSubscriptionCreateEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
 import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
-import com.codeit.mople.domain.playlist.mapper.PlaylistMapper;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistSubscriptionRepository;
@@ -20,7 +19,6 @@ import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.UserSummary;
 import com.codeit.mople.global.error.CustomException;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +35,6 @@ public class PlaylistService {
   private final UserRepository userRepository;
   private final PlaylistContentRepository playlistContentRepository;
   private final PlaylistSubscriptionRepository playlistSubscriptionRepository;
-  private final PlaylistMapper mapper;
 
   private final ApplicationEventPublisher publisher;
 
@@ -57,7 +54,7 @@ public class PlaylistService {
 
     UserSummary ownerResponse = toUserSummary(owner);
 
-    PlaylistResponse response = mapper.toResponse(
+    PlaylistResponse response = PlaylistResponse.from(
         savedPlaylist,
         ownerResponse,
         false,
@@ -88,7 +85,7 @@ public class PlaylistService {
             .map(PlaylistContentResponse::from)
             .toList();
 
-    PlaylistResponse response = mapper.toResponse(
+    PlaylistResponse response = PlaylistResponse.from(
         playlist,
         ownerResponse,
         false,
@@ -127,7 +124,7 @@ public class PlaylistService {
             .map(PlaylistContentResponse::from)
             .toList();
 
-    PlaylistResponse response = mapper.toResponse(
+    PlaylistResponse response = PlaylistResponse.from(
         playlist,
         ownerResponse,
         false,
