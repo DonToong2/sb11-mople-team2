@@ -59,7 +59,6 @@ public class ReviewService {
     long reviewCount = reviewRepository.countByContentId(content.getId());
     Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
 
-    // TODO 김명근:콘텐츠가 생성 되었거나 리뷰 삭제 등으로 리뷰가 하나도 없을 경우 0.0점 ← 해당 주석을 delete메서드로 이동
     content.updateRatingStats(averageRating, (int) reviewCount);
 
     ReviewResponse response = reviewMapper.toResponse(savedReview);
@@ -119,14 +118,16 @@ public class ReviewService {
     long reviewCount = reviewRepository.countByContentId(content.getId());
     Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
 
+    Double updateAverageRating = reviewCount == 0 ? 0.0 : averageRating;
+
     // 리뷰 삭제 후 리뷰가 0개일 때 평균 평점을 0점으로(averageRating null 방지)
     content.updateRatingStats(
-        reviewCount == 0 ? 0.0 : averageRating,
+        updateAverageRating,
         (int) reviewCount
     );
 
     log.info("리뷰 삭제 완료: reviewId={}, authorId={}, contentId={}, averageRating={}, reviewCount={}",
-        reviewId, authorId, content.getId(), averageRating, reviewCount);
+        reviewId, authorId, content.getId(), updateAverageRating, reviewCount);
 
   }
 
