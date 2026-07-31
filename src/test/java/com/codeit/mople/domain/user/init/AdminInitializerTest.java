@@ -1,4 +1,4 @@
-﻿package com.codeit.mople.domain.user.init;
+package com.codeit.mople.domain.user.init;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
