@@ -2,13 +2,15 @@ package com.codeit.mople.domain.content.controller;
 
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.content.dto.ContentCreateRequest;
-import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
+import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
 import com.codeit.mople.domain.content.service.ContentService;
 import jakarta.validation.Valid;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -44,12 +46,12 @@ public class ContentController {
 
   //콘텐츠 목록 조회
   @GetMapping
-  public ResponseEntity<ContentPageResponse> getContents(
-      @RequestParam(value = "page", defaultValue = "0") int page,
-      @RequestParam(value = "limit", defaultValue = "10") int limit,
-      @RequestParam(value = "sortDirection", defaultValue = "DESCENDING") String sortDirection,
-      @RequestParam(value = "sortBy", defaultValue = "createdAt") String sortBy) {
-    ContentPageResponse response = contentService.getContents(page, limit, sortDirection, sortBy);
+  public ResponseEntity<CursorResponseContentDto> getContents(
+      @RequestParam(value = "cursorId", required = false) UUID cursorId,
+      @RequestParam(value = "cursorCreatedAt", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant cursorCreatedAt,
+      @RequestParam(value = "limit", defaultValue = "10") int limit) {
+
+    CursorResponseContentDto response = contentService.getContents(cursorId, cursorCreatedAt, limit);
     return ResponseEntity.ok(response);
   }
 
