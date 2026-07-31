@@ -35,6 +35,7 @@ public class AdminService {
     Role previousRole = user.getRole();
     user.changeRole(role);
     if (previousRole != role) {
+      user.increaseSessionVersion();
       eventPublisher.publishEvent(new UserForceLogoutEvent(userId));
     }
     log.info("권한 변경 완료 - userId: {}, role: {}", userId, role);
@@ -46,12 +47,16 @@ public class AdminService {
     log.debug("계정 잠금 변경 시작 - userId: {}, locked: {}", userId, locked);
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+    boolean previousLocked = user.isLocked();
     if (locked) {
       user.lock();
     } else {
       user.unlock();
     }
-    eventPublisher.publishEvent(new UserForceLogoutEvent(userId));
+    if (previousLocked != locked) {
+      user.increaseSessionVersion();
+      eventPublisher.publishEvent(new UserForceLogoutEvent(userId));
+    }
     log.info("계정 잠금 변경 완료 - userId: {}, locked: {}", userId, locked);
   }
 

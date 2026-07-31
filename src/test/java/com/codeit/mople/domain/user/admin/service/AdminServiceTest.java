@@ -190,6 +190,21 @@ class AdminServiceTest {
     }
 
     @Test
+    @DisplayName("이미 잠금 상태인 계정에 잠금 요청 시 이벤트를 발행하지 않는다")
+    void 이미_잠금_상태인_계정에_잠금_요청_시_이벤트를_발행하지_않는다() {
+      // given
+      user.lock();
+      given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+      // when
+      adminService.changeUserLocked(userId, true);
+
+      // then
+      assertThat(user.isLocked()).isTrue();
+      verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
     @DisplayName("존재하지 않는 사용자 id로 요청하면 USER_NOT_FOUND 예외가 발생한다")
     void 존재하지_않는_사용자_id로_요청하면_USER_NOT_FOUND_예외가_발생한다() {
       // given
