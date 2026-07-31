@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.content.controller;
 
+import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.content.dto.ContentCreateRequest;
 import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -31,14 +33,11 @@ public class ContentController {
   //콘텐츠 생성
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ContentResponse> createContent(
-      //TODO: 추후 JWT 도입 및 관리자 권한 적용 시 주석 해제
-      //@RequestHeader("X-User-Id")UUID adminId,
+      @AuthenticationPrincipal CustomUserDetails userDetails, //JWT에서 추출된 유저 정보 객체 주입
       @Valid @RequestPart("request")ContentCreateRequest request,
       @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail) {
 
-    //TODO: JWT 도입 시 아래 임시 adminId 삭제 예정
-    UUID adminId = UUID.randomUUID();
-
+    UUID adminId = userDetails.getUserId();
     ContentResponse response = contentService.createContent(adminId, request, thumbnail);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
@@ -66,14 +65,11 @@ public class ContentController {
   @PatchMapping(value = "/{contentId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ContentResponse> updateContent(
       @PathVariable UUID contentId,
-      //TODO: 추후 JWT 도입 및 관리자 권한 적용 시 주석 해제
-      //@RequestHeader("X-User-Id") UUID adminId,
+      @AuthenticationPrincipal CustomUserDetails userDetails,
       @Valid @RequestPart("request")ContentUpdateRequest request,
       @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail) {
 
-    //TODO: JWT 도입 시 아래 임시 adminId 삭제 예정
-    UUID adminId = UUID.randomUUID();
-
+    UUID adminId = userDetails.getUserId();
     ContentResponse response = contentService.updateContent(adminId, contentId, request, thumbnail);
     return ResponseEntity.ok(response);
   }
@@ -81,16 +77,12 @@ public class ContentController {
   //콘텐츠 삭제
   @DeleteMapping("/{contentId}")
   public ResponseEntity<Void> deleteContent(
-      @PathVariable UUID contentId
-      //TODO: 추후 JWT 도입 및 관리자 권한 적용 시 주석 해제
-      //,@RequestHeader("X-User-Id") UUID adminId
+      @PathVariable UUID contentId,
+      @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
 
-    //TODO: JWT 도입 시 아래 임시 adminId 삭제 예정
-    UUID adminId = UUID.randomUUID();
-
+    UUID adminId = userDetails.getUserId();
     contentService.deleteContent(adminId, contentId);
-
     return ResponseEntity.ok().build();
   }
 }
