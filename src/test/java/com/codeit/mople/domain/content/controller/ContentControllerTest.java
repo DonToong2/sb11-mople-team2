@@ -15,9 +15,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.content.dto.ContentCreateRequest;
-import com.codeit.mople.domain.content.dto.ContentPageResponse;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
+import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.service.ContentService;
@@ -27,6 +27,7 @@ import com.codeit.mople.global.config.SecurityConfig;
 import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -74,7 +75,6 @@ public class ContentControllerTest {
   //=========================================================================================
   //콘텐츠 생성 테스트
   //=========================================================================================
-
   @Test
   @DisplayName("콘텐츠 생성 성공 - ADMIN 권한일 때 201 Created")
   void createContent_Success() throws Exception {
@@ -86,7 +86,6 @@ public class ContentControllerTest {
     MockMultipartFile requestPart = new MockMultipartFile(
         "request", "", MediaType.APPLICATION_JSON_VALUE,
         objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
-
     MockMultipartFile thumbnailPart = new MockMultipartFile(
         "thumbnail", "test.png", MediaType.IMAGE_PNG_VALUE,
         "dummy image content".getBytes());
@@ -114,11 +113,9 @@ public class ContentControllerTest {
   void createContent_Fail_Validation() throws Exception {
     ContentCreateRequest requestDto = new ContentCreateRequest(
         "MOVIE", "", "설명", List.of("액션"));
-
     MockMultipartFile requestPart = new MockMultipartFile(
         "request", "", MediaType.APPLICATION_JSON_VALUE,
         objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
-
     MockMultipartFile thumbnailPart = new MockMultipartFile(
         "thumbnail", "test.png", MediaType.IMAGE_PNG_VALUE,
         "dummy image content".getBytes());
@@ -137,27 +134,20 @@ public class ContentControllerTest {
   @Test
   @DisplayName("콘텐츠 생성 실패 - USER 권한일 때 403 Forbidden")
   void createContent_Fail_Forbidden() throws Exception {
-    ContentCreateRequest requestDto = new ContentCreateRequest(
-        "MOVIE", "테스트 영화", "설명", List.of("액션"));
-
-    MockMultipartFile requestPart = new MockMultipartFile(
-        "request", "", MediaType.APPLICATION_JSON_VALUE,
+    ContentCreateRequest requestDto = new ContentCreateRequest("MOVIE", "테스트 영화", "설명",
+        List.of("액션"));
+    MockMultipartFile requestPart = new MockMultipartFile("request", "",
+        MediaType.APPLICATION_JSON_VALUE,
         objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
 
-    mockMvc.perform(
-            multipart(HttpMethod.POST, "/api/contents")
-                .file(requestPart)
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-                .with(csrf())
-                .with(mockAuth(Role.USER))
-        )
+    mockMvc.perform(multipart(HttpMethod.POST, "/api/contents").file(requestPart)
+            .contentType(MediaType.MULTIPART_FORM_DATA).with(csrf()).with(mockAuth(Role.USER)))
         .andExpect(status().isForbidden());
   }
 
   //=========================================================================================
   //콘텐츠 목록 조회 테스트
   //=========================================================================================
-
   @Test
   @DisplayName("콘텐츠 목록 조회 성공 - 200 OK")
   void getContents_Success() throws Exception {
@@ -165,39 +155,40 @@ public class ContentControllerTest {
         UUID.randomUUID(), "MOVIE", "테스트 영화1", "설명 1",
         "http://example.com/test1.png", List.of("액션"),
         0.0, 0, 0L);
-
     ContentResponse content2 = new ContentResponse(
         UUID.randomUUID(), "DRAMA", "테스트 영화2", "설명 2",
         "http://example.com/test2.png", List.of("로맨스"),
         0.0, 0, 0L);
 
-    ContentPageResponse mockPageResponse = new ContentPageResponse(
-        List.of(content1, content2), null, null, false, 2L, "createdAt", "ASCENDING");
+    CursorResponseContentDto mockPageResponse = new CursorResponseContentDto(
+        List.of(content1, content2), "next-cursor-string", UUID.randomUUID(),
+        false, 2L, "createdAt", "DESCENDING");
 
-    given(contentService.getContents(anyInt(), anyInt(), any(), any())).willReturn(mockPageResponse);
+    // 파라미터를 cursorId, cursorCreatedAt, limit 형태로 모킹
+    given(contentService.getContents(any(), any(), anyInt())).willReturn(mockPageResponse);
 
     mockMvc.perform(
         get("/api/contents")
             .param("limit", "10")
-            .param("sortDirection", "ASCENDING")
-            .param("sortBy", "createdAt")
+            .param("cursorId", UUID.randomUUID().toString())
+            .param("cursorCreatedAt", Instant.now().toString())
             .contentType(MediaType.APPLICATION_JSON)
             .with(mockAuth(Role.USER))
     ).andExpect(status().isOk());
   }
 
   @Test
-  @DisplayName("콘텐츠 목록 조회 성공 - 파라미터 누락 시 기본값이 적용되어 200 OK")
+  @DisplayName("콘텐츠 목록 조회 성공 - 커서 파라미터 누락 시 기본값이 적용되어 200 OK (첫 페이지)")
   void getContents_Success_WithDefaultParams() throws Exception {
     ContentResponse content1 = new ContentResponse(
         UUID.randomUUID(), "MOVIE", "테스트 영화1", "설명 1",
         "http://example.com/test1.png", List.of("액션"),
         0.0, 0, 0L);
 
-    ContentPageResponse mockPageResponse = new ContentPageResponse(
+    CursorResponseContentDto mockPageResponse = new CursorResponseContentDto(
         List.of(content1), null, null, false, 1L, "createdAt", "DESCENDING");
 
-    given(contentService.getContents(0, 10, "DESCENDING", "createdAt")).willReturn(mockPageResponse);
+    given(contentService.getContents(null, null, 10)).willReturn(mockPageResponse);
 
     mockMvc.perform(
         get("/api/contents")
@@ -209,7 +200,6 @@ public class ContentControllerTest {
   //=========================================================================================
   //콘텐츠 단건 조회 테스트
   //=========================================================================================
-
   @Test
   @DisplayName("콘텐츠 단건 조회 성공 - 200 OK")
   void getContent_Success() throws Exception {
@@ -232,7 +222,6 @@ public class ContentControllerTest {
   @DisplayName("콘텐츠 단건 조회 실패 - 존재하지 않는 ID 조회 시 404 Not Found")
   void getContent_Fail_NotFound() throws Exception {
     UUID contentId = UUID.randomUUID();
-
     given(contentService.getContent(any(UUID.class)))
         .willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
 
@@ -246,7 +235,6 @@ public class ContentControllerTest {
   //=========================================================================================
   //콘텐츠 수정 테스트
   //=========================================================================================
-
   @Test
   @DisplayName("콘텐츠 수정 성공 - 200 OK")
   void updateContent_Success() throws Exception {
@@ -254,11 +242,9 @@ public class ContentControllerTest {
 
     ContentUpdateRequest requestDto = new ContentUpdateRequest(
         "수정된 영화 제목", "수정된 설명", List.of("스릴러"));
-
     MockMultipartFile requestPart = new MockMultipartFile(
         "request", "", MediaType.APPLICATION_JSON_VALUE,
         objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
-
     MockMultipartFile thumbnailPart = new MockMultipartFile(
         "thumbnail", "updated.png", MediaType.IMAGE_PNG_VALUE,
         "updated image content".getBytes());
@@ -287,11 +273,9 @@ public class ContentControllerTest {
 
     ContentUpdateRequest requestDto = new ContentUpdateRequest(
         "수정된 영화 제목", "수정된 설명", List.of("스릴러"));
-
     MockMultipartFile requestPart = new MockMultipartFile(
         "request", "", MediaType.APPLICATION_JSON_VALUE,
         objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
-
     MockMultipartFile thumbnailPart = new MockMultipartFile(
         "thumbnail", "updated.png", MediaType.IMAGE_PNG_VALUE,
         "updated image content".getBytes());
@@ -312,12 +296,10 @@ public class ContentControllerTest {
   //=========================================================================================
   //콘텐츠 삭제 테스트
   //=========================================================================================
-
   @Test
   @DisplayName("콘텐츠 삭제 성공 - 200 OK")
   void deleteContent_Success() throws Exception {
     UUID contentId = UUID.randomUUID();
-
     willDoNothing().given(contentService).deleteContent(any(), any());
 
     mockMvc.perform(
@@ -332,7 +314,6 @@ public class ContentControllerTest {
   @DisplayName("콘텐츠 삭제 실패 - 존재하지 않는 ID 삭제 시 404 Not Found")
   void deleteContent_Fail_NotFound() throws Exception {
     UUID contentId = UUID.randomUUID();
-
     willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)))
         .given(contentService).deleteContent(any(), any());
 
