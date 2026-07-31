@@ -132,7 +132,7 @@ public class ConversationService {
         nextCursor,
         nextIdAfter,
         hasNext,
-        (long) conversationDtos.size(),
+        conversationDtos.size(),
         request.sortBy(),
         request.sortDirection()
     );

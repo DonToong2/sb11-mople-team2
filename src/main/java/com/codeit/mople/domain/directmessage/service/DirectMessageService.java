@@ -70,7 +70,7 @@ public class DirectMessageService {
         nextCursor,
         nextIdAfter,
         hasNext,
-        (long) directMessageDtos.size(),
+        directMessageDtos.size(),
         request.sortBy(),
         request.sortDirection()
     );
