@@ -1,6 +1,5 @@
 package com.codeit.mople.domain.directmessage.dto.request;
 
-import com.codeit.mople.domain.conversation.exception.ConversationException;
 import com.codeit.mople.domain.directmessage.exception.DirectMessageException;
 import com.codeit.mople.global.error.CommonErrorCode;
 import jakarta.validation.constraints.Max;
@@ -35,9 +34,13 @@ public record DirectMessageCursorRequest(
     if (sortBy == null || sortBy.isBlank()) {
       sortBy = "createdAt";
     }
-    if (cursor != null && !cursor.isBlank() && idAfter == null) {
-      throw new ConversationException(
-          CommonErrorCode.INVALID_INPUT, Map.of("message", "커서 페이싱 시 idAfter는 필수입니다."));
+
+    boolean hasCursor = cursor != null && !cursor.isBlank();
+    boolean hasIdAfter = idAfter != null;
+
+    if (hasCursor != hasIdAfter) {
+      throw new DirectMessageException(
+          CommonErrorCode.INVALID_INPUT, Map.of("message", "커서 페이싱 시 cursor와 idAfter는 함께 제공해야 합니다."));
     }
   }
 
