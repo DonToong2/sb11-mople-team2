@@ -21,6 +21,7 @@ public class SecurityConfig {
   public SecurityFilterChain filterChain(HttpSecurity http, JwtProvider jwtProvider,
       UserRepository userRepository) throws Exception {
     http
+        //JWT 기반의 Stateless API이므로 CSRF 보호 비활성화
         .csrf(csrf -> csrf
             .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()) // 쿠키명 기본값 XSRF-TOKEN, 헤더명 X-XSRF-TOKEN
             .ignoringRequestMatchers("/api/auth/**", "/api/users") // (POST, 회원가입)는 "아직 로그인하기 전" 상태에서 호출되는 API라서, CSRF 검증에서 예외 처리
@@ -38,6 +39,9 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
             .requestMatchers(HttpMethod.PATCH, "/api/users/*/role").hasRole("ADMIN")
             .requestMatchers(HttpMethod.PATCH, "/api/users/*/locked").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.POST, "/api/contents/**").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.PATCH, "/api/contents/**").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.DELETE, "/api/contents/**").hasRole("ADMIN")
             .anyRequest().authenticated()
         )
         .addFilterBefore(
