@@ -115,8 +115,14 @@ public class ConversationService {
 
     if (hasNext && !slicedConversations.isEmpty()) {
       Conversation lastItem = slicedConversations.get(slicedConversations.size() - 1);
-      if (lastItem.getLastMessage() != null && lastItem.getLastMessage().getCreatedAt() != null) {
-        nextCursor = lastItem.getLastMessage().getCreatedAt() != null ? lastItem.getLastMessage().getCreatedAt().toString() : null;
+
+      // 대화방에 lastMessage가 없으면 대화방의 createdAt을 커서로 사용
+      Instant nextTime = (lastItem.getLastMessage() != null && lastItem.getLastMessage().getCreatedAt() != null)
+          ? lastItem.getLastMessage().getCreatedAt()
+          : lastItem.getCreatedAt();
+
+      if (nextTime != null) {
+        nextCursor = nextTime.toString();
         nextIdAfter = lastItem.getId();
       }
     }
