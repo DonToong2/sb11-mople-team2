@@ -175,8 +175,10 @@ public class PlaylistService {
     Playlist playlist = playlistRepository.findById(playlistId)
         .orElseThrow(() -> new CustomException(PlaylistErrorCode.SUBSCRIBE_NOT_FOUND));
 
+    UUID ownerId = playlist.getOwner().getId();
+
     // 본인 구독 차단
-    if (subscriberId.equals(playlist.getOwner().getId())) {
+    if (subscriberId.equals(ownerId)) {
       throw new CustomException(PlaylistErrorCode.SUBSCRIBE_NOT_ALLOWED);
     }
 
@@ -191,12 +193,12 @@ public class PlaylistService {
 
     PlaylistSubscription saved = playlistSubscriptionRepository.save(
         PlaylistSubscription.create(playlist, subscriber));
-    playlist.increaseSubscriberCount();
+    playlistRepository.increaseSubscriberCount(playlistId);
 
     log.info("플레이리스트 구독 성공: playlistSubscriptionId={}, playlistId={}, subscriberId={}",
         saved.getId(), playlistId, subscriberId);
 
-    publisher.publishEvent(new PlaylistSubscriptionCreateEvent(playlist.getOwner().getId(), playlistId, subscriberId));
+    publisher.publishEvent(new PlaylistSubscriptionCreateEvent(ownerId, playlistId, subscriberId));
   }
 
   @Transactional
@@ -207,8 +209,8 @@ public class PlaylistService {
     PlaylistSubscription playlistSubscription = playlistSubscriptionRepository.findByPlaylistIdAndSubscriberId(playlistId, subscriberId)
         .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.UNSUBSCRIBE_NOT_FOUND, Map.of("playlistId", playlistId, "subscriberId", subscriberId)));
 
-    playlistSubscription.getPlaylist().decreaseSubscriberCount();
     playlistSubscriptionRepository.delete(playlistSubscription);
+    playlistRepository.decreaseSubscriberCount(playlistId);
 
     log.info("플레이리스트 구독 취소 성공: playlist={}, subscriberId={}", playlistId, subscriberId);
   }
