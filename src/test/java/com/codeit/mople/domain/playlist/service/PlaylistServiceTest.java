@@ -10,6 +10,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistContentResponse;
@@ -21,7 +23,6 @@ import com.codeit.mople.domain.playlist.event.PlaylistSubscriptionCreateEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
 import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
-import com.codeit.mople.domain.playlist.mapper.PlaylistContentMapper;
 import com.codeit.mople.domain.playlist.mapper.PlaylistMapper;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
@@ -63,9 +64,6 @@ public class PlaylistServiceTest {
   private PlaylistMapper mapper;
 
   @Mock
-  private PlaylistContentMapper playlistContentMapper;
-
-  @Mock
   private ApplicationEventPublisher publisher;
 
   @InjectMocks
@@ -79,6 +77,8 @@ public class PlaylistServiceTest {
 
   private Playlist mockPlaylist;
   private Playlist playlist;
+  private Content content;
+  private UUID contentId;
   private UUID playlistId;
 
   private PlaylistUpdateRequest updateRequest;
@@ -202,6 +202,17 @@ public class PlaylistServiceTest {
 
       // BeforeEach에서 owner, playlist, playlistId를 초기화
 
+      content = mock(Content.class);
+      contentId = UUID.randomUUID();
+      given(content.getId()).willReturn(contentId);
+      given(content.getType()).willReturn(ContentType.MOVIE);
+      given(content.getTitle()).willReturn("타이타닉");
+      given(content.getDescription()).willReturn("설명");
+      given(content.getThumbnailUrl()).willReturn(null);
+      given(content.getTags()).willReturn(List.of("로맨스"));
+      given(content.getAverageRating()).willReturn(0.0);
+      given(content.getReviewCount()).willReturn(0);
+
       given(owner.getId())
           .willReturn(ownerId);
       given(owner.getName())
@@ -216,7 +227,9 @@ public class PlaylistServiceTest {
       );
 
       PlaylistContent playlistContent = mock(PlaylistContent.class);
-      PlaylistContentResponse playlistContentResponse = mock(PlaylistContentResponse.class);
+      given(playlistContent.getContent())
+          .willReturn(content);
+      PlaylistContentResponse playlistContentResponse = PlaylistContentResponse.from(playlistContent);
 
       PlaylistResponse response = mock(PlaylistResponse.class);
 
@@ -228,8 +241,6 @@ public class PlaylistServiceTest {
 
       given(playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlistId))
           .willReturn(List.of(playlistContent));
-      given(playlistContentMapper.toResponse(playlistContent))
-          .willReturn(playlistContentResponse);
 
       given(mapper.toResponse(
           eq(mockPlaylist),
@@ -247,7 +258,6 @@ public class PlaylistServiceTest {
 
       verify(playlistRepository).findById(playlistId);
       verify(playlistContentRepository).findAllByPlaylistIdOrderByCreatedAtAsc(playlistId);
-      verify(playlistContentMapper).toResponse(playlistContent);
       verify(mapper).toResponse(
           eq(mockPlaylist),
           eq(ownerResponse),
@@ -274,7 +284,6 @@ public class PlaylistServiceTest {
       verify(playlistRepository).findById(notExistPlaylistId);
       verifyNoInteractions(
           playlistContentRepository,
-          playlistContentMapper,
           mapper
       );
     }
@@ -349,7 +358,6 @@ public class PlaylistServiceTest {
 
       verifyNoInteractions(
           playlistContentRepository,
-          playlistContentMapper,
           mapper
       );
     }
@@ -382,7 +390,6 @@ public class PlaylistServiceTest {
 
       verifyNoInteractions(
           playlistContentRepository,
-          playlistContentMapper,
           mapper
       );
     }

@@ -10,7 +10,6 @@ import com.codeit.mople.domain.playlist.event.PlaylistSubscriptionCreateEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
 import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
-import com.codeit.mople.domain.playlist.mapper.PlaylistContentMapper;
 import com.codeit.mople.domain.playlist.mapper.PlaylistMapper;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
@@ -38,7 +37,6 @@ public class PlaylistService {
   private final UserRepository userRepository;
   private final PlaylistContentRepository playlistContentRepository;
   private final PlaylistSubscriptionRepository playlistSubscriptionRepository;
-  private final PlaylistContentMapper playlistContentMapper;
   private final PlaylistMapper mapper;
 
   private final ApplicationEventPublisher publisher;
@@ -87,7 +85,7 @@ public class PlaylistService {
     // 콘텐츠를 플레이리스트에 추가한 순서대로 표시(콘텐츠를 B, E, A, C 순으로 추가했을 경우 추가한 순서 그대로)
     List<PlaylistContentResponse> contents =
         playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlistId).stream()
-            .map(playlistContentMapper::toResponse)
+            .map(PlaylistContentResponse::from)
             .toList();
 
     PlaylistResponse response = mapper.toResponse(
@@ -126,7 +124,7 @@ public class PlaylistService {
 
     List<PlaylistContentResponse> contents =
         playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlistId).stream()
-            .map(playlistContentMapper::toResponse)
+            .map(PlaylistContentResponse::from)
             .toList();
 
     PlaylistResponse response = mapper.toResponse(
