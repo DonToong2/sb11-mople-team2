@@ -8,7 +8,7 @@ public record CursorResponseConversationDto(
     String nextCursor,
     UUID nextIdAfter,
     boolean hasNext,
-    long totalCount,
+    Long totalCount,
     String sortBy,
     String sortDirection
 ) {
