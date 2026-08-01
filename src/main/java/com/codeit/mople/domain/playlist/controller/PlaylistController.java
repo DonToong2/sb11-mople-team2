@@ -3,7 +3,9 @@ package com.codeit.mople.domain.playlist.controller;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.playlist.controller.api.PlaylistApi;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
+import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
+import com.codeit.mople.domain.playlist.dto.response.PlaylistCursorResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.service.PlaylistService;
 import jakarta.validation.Valid;
@@ -14,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,6 +50,15 @@ public class PlaylistController implements PlaylistApi {
       @PathVariable UUID playlistId
   ) {
     PlaylistResponse response = playlistService.find(playlistId);
+
+    return ResponseEntity.ok(response);
+  }
+
+  @GetMapping
+  public ResponseEntity<PlaylistCursorResponse> findAll(
+      @Valid @ModelAttribute PlaylistQueryCondition condition
+  ) {
+    PlaylistCursorResponse response = playlistService.findAll(condition);
 
     return ResponseEntity.ok(response);
   }
