@@ -10,12 +10,12 @@ import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.config.JpaAuditingConfig;
 import com.codeit.mople.global.config.QueryDslConfig;
-import com.codeit.mople.global.entity.BaseEntity;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -72,304 +72,397 @@ public class PlaylistRepositoryTest {
     entityManager.clear();
   }
 
-  @Test
-  @DisplayName("목록 조회 성공 - 기본 조건")
-  void findAll_success() {
-    // given
+  @Nested
+  @DisplayName("플레이리스트 목록 조회")
+  class FindAll {
 
-    // BeforeEach에서 owner 초기화 및 playlist1, playlist2, otherPlaylist 저장
+    @Test
+    @DisplayName("목록 조회 성공 - 기본 조건")
+    void findAll_success() {
+      // given
 
-    PlaylistQueryCondition condition = new PlaylistQueryCondition(
-        null,
-        null,
-        null,
-        null,
-        null,
-        10,
-        SortDirection.ASCENDING,
-        PlaylistSortBy.UPDATED_AT
-    );
+      // BeforeEach에서 owner 초기화 및 playlist1, playlist2, otherPlaylist 저장
 
-    // when
-    List<Playlist> result = playlistRepository.findAll(condition);
+      PlaylistQueryCondition condition = new PlaylistQueryCondition(
+          null,
+          null,
+          null,
+          null,
+          null,
+          10,
+          SortDirection.ASCENDING,
+          PlaylistSortBy.UPDATED_AT
+      );
 
-    // then
-    assertThat(result).hasSize(3);
+      // when
+      List<Playlist> result = playlistRepository.findAll(condition);
+
+      // then
+      assertThat(result).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("목록 조회 성공 - 제목 검색 조건")
+    void findAll_success_keywordLike() {
+      // given
+
+      // BeforeEach에서 playlist1 저장
+
+      PlaylistQueryCondition condition = new PlaylistQueryCondition(
+          "새 플레이리스트 (1)",
+          null,
+          null,
+          null,
+          null,
+          10,
+          SortDirection.ASCENDING,
+          PlaylistSortBy.UPDATED_AT
+      );
+
+      // when
+      List<Playlist> result = playlistRepository.findAll(condition);
+
+      // then
+      // Playlist에 존재하는 ID만 추출하여 정확히 playlist1만 존재하는지 ID로 확인
+      assertThat(result).extracting(Playlist::getId)
+          .containsExactly(playlist1.getId());
+    }
+
+    @Test
+    @DisplayName("목록 조회 성공 - 소유자 ID 조건")
+    void findAll_success_ownerIdEqual() {
+      // given
+
+      // BeforeEach에서 owner 초기화 및 playlist1 저장
+
+      PlaylistQueryCondition condition = new PlaylistQueryCondition(
+          null,
+          owner.getId(),
+          null,
+          null,
+          null,
+          10,
+          SortDirection.ASCENDING,
+          PlaylistSortBy.UPDATED_AT
+      );
+
+      // when
+      List<Playlist> result = playlistRepository.findAll(condition);
+
+      // then
+      assertThat(result).extracting(Playlist::getId)
+          .containsExactly(playlist1.getId(), playlist2.getId());
+    }
+
+    @Test
+    @DisplayName("목록 조회 성공 - 구독자 ID 조건")
+    void findAll_success_subscriberIdEqual() {
+      // given
+
+      // BeforeEach에서 subscriber 초기화 및 playlist1 저장
+
+      PlaylistQueryCondition condition = new PlaylistQueryCondition(
+          null,
+          null,
+          subscriber.getId(),
+          null,
+          null,
+          10,
+          SortDirection.ASCENDING,
+          PlaylistSortBy.UPDATED_AT
+      );
+
+      // when
+      List<Playlist> result = playlistRepository.findAll(condition);
+
+      // then
+      assertThat(result).extracting(Playlist::getId)
+          .containsExactly(playlist1.getId());
+    }
+
+    @Test
+    @DisplayName("목록 조회 성공 - 커서 페이지네이션 - 최신순")
+    void findAll_success_cursor_updatedAt() {
+      // given
+
+      // BeforeEach에서 playlist1, playlist2, otherPlaylist 저장
+
+      // 페이지 크기(limit)을 2로 지정(첫 번째 페이지에는 크기 결과가 3(2+1, limit+1), 두 번째 페이지에는 크기 결과가 1이 나오도록 유도)
+      PlaylistQueryCondition condition = new PlaylistQueryCondition(
+          null,
+          null,
+          null,
+          null,
+          null,
+          2,
+          SortDirection.DESCENDING,
+          PlaylistSortBy.UPDATED_AT
+      );
+
+      // when
+      List<Playlist> result = playlistRepository.findAll(condition);
+
+      // limit + 1이기 때문에 3번째가 아닌 2번째를 선택(limit)
+      Playlist last = result.get(1);
+
+      PlaylistQueryCondition nextCondition = new PlaylistQueryCondition(
+          null,
+          null,
+          null,
+          last.getUpdatedAt().toString(),
+          last.getId(),
+          2,
+          SortDirection.DESCENDING,
+          PlaylistSortBy.UPDATED_AT
+      );
+
+      List<Playlist> nextResult = playlistRepository.findAll(nextCondition);
+
+      // then
+      // limit + 1이기 때문에 2개가 아닌 3개가 조회되어야 함
+      assertThat(result).hasSize(2 + 1);
+
+      assertThat(nextResult).hasSize(1)
+          .extracting(Playlist::getId)
+          .doesNotContain(last.getId());
+    }
+
+    @Test
+    @DisplayName("목록 조회 성공 - 커서 페이지네이션 - 구독순")
+    void findAll_success_cursor_subscriberCount() {
+      // given
+
+      // BeforeEach에서 playlist, playlist2, otherPlaylist 저장 및 각 구독자 수 필드 크기 반영
+
+      PlaylistQueryCondition condition = new PlaylistQueryCondition(
+          null,
+          null,
+          null,
+          null,
+          null,
+          2,
+          SortDirection.DESCENDING,
+          PlaylistSortBy.SUBSCRIBER_COUNT
+      );
+
+      // when
+      List<Playlist> result = playlistRepository.findAll(condition);
+
+      // limit + 1이기 때문에 3번째가 아닌 2번째를 선택(limit)
+      Playlist last = result.get(1);
+
+      PlaylistQueryCondition nextCondition = new PlaylistQueryCondition(
+          null,
+          null,
+          null,
+          String.valueOf(last.getSubscriberCount()),
+          last.getId(),
+          2,
+          SortDirection.DESCENDING,
+          PlaylistSortBy.SUBSCRIBER_COUNT
+      );
+
+      List<Playlist> nextResult = playlistRepository.findAll(nextCondition);
+
+      // then
+      assertThat(result).hasSize(2 + 1);
+      assertThat(result.get(0).getSubscriberCount()).isEqualTo(2);
+      assertThat(result.get(1).getSubscriberCount()).isEqualTo(1);
+
+      // 구독자 수 0인 otherPlaylist만이 다음 페이지에 조회되어야 함
+      assertThat(nextResult).hasSize(1)
+          .extracting(Playlist::getId)
+          .containsExactly(otherPlaylist.getId());
+    }
+
+    @Test
+    @DisplayName("목록 조회 성공 - 커서 페이지네이션 - 구독순(오름차순)")
+    void findAll_success_cursor_subscriberCount_ASC() {
+      // given
+
+      // BeforeEach에서 playlist, playlist2, otherPlaylist 저장
+
+      PlaylistQueryCondition condition = new PlaylistQueryCondition(
+          null,
+          null,
+          null,
+          null,
+          null,
+          2,
+          SortDirection.ASCENDING,
+          PlaylistSortBy.SUBSCRIBER_COUNT
+      );
+
+      // when
+      List<Playlist> result = playlistRepository.findAll(condition);
+
+      // limit + 1이기 때문에 3번째가 아닌 2번째를 선택(limit)
+      Playlist last = result.get(1);
+
+      PlaylistQueryCondition nextCondition = new PlaylistQueryCondition(
+          null,
+          null,
+          null,
+          String.valueOf(last.getSubscriberCount()),
+          last.getId(),
+          2,
+          SortDirection.ASCENDING,
+          PlaylistSortBy.SUBSCRIBER_COUNT
+      );
+
+      List<Playlist> nextResult = playlistRepository.findAll(nextCondition);
+
+      // then
+      assertThat(result).hasSize(2 + 1);
+      assertThat(result.get(0).getSubscriberCount()).isEqualTo(0);
+      assertThat(result.get(1).getSubscriberCount()).isEqualTo(1);
+
+      // playlist1만이 다음 페이지에 포함되어야 함
+      assertThat(nextResult).hasSize(1)
+          .extracting(Playlist::getId)
+          .containsExactly(playlist1.getId());
+    }
+
+    @Test
+    @DisplayName("목록 조회 성공 - 제목 검색 결과 없음")
+    void findAll_success_keywordLike_notFound() {
+      // given
+      PlaylistQueryCondition condition = new PlaylistQueryCondition(
+          "가나다",
+          null,
+          null,
+          null,
+          null,
+          10,
+          SortDirection.ASCENDING,
+          PlaylistSortBy.UPDATED_AT
+      );
+
+      // when
+      List<Playlist> result = playlistRepository.findAll(condition);
+
+      // then
+      assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("목록 조회 성공 - 사용자가 구독한 플레이리스트가 하나도 존재하지 않음")
+    void findAll_success_noSubscribedPlaylist() {
+      // given
+      User other = User.createUser("other@test.com", "12345678", "other");
+
+      entityManager.persist(other);
+
+      entityManager.flush();
+      UUID otherId = other.getId();
+      entityManager.clear();
+
+      // BeforeEach에서 playlist1, playlist2, otherPlaylist 저장
+
+      PlaylistQueryCondition condition = new PlaylistQueryCondition(
+          null,
+          null,
+          otherId,
+          null,
+          null,
+          10,
+          SortDirection.ASCENDING,
+          PlaylistSortBy.UPDATED_AT
+      );
+
+      // when
+      List<Playlist> result = playlistRepository.findAll(condition);
+
+      // then
+      assertThat(result).isEmpty();
+    }
+
   }
 
-  @Test
-  @DisplayName("목록 조회 성공 - 제목 검색 조건")
-  void findAll_success_keywordLike() {
-    // given
+  @Nested
+  @DisplayName("플레이리스트 개수 조회")
+  class Count {
 
-    // BeforeEach에서 playlist1 저장
+    @Test
+    @DisplayName("전체 플레이리스트 개수 조회 성공")
+    void count_success() {
+      // given
 
-    PlaylistQueryCondition condition = new PlaylistQueryCondition(
-        "새 플레이리스트 (1)",
-        null,
-        null,
-        null,
-        null,
-        10,
-        SortDirection.ASCENDING,
-        PlaylistSortBy.UPDATED_AT
-    );
+      // BeforeEach에서 playlist1, playlist2, otherPlaylist 저장
 
-    // when
-    List<Playlist> result = playlistRepository.findAll(condition);
+      PlaylistQueryCondition condition = new PlaylistQueryCondition(
+          null,
+          null,
+          null,
+          null,
+          null,
+          10,
+          SortDirection.ASCENDING,
+          PlaylistSortBy.UPDATED_AT
+      );
 
-    // then
-    // Playlist에 존재하는 ID만 추출하여 정확히 playlist1만 존재하는지 ID로 확인
-    assertThat(result).extracting(Playlist::getId)
-        .containsExactly(playlist1.getId());
-  }
+      // when
+      long result = playlistRepository.count(condition);
 
-  @Test
-  @DisplayName("목록 조회 성공 - 소유자 ID 조건")
-  void findAll_success_ownerIdEqual() {
-    // given
+      // then
+      assertThat(result).isEqualTo(3L);
+    }
 
-    // BeforeEach에서 owner 초기화 및 playlist1 저장
+    @Test
+    @DisplayName("조건에 맞는 플레이리스트 개수 조회 성공")
+    void count_success_condition() {
+      // given
 
-    PlaylistQueryCondition condition = new PlaylistQueryCondition(
-        null,
-        owner.getId(),
-        null,
-        null,
-        null,
-        10,
-        SortDirection.ASCENDING,
-        PlaylistSortBy.UPDATED_AT
-    );
+      // BeforeEach에서 owner, playlist1, playlist2, otherPlaylist 저장
 
-    // when
-    List<Playlist> result = playlistRepository.findAll(condition);
+      PlaylistQueryCondition condition = new PlaylistQueryCondition(
+          null,
+          owner.getId(),
+          null,
+          null,
+          null,
+          10,
+          SortDirection.ASCENDING,
+          PlaylistSortBy.UPDATED_AT
+      );
 
-    // then
-    assertThat(result).extracting(Playlist::getId)
-        .containsExactly(playlist1.getId(), playlist2.getId());
-  }
+      // when
+      long result = playlistRepository.count(condition);
 
-  @Test
-  @DisplayName("목록 조회 성공 - 구독자 ID 조건")
-  void findAll_success_subscriberIdEqual() {
-    // given
+      // then
+      // playlist1, playlist2가 개수에 포함
+      assertThat(result).isEqualTo(2L);
 
-    // BeforeEach에서 subscriber 초기화 및 playlist1 저장
+    }
 
-    PlaylistQueryCondition condition = new PlaylistQueryCondition(
-        null,
-        null,
-        subscriber.getId(),
-        null,
-        null,
-        10,
-        SortDirection.ASCENDING,
-        PlaylistSortBy.UPDATED_AT
-    );
+    @Test
+    @DisplayName("플레이리스트 개수 조회 성공 - 조건에 맞는 플레이리스트가 없음")
+    void count_success_noMatchingPlaylists() {
+      User other = User.createUser("other@test.com", "12345678", "other");
 
-    // when
-    List<Playlist> result = playlistRepository.findAll(condition);
+      entityManager.persist(other);
+      entityManager.flush();
 
-    // then
-    assertThat(result).extracting(Playlist::getId)
-        .containsExactly(playlist1.getId());
-  }
+      UUID otherId = other.getId();
+      entityManager.clear();
 
-  @Test
-  @DisplayName("목록 조회 성공 - 커서 페이지네이션 - 최신순")
-  void findAll_success_cursor_updatedAt() {
-    // given
+      PlaylistQueryCondition condition = new PlaylistQueryCondition(
+          null,
+          otherId,
+          null,
+          null,
+          null,
+          10,
+          SortDirection.ASCENDING,
+          PlaylistSortBy.UPDATED_AT
+      );
 
-    // BeforeEach에서 playlist1, playlist2, otherPlaylist 저장
+      // when
+      long result = playlistRepository.count(condition);
 
-    // 페이지 크기(limit)을 2로 지정(첫 번째 페이지에는 크기 결과가 3(2+1, limit+1), 두 번째 페이지에는 크기 결과가 1이 나오도록 유도)
-    PlaylistQueryCondition condition = new PlaylistQueryCondition(
-        null,
-        null,
-        null,
-        null,
-        null,
-        2,
-        SortDirection.DESCENDING,
-        PlaylistSortBy.UPDATED_AT
-    );
+      // then
+      assertThat(result).isZero();
+    }
 
-    // when
-    List<Playlist> result = playlistRepository.findAll(condition);
-
-    // limit + 1이기 때문에 3번째가 아닌 2번째를 선택(limit)
-    Playlist last = result.get(1);
-
-    PlaylistQueryCondition nextCondition = new PlaylistQueryCondition(
-        null,
-        null,
-        null,
-        last.getUpdatedAt().toString(),
-        last.getId(),
-        2,
-        SortDirection.DESCENDING,
-        PlaylistSortBy.UPDATED_AT
-    );
-
-    List<Playlist> nextResult = playlistRepository.findAll(nextCondition);
-
-    // then
-    // limit + 1이기 때문에 2개가 아닌 3개가 조회되어야 함
-    assertThat(result).hasSize(2 + 1);
-
-    assertThat(nextResult).hasSize(1)
-        .extracting(Playlist::getId)
-        .doesNotContain(last.getId());
-  }
-
-  @Test
-  @DisplayName("목록 조회 성공 - 커서 페이지네이션 - 구독순")
-  void findAll_success_cursor_subscriberCount() {
-    // given
-
-    // BeforeEach에서 playlist, playlist2, otherPlaylist 저장 및 각 구독자 수 필드 크기 반영
-
-    PlaylistQueryCondition condition = new PlaylistQueryCondition(
-        null,
-        null,
-        null,
-        null,
-        null,
-        2,
-        SortDirection.DESCENDING,
-        PlaylistSortBy.SUBSCRIBER_COUNT
-    );
-
-    // when
-    List<Playlist> result = playlistRepository.findAll(condition);
-
-    // limit + 1이기 때문에 3번째가 아닌 2번째를 선택(limit)
-    Playlist last = result.get(1);
-
-    PlaylistQueryCondition nextCondition = new PlaylistQueryCondition(
-        null,
-        null,
-        null,
-        String.valueOf(last.getSubscriberCount()),
-        last.getId(),
-        2,
-        SortDirection.DESCENDING,
-        PlaylistSortBy.SUBSCRIBER_COUNT
-    );
-
-    List<Playlist> nextResult = playlistRepository.findAll(nextCondition);
-
-    // then
-    assertThat(result).hasSize(2 + 1);
-    assertThat(result.get(0).getSubscriberCount()).isEqualTo(2);
-    assertThat(result.get(1).getSubscriberCount()).isEqualTo(1);
-
-    // 구독자 수 0인 otherPlaylist만이 다음 페이지에 조회되어야 함
-    assertThat(nextResult).hasSize(1)
-        .extracting(Playlist::getId)
-        .containsExactly(otherPlaylist.getId());
-  }
-
-  @Test
-  @DisplayName("목록 조회 성공 - 커서 페이지네이션 - 구독순(오름차순)")
-  void findAll_success_cursor_subscriberCount_ASC() {
-    // given
-
-    // BeforeEach에서 playlist, playlist2, otherPlaylist 저장
-
-    PlaylistQueryCondition condition = new PlaylistQueryCondition(
-        null,
-        null,
-        null,
-        null,
-        null,
-        2,
-        SortDirection.ASCENDING,
-        PlaylistSortBy.SUBSCRIBER_COUNT
-    );
-
-    // when
-    List<Playlist> result = playlistRepository.findAll(condition);
-
-    // limit + 1이기 때문에 3번째가 아닌 2번째를 선택(limit)
-    Playlist last = result.get(1);
-
-    PlaylistQueryCondition nextCondition = new PlaylistQueryCondition(
-        null,
-        null,
-        null,
-        String.valueOf(last.getSubscriberCount()),
-        last.getId(),
-        2,
-        SortDirection.ASCENDING,
-        PlaylistSortBy.SUBSCRIBER_COUNT
-    );
-
-    List<Playlist> nextResult = playlistRepository.findAll(nextCondition);
-
-    // then
-    assertThat(result).hasSize(2 + 1);
-    assertThat(result.get(0).getSubscriberCount()).isEqualTo(0);
-    assertThat(result.get(1).getSubscriberCount()).isEqualTo(1);
-
-    // playlist1만이 다음 페이지에 포함되어야 함
-    assertThat(nextResult).hasSize(1)
-        .extracting(Playlist::getId)
-        .containsExactly(playlist1.getId());
-  }
-
-  @Test
-  @DisplayName("목록 조회 실패 - 제목 검색 결과 없음")
-  void findAll_fail_keywordLike_notFound() {
-    // given
-    PlaylistQueryCondition condition = new PlaylistQueryCondition(
-        "가나다",
-        null,
-        null,
-        null,
-        null,
-        10,
-        SortDirection.ASCENDING,
-        PlaylistSortBy.UPDATED_AT
-    );
-
-    // when
-    List<Playlist> result = playlistRepository.findAll(condition);
-
-    // then
-    assertThat(result).isEmpty();
-  }
-
-  @Test
-  @DisplayName("목록 조회 실패 - 사용자가 구독한 플레이리스트가 하나도 존재하지 않음")
-  void findAll_fail_noSubscribedPlaylist() {
-    // given
-    User other = User.createUser("other@test.com", "12345678", "other");
-
-    entityManager.persist(other);
-
-    entityManager.flush();
-    UUID otherId = other.getId();
-    entityManager.clear();
-
-    // BeforeEach에서 playlist1, playlist2, otherPlaylist 저장
-
-    PlaylistQueryCondition condition = new PlaylistQueryCondition(
-        null,
-        null,
-        otherId,
-        null,
-        null,
-        10,
-        SortDirection.ASCENDING,
-        PlaylistSortBy.UPDATED_AT
-    );
-
-    // when
-    List<Playlist> result = playlistRepository.findAll(condition);
-
-    // then
-    assertThat(result).isEmpty();
   }
 }
