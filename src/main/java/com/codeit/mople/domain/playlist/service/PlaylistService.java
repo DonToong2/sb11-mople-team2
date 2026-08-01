@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -116,8 +117,9 @@ public class PlaylistService {
   @Transactional(readOnly = true)
   public PlaylistCursorResponse findAll(PlaylistQueryCondition condition, UUID userId) {
 
-    log.debug("플레이리스트 목록 조회 시도: keywordLike={}, ownerId={}, subscriberId={}, cursor={},"
-            + " idAfter={}, limit={}, sortBy={}, sortDirection={}",
+    log.debug("플레이리스트 목록 조회 시도: userId={}, keywordLike={}, ownerId={}, subscriberId={},"
+            + " cursor={}, idAfter={}, limit={}, sortBy={}, sortDirection={}",
+        userId,
         condition.keywordLike(),
         condition.ownerIdEqual(),
         condition.subscriberIdEqual(),
@@ -145,20 +147,34 @@ public class PlaylistService {
     // 조회된 플레이리스트 ID
     List<UUID> playlistIds = playlists.stream().map(Playlist::getId).toList();
 
+    // 플레이리스트 별 콘텐츠 조회
+    Map<UUID, List<PlaylistContentResponse>> contentsByPlaylistId =
+        playlistIds.isEmpty()
+            ? Map.of()
+            : playlistContentRepository.findAllByPlaylistIdInOrderByCreatedAtAsc(playlistIds)
+                .stream()
+                .collect(Collectors.groupingBy(pc ->
+                        pc.getPlaylist().getId(),
+                    Collectors.mapping(
+                        PlaylistContentResponse::from,
+                        Collectors.toList()
+                    )
+                ));
+
     // 현재 사용자가 구독한 플레이리스트 ID들을 조회
     Set<UUID> subscribedPlaylistIds = playlistIds.isEmpty() ?
         Set.of() :
         new HashSet<>(
-        playlistSubscriptionRepository
-            .findPlaylistIdsBySubscriberIdAndPlaylistIdIn(userId, playlistIds)
-    );
+            playlistSubscriptionRepository
+                .findPlaylistIdsBySubscriberIdAndPlaylistIdIn(userId, playlistIds)
+        );
 
     List<PlaylistResponse> data = playlists.stream()
         .map(playlist -> PlaylistResponse.from(
             playlist,
             toUserSummary(playlist.getOwner()),
             subscribedPlaylistIds.contains(playlist.getId()), // 구독한 플레이리스트 ID가 포함될 경우 true
-            List.of() // 플레이리스트 목록들에서는 contents 제외 // TODO 김명근: 로컬 테스트 후 컨텐츠 필요 시 변경
+            contentsByPlaylistId.getOrDefault(playlist.getId(), List.of()) // 없으면 빈 List를 반환
         ))
         .toList();
 

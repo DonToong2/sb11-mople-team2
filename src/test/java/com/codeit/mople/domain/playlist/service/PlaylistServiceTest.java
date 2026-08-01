@@ -3,8 +3,6 @@ package com.codeit.mople.domain.playlist.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -299,7 +297,7 @@ public class PlaylistServiceTest {
 
     @BeforeEach
     void setUp() {
-     userId = UUID.randomUUID();
+      userId = UUID.randomUUID();
     }
 
     @Test
@@ -343,10 +341,15 @@ public class PlaylistServiceTest {
       given(playlistRepository.count(condition))
           .willReturn(1L);
 
+      given(playlistContentRepository.findAllByPlaylistIdInOrderByCreatedAtAsc(
+          List.of(playlistId)
+      ))
+          .willReturn(List.of());
+
       given(playlistSubscriptionRepository
           .findPlaylistIdsBySubscriberIdAndPlaylistIdIn(
-              eq(userId),
-              anyList()
+              userId,
+              List.of(playlistId)
           ))
           .willReturn(List.of());
 
@@ -359,6 +362,13 @@ public class PlaylistServiceTest {
       assertThat(result.totalCount()).isEqualTo(1L);
       assertThat(result.nextCursor()).isNull();
       assertThat(result.nextIdAfter()).isNull();
+
+      verify(playlistRepository).findAll(condition);
+      verify(playlistRepository).count(condition);
+      verify(playlistContentRepository)
+          .findAllByPlaylistIdInOrderByCreatedAtAsc(List.of(playlistId));
+      verify(playlistSubscriptionRepository)
+          .findPlaylistIdsBySubscriberIdAndPlaylistIdIn(userId, List.of(playlistId));
     }
 
     @Test
@@ -416,10 +426,16 @@ public class PlaylistServiceTest {
       given(playlistRepository.count(condition))
           .willReturn(3L);
 
+      given(playlistContentRepository
+          .findAllByPlaylistIdInOrderByCreatedAtAsc(
+              List.of(playlistId, nextPlaylistId)
+          ))
+          .willReturn(List.of());
+
       given(playlistSubscriptionRepository
           .findPlaylistIdsBySubscriberIdAndPlaylistIdIn(
-              eq(userId),
-              anyList()
+              userId,
+              List.of(playlistId, nextPlaylistId)
           ))
           .willReturn(List.of());
 
@@ -489,10 +505,16 @@ public class PlaylistServiceTest {
       given(playlistRepository.count(condition))
           .willReturn(2L);
 
+      given(playlistContentRepository
+          .findAllByPlaylistIdInOrderByCreatedAtAsc(
+              List.of(playlistId, lastPlaylistId)
+          ))
+          .willReturn(List.of());
+
       given(playlistSubscriptionRepository
           .findPlaylistIdsBySubscriberIdAndPlaylistIdIn(
-              eq(userId),
-              anyList()
+              userId,
+              List.of(playlistId, lastPlaylistId)
           ))
           .willReturn(List.of());
 
@@ -525,6 +547,13 @@ public class PlaylistServiceTest {
           PlaylistSortBy.UPDATED_AT
       );
 
+      given(owner.getId())
+          .willReturn(ownerId);
+      given(owner.getName())
+          .willReturn("owner");
+      given(owner.getProfileImageUrl())
+          .willReturn(null);
+
       given(mockPlaylist.getId())
           .willReturn(playlistId);
       given(mockPlaylist.getOwner())
@@ -535,6 +564,12 @@ public class PlaylistServiceTest {
 
       given(playlistRepository.count(condition))
           .willReturn(1L);
+
+      given(playlistContentRepository
+          .findAllByPlaylistIdInOrderByCreatedAtAsc(
+              List.of(playlistId)
+          ))
+          .willReturn(List.of());
 
       given(playlistSubscriptionRepository
           .findPlaylistIdsBySubscriberIdAndPlaylistIdIn(
@@ -590,7 +625,10 @@ public class PlaylistServiceTest {
       verify(playlistRepository).findAll(condition);
       verify(playlistRepository).count(condition);
 
-      verifyNoInteractions(playlistSubscriptionRepository);
+      verifyNoInteractions(
+          playlistSubscriptionRepository,
+          playlistContentRepository
+      );
     }
 
   }
