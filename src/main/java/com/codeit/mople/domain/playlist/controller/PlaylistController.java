@@ -45,6 +45,7 @@ public class PlaylistController implements PlaylistApi {
         .body(response);
   }
 
+  @Override
   @GetMapping("/{playlistId}")
   public ResponseEntity<PlaylistResponse> find(
       @PathVariable UUID playlistId,
@@ -55,6 +56,7 @@ public class PlaylistController implements PlaylistApi {
     return ResponseEntity.ok(response);
   }
 
+  @Override
   @GetMapping
   public ResponseEntity<PlaylistCursorResponse> findAll(
       @Valid @ModelAttribute PlaylistQueryCondition condition,
@@ -65,6 +67,7 @@ public class PlaylistController implements PlaylistApi {
     return ResponseEntity.ok(response);
   }
 
+  @Override
   @PatchMapping("/{playlistId}")
   public ResponseEntity<PlaylistResponse> update(
       @PathVariable UUID playlistId,
@@ -77,6 +80,7 @@ public class PlaylistController implements PlaylistApi {
     return ResponseEntity.ok(response);
   }
 
+  @Override
   @DeleteMapping("/{playlistId}")
   public ResponseEntity<Void> delete(
       @PathVariable UUID playlistId,
