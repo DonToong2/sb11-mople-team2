@@ -17,7 +17,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
+import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition;
+import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition.PlaylistSortBy;
+import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition.SortDirection;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
+import com.codeit.mople.domain.playlist.dto.response.PlaylistCursorResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
@@ -232,6 +236,133 @@ public class PlaylistControllerTest {
           .andExpect(status().isNotFound());
 
       verify(playlistService).find(notExistPlaylistId);
+    }
+
+  }
+
+  @Nested
+  @DisplayName("플레이리스트 목록 조회")
+  class FindAll {
+
+    @Test
+    @DisplayName("목록 조회 성공")
+    void findAll_success() throws Exception {
+      // given
+
+      PlaylistCursorResponse response = new PlaylistCursorResponse(
+          List.of(),
+          null,
+          null,
+          false,
+          0L,
+          PlaylistSortBy.UPDATED_AT,
+          SortDirection.ASCENDING
+      );
+
+      given(playlistService.findAll(any(PlaylistQueryCondition.class)))
+          .willReturn(response);
+
+      // when & then
+      mockMvc.perform(get("/api/playlists")
+              .param("limit", "10")
+              .param("sortDirection", "ASCENDING")
+              .param("sortBy", "UPDATED_AT")
+              .with(user(userDetails))
+              .with(csrf())
+          )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.data").isArray())
+          .andExpect(jsonPath("$.hasNext").value(false))
+          .andExpect(jsonPath("$.totalCount").value(0));
+
+      verify(playlistService).findAll(any(PlaylistQueryCondition.class));
+    }
+
+    @Test
+    @DisplayName("플레이리스트 목록 조회 실패 - limit 누락(400 에러)")
+    void findAll_fail_withoutLimit() throws Exception {
+      // when & then
+      mockMvc.perform(get("/api/playlists")
+              .param("sortDirection", "ASCENDING")
+              .param("sortBy", "UPDATED_AT")
+              .with(user(userDetails))
+              .with(csrf()))
+          .andExpect(status().isBadRequest());
+
+      verifyNoInteractions(playlistService);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 목록 조회 실패 - 정렬 조건 누락(400 에러)")
+    void findAll_fail_withoutSortBy() throws Exception {
+      // when & then
+      mockMvc.perform(get("/api/playlists")
+              .param("limit", "10")
+              .param("sortDirection", "ASCENDING")
+              .with(user(userDetails))
+              .with(csrf()))
+          .andExpect(status().isBadRequest());
+
+      verifyNoInteractions(playlistService);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 목록 조회 실패 - 정렬 방향 누락(400 에러)")
+    void findAll_fail_withoutSortDirection() throws Exception {
+      // when & then
+      mockMvc.perform(get("/api/playlists")
+              .param("limit", "10")
+              .param("sortDirection", "ASCENDING")
+              .param("sortBy", "ANY")
+              .with(user(userDetails))
+              .with(csrf()))
+          .andExpect(status().isBadRequest());
+
+      verifyNoInteractions(playlistService);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 목록 조회 실패 - 유효하지 않은 limit (1 이상, 400 에러)")
+    void findAll_fail_invalidLimit() throws Exception {
+      // when & then
+      mockMvc.perform(get("/api/playlists")
+              .param("limit", "0")
+              .param("sortDirection", "ASCENDING")
+              .param("sortBy", "ANY")
+              .with(user(userDetails))
+              .with(csrf()))
+          .andExpect(status().isBadRequest());
+
+      verifyNoInteractions(playlistService);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 목록 조회 실패 - 잘못된 정렬 조건(400 에러)")
+    void findAll_fail_invalidSortBy() throws Exception {
+      // when & then
+      mockMvc.perform(get("/api/playlists")
+              .param("limit", "10")
+              .param("sortDirection", "ASCENDING")
+              .with(user(userDetails))
+              .with(csrf()))
+          .andExpect(status().isBadRequest());
+
+      verifyNoInteractions(playlistService);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 목록 조회 실패 - 잘못된 정렬 방향(400 에러)")
+    void findAll_fail_invalidSortDirection() throws Exception {
+      // when & then
+      mockMvc.perform(get("/api/playlists")
+              .param("limit", "10")
+              .param("sortDirection", "ANY")
+              .param("sortBy", "UPDATED_AT")
+              .with(user(userDetails))
+              .with(csrf()))
+          .andExpect(status().isBadRequest());
+
+      verifyNoInteractions(playlistService);
     }
 
   }
