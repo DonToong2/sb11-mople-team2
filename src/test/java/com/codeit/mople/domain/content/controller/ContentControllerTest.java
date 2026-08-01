@@ -21,6 +21,8 @@ import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.service.ContentService;
+import com.codeit.mople.domain.content.watchingsession.dto.CursorResponseWatchingSessionDto;
+import com.codeit.mople.domain.content.watchingsession.service.WatchingSessionService;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.config.SecurityConfig;
@@ -65,6 +67,9 @@ public class ContentControllerTest {
   @MockitoBean
   private UserRepository userRepository;
 
+  @MockitoBean
+  private WatchingSessionService watchingSessionService;
+
   private RequestPostProcessor mockAuth(Role role) {
     CustomUserDetails mockUser = new CustomUserDetails(UUID.randomUUID(), role);
     UsernamePasswordAuthenticationToken authentication =
@@ -75,6 +80,7 @@ public class ContentControllerTest {
   //=========================================================================================
   //콘텐츠 생성 테스트
   //=========================================================================================
+
   @Test
   @DisplayName("콘텐츠 생성 성공 - ADMIN 권한일 때 201 Created")
   void createContent_Success() throws Exception {
@@ -148,6 +154,7 @@ public class ContentControllerTest {
   //=========================================================================================
   //콘텐츠 목록 조회 테스트
   //=========================================================================================
+
   @Test
   @DisplayName("콘텐츠 목록 조회 성공 - 200 OK")
   void getContents_Success() throws Exception {
@@ -200,6 +207,7 @@ public class ContentControllerTest {
   //=========================================================================================
   //콘텐츠 단건 조회 테스트
   //=========================================================================================
+
   @Test
   @DisplayName("콘텐츠 단건 조회 성공 - 200 OK")
   void getContent_Success() throws Exception {
@@ -235,6 +243,7 @@ public class ContentControllerTest {
   //=========================================================================================
   //콘텐츠 수정 테스트
   //=========================================================================================
+
   @Test
   @DisplayName("콘텐츠 수정 성공 - 200 OK")
   void updateContent_Success() throws Exception {
@@ -296,6 +305,7 @@ public class ContentControllerTest {
   //=========================================================================================
   //콘텐츠 삭제 테스트
   //=========================================================================================
+
   @Test
   @DisplayName("콘텐츠 삭제 성공 - 200 OK")
   void deleteContent_Success() throws Exception {
@@ -323,5 +333,47 @@ public class ContentControllerTest {
             .with(csrf())
             .with(mockAuth(Role.ADMIN))
     ).andExpect(status().isNotFound());
+  }
+
+  //=========================================================================================
+  //콘텐츠 시청 세션 목록 조회 테스트
+  //=========================================================================================
+
+  @Test
+  @DisplayName("콘텐츠 시청 세션 목록 조회 성공 - 200 OK")
+  void getWatchingSessions_Success() throws Exception {
+    UUID contentId = UUID.randomUUID();
+    CursorResponseWatchingSessionDto mockResponse = new CursorResponseWatchingSessionDto(
+        List.of(), null, null, false, 0L,
+        "createdAt", "ASCENDING");
+
+    given(watchingSessionService.getWatchingSessions(
+        any(), any(), any(), any(), anyInt(), any(), any()
+    )).willReturn(mockResponse);
+
+    mockMvc.perform(
+        get("/api/contents/{contentId}/watching-sessions", contentId)
+            .param("limit", "10")
+            .param("sortDirection", "ASCENDING")
+            .contentType(MediaType.APPLICATION_JSON)
+            .with(mockAuth(Role.USER))
+    ).andExpect(status().isOk());
+  }
+
+  @Test
+  @DisplayName("콘텐츠 시청 세션 목록 조회 실패 - limit이 범위를 벗어나면 서비스에서 예외 발생")
+  void getWatchingSessions_Fail_InvalidLimit() throws Exception {
+    UUID contentId = UUID.randomUUID();
+
+    given(watchingSessionService.getWatchingSessions(
+        any(), any(), any(), any(), anyInt(), any(), any()
+    )).willThrow(new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("limit", 200)));
+
+    mockMvc.perform(
+        get("/api/contents/{contentId}/watching-sessions", contentId)
+            .param("limit", "200")
+            .contentType(MediaType.APPLICATION_JSON)
+            .with(mockAuth(Role.USER))
+    ).andExpect(status().isBadRequest());
   }
 }
