@@ -21,6 +21,7 @@ import com.codeit.mople.domain.playlist.entity.PlaylistContent;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.playlist.event.PlaylistSubscriptionCreateEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
+import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
 import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
@@ -462,6 +463,7 @@ public class PlaylistServiceTest {
       // then
       verify(playlistSubscriptionRepository).save(any(PlaylistSubscription.class));
       verify(publisher).publishEvent(any(PlaylistSubscriptionCreateEvent.class));
+      verify(playlistRepository).increaseSubscriberCount(playlistId);
     }
 
     @Test
@@ -478,7 +480,7 @@ public class PlaylistServiceTest {
 
       assertThatThrownBy(() -> playlistService.subscribe(playlistId, subscriberId))
           .isInstanceOf(CustomException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_DUPLICATE);
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_DUPLICATE);
 
       verify(playlistSubscriptionRepository, never()).save(any());
       verify(publisher, never()).publishEvent(any());
@@ -486,7 +488,7 @@ public class PlaylistServiceTest {
 
     @Test
     @DisplayName("플래이리스트가 없으면 예외")
-    void subscribe_playlistNotfound() {
+    void subscribe_playlistNotFound() {
       UUID playlistId = UUID.randomUUID();
       UUID subscriberId = UUID.randomUUID();
 
@@ -494,7 +496,7 @@ public class PlaylistServiceTest {
 
       assertThatThrownBy(() -> playlistService.subscribe(playlistId, subscriberId))
           .isInstanceOf(CustomException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_NOT_FOUND);
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_NOT_FOUND);
 
       verify(playlistSubscriptionRepository, never()).save(any());
       verify(publisher, never()).publishEvent(any());
@@ -512,7 +514,7 @@ public class PlaylistServiceTest {
 
       assertThatThrownBy(() -> playlistService.subscribe(playlistId, subscriberId))
           .isInstanceOf(CustomException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_NOT_FOUND);
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_UNAUTHORIZED);
 
       verify(playlistSubscriptionRepository, never()).save(any());
       verify(publisher, never()).publishEvent(any());
@@ -529,13 +531,50 @@ public class PlaylistServiceTest {
 
       assertThatThrownBy(() -> playlistService.subscribe(playlistId, ownerId))
           .isInstanceOf(CustomException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_DUPLICATE);
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_NOT_ALLOWED);
 
       verify(userRepository, never()).findById(any());
       verify(playlistSubscriptionRepository, never()).save(any());
       verify(publisher, never()).publishEvent(any());
     }
 
+  }
+
+  @Nested
+  @DisplayName("플레이리스트 구독 취소")
+  class UnSubscribe {
+
+    @Test
+    @DisplayName("플레이리스트 구독 취소 성공")
+    void unSubscribe_success() {
+      UUID playlistId = UUID.randomUUID();
+      UUID subscriberId = UUID.randomUUID();
+
+      given(playlistSubscriptionRepository.deleteByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(1);
+      given(playlistRepository.decreaseSubscriberCount(playlistId)).willReturn(1);
+
+      // when
+      playlistService.unSubscribe(playlistId, subscriberId);
+
+      // then
+      verify(playlistSubscriptionRepository).deleteByPlaylistIdAndSubscriberId(playlistId, subscriberId);
+      verify(playlistRepository).decreaseSubscriberCount(playlistId);
+    }
+
+    @Test
+    @DisplayName("구독하지 않은 플레이리스트면 예외")
+    void unSubscribe_notFound() {
+      UUID playlistId = UUID.randomUUID();
+      UUID subscriberId = UUID.randomUUID();
+
+      given(playlistSubscriptionRepository.deleteByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(0);
+
+      assertThatThrownBy(() -> playlistService.unSubscribe(playlistId, subscriberId))
+          .isInstanceOf(PlaylistException.class)
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.UNSUBSCRIBE_NOT_FOUND);
+
+      verify(playlistRepository, never()).decreaseSubscriberCount(any());
+    }
   }
 
 }

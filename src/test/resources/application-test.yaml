@@ -12,6 +12,9 @@ spring:
 jwt:
   secret: test-secret-key-for-ci-pipeline-only-1234567890
 
+admin:
+  password: "Test1234!"
+
 external-api:
   tmdb:
     base-url: http://localhost:0

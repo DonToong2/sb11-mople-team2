@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.codeit.mople.domain.user.dto.request.ChangePasswordRequest;
 import com.codeit.mople.domain.user.dto.request.UserCreateRequest;
+import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
@@ -79,8 +80,8 @@ public class UserControllerTest {
     UserCreateRequest request = new UserCreateRequest("invalid-email", "rawPw123", "testUser");
 
     mockMvc.perform(post("/api/users")
-        .contentType("application/json")
-        .content(objectMapper.writeValueAsString(request)))
+            .contentType("application/json")
+            .content(objectMapper.writeValueAsString(request)))
         .andDo(print())
         .andExpect(status().isBadRequest());
   }
@@ -93,8 +94,8 @@ public class UserControllerTest {
     UserCreateRequest request = new UserCreateRequest("dup@test.com", "rawPw123", "newUser");
 
     mockMvc.perform(post("/api/users")
-        .contentType("application/json")
-        .content(objectMapper.writeValueAsString(request)))
+            .contentType("application/json")
+            .content(objectMapper.writeValueAsString(request)))
         .andDo(print())
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.error.code").value("USER-002"))
@@ -125,6 +126,42 @@ public class UserControllerTest {
         .andDo(print())
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.error.code").value("USER-001"));
+  }
+
+  @Test
+  @DisplayName("어드민만 사용자 목록을 조회할 수 있음")
+  void getUsers_success_whenAdmin() throws Exception {
+    User admin = userRepository.save(User.createUser("admin@test.com", "encoded", "admin"));
+    admin.changeRole(Role.ADMIN);
+    userRepository.save(admin);
+    String adminToken = tokenFor(admin);
+
+    userRepository.save(User.createUser("a@test.com", "encoded", "aa"));
+    userRepository.save(User.createUser("b@test.com", "encoded", "bb"));
+
+    mockMvc.perform(get("/api/users")
+        .param("limit", "10")
+        .param("sortBy", "name")
+        .param("sortDirection", "ASCENDING")
+        .header("Authorization", "Bearer " + adminToken))
+        .andDo(print())
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.data").isArray())
+        .andExpect(jsonPath("$.data.data.length()").value(3))
+        .andExpect(jsonPath("$.data.hasNext").value(false));
+  }
+
+  @Test
+  @DisplayName("어드민이 아닌 사용자는 사용자 목록 조회 시 403을 반환함")
+  void getUsers_returnsForbidden_whenNotAdmin() throws Exception {
+    User normalUser = userRepository.save(User.createUser("nomal@test.com", "encoded", "normalUser"));
+    String normalUserToken = tokenFor(normalUser);
+
+    mockMvc.perform(get("/api/users")
+        .param("limit", "10")
+        .header("Authorization", "Bearer " + normalUserToken))
+        .andDo(print())
+        .andExpect(status().isForbidden());
   }
 
   @Test
@@ -203,10 +240,10 @@ public class UserControllerTest {
     ChangePasswordRequest request = new ChangePasswordRequest("newPw123");
 
     mockMvc.perform(patch("/api/users/{userId}/password", user.getId())
-        .header("Authorization", "Bearer " + token)
-        .contentType("application/json")
-        .content(objectMapper.writeValueAsString(request))
-        .with(csrf()))
+            .header("Authorization", "Bearer " + token)
+            .contentType("application/json")
+            .content(objectMapper.writeValueAsString(request))
+            .with(csrf()))
         .andDo(print())
         .andExpect(status().isNoContent());
 
@@ -223,10 +260,10 @@ public class UserControllerTest {
     ChangePasswordRequest request = new ChangePasswordRequest("newPw123");
 
     mockMvc.perform(patch("/api/users/{userId}/password", owner.getId())
-        .header("Authorization", "Bearer " + attackerToken)
-        .contentType("application/json")
-        .content(objectMapper.writeValueAsString(request))
-        .with(csrf()))
+            .header("Authorization", "Bearer " + attackerToken)
+            .contentType("application/json")
+            .content(objectMapper.writeValueAsString(request))
+            .with(csrf()))
         .andDo(print())
         .andExpect(status().isForbidden());
   }

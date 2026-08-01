@@ -11,16 +11,18 @@ import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
 import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
+import com.codeit.mople.domain.playlist.mapper.PlaylistContentMapper;
+import com.codeit.mople.domain.playlist.mapper.PlaylistMapper;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistSubscriptionRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
-import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.UserSummary;
 import com.codeit.mople.global.error.CustomException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +39,8 @@ public class PlaylistService {
   private final UserRepository userRepository;
   private final PlaylistContentRepository playlistContentRepository;
   private final PlaylistSubscriptionRepository playlistSubscriptionRepository;
+  private final PlaylistContentMapper playlistContentMapper;
+  private final PlaylistMapper mapper;
 
   private final ApplicationEventPublisher publisher;
 
@@ -48,7 +52,7 @@ public class PlaylistService {
 
     // TODO 김명근: User 예외 계층 생성 시 리팩토링
     User owner = userRepository.findById(ownerId).orElseThrow(() ->
-        new UserException(UserErrorCode.USER_NOT_FOUND));
+        new CustomException(UserErrorCode.USER_NOT_FOUND));
 
     Playlist playlist = Playlist.create(owner, request.title(), request.description());
 
@@ -56,7 +60,7 @@ public class PlaylistService {
 
     UserSummary ownerResponse = toUserSummary(owner);
 
-    PlaylistResponse response = PlaylistResponse.from(
+    PlaylistResponse response = mapper.toResponse(
         savedPlaylist,
         ownerResponse,
         false,
@@ -75,7 +79,6 @@ public class PlaylistService {
     log.debug("플레이리스트 조회 시도: playlistId={}",
         playlistId);
 
-    // TODO 김명근: 세부 예외 계층 제거 후 중간 예외 계층만 사용하기로 변경
     Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
         new PlaylistNotFoundException(playlistId)
     );
@@ -85,10 +88,10 @@ public class PlaylistService {
     // 콘텐츠를 플레이리스트에 추가한 순서대로 표시(콘텐츠를 B, E, A, C 순으로 추가했을 경우 추가한 순서 그대로)
     List<PlaylistContentResponse> contents =
         playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlistId).stream()
-            .map(PlaylistContentResponse::from)
+            .map(playlistContentMapper::toResponse)
             .toList();
 
-    PlaylistResponse response = PlaylistResponse.from(
+    PlaylistResponse response = mapper.toResponse(
         playlist,
         ownerResponse,
         false,
@@ -124,10 +127,10 @@ public class PlaylistService {
 
     List<PlaylistContentResponse> contents =
         playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlistId).stream()
-            .map(PlaylistContentResponse::from)
+            .map(playlistContentMapper::toResponse)
             .toList();
 
-    PlaylistResponse response = PlaylistResponse.from(
+    PlaylistResponse response = mapper.toResponse(
         playlist,
         ownerResponse,
         false,
@@ -170,29 +173,50 @@ public class PlaylistService {
 
     // 존재확인
     Playlist playlist = playlistRepository.findById(playlistId)
-        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.SUBSCRIBE_NOT_FOUND));
+
+    UUID ownerId = playlist.getOwner().getId();
 
     // 본인 구독 차단
-    if (subscriberId.equals(playlist.getOwner().getId())) {
-      throw new PlaylistException(PlaylistErrorCode.PLAYLIST_DUPLICATE);
+    if (subscriberId.equals(ownerId)) {
+      throw new PlaylistException(PlaylistErrorCode.SUBSCRIBE_NOT_ALLOWED);
     }
 
     // 존재확인
     User subscriber = userRepository.findById(subscriberId)
-        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.SUBSCRIBE_UNAUTHORIZED));
 
     // 중복 구독 차단
     if (playlistSubscriptionRepository.existsByPlaylistIdAndSubscriberId(playlistId, subscriberId)) {
-      throw new PlaylistException(PlaylistErrorCode.PLAYLIST_DUPLICATE);
+      throw new PlaylistException(PlaylistErrorCode.SUBSCRIBE_DUPLICATE);
     }
 
     PlaylistSubscription saved = playlistSubscriptionRepository.save(
         PlaylistSubscription.create(playlist, subscriber));
+    playlistRepository.increaseSubscriberCount(playlistId);
 
     log.info("플레이리스트 구독 성공: playlistSubscriptionId={}, playlistId={}, subscriberId={}",
         saved.getId(), playlistId, subscriberId);
 
-    publisher.publishEvent(new PlaylistSubscriptionCreateEvent(playlistId, subscriberId));
+    publisher.publishEvent(new PlaylistSubscriptionCreateEvent(ownerId, playlistId, subscriberId));
+  }
+
+  @Transactional
+  public void unSubscribe(UUID playlistId, UUID subscriberId) {
+    log.debug("플레이리스트 구독 취소 시도: playlistId={}, subscriberId={}", playlistId, subscriberId);
+
+    // 구독 존재 검증 + 삭제
+    int deleted = playlistSubscriptionRepository.deleteByPlaylistIdAndSubscriberId(playlistId, subscriberId);
+    if (deleted == 0) {
+      throw new PlaylistException(PlaylistErrorCode.UNSUBSCRIBE_NOT_FOUND,
+          Map.of("playlistId", playlistId, "subscriberId", subscriberId));
+    }
+    int decreased = playlistRepository.decreaseSubscriberCount(playlistId);
+    if (decreased == 0) {
+      log.warn("구독자 수 감소 실패(이미 0): playlistId={}, subscriberId={}", playlistId, subscriberId);
+    }
+
+    log.info("플레이리스트 구독 취소 성공: playlist={}, subscriberId={}", playlistId, subscriberId);
   }
 
   private UserSummary toUserSummary(User user) {
