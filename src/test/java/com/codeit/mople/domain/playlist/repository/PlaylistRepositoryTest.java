@@ -10,7 +10,6 @@ import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.config.JpaAuditingConfig;
 import com.codeit.mople.global.config.QueryDslConfig;
-import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +18,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 
 @Import({JpaAuditingConfig.class, QueryDslConfig.class})
@@ -29,7 +29,7 @@ public class PlaylistRepositoryTest {
   private PlaylistRepository playlistRepository;
 
   @Autowired
-  private EntityManager entityManager;
+  private TestEntityManager entityManager;
 
   private User owner;
   private User subscriber; // owner의 playlist1 구독자 및 타인 역할
