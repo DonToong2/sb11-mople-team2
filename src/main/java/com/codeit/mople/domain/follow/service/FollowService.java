@@ -6,7 +6,6 @@ import com.codeit.mople.domain.follow.entity.Follow;
 import com.codeit.mople.domain.follow.event.FollowCreatedEvent;
 import com.codeit.mople.domain.follow.exception.FollowErrorCode;
 import com.codeit.mople.domain.follow.exception.FollowException;
-import com.codeit.mople.domain.follow.mapper.FollowMapper;
 import com.codeit.mople.domain.follow.repository.FollowRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
@@ -26,7 +25,6 @@ public class FollowService {
 
   private final UserRepository userRepository;
   private final FollowRepository followRepository;
-  private final FollowMapper followMapper;
   private final ApplicationEventPublisher publisher;
 
   @Transactional
@@ -58,7 +56,7 @@ public class FollowService {
     publisher.publishEvent(new FollowCreatedEvent(saved.getId(), followeeId, followerId, follower.getName()));
 
     // mapper로 리턴
-    return followMapper.toFollowResponse(saved);
+    return FollowResponse.from(saved);
   }
 
   @Transactional
@@ -84,7 +82,7 @@ public class FollowService {
     log.debug("팔로우 여부 조회: followeeId={}, followerId={}", followeeId, followerId);
     Follow followByMe = followRepository.findByFolloweeIdAndFollowerId(followeeId, followerId)
         .orElseThrow(() -> new FollowException(FollowErrorCode.FOLLOW_BY_ME_NOT_FOUND));
-    return followMapper.toFollowResponse(followByMe);
+    return FollowResponse.from(followByMe);
   }
 
   public long getFollowCount(UUID followeeId) {

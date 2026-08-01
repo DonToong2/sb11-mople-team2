@@ -15,7 +15,6 @@ import com.codeit.mople.domain.follow.dto.FollowResponse;
 import com.codeit.mople.domain.follow.entity.Follow;
 import com.codeit.mople.domain.follow.event.FollowCreatedEvent;
 import com.codeit.mople.domain.follow.exception.FollowErrorCode;
-import com.codeit.mople.domain.follow.mapper.FollowMapper;
 import com.codeit.mople.domain.follow.repository.FollowRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
@@ -44,8 +43,6 @@ class FollowServiceTest {
   FollowRepository followRepository;
   @Mock
   UserRepository userRepository;
-  @Mock
-  FollowMapper followMapper;
   @Mock
   ApplicationEventPublisher publisher;
 
@@ -81,7 +78,9 @@ class FollowServiceTest {
       given(userRepository.findById(followeeId)).willReturn(Optional.of(followee));
       given(userRepository.findById(followerId)).willReturn(Optional.of(follower));
       given(followRepository.save(any(Follow.class))).willReturn(saved);
-      given(followMapper.toFollowResponse(saved)).willReturn(expected);
+      given(followee.getId()).willReturn(followeeId);
+      given(follower.getId()).willReturn(followerId);
+
 
       // when
       FollowResponse actual = followService.follow(request, followerId);
@@ -235,7 +234,8 @@ class FollowServiceTest {
     FollowResponse expected = new FollowResponse(saved.getId(), followeeId, followerId);
 
     given(followRepository.findByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(Optional.of(saved));
-    given(followMapper.toFollowResponse(saved)).willReturn(expected);
+    given(followee.getId()).willReturn(followeeId);
+    given(follower.getId()).willReturn(followerId);
 
     // when
     FollowResponse actual = followService.getFollowByMe(followeeId, followerId);
