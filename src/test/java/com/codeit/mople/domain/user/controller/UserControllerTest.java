@@ -6,10 +6,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.codeit.mople.domain.user.dto.request.ChangePasswordRequest;
+import com.codeit.mople.domain.user.dto.request.UserCreateRequest;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +32,9 @@ public class UserControllerTest {
 
   @Autowired
   private MockMvc mockMvc;
+
+  @Autowired
+  private ObjectMapper objectMapper;
 
   @Autowired
   private UserRepository userRepository;
@@ -51,10 +57,11 @@ public class UserControllerTest {
   @Test
   @DisplayName("회원가입 성공")
   void signUp_success() throws Exception {
+    UserCreateRequest request = new UserCreateRequest("test@test.com", "rawPw123", "testUser");
+
     mockMvc.perform(post("/api/users")
-            .param("email", "test@test.com")
-            .param("password", "rawPw123")
-            .param("name", "testUser"))
+            .contentType("application/json")
+            .content(objectMapper.writeValueAsString(request)))
         .andDo(print())
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.success").value(true))
@@ -70,10 +77,11 @@ public class UserControllerTest {
   @Test
   @DisplayName("이메일 형식이 유효하지 않으면 400을 반환")
   void signUp_returnsBadRequest_whenEmailInvalid() throws Exception {
+    UserCreateRequest request = new UserCreateRequest("invalid-email", "rawPw123", "testUser");
+
     mockMvc.perform(post("/api/users")
-        .param("email", "invalid-email")
-        .param("password", "rawPw123")
-        .param("name", "testUser"))
+            .contentType("application/json")
+            .content(objectMapper.writeValueAsString(request)))
         .andDo(print())
         .andExpect(status().isBadRequest());
   }
@@ -83,10 +91,11 @@ public class UserControllerTest {
   void signUp_returnsConflict_whenEmailDuplicated() throws Exception {
     userRepository.save(User.createUser("dup@test.com", "encoded", "oldUser"));
 
+    UserCreateRequest request = new UserCreateRequest("dup@test.com", "rawPw123", "newUser");
+
     mockMvc.perform(post("/api/users")
-        .param("email", "dup@test.com")
-        .param("password", "rawPw123")
-        .param("name", "newUser"))
+            .contentType("application/json")
+            .content(objectMapper.writeValueAsString(request)))
         .andDo(print())
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.error.code").value("USER-002"))
@@ -228,11 +237,13 @@ public class UserControllerTest {
   void changePassword_success() throws Exception {
     User user = userRepository.save(User.createUser("pw@test.com", passwordEncoder.encode("oldPw123"), "testUser"));
     String token = tokenFor(user);
+    ChangePasswordRequest request = new ChangePasswordRequest("newPw123");
 
     mockMvc.perform(patch("/api/users/{userId}/password", user.getId())
-        .header("Authorization", "Bearer " + token)
-        .param("password", "newPw123")
-        .with(csrf()))
+            .header("Authorization", "Bearer " + token)
+            .contentType("application/json")
+            .content(objectMapper.writeValueAsString(request))
+            .with(csrf()))
         .andDo(print())
         .andExpect(status().isNoContent());
 
@@ -246,11 +257,13 @@ public class UserControllerTest {
     User owner = userRepository.save(User.createUser("pw2@test.com", "encoded", "testUser"));
     User attacker = userRepository.save(User.createUser("attacker2@test.com", "encoded", "attacker"));
     String attackerToken = tokenFor(attacker);
+    ChangePasswordRequest request = new ChangePasswordRequest("newPw123");
 
     mockMvc.perform(patch("/api/users/{userId}/password", owner.getId())
-        .header("Authorization", "Bearer " + attackerToken)
-        .param("password", "newPw123")
-        .with(csrf()))
+            .header("Authorization", "Bearer " + attackerToken)
+            .contentType("application/json")
+            .content(objectMapper.writeValueAsString(request))
+            .with(csrf()))
         .andDo(print())
         .andExpect(status().isForbidden());
   }
