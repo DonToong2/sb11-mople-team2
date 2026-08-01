@@ -6,6 +6,8 @@ import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
 import com.codeit.mople.domain.content.service.ContentService;
+import com.codeit.mople.domain.content.watchingsession.dto.CursorResponseWatchingSessionDto;
+import com.codeit.mople.domain.content.watchingsession.service.WatchingSessionService;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.UUID;
@@ -31,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class ContentController {
   private final ContentService contentService;
+  private final WatchingSessionService watchingSessionService;
 
   //콘텐츠 생성
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -86,5 +89,22 @@ public class ContentController {
     UUID adminId = userDetails.getUserId();
     contentService.deleteContent(adminId, contentId);
     return ResponseEntity.ok().build();
+  }
+
+  //콘텐츠 시청 세션 목록 조회
+  @GetMapping("/{contentId}/watching-sessions")
+  public ResponseEntity<CursorResponseWatchingSessionDto> getWatchingSessions(
+      @PathVariable UUID contentId,
+      @RequestParam(value = "watcherNameLike", required = false) String watcherNameLike,
+      @RequestParam(value = "cursor", required = false) String cursor,
+      @RequestParam(value = "idAfter", required = false) UUID idAfter,
+      @RequestParam(value = "limit", defaultValue = "10") int limit,
+      @RequestParam(value = "sortDirection", defaultValue = "ASCENDING") String sortDirection,
+      @RequestParam(value = "sortBy", defaultValue = "createdAt") String sortBy) {
+
+    CursorResponseWatchingSessionDto response = watchingSessionService.getWatchingSessions(
+        contentId, watcherNameLike, cursor, idAfter, limit, sortDirection, sortBy);
+
+    return ResponseEntity.ok(response);
   }
 }
