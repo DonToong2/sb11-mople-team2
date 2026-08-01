@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.playlist.dto.request;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
@@ -20,6 +21,7 @@ public record PlaylistQueryCondition(
     // 보조 커서
     UUID idAfter,
 
+    @Min(value = 1, message = "limit는 1 이상이어야 합니다.")
     @NotNull(message = "limit는 필수입니다.")
     Integer limit, // 1회 조회로 가져올 최대 개수
 
