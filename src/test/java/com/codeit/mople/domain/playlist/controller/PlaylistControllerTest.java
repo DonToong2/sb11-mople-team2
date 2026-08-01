@@ -106,7 +106,7 @@ public class PlaylistControllerTest {
           List.of()
       );
 
-      given(playlistService.create(eq(ownerId), any(PlaylistCreateRequest.class)))
+      given(playlistService.create(any(PlaylistCreateRequest.class), eq(ownerId)))
           .willReturn(response);
 
       // when & then
@@ -130,7 +130,7 @@ public class PlaylistControllerTest {
           );
 
       // 행위 중심(PlaylistService.create() 메서드가 호출되었는지 검증)
-      verify(playlistService).create(eq(ownerId), any(PlaylistCreateRequest.class));
+      verify(playlistService).create(any(PlaylistCreateRequest.class), eq(ownerId));
     }
 
     @Test
@@ -204,7 +204,7 @@ public class PlaylistControllerTest {
           List.of()
       );
 
-      given(playlistService.find(playlistId))
+      given(playlistService.find(playlistId, userDetails.getUserId()))
           .willReturn(response);
 
       // when & then
@@ -214,7 +214,7 @@ public class PlaylistControllerTest {
           )
           .andExpect(status().isOk());
 
-      verify(playlistService).find(playlistId);
+      verify(playlistService).find(playlistId, userDetails.getUserId());
     }
 
     @Test
@@ -223,7 +223,7 @@ public class PlaylistControllerTest {
       // given
       UUID notExistPlaylistId = UUID.randomUUID();
 
-      given(playlistService.find(notExistPlaylistId))
+      given(playlistService.find(notExistPlaylistId, userDetails.getUserId()))
           .willThrow(new PlaylistException(
               PlaylistErrorCode.PLAYLIST_NOT_FOUND,
               Map.of("playlistId", notExistPlaylistId)
@@ -238,7 +238,7 @@ public class PlaylistControllerTest {
           )
           .andExpect(status().isNotFound());
 
-      verify(playlistService).find(notExistPlaylistId);
+      verify(playlistService).find(notExistPlaylistId, userDetails.getUserId());
     }
 
   }
@@ -264,7 +264,7 @@ public class PlaylistControllerTest {
           SortDirection.ASCENDING
       );
 
-      given(playlistService.findAll(any(PlaylistQueryCondition.class)))
+      given(playlistService.findAll(any(PlaylistQueryCondition.class), eq(userDetails.getUserId())))
           .willReturn(response);
 
       // when & then
@@ -280,7 +280,10 @@ public class PlaylistControllerTest {
           .andExpect(jsonPath("$.hasNext").value(false))
           .andExpect(jsonPath("$.totalCount").value(0));
 
-      verify(playlistService).findAll(any(PlaylistQueryCondition.class));
+      verify(playlistService).findAll(
+          any(PlaylistQueryCondition.class),
+          eq(userDetails.getUserId())
+      );
     }
 
     @Test

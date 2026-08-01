@@ -60,9 +60,8 @@ public interface PlaylistApi {
       )
   })
   ResponseEntity<PlaylistResponse> create(
-      @Parameter(hidden = true)
-      @AuthenticationPrincipal CustomUserDetails userDetails,
-      @RequestBody PlaylistCreateRequest request
+      @RequestBody PlaylistCreateRequest request,
+      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
   );
 
   @Operation(

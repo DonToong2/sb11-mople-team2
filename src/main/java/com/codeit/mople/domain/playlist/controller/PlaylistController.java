@@ -34,11 +34,11 @@ public class PlaylistController implements PlaylistApi {
   @Override
   @PostMapping
   public ResponseEntity<PlaylistResponse> create(
-      @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails,
-      @Valid @RequestBody PlaylistCreateRequest request
+      @Valid @RequestBody PlaylistCreateRequest request,
+      @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails
   ) {
 
-    PlaylistResponse response = playlistService.create(userDetails.getUserId(), request);
+    PlaylistResponse response = playlistService.create(request, userDetails.getUserId());
 
     return ResponseEntity
         .created(URI.create("/api/playlists/" + response.id()))
@@ -47,18 +47,20 @@ public class PlaylistController implements PlaylistApi {
 
   @GetMapping("/{playlistId}")
   public ResponseEntity<PlaylistResponse> find(
-      @PathVariable UUID playlistId
+      @PathVariable UUID playlistId,
+      @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails
   ) {
-    PlaylistResponse response = playlistService.find(playlistId);
+    PlaylistResponse response = playlistService.find(playlistId, userDetails.getUserId());
 
     return ResponseEntity.ok(response);
   }
 
   @GetMapping
   public ResponseEntity<PlaylistCursorResponse> findAll(
-      @Valid @ModelAttribute PlaylistQueryCondition condition
+      @Valid @ModelAttribute PlaylistQueryCondition condition,
+      @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails
   ) {
-    PlaylistCursorResponse response = playlistService.findAll(condition);
+    PlaylistCursorResponse response = playlistService.findAll(condition, userDetails.getUserId());
 
     return ResponseEntity.ok(response);
   }

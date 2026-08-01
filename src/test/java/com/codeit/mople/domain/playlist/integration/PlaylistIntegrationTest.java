@@ -144,14 +144,14 @@ public class PlaylistIntegrationTest {
     void find_success() throws Exception {
       // given
 
-      // BeforeEach에서 playlist 초기화
+      // BeforeEach에서 playlist, userDetails를 초기화
 
       Playlist savedPlaylist = playlistRepository.save(playlist);
 
       // when & then
       MvcResult result =
           mockMvc.perform(get("/api/playlists/{playlistId}", playlist.getId())
-                  .with(user("test"))
+                  .with(user(userDetails))
                   .with(csrf())
               )
               .andExpect(status().isOk())
@@ -187,7 +187,7 @@ public class PlaylistIntegrationTest {
     void findAll_success() throws Exception {
       // given
       
-      // BeforeEach에서 playlist 초기화
+      // BeforeEach에서 playlist, userDetails를 초기화
       
       // 3개의 Playlist 저장
       playlistRepository.save(playlist);
@@ -212,7 +212,7 @@ public class PlaylistIntegrationTest {
                   .param("limit", "2")
                   .param("sortDirection", "ASCENDING")
                   .param("sortBy", "UPDATED_AT")
-                  .with(user("test"))
+                  .with(user(userDetails))
                   .with(csrf())
               )
               .andExpect(status().isOk())

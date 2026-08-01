@@ -24,8 +24,10 @@ import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.UserSummary;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +49,7 @@ public class PlaylistService {
   private final ApplicationEventPublisher publisher;
 
   @Transactional
-  public PlaylistResponse create(UUID ownerId, PlaylistCreateRequest request) {
+  public PlaylistResponse create(PlaylistCreateRequest request, UUID ownerId) {
 
     log.debug("플레이리스트 생성 시도: ownerId={}, title={}",
         ownerId, request.title());
@@ -75,7 +77,7 @@ public class PlaylistService {
 
   // 플레이리스트 세부 조회(단건 조회)
   @Transactional(readOnly = true)
-  public PlaylistResponse find(UUID playlistId) {
+  public PlaylistResponse find(UUID playlistId, UUID userId) {
 
     log.debug("플레이리스트 조회 시도: playlistId={}",
         playlistId);
@@ -88,6 +90,9 @@ public class PlaylistService {
 
     UserSummary ownerResponse = toUserSummary(playlist.getOwner());
 
+    boolean subscribedByMe =
+        playlistSubscriptionRepository.existsByPlaylistIdAndSubscriberId(playlistId, userId);
+
     // 콘텐츠를 플레이리스트에 추가한 순서대로 표시(콘텐츠를 B, E, A, C 순으로 추가했을 경우 추가한 순서 그대로)
     List<PlaylistContentResponse> contents =
         playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlistId).stream()
@@ -97,7 +102,7 @@ public class PlaylistService {
     PlaylistResponse response = PlaylistResponse.from(
         playlist,
         ownerResponse,
-        false,
+        subscribedByMe,
         contents
     );
 
@@ -107,8 +112,9 @@ public class PlaylistService {
     return response;
   }
 
+  // 플레이리스트 목록 조회
   @Transactional(readOnly = true)
-  public PlaylistCursorResponse findAll(PlaylistQueryCondition condition) {
+  public PlaylistCursorResponse findAll(PlaylistQueryCondition condition, UUID userId) {
 
     log.debug("플레이리스트 목록 조회 시도: keywordLike={}, ownerId={}, subscriberId={}, cursor={},"
             + " idAfter={}, limit={}, sortBy={}, sortDirection={}",
@@ -136,11 +142,22 @@ public class PlaylistService {
     // 목록 조회된 Playlist의 총 개수
     long totalCount = playlistRepository.count(condition);
 
+    // 조회된 플레이리스트 ID
+    List<UUID> playlistIds = playlists.stream().map(Playlist::getId).toList();
+
+    // 현재 사용자가 구독한 플레이리스트 ID들을 조회
+    Set<UUID> subscribedPlaylistIds = playlistIds.isEmpty() ?
+        Set.of() :
+        new HashSet<>(
+        playlistSubscriptionRepository
+            .findPlaylistIdsBySubscriberIdAndPlaylistIdIn(userId, playlistIds)
+    );
+
     List<PlaylistResponse> data = playlists.stream()
         .map(playlist -> PlaylistResponse.from(
             playlist,
             toUserSummary(playlist.getOwner()),
-            false,
+            subscribedPlaylistIds.contains(playlist.getId()), // 구독한 플레이리스트 ID가 포함될 경우 true
             List.of() // 플레이리스트 목록들에서는 contents 제외 // TODO 김명근: 로컬 테스트 후 컨텐츠 필요 시 변경
         ))
         .toList();
@@ -182,11 +199,11 @@ public class PlaylistService {
   public PlaylistResponse update(
       UUID playlistId,
       PlaylistUpdateRequest request,
-      UUID userId
+      UUID ownerId
   ) {
 
-    log.debug("플레이리스트 수정 시도: playlistId={}, userId={}",
-        playlistId, userId);
+    log.debug("플레이리스트 수정 시도: playlistId={}, ownerId={}",
+        playlistId, ownerId);
 
     // Playlist 조회
     Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
@@ -196,7 +213,7 @@ public class PlaylistService {
     );
 
     // 플레이리스트 소유자가 맞는지 검증
-    validateOwner(playlist, userId);
+    validateOwner(playlist, ownerId);
 
     playlist.update(request.title(), request.description());
 
@@ -214,17 +231,17 @@ public class PlaylistService {
         contents
     );
 
-    log.info("플레이리스트 수정 완료: playlistId={}, userId={}",
-        playlistId, userId);
+    log.info("플레이리스트 수정 완료: playlistId={}, ownerId={}",
+        playlistId, ownerId);
 
     return response;
   }
 
   @Transactional
-  public void delete(UUID playlistId, UUID userId) {
+  public void delete(UUID playlistId, UUID ownerId) {
 
-    log.debug("플레이리스트 삭제 시도: playlistId={}, userId={}",
-        playlistId, userId);
+    log.debug("플레이리스트 삭제 시도: playlistId={}, ownerId={}",
+        playlistId, ownerId);
 
     Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
         new PlaylistException(
@@ -232,7 +249,7 @@ public class PlaylistService {
             Map.of("playlistId", playlistId))
     );
 
-    validateOwner(playlist, userId);
+    validateOwner(playlist, ownerId);
 
     // 플레이리리스트 삭제 전 플레이리스트 안에 들어있던 컨텐츠들을 삭제
     playlistContentRepository.deleteAllByPlaylistId(playlistId);
@@ -241,7 +258,7 @@ public class PlaylistService {
     playlistRepository.delete(playlist);
 
     log.info("플레이리스트 삭제 완료: playlistId={}, userId={}",
-        playlistId, userId);
+        playlistId, ownerId);
 
   }
 
@@ -313,9 +330,11 @@ public class PlaylistService {
         playlistId, contentId, ownerId);
 
     Playlist playlist = playlistRepository.findById(playlistId)
-        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_PLAY_NOT_FOUND, Map.of("playlistId", playlistId)));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_PLAY_NOT_FOUND,
+            Map.of("playlistId", playlistId)));
     Content content = contentRepository.findById(contentId)
-        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_CONTENT_NOT_FOUND,
+            Map.of("contentId", contentId)));
     // 소유자 검증
     validateOwner(playlist, ownerId);
 
@@ -339,14 +358,17 @@ public class PlaylistService {
         playlistId, contentId, ownerId);
 
     Playlist playlist = playlistRepository.findById(playlistId)
-        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_PLAY_NOT_FOUND, Map.of("playlistId", playlistId)));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_PLAY_NOT_FOUND,
+            Map.of("playlistId", playlistId)));
 
     // 소유자 검증
     validateOwner(playlist, ownerId);
 
     // 플레이리스트에 콘텐츠 존재 검증
-    PlaylistContent playlistContent = playlistContentRepository.findByPlaylistIdAndContentId(playlistId, contentId)
-        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.UN_PY_CONTENT_NOT_FOUND, Map.of("playlistId", playlistId, "contentId", contentId)));
+    PlaylistContent playlistContent = playlistContentRepository.findByPlaylistIdAndContentId(
+            playlistId, contentId)
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.UN_PY_CONTENT_NOT_FOUND,
+            Map.of("playlistId", playlistId, "contentId", contentId)));
 
     log.info("플레이리스트에 콘텐츠 삭제 성공: playlistContentId={}, playlistId={}, contentId={}, ownerId={}",
         playlistContent.getId(), playlistId, contentId, ownerId);
