@@ -1,4 +1,4 @@
-package com.codeit.mople.domain.content.service;
+package com.codeit.mople.domain.content.watchingsession.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -12,7 +12,6 @@ import static org.mockito.BDDMockito.given;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.watchingsession.dto.CursorResponseWatchingSessionDto;
 import com.codeit.mople.domain.content.watchingsession.repository.WatchingSessionQueryRepository;
-import com.codeit.mople.domain.content.watchingsession.service.WatchingSessionService;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
