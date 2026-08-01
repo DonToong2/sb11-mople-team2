@@ -177,24 +177,24 @@ public class PlaylistService {
     log.debug("플레이리스트 구독 시도: playlistId={}, subscriberId={}",
         playlistId, subscriberId);
 
-    // 존재확인
+    // 플레이리스트 존재확인
     Playlist playlist = playlistRepository.findById(playlistId)
-        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.SUBSCRIBE_NOT_FOUND));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.SUBSCRIBE_NOT_FOUND, Map.of("playlistId", playlistId)));
 
     UUID ownerId = playlist.getOwner().getId();
 
-    // 본인 구독 차단
+    // 해당 플레이리스트 주인이 본인이면 구독 차단
     if (subscriberId.equals(ownerId)) {
-      throw new PlaylistException(PlaylistErrorCode.SUBSCRIBE_NOT_ALLOWED);
+      throw new PlaylistException(PlaylistErrorCode.SUBSCRIBE_NOT_ALLOWED, Map.of("subscriberId", subscriberId, "ownerId", ownerId));
     }
 
-    // 존재확인
+    // 플레이리스트를 구독하려는 유저가 존재하는지
     User subscriber = userRepository.findById(subscriberId)
-        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.SUBSCRIBE_UNAUTHORIZED));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.SUBSCRIBE_USER_NOT_FOUND, Map.of("subscriberId", subscriberId)));
 
     // 중복 구독 차단
     if (playlistSubscriptionRepository.existsByPlaylistIdAndSubscriberId(playlistId, subscriberId)) {
-      throw new PlaylistException(PlaylistErrorCode.SUBSCRIBE_DUPLICATE);
+      throw new PlaylistException(PlaylistErrorCode.SUBSCRIBE_DUPLICATE, Map.of("playlistId", playlistId, "subscriberId", subscriberId));
     }
 
     PlaylistSubscription saved = playlistSubscriptionRepository.save(
@@ -234,14 +234,16 @@ public class PlaylistService {
 
     Playlist playlist = playlistRepository.findById(playlistId)
         .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_PLAY_NOT_FOUND, Map.of("playlistId", playlistId)));
-    Content content = contentRepository.findById(contentId)
-        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
+
     // 소유자 검증
     validateOwner(playlist, ownerId);
 
+    Content content = contentRepository.findById(contentId)
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
+
     // 중복 검증
     if (playlistContentRepository.existsByPlaylistIdAndContentId(playlistId, contentId)) {
-      throw new PlaylistException(PlaylistErrorCode.PY_CONTENT_DUPLICATE);
+      throw new PlaylistException(PlaylistErrorCode.PY_CONTENT_DUPLICATE,Map.of("playlistId", playlistId, "contentId", contentId));
     }
 
     PlaylistContent playlistContent = PlaylistContent.create(playlist, content);

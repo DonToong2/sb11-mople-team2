@@ -567,7 +567,7 @@ public class PlaylistServiceTest {
 
       assertThatThrownBy(() -> playlistService.subscribe(playlistId, subscriberId))
           .isInstanceOf(CustomException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_UNAUTHORIZED);
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_USER_NOT_FOUND);
 
       verify(playlistSubscriptionRepository, never()).save(any());
       verify(publisher, never()).publishEvent(any());
