@@ -11,13 +11,12 @@ import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
 import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
-import com.codeit.mople.domain.playlist.mapper.PlaylistContentMapper;
-import com.codeit.mople.domain.playlist.mapper.PlaylistMapper;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistSubscriptionRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
+import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.UserSummary;
 import com.codeit.mople.global.error.CustomException;
@@ -39,8 +38,6 @@ public class PlaylistService {
   private final UserRepository userRepository;
   private final PlaylistContentRepository playlistContentRepository;
   private final PlaylistSubscriptionRepository playlistSubscriptionRepository;
-  private final PlaylistContentMapper playlistContentMapper;
-  private final PlaylistMapper mapper;
 
   private final ApplicationEventPublisher publisher;
 
@@ -50,9 +47,8 @@ public class PlaylistService {
     log.debug("플레이리스트 생성 시도: ownerId={}, title={}",
         ownerId, request.title());
 
-    // TODO 김명근: User 예외 계층 생성 시 리팩토링
     User owner = userRepository.findById(ownerId).orElseThrow(() ->
-        new CustomException(UserErrorCode.USER_NOT_FOUND));
+        new UserException(UserErrorCode.USER_NOT_FOUND));
 
     Playlist playlist = Playlist.create(owner, request.title(), request.description());
 
@@ -60,7 +56,7 @@ public class PlaylistService {
 
     UserSummary ownerResponse = toUserSummary(owner);
 
-    PlaylistResponse response = mapper.toResponse(
+    PlaylistResponse response = PlaylistResponse.from(
         savedPlaylist,
         ownerResponse,
         false,
@@ -88,14 +84,15 @@ public class PlaylistService {
     // 콘텐츠를 플레이리스트에 추가한 순서대로 표시(콘텐츠를 B, E, A, C 순으로 추가했을 경우 추가한 순서 그대로)
     List<PlaylistContentResponse> contents =
         playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlistId).stream()
-            .map(playlistContentMapper::toResponse)
+            .map(PlaylistContentResponse::from)
             .toList();
 
-    PlaylistResponse response = mapper.toResponse(
+    PlaylistResponse response = PlaylistResponse.from(
         playlist,
         ownerResponse,
         false,
-        contents);
+        contents
+    );
 
     log.info("플레이리스트 조회 완료: playlistId={}, contentCount={}",
         playlistId, contents.size());
@@ -127,10 +124,10 @@ public class PlaylistService {
 
     List<PlaylistContentResponse> contents =
         playlistContentRepository.findAllByPlaylistIdOrderByCreatedAtAsc(playlistId).stream()
-            .map(playlistContentMapper::toResponse)
+            .map(PlaylistContentResponse::from)
             .toList();
 
-    PlaylistResponse response = mapper.toResponse(
+    PlaylistResponse response = PlaylistResponse.from(
         playlist,
         ownerResponse,
         false,
