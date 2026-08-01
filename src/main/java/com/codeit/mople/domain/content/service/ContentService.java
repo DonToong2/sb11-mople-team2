@@ -93,6 +93,13 @@ public class ContentService{
       throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("limit", limit));
     }
 
+    //커서 피라미터가 둘 중 하나만 드어온 경우 예외 처리
+    if ((cursorId == null) != (cursorCreatedAt == null)) {
+      log.warn("콘텐츠 목록 조회 실패(불완전한 커서 조건) - cursorId: {}, cursorCreatedAt: {}", cursorId, cursorCreatedAt);
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST,
+          Map.of("cursorId", String.valueOf(cursorId), "cursorCreatedAt", String.valueOf(cursorCreatedAt)));
+    }
+
     //데이터 조회 및 카운트
     List<Content> contents = contentQueryRepository.findContentByCursor(cursorId, cursorCreatedAt, limit);
     long totalCount = contentQueryRepository.countAllContents();

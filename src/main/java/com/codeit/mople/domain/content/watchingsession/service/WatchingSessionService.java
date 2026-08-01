@@ -8,6 +8,8 @@ import com.codeit.mople.domain.content.watchingsession.dto.WatchingSessionConten
 import com.codeit.mople.domain.content.watchingsession.dto.WatchingSessionResponse;
 import com.codeit.mople.domain.content.watchingsession.entity.WatchingSession;
 import com.codeit.mople.domain.content.watchingsession.repository.WatchingSessionQueryRepository;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class WatchingSessionService {
+
   private final WatchingSessionQueryRepository watchingSessionQueryRepository;
 
   @Transactional(readOnly = true)
@@ -28,8 +31,35 @@ public class WatchingSessionService {
       int limit, String sortDirection, String sortBy) {
     log.debug("시청 세션 목록 조회 시작 - contentId: {}", contentId);
 
+    //limit 검증
     if (limit <= 0 || limit > 100) {
       throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("limit", limit));
+    }
+
+    //정렬 기준 및 정렬 방향 검증
+    if (sortBy != null && !"createdAt".equalsIgnoreCase(sortBy)) {
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("sortBy", sortBy));
+    }
+    if (sortDirection != null &&
+        !"ASCENDING".equalsIgnoreCase(sortDirection) &&
+        !"DESCENDING".equalsIgnoreCase(sortDirection)) {
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST,
+          Map.of("sortDirection", sortDirection));
+    }
+
+    //커서 쌍 검증
+    if ((cursor == null) != (idAfter == null)) {
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST,
+          Map.of("cursor", String.valueOf(cursor), "idAfter", String.valueOf(idAfter)));
+    }
+
+    //커서 날짜 포맷 검증(500에러를 400 Bad Request로 변환)
+    if (cursor != null) {
+      try {
+        Instant.parse(cursor);
+      } catch (DateTimeParseException e) {
+        throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("cursor", cursor));
+      }
     }
 
     //QueryDSL 레포지토리 호출(limit + 1개 조회)
