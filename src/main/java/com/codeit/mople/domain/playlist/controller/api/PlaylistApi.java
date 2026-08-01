@@ -94,17 +94,101 @@ public interface PlaylistApi {
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails principal
   );
 
+  @Operation(
+      summary = "플레이리스트 구독 취소"
+  )
+  @ApiResponses({
+      @ApiResponse(
+          responseCode = "204",
+          description = "성공"
+      ),
+      @ApiResponse(
+          responseCode = "400",
+          description = "잘못된 요청",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+      ),
+      @ApiResponse(
+          responseCode = "401",
+          description = "인증 오류",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+      ),
+      @ApiResponse(
+          responseCode = "500",
+          description = "서버 오류",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+      ),
+  })
   ResponseEntity<Void> cancelSubscribe(
       @PathVariable UUID playlistId,
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails principal
   );
 
+  @Operation(
+      summary = "플레이리스트 콘텐츠 추가",
+      description = "플레이리스트 소유자만 콘텐츠를 추가할 수 있습니다."
+  )
+  @ApiResponses({
+      @ApiResponse(
+          responseCode = "204",
+          description = "성공"
+      ),
+      @ApiResponse(
+          responseCode = "400",
+          description = "잘못된 요청",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+      ),
+      @ApiResponse(
+          responseCode = "401",
+          description = "인증 오류",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+      ),
+      @ApiResponse(
+          responseCode = "403",
+          description = "권한 오류",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+      ),
+      @ApiResponse(
+          responseCode = "500",
+          description = "서버 오류",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+      ),
+  })
   ResponseEntity<Void> addContentPlaylist(
       @PathVariable UUID playlistId,
       @PathVariable UUID contentId,
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails principal
   );
 
+  @Operation(
+      summary = "플레이리스트 콘텐츠 삭제",
+      description = "플레이리스트 소유자만 콘텐츠를 삭제할 수 있습니다."
+  )
+  @ApiResponses({
+      @ApiResponse(
+          responseCode = "204",
+          description = "성공"
+      ),
+      @ApiResponse(
+          responseCode = "400",
+          description = "잘못된 요청",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+      ),
+      @ApiResponse(
+          responseCode = "401",
+          description = "인증 오류",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+      ),
+      @ApiResponse(
+          responseCode = "403",
+          description = "권한 오류",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+      ),
+      @ApiResponse(
+          responseCode = "500",
+          description = "서버 오류",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+      ),
+  })
   ResponseEntity<Void> removeContentPlaylist(
       @PathVariable UUID playlistId,
       @PathVariable UUID contentId,
