@@ -124,7 +124,7 @@ class FollowServiceTest {
       assertThatExceptionOfType(CustomException.class)
           .isThrownBy(() -> followService.follow(request, followerId))
           .extracting(CustomException::getErrorCode)
-          .isEqualTo(FollowErrorCode.FOLLOWEE_NOT_FOUND);
+          .isEqualTo(FollowErrorCode.FOLLOW_FOLLOWEE_NOT_FOUND);
 
       verify(followRepository, never()).save(any(Follow.class));
       verify(publisher, never()).publishEvent(any(FollowCreatedEvent.class));
@@ -144,7 +144,7 @@ class FollowServiceTest {
       assertThatExceptionOfType(CustomException.class)
           .isThrownBy(() -> followService.follow(request, followerId))
           .extracting(CustomException::getErrorCode)
-          .isEqualTo(FollowErrorCode.FOLLOWER_NOT_FOUND);
+          .isEqualTo(FollowErrorCode.FOLLOW_FOLLOWER_NOT_FOUND);
 
       verify(followRepository, never()).save(any(Follow.class));
       verify(publisher, never()).publishEvent(any(FollowCreatedEvent.class));
@@ -197,7 +197,7 @@ class FollowServiceTest {
     assertThatExceptionOfType(CustomException.class)
         .isThrownBy(() -> followService.unFollow(followId, followerId))
         .extracting(CustomException::getErrorCode)
-        .isEqualTo(FollowErrorCode.FOLLOW_NOT_FOUND);
+        .isEqualTo(FollowErrorCode.UNFOLLOW_NOT_FOUND);
 
     verify(followRepository, never()).delete(any(Follow.class));
   }
@@ -220,7 +220,7 @@ class FollowServiceTest {
     assertThatExceptionOfType(CustomException.class)
         .isThrownBy(() -> followService.unFollow(followId, followerId))
         .extracting(CustomException::getErrorCode)
-        .isEqualTo(FollowErrorCode.FOLLOW_NOT_OWNER);
+        .isEqualTo(FollowErrorCode.UNFOLLOW_NOT_OWNER);
 
     verify(followRepository, never()).delete(any(Follow.class));
   }

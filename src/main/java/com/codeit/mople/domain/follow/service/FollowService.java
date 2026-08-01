@@ -43,11 +43,11 @@ public class FollowService {
       throw new CustomException(FollowErrorCode.FOLLOW_DUPLICATE);
     }
 
-    // 영속화
+    //
     User followee = userRepository.findById(followeeId)
-        .orElseThrow(() -> new CustomException(FollowErrorCode.FOLLOWEE_NOT_FOUND));
+        .orElseThrow(() -> new CustomException(FollowErrorCode.FOLLOW_FOLLOWEE_NOT_FOUND));
     User follower = userRepository.findById(followerId)
-        .orElseThrow(() -> new CustomException(FollowErrorCode.FOLLOWER_NOT_FOUND));
+        .orElseThrow(() -> new CustomException(FollowErrorCode.FOLLOW_FOLLOWER_NOT_FOUND));
     Follow saved = followRepository.save(Follow.create(followee, follower));
 
     log.info("팔로우 성공: followId={}, followeeId={}, followerId={}", saved.getId(), followeeId, followerId);
@@ -66,11 +66,11 @@ public class FollowService {
 
     // 해당 followId가 있는지 검증
      Follow follow = followRepository.findById(followId)
-         .orElseThrow(() -> new CustomException(FollowErrorCode.FOLLOW_NOT_FOUND));
+         .orElseThrow(() -> new CustomException(FollowErrorCode.UNFOLLOW_NOT_FOUND));
 
      // 본인의 팔로우만 언팔 가능
      if (!follow.getFollower().getId().equals(followerId)) {
-       throw new CustomException(FollowErrorCode.FOLLOW_NOT_OWNER);
+       throw new CustomException(FollowErrorCode.UNFOLLOW_NOT_OWNER);
      }
 
      // 해당 팔로우(row) 삭제
