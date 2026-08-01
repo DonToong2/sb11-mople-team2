@@ -3,7 +3,6 @@ package com.codeit.mople.domain.playlist.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -26,8 +25,6 @@ import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.playlist.event.PlaylistSubscriptionCreateEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.exception.PlaylistException;
-import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
-import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistSubscriptionRepository;
@@ -256,7 +253,7 @@ public class PlaylistServiceTest {
 
       // when & then
       assertThatThrownBy(() -> playlistService.find(notExistPlaylistId))
-          .isInstanceOf(PlaylistNotFoundException.class)
+          .isInstanceOf(PlaylistException.class)
           .extracting("errorCode")
           .isEqualTo(PlaylistErrorCode.PLAYLIST_NOT_FOUND);
 
@@ -539,7 +536,7 @@ public class PlaylistServiceTest {
 
       // when & then
       assertThatThrownBy(() -> playlistService.update(playlistId, updateRequest, ownerId))
-          .isInstanceOf(PlaylistNotFoundException.class)
+          .isInstanceOf(PlaylistException.class)
           .extracting("errorCode")
           .isEqualTo(PlaylistErrorCode.PLAYLIST_NOT_FOUND);
 
@@ -568,7 +565,7 @@ public class PlaylistServiceTest {
 
       // when & then
       assertThatThrownBy(() -> playlistService.update(playlistId, updateRequest, noOwnerId))
-          .isInstanceOf(PlaylistForbiddenException.class)
+          .isInstanceOf(PlaylistException.class)
           .extracting("errorCode")
           .isEqualTo(PlaylistErrorCode.PLAYLIST_FORBIDDEN);
 
@@ -621,7 +618,7 @@ public class PlaylistServiceTest {
       assertThatThrownBy(() ->
           playlistService.delete(playlistId, ownerId)
       )
-          .isInstanceOf(PlaylistNotFoundException.class)
+          .isInstanceOf(PlaylistException.class)
           .extracting("errorCode")
           .isEqualTo(PlaylistErrorCode.PLAYLIST_NOT_FOUND);
 
@@ -660,7 +657,7 @@ public class PlaylistServiceTest {
       assertThatThrownBy(() ->
           playlistService.delete(playlistId, noOwnerId)
       )
-          .isInstanceOf(PlaylistForbiddenException.class)
+          .isInstanceOf(PlaylistException.class)
           .extracting("errorCode")
           .isEqualTo(PlaylistErrorCode.PLAYLIST_FORBIDDEN);
 

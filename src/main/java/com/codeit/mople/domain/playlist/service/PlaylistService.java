@@ -12,8 +12,6 @@ import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.playlist.event.PlaylistSubscriptionCreateEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.exception.PlaylistException;
-import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
-import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistSubscriptionRepository;
@@ -78,7 +76,9 @@ public class PlaylistService {
         playlistId);
 
     Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
-        new PlaylistNotFoundException(playlistId)
+        new PlaylistException(
+            PlaylistErrorCode.PLAYLIST_NOT_FOUND,
+            Map.of("playlistId", playlistId))
     );
 
     UserSummary ownerResponse = toUserSummary(playlist.getOwner());
@@ -115,7 +115,7 @@ public class PlaylistService {
         condition.limit(),
         condition.sortBy(),
         condition.sortDirection()
-        );
+    );
 
     // 목록 조회(limit + 1까지)
     List<Playlist> playlists = playlistRepository.findAll(condition);
@@ -154,8 +154,7 @@ public class PlaylistService {
       // 정렬조건
       if (condition.sortBy() == PlaylistSortBy.UPDATED_AT) {
         nextCursor = lastItem.getUpdatedAt().toString();
-      }
-      else if (condition.sortBy() == PlaylistSortBy.SUBSCRIBER_COUNT) {
+      } else if (condition.sortBy() == PlaylistSortBy.SUBSCRIBER_COUNT) {
         nextCursor = String.valueOf(lastItem.getSubscriberCount());
       }
     }
@@ -186,7 +185,9 @@ public class PlaylistService {
 
     // Playlist 조회
     Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
-        new PlaylistNotFoundException(playlistId)
+        new PlaylistException(
+            PlaylistErrorCode.PLAYLIST_NOT_FOUND,
+            Map.of("playlistId", playlistId))
     );
 
     // 플레이리스트 소유자가 맞는지 검증
@@ -221,7 +222,9 @@ public class PlaylistService {
         playlistId, userId);
 
     Playlist playlist = playlistRepository.findById(playlistId).orElseThrow(() ->
-        new PlaylistNotFoundException(playlistId)
+        new PlaylistException(
+            PlaylistErrorCode.PLAYLIST_NOT_FOUND,
+            Map.of("playlistId", playlistId))
     );
 
     validateOwner(playlist, userId);
@@ -258,12 +261,14 @@ public class PlaylistService {
         .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.SUBSCRIBE_UNAUTHORIZED));
 
     // 중복 구독 차단
-    if (playlistSubscriptionRepository.existsByPlaylistIdAndSubscriberId(playlistId, subscriberId)) {
+    if (playlistSubscriptionRepository.existsByPlaylistIdAndSubscriberId(playlistId,
+        subscriberId)) {
       throw new PlaylistException(PlaylistErrorCode.SUBSCRIBE_DUPLICATE);
     }
 
     PlaylistSubscription saved = playlistSubscriptionRepository.save(
         PlaylistSubscription.create(playlist, subscriber));
+
     playlistRepository.increaseSubscriberCount(playlistId);
 
     log.info("플레이리스트 구독 성공: playlistSubscriptionId={}, playlistId={}, subscriberId={}",
@@ -277,12 +282,16 @@ public class PlaylistService {
     log.debug("플레이리스트 구독 취소 시도: playlistId={}, subscriberId={}", playlistId, subscriberId);
 
     // 구독 존재 검증 + 삭제
-    int deleted = playlistSubscriptionRepository.deleteByPlaylistIdAndSubscriberId(playlistId, subscriberId);
+    int deleted =
+        playlistSubscriptionRepository.deleteByPlaylistIdAndSubscriberId(playlistId, subscriberId);
+
     if (deleted == 0) {
       throw new PlaylistException(PlaylistErrorCode.UNSUBSCRIBE_NOT_FOUND,
           Map.of("playlistId", playlistId, "subscriberId", subscriberId));
     }
+
     int decreased = playlistRepository.decreaseSubscriberCount(playlistId);
+
     if (decreased == 0) {
       log.warn("구독자 수 감소 실패(이미 0): playlistId={}, subscriberId={}", playlistId, subscriberId);
     }
@@ -300,7 +309,10 @@ public class PlaylistService {
 
   private void validateOwner(Playlist playlist, UUID userId) {
     if (!playlist.getOwner().getId().equals(userId)) {
-      throw new PlaylistForbiddenException(playlist.getId());
+      throw new PlaylistException(
+          PlaylistErrorCode.PLAYLIST_FORBIDDEN,
+          Map.of("playlistId", playlist.getId())
+      );
     }
   }
 }

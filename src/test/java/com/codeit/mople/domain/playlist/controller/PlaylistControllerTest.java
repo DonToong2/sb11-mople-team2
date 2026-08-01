@@ -24,8 +24,7 @@ import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistCursorResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
-import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
-import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
+import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.service.PlaylistService;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
@@ -33,6 +32,7 @@ import com.codeit.mople.global.dto.UserSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -224,7 +224,10 @@ public class PlaylistControllerTest {
       UUID notExistPlaylistId = UUID.randomUUID();
 
       given(playlistService.find(notExistPlaylistId))
-          .willThrow(new PlaylistNotFoundException(notExistPlaylistId));
+          .willThrow(new PlaylistException(
+              PlaylistErrorCode.PLAYLIST_NOT_FOUND,
+              Map.of("playlistId", notExistPlaylistId)
+          ));
 
       // BeforeEach에서 userDetails 초기화
 
@@ -447,7 +450,10 @@ public class PlaylistControllerTest {
       // BeforeEach에서 playlistId, updateRequest, userDetails 초기화
 
       given(playlistService.update(eq(playlistId), any(PlaylistUpdateRequest.class), eq(ownerId)))
-          .willThrow(new PlaylistForbiddenException(playlistId));
+          .willThrow(new PlaylistException(
+              PlaylistErrorCode.PLAYLIST_FORBIDDEN,
+              Map.of("playlistId", playlistId)
+          ));
 
       // when & then
       mockMvc.perform(patch("/api/playlists/{playlistId}", playlistId)
@@ -491,7 +497,10 @@ public class PlaylistControllerTest {
 
       // BeforeEach에서 playlistId, ownerId, userDetails 초기화
 
-      doThrow(new PlaylistForbiddenException(playlistId))
+      doThrow(new PlaylistException(
+          PlaylistErrorCode.PLAYLIST_FORBIDDEN,
+          Map.of("playlistId", playlistId)
+      ))
           .when(playlistService).delete(eq(playlistId), eq(ownerId));
 
       // when & then
