@@ -18,7 +18,11 @@ public enum PlaylistErrorCode implements ErrorCode {
   SUBSCRIBE_NOT_ALLOWED(HttpStatus.BAD_REQUEST,"PLAYLIST-007","본인의 플레이리스트는 구독할 수 없습니다."),
   SUBSCRIBE_UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "PLAYLIST-008", "인증이 필요합니다."),
   SUBSCRIBE_DUPLICATE(HttpStatus.BAD_REQUEST, "PLAYLIST-009", "이미 구독한 플레이리스트입니다."),
-  UNSUBSCRIBE_NOT_FOUND(HttpStatus.BAD_REQUEST,"PLAYLIST-010","구독하지 않은 플레이리스트입니다.");
+  UNSUBSCRIBE_NOT_FOUND(HttpStatus.BAD_REQUEST,"PLAYLIST-010","구독하지 않은 플레이리스트입니다."),
+  PY_CONTENT_PLAY_NOT_FOUND(HttpStatus.BAD_REQUEST, "PLAYLIST-011", "플레이리스트를 찾을 수 없습니다."),
+  PY_CONTENT_CONTENT_NOT_FOUND(HttpStatus.BAD_REQUEST,"PLAYLIST-012","존재하지 않는 콘텐츠입니다."),
+  PY_CONTENT_DUPLICATE(HttpStatus.BAD_REQUEST,"PLAYLIST-013","이미 플레이리스트에 담긴 콘텐츠입니다."),
+  UN_PY_CONTENT_NOT_FOUND(HttpStatus.BAD_REQUEST,"PLAYLIST-014","플레이리스트에 콘텐츠가 없습니다.");
 
   private final HttpStatus status;
   private final String code;
