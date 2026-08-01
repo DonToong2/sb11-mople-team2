@@ -8,4 +8,6 @@ public interface PlaylistCustomRepository {
 
   List<Playlist> findAll(PlaylistQueryCondition condition);
 
+  long count(PlaylistQueryCondition condition);
+
 }

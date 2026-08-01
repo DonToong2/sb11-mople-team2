@@ -2,7 +2,6 @@ package com.codeit.mople.domain.playlist.dto.request;
 
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
-import org.hibernate.query.SortDirection;
 
 public record PlaylistQueryCondition(
 

@@ -1,8 +1,11 @@
 package com.codeit.mople.domain.playlist.service;
 
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
+import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition;
+import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition.PlaylistSortBy;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistUpdateRequest;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistContentResponse;
+import com.codeit.mople.domain.playlist.dto.response.PlaylistCursorResponse;
 import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.entity.Playlist;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
@@ -19,7 +22,6 @@ import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.UserSummary;
-import com.codeit.mople.global.error.CustomException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -98,6 +100,63 @@ public class PlaylistService {
         playlistId, contents.size());
 
     return response;
+  }
+
+  @Transactional(readOnly = true)
+  public PlaylistCursorResponse findAll(PlaylistQueryCondition condition) {
+
+    // 목록 조회(limit + 1까지)
+    List<Playlist> playlists = playlistRepository.findAll(condition);
+
+    // 다음 페이지가 있는지 확인
+    boolean hasNext = playlists.size() > condition.limit();
+
+    // 다음 페이지가 있으면 limit까지만 조회
+    if (hasNext) {
+      playlists = playlists.subList(0, condition.limit());
+    }
+
+    // 목록 조회된 Playlist의 총 개수
+    long totalCount = playlistRepository.count(condition);
+
+    List<PlaylistResponse> data = playlists.stream()
+        .map(playlist -> PlaylistResponse.from(
+            playlist,
+            toUserSummary(playlist.getOwner()),
+            false,
+            List.of() // 플레이리스트 목록들에서는 contents 제외 // TODO 김명근: 로컬 테스트 후 컨텐츠 필요 시 변경
+        ))
+        .toList();
+
+    // 임시 커서, 보조 커서 초기화
+    String nextCursor = null;
+    UUID nextIdAfter = null;
+
+    // 마지막 원소 조회
+    if (hasNext && !playlists.isEmpty()) {
+      Playlist lastItem = playlists.get(playlists.size() - 1);
+
+      // 보조커서
+      nextIdAfter = lastItem.getId();
+
+      // 정렬조건
+      if (condition.sortBy() == PlaylistSortBy.UPDATED_AT) {
+        nextCursor = lastItem.getUpdatedAt().toString();
+      }
+      else if (condition.sortBy() == PlaylistSortBy.SUBSCRIBER_COUNT) {
+        nextCursor = String.valueOf(lastItem.getSubscriberCount());
+      }
+    }
+
+    return new PlaylistCursorResponse(
+        data,
+        nextCursor,
+        nextIdAfter,
+        hasNext,
+        totalCount,
+        condition.sortBy(),
+        condition.sortDirection()
+    );
   }
 
   @Transactional

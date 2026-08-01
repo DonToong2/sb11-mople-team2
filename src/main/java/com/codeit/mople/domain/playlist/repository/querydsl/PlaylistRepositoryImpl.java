@@ -29,9 +29,11 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
 
     // select * from Playlist
     JPAQuery<Playlist> query = queryFactory
-        .selectFrom(playlist);
+        .selectFrom(playlist)
+        .join(playlist.owner)
+        .fetchJoin();
 
-    // left join playlist_subscription
+    // inner join playlist_subscription
     // on playlist_subscription.playlist_id = playlist_id
     // 구독자 ID가 존재할때만 Inner Join(이 분기 때문에 return문에 바로 넣지 않고 selectFrom 메서드를 분리)
     if (condition.subscriberIdEqual() != null) {
@@ -48,6 +50,26 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
         .orderBy(sort(condition)) // order by
         .limit(condition.limit() + 1) // 다음 조회 건으로 비교
         .fetch(); // ~의 SQL문을 실행
+  }
+
+  @Override
+  public long count(PlaylistQueryCondition condition) {
+    JPAQuery<Long> query = queryFactory.select(playlist.count())
+        .from(playlist);
+
+    if (condition.subscriberIdEqual() != null) {
+      query.join(playlistSubscription).on(playlistSubscription.playlist.eq(playlist));
+    }
+
+    Long count = query
+        .where(
+            keywordLike(condition.keywordLike()),
+            ownerIdEqual(condition.ownerIdEqual()),
+            subscriberIdEqual(condition.subscriberIdEqual())
+        )
+        .fetchOne(); // long타입으로 변환(결과가 하나만 나옴, fetch로 하면 List<Long>이 되어버림))
+
+    return count == null ? 0L : count;
   }
 
   // WHERE 절
@@ -107,8 +129,9 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
 
       // 경우 2 : 최신순 내림차순
       return playlist.updatedAt.lt(cursor)
-          .or(playlist.updatedAt.eq(cursor)
-              .and(playlist.id.gt(condition.idAfter()))
+          .or(
+              playlist.updatedAt.eq(cursor)
+                  .and(playlist.id.gt(condition.idAfter()))
           );
     }
 
