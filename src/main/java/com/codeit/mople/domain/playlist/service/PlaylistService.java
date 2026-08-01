@@ -105,6 +105,18 @@ public class PlaylistService {
   @Transactional(readOnly = true)
   public PlaylistCursorResponse findAll(PlaylistQueryCondition condition) {
 
+    log.debug("플레이리스트 목록 조회 시도: keywordLike={}, ownerId={}, subscriberId={}, cursor={},"
+            + " idAfter={}, limit={}, sortBy={}, sortDirection={}",
+        condition.keywordLike(),
+        condition.ownerIdEqual(),
+        condition.subscriberIdEqual(),
+        condition.cursor(),
+        condition.idAfter(),
+        condition.limit(),
+        condition.sortBy(),
+        condition.sortDirection()
+        );
+
     // 목록 조회(limit + 1까지)
     List<Playlist> playlists = playlistRepository.findAll(condition);
 
@@ -147,6 +159,9 @@ public class PlaylistService {
         nextCursor = String.valueOf(lastItem.getSubscriberCount());
       }
     }
+
+    log.info("플레이리스트 목록 조회 완료: size={}, totalCont={}, hasNext={}",
+        data.size(), totalCount, hasNext);
 
     return new PlaylistCursorResponse(
         data,
