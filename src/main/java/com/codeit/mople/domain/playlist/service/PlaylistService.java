@@ -8,6 +8,7 @@ import com.codeit.mople.domain.playlist.entity.Playlist;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.playlist.event.PlaylistSubscriptionCreateEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
+import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.exception.PlaylistForbiddenException;
 import com.codeit.mople.domain.playlist.exception.PlaylistNotFoundException;
 import com.codeit.mople.domain.playlist.mapper.PlaylistContentMapper;
@@ -172,29 +173,50 @@ public class PlaylistService {
 
     // 존재확인
     Playlist playlist = playlistRepository.findById(playlistId)
-        .orElseThrow(() -> new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.SUBSCRIBE_NOT_FOUND));
+
+    UUID ownerId = playlist.getOwner().getId();
 
     // 본인 구독 차단
-    if (subscriberId.equals(playlist.getOwner().getId())) {
-      throw new CustomException(PlaylistErrorCode.PLAYLIST_DUPLICATE);
+    if (subscriberId.equals(ownerId)) {
+      throw new PlaylistException(PlaylistErrorCode.SUBSCRIBE_NOT_ALLOWED);
     }
 
     // 존재확인
     User subscriber = userRepository.findById(subscriberId)
-        .orElseThrow(() -> new CustomException(PlaylistErrorCode.PLAYLIST_NOT_FOUND));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.SUBSCRIBE_UNAUTHORIZED));
 
     // 중복 구독 차단
     if (playlistSubscriptionRepository.existsByPlaylistIdAndSubscriberId(playlistId, subscriberId)) {
-      throw new CustomException(PlaylistErrorCode.PLAYLIST_DUPLICATE);
+      throw new PlaylistException(PlaylistErrorCode.SUBSCRIBE_DUPLICATE);
     }
 
     PlaylistSubscription saved = playlistSubscriptionRepository.save(
         PlaylistSubscription.create(playlist, subscriber));
+    playlistRepository.increaseSubscriberCount(playlistId);
 
     log.info("플레이리스트 구독 성공: playlistSubscriptionId={}, playlistId={}, subscriberId={}",
         saved.getId(), playlistId, subscriberId);
 
-    publisher.publishEvent(new PlaylistSubscriptionCreateEvent(playlistId, subscriberId));
+    publisher.publishEvent(new PlaylistSubscriptionCreateEvent(ownerId, playlistId, subscriberId));
+  }
+
+  @Transactional
+  public void unSubscribe(UUID playlistId, UUID subscriberId) {
+    log.debug("플레이리스트 구독 취소 시도: playlistId={}, subscriberId={}", playlistId, subscriberId);
+
+    // 구독 존재 검증 + 삭제
+    int deleted = playlistSubscriptionRepository.deleteByPlaylistIdAndSubscriberId(playlistId, subscriberId);
+    if (deleted == 0) {
+      throw new PlaylistException(PlaylistErrorCode.UNSUBSCRIBE_NOT_FOUND,
+          Map.of("playlistId", playlistId, "subscriberId", subscriberId));
+    }
+    int decreased = playlistRepository.decreaseSubscriberCount(playlistId);
+    if (decreased == 0) {
+      log.warn("구독자 수 감소 실패(이미 0): playlistId={}, subscriberId={}", playlistId, subscriberId);
+    }
+
+    log.info("플레이리스트 구독 취소 성공: playlist={}, subscriberId={}", playlistId, subscriberId);
   }
 
   private UserSummary toUserSummary(User user) {
