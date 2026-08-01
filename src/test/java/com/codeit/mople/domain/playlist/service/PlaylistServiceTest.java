@@ -516,7 +516,7 @@ public class PlaylistServiceTest {
       // then
       verify(playlistSubscriptionRepository).save(any(PlaylistSubscription.class));
       verify(publisher).publishEvent(any(PlaylistSubscribedEvent.class));
-      assertThat(playlist.getSubscriberCount()).isEqualTo(1L);
+      verify(playlistRepository).increaseSubscriberCount(playlistId);
     }
 
     @Test
@@ -603,20 +603,15 @@ public class PlaylistServiceTest {
       UUID playlistId = UUID.randomUUID();
       UUID subscriberId = UUID.randomUUID();
 
-      Playlist playlist = Playlist.create(owner, title, description);
-      playlist.increaseSubscriberCount();
-      playlist.increaseSubscriberCount();
-
-      PlaylistSubscription subscription = mock(PlaylistSubscription.class);
-      given(subscription.getPlaylist()).willReturn(playlist);
-      given(playlistSubscriptionRepository.findByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(Optional.of(subscription));
+      given(playlistSubscriptionRepository.deleteByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(1);
+      given(playlistRepository.decreaseSubscriberCount(playlistId)).willReturn(1);
 
       // when
       playlistService.unSubscribe(playlistId, subscriberId);
 
       // then
-      verify(playlistSubscriptionRepository).delete(subscription);
-      assertThat(playlist.getSubscriberCount()).isEqualTo(1L);
+      verify(playlistSubscriptionRepository).deleteByPlaylistIdAndSubscriberId(playlistId, subscriberId);
+      verify(playlistRepository).decreaseSubscriberCount(playlistId);
     }
 
     @Test
@@ -625,13 +620,13 @@ public class PlaylistServiceTest {
       UUID playlistId = UUID.randomUUID();
       UUID subscriberId = UUID.randomUUID();
 
-      given(playlistSubscriptionRepository.findByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(Optional.empty());
+      given(playlistSubscriptionRepository.deleteByPlaylistIdAndSubscriberId(playlistId, subscriberId)).willReturn(0);
 
       assertThatThrownBy(() -> playlistService.unSubscribe(playlistId, subscriberId))
           .isInstanceOf(PlaylistException.class)
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.UNSUBSCRIBE_NOT_FOUND);
 
-      verify(playlistSubscriptionRepository, never()).delete(any(PlaylistSubscription.class));
+      verify(playlistRepository, never()).decreaseSubscriberCount(any());
     }
   }
 

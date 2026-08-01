@@ -3,6 +3,8 @@ package com.codeit.mople.domain.review.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -12,6 +14,7 @@ import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.domain.review.dto.request.ReviewCreateRequest;
+import com.codeit.mople.domain.review.dto.request.ReviewUpdateRequest;
 import com.codeit.mople.domain.review.dto.response.ReviewResponse;
 import com.codeit.mople.domain.review.entity.Review;
 import com.codeit.mople.domain.review.repository.ReviewRepository;
@@ -25,6 +28,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -63,9 +67,15 @@ public class ReviewIntegrationTest {
   private CustomUserDetails userDetails;
   private User savedAuthor;
   private Content savedContent;
-  private ReviewCreateRequest request;
+  private ReviewCreateRequest createRequest;
   private String reviewText;
   private Double reviewRating;
+
+  private ReviewUpdateRequest updateRequest;
+  private String newText;
+  private Double newRating;
+  private Review review;
+  private Review savedReview;
 
   @BeforeEach
   void setUp() {
@@ -86,87 +96,231 @@ public class ReviewIntegrationTest {
     reviewText = "리뷰 내용";
     reviewRating = 4.0;
 
-    request = new ReviewCreateRequest(savedContent.getId(), reviewText, reviewRating);
+    createRequest = new ReviewCreateRequest(savedContent.getId(), reviewText, reviewRating);
+
+    newText = "수정한 내용";
+    newRating = 3.0;
+    updateRequest = new ReviewUpdateRequest(newText, newRating);
+    review = Review.create(savedContent, savedAuthor, reviewText, reviewRating);
   }
 
-  @Test
-  @DisplayName("리뷰 생성 성공")
-  void create_success() throws Exception {
-    // given
+  @Nested
+  @DisplayName("리뷰 생성")
+  class Create {
 
-    // BeforeEach에서 savedAuthor, savedContent, request 초기화
+    @Test
+    @DisplayName("리뷰 생성 성공")
+    void create_success() throws Exception {
+      // given
 
-    // when & then
-    MvcResult result = mockMvc.perform(post("/api/reviews")
-            .with(user(userDetails))
-            .with(csrf())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request))
-        )
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.id").isNotEmpty())
-        .andExpect(jsonPath("$.contentId").value(savedContent.getId().toString()))
-        .andExpect(jsonPath("$.author.userId").value(savedAuthor.getId().toString()))
-        .andExpect(jsonPath("$.author.name").value(savedAuthor.getName()))
-        .andExpect(jsonPath("$.author.profileImageUrl").value(savedAuthor.getProfileImageUrl()))
-        .andExpect(jsonPath("$.text").value(reviewText))
-        .andExpect(jsonPath("$.rating").value(reviewRating))
-        .andReturn();
+      // BeforeEach에서 savedAuthor, savedContent, request 초기화
 
-    // 응답 추출
-    ReviewResponse response = objectMapper.readValue(
-        result.getResponse().getContentAsString(), ReviewResponse.class
-    );
+      // when & then
+      MvcResult result = mockMvc.perform(post("/api/reviews")
+              .with(user(userDetails))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(createRequest))
+          )
+          .andExpect(status().isCreated())
+          .andExpect(jsonPath("$.id").isNotEmpty())
+          .andExpect(jsonPath("$.contentId").value(savedContent.getId().toString()))
+          .andExpect(jsonPath("$.author.userId").value(savedAuthor.getId().toString()))
+          .andExpect(jsonPath("$.author.name").value(savedAuthor.getName()))
+          .andExpect(jsonPath("$.author.profileImageUrl").value(savedAuthor.getProfileImageUrl()))
+          .andExpect(jsonPath("$.text").value(reviewText))
+          .andExpect(jsonPath("$.rating").value(reviewRating))
+          .andReturn();
 
-    // 헤더 검증
-    assertThat(result.getResponse().getHeader("Location"))
-        .isEqualTo("/api/reviews/" + response.id());
+      // 응답 추출
+      ReviewResponse response =
+          objectMapper.readValue(result.getResponse().getContentAsString(), ReviewResponse.class);
 
-    // DB 검증
-    Review savedReview = reviewRepository.findById(response.id()).orElseThrow();
+      // 헤더 검증
+      assertThat(result.getResponse().getHeader("Location"))
+          .isEqualTo("/api/reviews/" + response.id());
 
-    assertThat(savedReview.getContent().getId()).isEqualTo(savedContent.getId());
-    assertThat(savedReview.getAuthor().getId()).isEqualTo(savedAuthor.getId());
-    assertThat(savedReview.getText()).isEqualTo(reviewText);
-    assertThat(savedReview.getRating()).isEqualTo(reviewRating);
+      // DB 검증
+      Review savedReview = reviewRepository.findById(response.id()).orElseThrow();
+
+      assertThat(savedReview.getContent().getId()).isEqualTo(savedContent.getId());
+      assertThat(savedReview.getAuthor().getId()).isEqualTo(savedAuthor.getId());
+      assertThat(savedReview.getText()).isEqualTo(reviewText);
+      assertThat(savedReview.getRating()).isEqualTo(reviewRating);
+    }
+
+    @Test
+    @DisplayName("리뷰 생성 실패 - 콘텐츠가 존재하지 않음(404 에러)")
+    void create_fail_notFoundContent() throws Exception {
+      // given
+      UUID notExistContentId = UUID.randomUUID();
+
+      ReviewCreateRequest invalidRequest =
+          new ReviewCreateRequest(notExistContentId, reviewText, reviewRating);
+
+      // when & then
+      mockMvc.perform(post("/api/reviews")
+              .with(user(userDetails))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(invalidRequest))
+          )
+          .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("리뷰 생성 실패 - 인증되지 않은 사용자(401 에러)")
+    void create_fail_unauthorized() throws Exception {
+      // given
+
+      // BeforeEach에서 request 초기화
+
+      // when & then
+      mockMvc.perform(post("/api/reviews")
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(createRequest))
+          )
+          .andExpect(status().isUnauthorized());
+
+      assertThat(reviewRepository.findAll()).isEmpty();
+    }
+
   }
 
-  @Test
-  @DisplayName("리뷰 생성 실패 - 콘텐츠가 존재하지 않음(404 에러)")
-  void create_fail_notFoundContent() throws Exception {
-    // given
-    UUID notExistContentId = UUID.randomUUID();
+  @Nested
+  @DisplayName("리뷰 수정")
+  class Update {
 
-    ReviewCreateRequest invalidRequest =
-        new ReviewCreateRequest(notExistContentId, reviewText, reviewRating);
+    @Test
+    @DisplayName("리뷰 수정 성공")
+    void update_success() throws Exception {
+      // given
+      savedReview = reviewRepository.save(review);
 
-    // when & then
-    mockMvc.perform(post("/api/reviews")
-            .with(user(userDetails))
-            .with(csrf())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(invalidRequest))
-        )
-        .andExpect(status().isNotFound());
+      // BeforeEach에서 updateRequest, userDetails를 초기화
 
-    assertThat(reviewRepository.count()).isZero();
+      // when & then
+      mockMvc.perform(patch("/api/reviews/{reviewId}", savedReview.getId())
+          .contentType(MediaType.APPLICATION_JSON)
+          .content(objectMapper.writeValueAsString(updateRequest))
+          .with(user(userDetails))
+          .with(csrf())
+      )
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.id").value(savedReview.getId().toString()))
+          .andExpect(jsonPath("$.contentId").value(savedContent.getId().toString()))
+          .andExpect(jsonPath("$.author.userId").value(savedAuthor.getId().toString()))
+          .andExpect(jsonPath("$.author.name").value(savedAuthor.getName()))
+          .andExpect(jsonPath("$.text").value(newText))
+          .andExpect(jsonPath("$.rating").value(newRating));
+
+      Review updatedReview = reviewRepository.findById(savedReview.getId()).orElseThrow();
+
+      assertThat(updatedReview.getText()).isEqualTo(newText);
+      assertThat(updatedReview.getRating()).isEqualTo(newRating);
+    }
+
+    @Test
+    @DisplayName("리뷰 수정 실패 - 리뷰가 존재하지 않음(404 에러)")
+    void update_fail_notFoundReview() throws Exception {
+      // given
+      UUID notExistReviewId = UUID.randomUUID();
+
+      // BeforeEach에서 updateRequest, userDetails를 초기화
+
+      // when & then
+      mockMvc.perform(patch("/api/reviews/{reviewId}", notExistReviewId)
+          .contentType(MediaType.APPLICATION_JSON)
+          .content(objectMapper.writeValueAsString(updateRequest))
+          .with(user(userDetails))
+          .with(csrf())
+      )
+          .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("리뷰 수정 실패 - 인증되지 않은 사용자(401 에러)")
+    void update_fail_unauthorized() throws Exception {
+      // given
+      savedReview = reviewRepository.save(review);
+
+      // BeforeEach에서 updateRequest를 초기화
+
+      // when & then
+      mockMvc.perform(patch("/api/reviews/{reviewId}", savedReview.getId())
+          .contentType(MediaType.APPLICATION_JSON)
+          .with(csrf())
+      )
+          .andExpect(status().isUnauthorized());
+
+      Review review = reviewRepository.findById(savedReview.getId()).orElseThrow();
+
+      assertThat(review.getText()).isEqualTo(reviewText);
+      assertThat(review.getRating()).isEqualTo(reviewRating);
+    }
+
   }
 
-  @Test
-  @DisplayName("리뷰 생성 실패 - 인증되지 않은 사용자(401 에러)")
-  void create_fail_unauthorized() throws Exception {
-    // given
+  @Nested
+  @DisplayName("리뷰 삭제")
+  class Delete {
 
-    // BeforeEach에서 request 초기화
+    @Test
+    @DisplayName("리뷰 삭제 성공")
+    void delete_success() throws Exception {
+      // given
+      savedReview = reviewRepository.save(review);
 
-    // when & then
-    mockMvc.perform(post("/api/reviews")
-            .with(csrf())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request))
-        )
-        .andExpect(status().isUnauthorized());
+      // BeforeEach에서 userDetails 초기화
 
-    assertThat(reviewRepository.count()).isZero();
+      // when & then
+      mockMvc.perform(delete("/api/reviews/{reviewId}", savedReview.getId())
+          .with(user(userDetails))
+          .with(csrf())
+      )
+          .andExpect(status().isNoContent());
+
+      // DB에 리뷰 검증(행이 하나도 없어야 함)
+      assertThat(reviewRepository.findById(savedReview.getId())).isEmpty();
+
+      // 컨텐츠의 리뷰 개수와 평균 평점 검증
+      Content content = contentRepository.findById(savedContent.getId()).orElseThrow();
+      assertThat(content.getReviewCount()).isEqualTo(0); // == isZero()
+      assertThat(content.getAverageRating()).isEqualTo(0.0);
+    }
+
+    @Test
+    @DisplayName("리뷰 삭제 실패 - 리뷰가 존재하지 않음(404 에러)")
+    void delete_fail_notFoundReview() throws Exception {
+      // given
+      UUID notExistReviewId = UUID.randomUUID();
+
+      // BeforeEach에서 userDetails 초기화
+
+      // when & then
+      mockMvc.perform(delete("/api/reviews/{reviewId}", notExistReviewId)
+          .with(user(userDetails))
+          .with(csrf())
+      )
+          .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("리뷰 삭제 실패 - 인증되지 않은 사용자(401 에러)")
+    void delete_fail_unauthorized() throws Exception {
+      // given
+      savedReview = reviewRepository.save(review);
+
+      // when & then
+      mockMvc.perform(delete("/api/reviews/{reviewId}", savedReview.getId())
+          .with(csrf())
+      )
+          .andExpect(status().isUnauthorized());
+
+      assertThat(reviewRepository.findById(savedReview.getId())).isNotEmpty();
+    }
+
   }
+
 }

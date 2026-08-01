@@ -179,30 +179,32 @@ public class PlaylistService {
 
     // 존재확인
     Playlist playlist = playlistRepository.findById(playlistId)
-        .orElseThrow(() -> new CustomException(PlaylistErrorCode.SUBSCRIBE_NOT_FOUND));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.SUBSCRIBE_NOT_FOUND));
+
+    UUID ownerId = playlist.getOwner().getId();
 
     // 본인 구독 차단
-    if (subscriberId.equals(playlist.getOwner().getId())) {
-      throw new CustomException(PlaylistErrorCode.SUBSCRIBE_NOT_ALLOWED);
+    if (subscriberId.equals(ownerId)) {
+      throw new PlaylistException(PlaylistErrorCode.SUBSCRIBE_NOT_ALLOWED);
     }
 
     // 존재확인
     User subscriber = userRepository.findById(subscriberId)
-        .orElseThrow(() -> new CustomException(PlaylistErrorCode.SUBSCRIBE_UNAUTHORIZED));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.SUBSCRIBE_UNAUTHORIZED));
 
     // 중복 구독 차단
     if (playlistSubscriptionRepository.existsByPlaylistIdAndSubscriberId(playlistId, subscriberId)) {
-      throw new CustomException(PlaylistErrorCode.SUBSCRIBE_DUPLICATE);
+      throw new PlaylistException(PlaylistErrorCode.SUBSCRIBE_DUPLICATE);
     }
 
     PlaylistSubscription saved = playlistSubscriptionRepository.save(
         PlaylistSubscription.create(playlist, subscriber));
-    playlist.increaseSubscriberCount();
+    playlistRepository.increaseSubscriberCount(playlistId);
 
     log.info("플레이리스트 구독 성공: playlistSubscriptionId={}, playlistId={}, subscriberId={}",
         saved.getId(), playlistId, subscriberId);
 
-    publisher.publishEvent(new PlaylistSubscribedEvent(playlist.getOwner().getId(), playlistId, subscriberId));
+    publisher.publishEvent(new PlaylistSubscribedEvent(ownerId, playlistId, subscriberId));
   }
 
   @Transactional
@@ -210,12 +212,16 @@ public class PlaylistService {
     log.debug("플레이리스트 구독 취소 시도: playlistId={}, subscriberId={}",
         playlistId, subscriberId);
 
-    // 구독 존재 검증
-    PlaylistSubscription playlistSubscription = playlistSubscriptionRepository.findByPlaylistIdAndSubscriberId(playlistId, subscriberId)
-        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.UNSUBSCRIBE_NOT_FOUND, Map.of("playlistId", playlistId, "subscriberId", subscriberId)));
-
-    playlistSubscription.getPlaylist().decreaseSubscriberCount();
-    playlistSubscriptionRepository.delete(playlistSubscription);
+    // 구독 존재 검증 + 삭제
+    int deleted = playlistSubscriptionRepository.deleteByPlaylistIdAndSubscriberId(playlistId, subscriberId);
+    if (deleted == 0) {
+      throw new PlaylistException(PlaylistErrorCode.UNSUBSCRIBE_NOT_FOUND,
+          Map.of("playlistId", playlistId, "subscriberId", subscriberId));
+    }
+    int decreased = playlistRepository.decreaseSubscriberCount(playlistId);
+    if (decreased == 0) {
+      log.warn("구독자 수 감소 실패(이미 0): playlistId={}, subscriberId={}", playlistId, subscriberId);
+    }
 
     log.info("플레이리스트 구독 취소 성공: playlist={}, subscriberId={}",
         playlistId, subscriberId);
