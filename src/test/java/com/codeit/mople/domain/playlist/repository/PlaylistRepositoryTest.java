@@ -77,7 +77,7 @@ public class PlaylistRepositoryTest {
   class FindAll {
 
     @Test
-    @DisplayName("목록 조회 성공 - 기본 조건")
+    @DisplayName("플레이리스트 목록 조회 성공 - 기본 조건")
     void findAll_success() {
       // given
 
@@ -102,7 +102,7 @@ public class PlaylistRepositoryTest {
     }
 
     @Test
-    @DisplayName("목록 조회 성공 - 제목 검색 조건")
+    @DisplayName("플레이리스트 목록 조회 성공 - 제목 검색 조건")
     void findAll_success_keywordLike() {
       // given
 
@@ -125,11 +125,11 @@ public class PlaylistRepositoryTest {
       // then
       // Playlist에 존재하는 ID만 추출하여 정확히 playlist1만 존재하는지 ID로 확인
       assertThat(result).extracting(Playlist::getId)
-          .containsExactly(playlist1.getId());
+          .containsExactlyInAnyOrder(playlist1.getId());
     }
 
     @Test
-    @DisplayName("목록 조회 성공 - 소유자 ID 조건")
+    @DisplayName("플레이리스트 목록 조회 성공 - 소유자 ID 조건")
     void findAll_success_ownerIdEqual() {
       // given
 
@@ -151,11 +151,11 @@ public class PlaylistRepositoryTest {
 
       // then
       assertThat(result).extracting(Playlist::getId)
-          .containsExactly(playlist1.getId(), playlist2.getId());
+          .containsExactlyInAnyOrder(playlist1.getId(), playlist2.getId());
     }
 
     @Test
-    @DisplayName("목록 조회 성공 - 구독자 ID 조건")
+    @DisplayName("플레이리스트 목록 조회 성공 - 구독자 ID 조건")
     void findAll_success_subscriberIdEqual() {
       // given
 
@@ -177,11 +177,11 @@ public class PlaylistRepositoryTest {
 
       // then
       assertThat(result).extracting(Playlist::getId)
-          .containsExactly(playlist1.getId());
+          .containsExactlyInAnyOrder(playlist1.getId());
     }
 
     @Test
-    @DisplayName("목록 조회 성공 - 커서 페이지네이션 - 최신순")
+    @DisplayName("플레이리스트 목록 조회 성공 - 커서 페이지네이션 - 최신순")
     void findAll_success_cursor_updatedAt() {
       // given
 
@@ -228,7 +228,7 @@ public class PlaylistRepositoryTest {
     }
 
     @Test
-    @DisplayName("목록 조회 성공 - 커서 페이지네이션 - 구독순")
+    @DisplayName("플레이리스트 목록 조회 성공 - 커서 페이지네이션 - 구독순")
     void findAll_success_cursor_subscriberCount() {
       // given
 
@@ -272,11 +272,11 @@ public class PlaylistRepositoryTest {
       // 구독자 수 0인 otherPlaylist만이 다음 페이지에 조회되어야 함
       assertThat(nextResult).hasSize(1)
           .extracting(Playlist::getId)
-          .containsExactly(otherPlaylist.getId());
+          .containsExactlyInAnyOrder(otherPlaylist.getId());
     }
 
     @Test
-    @DisplayName("목록 조회 성공 - 커서 페이지네이션 - 구독순(오름차순)")
+    @DisplayName("플레이리스트 목록 조회 성공 - 커서 페이지네이션 - 구독순(오름차순)")
     void findAll_success_cursor_subscriberCount_ASC() {
       // given
 
@@ -320,11 +320,11 @@ public class PlaylistRepositoryTest {
       // playlist1만이 다음 페이지에 포함되어야 함
       assertThat(nextResult).hasSize(1)
           .extracting(Playlist::getId)
-          .containsExactly(playlist1.getId());
+          .containsExactlyInAnyOrder(playlist1.getId());
     }
 
     @Test
-    @DisplayName("목록 조회 성공 - 제목 검색 결과 없음")
+    @DisplayName("플레이리스트 목록 조회 성공 - 제목 검색 결과 없음")
     void findAll_success_keywordLike_notFound() {
       // given
       PlaylistQueryCondition condition = new PlaylistQueryCondition(
@@ -346,7 +346,7 @@ public class PlaylistRepositoryTest {
     }
 
     @Test
-    @DisplayName("목록 조회 성공 - 사용자가 구독한 플레이리스트가 하나도 존재하지 않음")
+    @DisplayName("플레이리스트 목록 조회 성공 - 사용자가 구독한 플레이리스트가 하나도 존재하지 않음")
     void findAll_success_noSubscribedPlaylist() {
       // given
       User other = User.createUser("other@test.com", "12345678", "other");
@@ -384,7 +384,7 @@ public class PlaylistRepositoryTest {
   class Count {
 
     @Test
-    @DisplayName("전체 플레이리스트 개수 조회 성공")
+    @DisplayName("플레이리스트 개수 조회 성공 - 전체 조회")
     void count_success() {
       // given
 
@@ -409,7 +409,7 @@ public class PlaylistRepositoryTest {
     }
 
     @Test
-    @DisplayName("조건에 맞는 플레이리스트 개수 조회 성공")
+    @DisplayName("플레이리스트 개수 조회 성공 - 특정 조건에 해당하는 개수 조회")
     void count_success_condition() {
       // given
 

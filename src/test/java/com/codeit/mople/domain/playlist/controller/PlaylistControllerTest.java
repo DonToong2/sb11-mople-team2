@@ -245,9 +245,11 @@ public class PlaylistControllerTest {
   class FindAll {
 
     @Test
-    @DisplayName("목록 조회 성공")
+    @DisplayName("플레이리스트 목록 조회 성공")
     void findAll_success() throws Exception {
       // given
+
+      // BeforeEach에서 userDetails 초기화
 
       PlaylistCursorResponse response = new PlaylistCursorResponse(
           List.of(),
@@ -281,6 +283,10 @@ public class PlaylistControllerTest {
     @Test
     @DisplayName("플레이리스트 목록 조회 실패 - limit 누락(400 에러)")
     void findAll_fail_withoutLimit() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails 초기화
+
       // when & then
       mockMvc.perform(get("/api/playlists")
               .param("sortDirection", "ASCENDING")
@@ -295,6 +301,10 @@ public class PlaylistControllerTest {
     @Test
     @DisplayName("플레이리스트 목록 조회 실패 - 정렬 조건 누락(400 에러)")
     void findAll_fail_withoutSortBy() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails 초기화
+
       // when & then
       mockMvc.perform(get("/api/playlists")
               .param("limit", "10")
@@ -309,6 +319,10 @@ public class PlaylistControllerTest {
     @Test
     @DisplayName("플레이리스트 목록 조회 실패 - 정렬 방향 누락(400 에러)")
     void findAll_fail_withoutSortDirection() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails 초기화
+
       // when & then
       mockMvc.perform(get("/api/playlists")
               .param("limit", "10")
@@ -324,6 +338,10 @@ public class PlaylistControllerTest {
     @Test
     @DisplayName("플레이리스트 목록 조회 실패 - 유효하지 않은 limit (1 이상, 400 에러)")
     void findAll_fail_invalidLimit() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails 초기화
+
       // when & then
       mockMvc.perform(get("/api/playlists")
               .param("limit", "0")
@@ -339,6 +357,10 @@ public class PlaylistControllerTest {
     @Test
     @DisplayName("플레이리스트 목록 조회 실패 - 잘못된 정렬 조건(400 에러)")
     void findAll_fail_invalidSortBy() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails 초기화
+
       // when & then
       mockMvc.perform(get("/api/playlists")
               .param("limit", "10")
@@ -353,6 +375,10 @@ public class PlaylistControllerTest {
     @Test
     @DisplayName("플레이리스트 목록 조회 실패 - 잘못된 정렬 방향(400 에러)")
     void findAll_fail_invalidSortDirection() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails 초기화
+
       // when & then
       mockMvc.perform(get("/api/playlists")
               .param("limit", "10")

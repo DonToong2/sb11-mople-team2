@@ -271,7 +271,7 @@ public class PlaylistServiceTest {
   class FindAll {
 
     @Test
-    @DisplayName("목록 조회 성공 - 기본 조건")
+    @DisplayName("플레이리스트 목록 조회 성공 - 기본 조건")
     void findAll_success() {
       // given
 
@@ -323,7 +323,7 @@ public class PlaylistServiceTest {
     }
 
     @Test
-    @DisplayName("목록 조회 성공 - 다음 페이지 존재")
+    @DisplayName("플레이리스트 목록 조회 성공 - 다음 페이지 존재")
     void findAll_success_hasNext() {
       // given
 
@@ -389,7 +389,7 @@ public class PlaylistServiceTest {
     }
 
     @Test
-    @DisplayName("목록 조회 성공 - 마지막 페이지")
+    @DisplayName("플레이리스트 목록 조회 성공 - 마지막 페이지")
     void findAll_success_lastPage() {
       // given
 
@@ -455,7 +455,7 @@ public class PlaylistServiceTest {
     }
 
     @Test
-    @DisplayName("목록 조회 성공 - 조회 결과 없음")
+    @DisplayName("플레이리스트 목록 조회 성공 - 조회 결과 없음")
     void findAll_success_empty() {
       // given
 
