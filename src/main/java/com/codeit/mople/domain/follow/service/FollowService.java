@@ -9,7 +9,7 @@ import com.codeit.mople.domain.follow.exception.FollowException;
 import com.codeit.mople.domain.follow.repository.FollowRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
-import com.codeit.mople.global.error.CustomException;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,19 +35,19 @@ public class FollowService {
 
     // 자기 자신 팔로우 안돼
     if (followerId.equals(followeeId)) {
-      throw new CustomException(FollowErrorCode.FOLLOW_SELF_NOT_ALLOWED);
+      throw new FollowException(FollowErrorCode.FOLLOW_SELF_NOT_ALLOWED, Map.of("followeeId", followeeId));
     }
 
     // 이미 팔로가 되어있으면 중복 팔로우 안돼
     if (followRepository.existsByFolloweeIdAndFollowerId(followeeId, followerId)) {
-      throw new CustomException(FollowErrorCode.FOLLOW_DUPLICATE);
+      throw new FollowException(FollowErrorCode.FOLLOW_DUPLICATE, Map.of("followeeId", followeeId, "followerId", followerId));
     }
 
     //
     User followee = userRepository.findById(followeeId)
-        .orElseThrow(() -> new CustomException(FollowErrorCode.FOLLOW_FOLLOWEE_NOT_FOUND));
+        .orElseThrow(() -> new FollowException(FollowErrorCode.FOLLOW_FOLLOWEE_NOT_FOUND, Map.of("followeeId", followeeId)));
     User follower = userRepository.findById(followerId)
-        .orElseThrow(() -> new CustomException(FollowErrorCode.FOLLOW_FOLLOWER_NOT_FOUND));
+        .orElseThrow(() -> new FollowException(FollowErrorCode.FOLLOW_FOLLOWER_NOT_FOUND, Map.of("followerId", followerId)));
     Follow saved = followRepository.save(Follow.create(followee, follower));
 
     log.info("팔로우 성공: followId={}, followeeId={}, followerId={}", saved.getId(), followeeId, followerId);
@@ -66,11 +66,11 @@ public class FollowService {
 
     // 해당 followId가 있는지 검증
      Follow follow = followRepository.findById(followId)
-         .orElseThrow(() -> new CustomException(FollowErrorCode.UNFOLLOW_NOT_FOUND));
+         .orElseThrow(() -> new FollowException(FollowErrorCode.UNFOLLOW_NOT_FOUND, Map.of("followId", followId)));
 
      // 본인의 팔로우만 언팔 가능
      if (!follow.getFollower().getId().equals(followerId)) {
-       throw new CustomException(FollowErrorCode.UNFOLLOW_NOT_OWNER);
+       throw new FollowException(FollowErrorCode.UNFOLLOW_NOT_OWNER, Map.of("followerId", followerId));
      }
 
      // 해당 팔로우(row) 삭제
@@ -81,7 +81,7 @@ public class FollowService {
   public FollowResponse getFollowByMe(UUID followeeId, UUID followerId) {
     log.debug("팔로우 여부 조회: followeeId={}, followerId={}", followeeId, followerId);
     Follow followByMe = followRepository.findByFolloweeIdAndFollowerId(followeeId, followerId)
-        .orElseThrow(() -> new FollowException(FollowErrorCode.FOLLOW_BY_ME_NOT_FOUND));
+        .orElseThrow(() -> new FollowException(FollowErrorCode.FOLLOW_BY_ME_NOT_FOUND, Map.of("followeeId", followeeId, "followerId", followerId)));
     return FollowResponse.from(followByMe);
   }
 

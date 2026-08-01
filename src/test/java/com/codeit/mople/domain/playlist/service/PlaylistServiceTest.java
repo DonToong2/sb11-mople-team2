@@ -665,32 +665,33 @@ public class PlaylistServiceTest {
       // when then
       assertThatThrownBy(() -> playlistService.addContent(playlistId, contentId, ownerId))
           .isInstanceOf(PlaylistException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PY_CONTENT_PLAY_NOT_FOUND);
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_CONTENT_PLAY_NOT_FOUND);
 
       verify(publisher, never()).publishEvent(any());
       verify(playlistContentRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("컨텐츠가 없으면 예외")
+    @DisplayName("콘텐츠가 없으면 예외")
     void addContent_contentNotFound() {
       UUID playlistId = UUID.randomUUID();
       UUID contentId = UUID.randomUUID();
       Playlist playlist = Playlist.create(owner, title, description);
+      given(owner.getId()).willReturn(ownerId);
       given(playlistRepository.findById(playlistId)).willReturn(Optional.of(playlist));
       given(contentRepository.findById(contentId)).willReturn(Optional.empty());
 
       // when then
       assertThatThrownBy(() -> playlistService.addContent(playlistId, contentId, ownerId))
           .isInstanceOf(PlaylistException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PY_CONTENT_CONTENT_NOT_FOUND);
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_CONTENT_CONTENT_NOT_FOUND);
 
       verify(publisher, never()).publishEvent(any());
       verify(playlistContentRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("이미 있는 컨텐츠면 예외")
+    @DisplayName("이미 있는 콘텐츠면 예외")
     void addContent_duplicate() {
       UUID playlistId = UUID.randomUUID();
       UUID contentId = UUID.randomUUID();
@@ -705,7 +706,7 @@ public class PlaylistServiceTest {
       // when then
       assertThatThrownBy(() -> playlistService.addContent(playlistId, contentId, ownerId))
           .isInstanceOf(PlaylistException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PY_CONTENT_DUPLICATE);
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_CONTENT_DUPLICATE);
 
       verify(publisher, never()).publishEvent(any());
       verify(playlistContentRepository, never()).save(any());
@@ -718,10 +719,8 @@ public class PlaylistServiceTest {
       UUID contentId = UUID.randomUUID();
       UUID noOwnerId = UUID.randomUUID();
       Playlist playlist = mock(Playlist.class);
-      Content content = mock(Content.class);
 
       given(playlistRepository.findById(playlistId)).willReturn(Optional.of(playlist));
-      given(contentRepository.findById(contentId)).willReturn(Optional.of(content));
       given(playlist.getId()).willReturn(playlistId);
       given(playlist.getOwner()).willReturn(owner);
       given(owner.getId()).willReturn(ownerId);
@@ -737,11 +736,11 @@ public class PlaylistServiceTest {
     }
   }
   @Nested
-  @DisplayName("플레이리스트 컨텐츠 삭제")
+  @DisplayName("플레이리스트 콘텐츠 삭제")
   class removeContent {
 
     @Test
-    @DisplayName("플레이리스트 컨텐츠 삭제 성공")
+    @DisplayName("플레이리스트 콘텐츠 삭제 성공")
     void removeContent_success() {
       UUID playlistId = UUID.randomUUID();
       UUID contentId = UUID.randomUUID();
@@ -772,7 +771,7 @@ public class PlaylistServiceTest {
 
       assertThatThrownBy(() -> playlistService.removeContent(playlistId, contentId, ownerId))
           .isInstanceOf(PlaylistException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PY_CONTENT_PLAY_NOT_FOUND);
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_CONTENT_PLAY_NOT_FOUND);
 
       verify(playlistContentRepository, never()).findByPlaylistIdAndContentId(any(), any());
       verify(playlistContentRepository, never()).delete(any());
@@ -802,7 +801,7 @@ public class PlaylistServiceTest {
     }
 
     @Test
-    @DisplayName("플레이리스트에 없는 컨텐츠면 예외")
+    @DisplayName("플레이리스트에 없는 콘텐츠면 예외")
     void removeContent_notInPlaylist() {
       UUID playlistId = UUID.randomUUID();
       UUID contentId = UUID.randomUUID();
@@ -815,7 +814,7 @@ public class PlaylistServiceTest {
 
       assertThatThrownBy(() -> playlistService.removeContent(playlistId, contentId, ownerId))
           .isInstanceOf(PlaylistException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.UN_PY_CONTENT_NOT_FOUND);
+          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.UN_PLAYLIST_CONTENT_NOT_FOUND);
 
       verify(playlistContentRepository, never()).delete(any());
     }

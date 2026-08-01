@@ -233,17 +233,17 @@ public class PlaylistService {
         playlistId, contentId, ownerId);
 
     Playlist playlist = playlistRepository.findById(playlistId)
-        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_PLAY_NOT_FOUND, Map.of("playlistId", playlistId)));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PLAYLIST_CONTENT_PLAY_NOT_FOUND, Map.of("playlistId", playlistId)));
 
     // 소유자 검증
     validateOwner(playlist, ownerId);
 
     Content content = contentRepository.findById(contentId)
-        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PLAYLIST_CONTENT_CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
 
     // 중복 검증
     if (playlistContentRepository.existsByPlaylistIdAndContentId(playlistId, contentId)) {
-      throw new PlaylistException(PlaylistErrorCode.PY_CONTENT_DUPLICATE,Map.of("playlistId", playlistId, "contentId", contentId));
+      throw new PlaylistException(PlaylistErrorCode.PLAYLIST_CONTENT_DUPLICATE,Map.of("playlistId", playlistId, "contentId", contentId));
     }
 
     PlaylistContent playlistContent = PlaylistContent.create(playlist, content);
@@ -261,14 +261,14 @@ public class PlaylistService {
         playlistId, contentId, ownerId);
 
     Playlist playlist = playlistRepository.findById(playlistId)
-        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PY_CONTENT_PLAY_NOT_FOUND, Map.of("playlistId", playlistId)));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.PLAYLIST_CONTENT_PLAY_NOT_FOUND, Map.of("playlistId", playlistId)));
 
     // 소유자 검증
     validateOwner(playlist, ownerId);
 
     // 플레이리스트에 콘텐츠 존재 검증
     PlaylistContent playlistContent = playlistContentRepository.findByPlaylistIdAndContentId(playlistId, contentId)
-        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.UN_PY_CONTENT_NOT_FOUND, Map.of("playlistId", playlistId, "contentId", contentId)));
+        .orElseThrow(() -> new PlaylistException(PlaylistErrorCode.UN_PLAYLIST_CONTENT_NOT_FOUND, Map.of("playlistId", playlistId, "contentId", contentId)));
 
     log.info("플레이리스트에 콘텐츠 삭제 성공: playlistContentId={}, playlistId={}, contentId={}, ownerId={}",
         playlistContent.getId(), playlistId, contentId, ownerId);
