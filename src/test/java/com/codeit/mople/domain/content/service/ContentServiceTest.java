@@ -50,7 +50,6 @@ public class ContentServiceTest {
   @Test
   @DisplayName("콘텐츠 생성 성공 - 레포지토리 저장 및 생성된 객체 직접 반환")
   void createContent_Success() {
-    UUID adminId = UUID.randomUUID();
     ContentCreateRequest request = new ContentCreateRequest("MOVIE", "테스트 영화",
         "설명", List.of("액션"));
     MockMultipartFile thumbnail = new MockMultipartFile("thumbnail",
@@ -62,7 +61,7 @@ public class ContentServiceTest {
 
     given(contentRepository.save(any(Content.class))).willReturn(savedContent);
 
-    ContentResponse response = contentService.createContent(adminId, request, thumbnail);
+    ContentResponse response = contentService.createContent(request, thumbnail);
 
     assertThat(response).isNotNull();
     assertThat(response.title()).isEqualTo("테스트 영화");
@@ -76,7 +75,7 @@ public class ContentServiceTest {
     ContentCreateRequest request = new ContentCreateRequest("INVALID_TYPE",
         "테스트", "설명", List.of());
 
-    assertThatThrownBy(() -> contentService.createContent(adminId, request, null))
+    assertThatThrownBy(() -> contentService.createContent(request, null))
         .isInstanceOf(ContentException.class)
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.INVALID_CONTENT_TYPE);
@@ -92,7 +91,7 @@ public class ContentServiceTest {
     MockMultipartFile invalidFile = new MockMultipartFile("thumbnail",
         "test.txt", "text/plain", "dummy content".getBytes());
 
-    assertThatThrownBy(() -> contentService.createContent(adminId, request, invalidFile))
+    assertThatThrownBy(() -> contentService.createContent(request, invalidFile))
         .isInstanceOf(ContentException.class)
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.INVALID_IMAGE_FILE);
@@ -193,7 +192,7 @@ public class ContentServiceTest {
 
     given(contentRepository.findById(any(UUID.class))).willReturn(Optional.of(content));
 
-    ContentResponse response = contentService.updateContent(adminId, contentId, request, thumbnail);
+    ContentResponse response = contentService.updateContent(contentId, request, thumbnail);
 
     assertThat(response).isNotNull();
     assertThat(response.title()).isEqualTo("수정된 제목");
@@ -209,7 +208,7 @@ public class ContentServiceTest {
 
     given(contentRepository.findById(any(UUID.class))).willReturn(Optional.empty());
 
-    assertThatThrownBy(() -> contentService.updateContent(adminId, contentId, request, null))
+    assertThatThrownBy(() -> contentService.updateContent(contentId, request, null))
         .isInstanceOf(ContentException.class)
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.CONTENT_NOT_FOUND);
@@ -229,7 +228,7 @@ public class ContentServiceTest {
 
     given(contentRepository.findById(any(UUID.class))).willReturn(Optional.of(content));
 
-    contentService.deleteContent(adminId, contentId);
+    contentService.deleteContent(contentId);
 
     verify(contentRepository).delete(content);
   }
@@ -242,7 +241,7 @@ public class ContentServiceTest {
 
     given(contentRepository.findById(any(UUID.class))).willReturn(Optional.empty());
 
-    assertThatThrownBy(() -> contentService.deleteContent(adminId, contentId))
+    assertThatThrownBy(() -> contentService.deleteContent(contentId))
         .isInstanceOf(ContentException.class)
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.CONTENT_NOT_FOUND);

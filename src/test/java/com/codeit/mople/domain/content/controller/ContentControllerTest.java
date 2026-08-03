@@ -103,7 +103,7 @@ public class ContentControllerTest {
         "http://example.com/test.png", List.of("액션"), 0.0,
         0, 0L);
 
-    given(contentService.createContent(eq(adminId), any(), any())).willReturn(mockResponse);
+    given(contentService.createContent(any(), any())).willReturn(mockResponse);
 
     mockMvc.perform(
             multipart(HttpMethod.POST, "/api/contents")
@@ -289,7 +289,7 @@ public class ContentControllerTest {
         "http://example.com/updated.png", List.of("스릴러"),
         0.0, 0, 0L);
 
-    given(contentService.updateContent(eq(adminId), eq(contentId), any(), any())).willReturn(mockResponse);
+    given(contentService.updateContent(eq(contentId), any(), any())).willReturn(mockResponse);
 
     mockMvc.perform(
         multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
@@ -315,7 +315,7 @@ public class ContentControllerTest {
         "thumbnail", "updated.png", MediaType.IMAGE_PNG_VALUE,
         "updated image content".getBytes());
 
-    given(contentService.updateContent(any(), any(), any(), any())).willThrow(
+    given(contentService.updateContent(eq(contentId), any(), any())).willThrow(
         new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
 
     mockMvc.perform(
@@ -338,7 +338,7 @@ public class ContentControllerTest {
     UUID contentId = UUID.randomUUID();
     UUID adminId = UUID.randomUUID();
 
-    willDoNothing().given(contentService).deleteContent(eq(adminId), eq(contentId));
+    willDoNothing().given(contentService).deleteContent(eq(contentId));
 
     mockMvc.perform(
         delete("/api/contents/{contentId}", contentId)
@@ -353,7 +353,7 @@ public class ContentControllerTest {
   void deleteContent_Fail_NotFound() throws Exception {
     UUID contentId = UUID.randomUUID();
     willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)))
-        .given(contentService).deleteContent(any(), any());
+        .given(contentService).deleteContent(eq(contentId));
 
     mockMvc.perform(
         delete("/api/contents/{contentId}", contentId)

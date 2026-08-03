@@ -44,8 +44,7 @@ public class ContentController {
       @Valid @RequestPart("request")ContentCreateRequest request,
       @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail) {
 
-    UUID adminId = userDetails.getUserId();
-    ContentResponse response = contentService.createContent(adminId, request, thumbnail);
+    ContentResponse response = contentService.createContent(request, thumbnail);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -73,12 +72,10 @@ public class ContentController {
   @PatchMapping(value = "/{contentId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ContentResponse> updateContent(
       @PathVariable UUID contentId,
-      @AuthenticationPrincipal CustomUserDetails userDetails,
-      @Valid @RequestPart("request")ContentUpdateRequest request,
+      @Valid @RequestPart("request") ContentUpdateRequest request,
       @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail) {
 
-    UUID adminId = userDetails.getUserId();
-    ContentResponse response = contentService.updateContent(adminId, contentId, request, thumbnail);
+    ContentResponse response = contentService.updateContent(contentId, request, thumbnail);
     return ResponseEntity.ok(response);
   }
 
@@ -86,12 +83,9 @@ public class ContentController {
   @PreAuthorize("hasRole('ADMIN')")
   @DeleteMapping("/{contentId}")
   public ResponseEntity<Void> deleteContent(
-      @PathVariable UUID contentId,
-      @AuthenticationPrincipal CustomUserDetails userDetails
+      @PathVariable UUID contentId
   ) {
-
-    UUID adminId = userDetails.getUserId();
-    contentService.deleteContent(adminId, contentId);
+    contentService.deleteContent(contentId);
     return ResponseEntity.noContent().build();
   }
 

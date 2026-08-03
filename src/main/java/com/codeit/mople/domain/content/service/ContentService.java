@@ -43,9 +43,8 @@ public class ContentService{
 
   //콘텐츠 생성
   @Transactional
-  public ContentResponse createContent(UUID adminId, ContentCreateRequest request,
-      MultipartFile thumbnail) {
-    log.debug("콘텐트 생성 시작 - adminId: {}, type: {}, title: {}", adminId, request.type(), request.title());
+  public ContentResponse createContent(ContentCreateRequest request, MultipartFile thumbnail) {
+    log.debug("콘텐트 생성 시작 - type: {}, title: {}", request.type(), request.title());
 
     //ContentType 변환 방어 로직
     ContentType contentType;
@@ -174,9 +173,8 @@ public class ContentService{
 
   //콘텐츠 수정
   @Transactional
-  public ContentResponse updateContent(UUID adminId, UUID contentId, ContentUpdateRequest request,
-      MultipartFile thumbnail) {
-    log.debug("콘텐츠 수정 시작 - adminId: {}, contentId: {}, updateTitle: {}", adminId, contentId, request.title());
+  public ContentResponse updateContent(UUID contentId, ContentUpdateRequest request, MultipartFile thumbnail) {
+    log.debug("콘텐츠 수정 시작 - contentId: {}, updateTitle: {}", contentId, request.title());
 
     //수정할 콘텐츠 조회(없으면 404 예외 발생)
     Content content = contentRepository.findById(contentId)
@@ -215,8 +213,8 @@ public class ContentService{
 
   //콘텐츠 삭제
   @Transactional
-  public void deleteContent(UUID adminId, UUID contentId) {
-    log.debug("콘텐츠 삭제 시작 - adminId: {}, contentId: {}", adminId, contentId);
+  public void deleteContent(UUID contentId) {
+    log.debug("콘텐츠 삭제 시작 - contentId: {}", contentId);
 
     //삭제할 콘텐츠 조회
     Content content = contentRepository.findById(contentId)
