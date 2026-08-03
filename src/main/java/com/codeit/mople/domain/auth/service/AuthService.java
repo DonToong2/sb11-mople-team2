@@ -95,6 +95,9 @@ public class AuthService {
     }
 
     userRepository.findById(userId).ifPresent(user -> {
+      if(!user.isRefreshTokenValid(refreshToken, Instant.now())) {
+        return;
+      }
       user.clearRefreshToken();
       user.increaseSessionVersion();
     });
