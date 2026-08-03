@@ -55,7 +55,9 @@ public class AdminInitializer implements ApplicationRunner {
     Throwable cause = e;
     while (cause != null) {
       if (cause instanceof ConstraintViolationException cve) {
-        return "uq_users_email".equals(cve.getConstraintName());
+        if ("uq_users_email".equals(cve.getConstraintName())) {
+          return true;
+        }
       }
       cause = cause.getCause();
     }
