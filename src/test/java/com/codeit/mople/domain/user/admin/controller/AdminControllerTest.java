@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.user.admin.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
@@ -12,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.codeit.mople.domain.user.admin.dto.LockUpdateRequest;
 import com.codeit.mople.domain.user.admin.dto.RoleUpdateRequest;
 import com.codeit.mople.domain.user.admin.service.AdminService;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
@@ -174,6 +176,145 @@ class AdminControllerTest {
           .andExpect(status().isForbidden());
 
       verifyNoInteractions(adminService);
+    }
+
+    @Test
+    @DisplayName("자신의 계정에 요청하면 400을 반환한다")
+    void 자신의_계정에_요청하면_400을_반환한다() throws Exception {
+      // given
+      RoleUpdateRequest request = new RoleUpdateRequest("USER");
+      willThrow(new CustomException(UserErrorCode.CANNOT_MODIFY_SELF))
+          .given(adminService).changeUserRole(any(UUID.class), anyString());
+
+      // when & then
+      mockMvc.perform(patch("/api/users/{userId}/role", userId)
+              .with(user("admin").roles("ADMIN"))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(request)))
+          .andDo(print())
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.success").value(false))
+          .andExpect(jsonPath("$.error.code").value("USER-007"));
+    }
+  }
+
+  @Nested
+  @DisplayName("계정 잠금 상태 변경 [PATCH /api/users/{userId}/locked]")
+  class ChangeLocked {
+
+    @Test
+    @DisplayName("ADMIN 권한으로 정상 요청 시 200과 성공 응답을 반환한다")
+    void ADMIN_권한으로_정상_요청_시_200을_반환한다() throws Exception {
+      // given
+      LockUpdateRequest request = new LockUpdateRequest(true);
+
+      // when & then
+      mockMvc.perform(patch("/api/users/{userId}/locked", userId)
+              .with(user("admin").roles("ADMIN"))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(request)))
+          .andDo(print())
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.success").value(true));
+
+      verify(adminService).changeUserLocked(userId, true);
+    }
+
+    @Test
+    @DisplayName("locked 값이 없으면 400을 반환하고 서비스를 호출하지 않는다")
+    void locked_값이_없으면_400을_반환한다() throws Exception {
+      // given
+      String request = "{}";
+
+      // when & then
+      mockMvc.perform(patch("/api/users/{userId}/locked", userId)
+              .with(user("admin").roles("ADMIN"))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(request))
+          .andDo(print())
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.success").value(false))
+          .andExpect(jsonPath("$.error.code").value("COMMON-001"));
+
+      verifyNoInteractions(adminService);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 userId면 404를 반환한다")
+    void 존재하지_않는_userId면_404를_반환한다() throws Exception {
+      // given
+      LockUpdateRequest request = new LockUpdateRequest(true);
+      willThrow(new CustomException(UserErrorCode.USER_NOT_FOUND))
+          .given(adminService).changeUserLocked(any(UUID.class), anyBoolean());
+
+      // when & then
+      mockMvc.perform(patch("/api/users/{userId}/locked", userId)
+              .with(user("admin").roles("ADMIN"))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(request)))
+          .andDo(print())
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.success").value(false))
+          .andExpect(jsonPath("$.error.code").value("USER-001"));
+    }
+
+    @Test
+    @DisplayName("인증 없이 요청하면 401을 반환한다")
+    void 인증_없이_요청하면_401을_반환한다() throws Exception {
+      // given
+      LockUpdateRequest request = new LockUpdateRequest(true);
+
+      // when & then
+      mockMvc.perform(patch("/api/users/{userId}/locked", userId)
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(request)))
+          .andDo(print())
+          .andExpect(status().isUnauthorized());
+
+      verifyNoInteractions(adminService);
+    }
+
+    @Test
+    @DisplayName("ADMIN이 아닌 USER 권한으로 요청하면 403을 반환한다")
+    void USER_권한으로_요청하면_403을_반환한다() throws Exception {
+      // given
+      LockUpdateRequest request = new LockUpdateRequest(true);
+
+      // when & then
+      mockMvc.perform(patch("/api/users/{userId}/locked", userId)
+              .with(user("user").roles("USER"))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(request)))
+          .andDo(print())
+          .andExpect(status().isForbidden());
+
+      verifyNoInteractions(adminService);
+    }
+
+    @Test
+    @DisplayName("자신의 계정에 요청하면 400을 반환한다")
+    void 자신의_계정에_요청하면_400을_반환한다() throws Exception {
+      // given
+      LockUpdateRequest request = new LockUpdateRequest(true);
+      willThrow(new CustomException(UserErrorCode.CANNOT_MODIFY_SELF))
+          .given(adminService).changeUserLocked(any(UUID.class), anyBoolean());
+
+      // when & then
+      mockMvc.perform(patch("/api/users/{userId}/locked", userId)
+              .with(user("admin").roles("ADMIN"))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(request)))
+          .andDo(print())
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.success").value(false))
+          .andExpect(jsonPath("$.error.code").value("USER-007"));
     }
   }
 }
