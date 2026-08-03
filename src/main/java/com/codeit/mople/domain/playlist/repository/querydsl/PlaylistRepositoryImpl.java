@@ -83,8 +83,13 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
       return null;
     }
 
+    String escaped = keywordLike
+        .replace(".", "..") // '.'를 이스케이프 문자로 지정
+        .replace("%", ".%")
+        .replace("_", "._");
+
     // keywordLike과 일치하는 제목을 반환
-    return playlist.title.contains(keywordLike);
+    return playlist.title.like("%" + escaped + "%", '.');
   }
 
   // 소유자 ID
