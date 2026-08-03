@@ -36,15 +36,21 @@ public class WatchingSessionService {
       throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("limit", limit));
     }
 
+    //정렬 기준 및 정렬 방향 정규화
+    if (sortBy == null) {
+      sortBy = "createdAt";
+    }
+    if (sortDirection == null) {
+      sortDirection = "ASCENDING";
+    }
+
     //정렬 기준 및 정렬 방향 검증
-    if (sortBy != null && !"createdAt".equalsIgnoreCase(sortBy)) {
+    if (!"createdAt".equalsIgnoreCase(sortBy)) {
       throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("sortBy", sortBy));
     }
-    if (sortDirection != null &&
-        !"ASCENDING".equalsIgnoreCase(sortDirection) &&
+    if (!"ASCENDING".equalsIgnoreCase(sortDirection) &&
         !"DESCENDING".equalsIgnoreCase(sortDirection)) {
-      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST,
-          Map.of("sortDirection", sortDirection));
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("sortDirection", sortDirection));
     }
 
     //커서 쌍 검증
