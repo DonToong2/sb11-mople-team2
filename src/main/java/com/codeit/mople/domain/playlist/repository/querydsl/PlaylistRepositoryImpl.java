@@ -7,6 +7,8 @@ import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition.PlaylistSortBy;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition.SortDirection;
 import com.codeit.mople.domain.playlist.entity.Playlist;
+import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
+import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -107,11 +109,20 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
   }
 
   private BooleanExpression cursorCondition(PlaylistQueryCondition condition) {
-    // cursor, idAfter Nullable
-    if (condition.cursor() == null || condition.cursor().isBlank() ||
-        condition.idAfter() == null) {
+
+    boolean hasCursor = condition.cursor() != null && !condition.cursor().isBlank();
+    boolean hasIdAfter = condition.idAfter() != null;
+
+    // 커서, 보조커서 둘 중 하나만 존재하면 예외 발생
+    if (hasCursor != hasIdAfter) {
+      throw new PlaylistException(PlaylistErrorCode.PLAYLIST_INVALID_CURSOR);
+    }
+
+    // cursor, idAfter 둘 다 없으면 null 반환(첫 페이지)
+    if (!hasCursor) {
       return null;
     }
+
 
     // 최신순 조건
     if (condition.sortBy() == PlaylistSortBy.UPDATED_AT) {
