@@ -5,7 +5,10 @@ import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.domain.review.dto.request.ReviewCreateRequest;
+import com.codeit.mople.domain.review.dto.request.ReviewQueryCondition;
+import com.codeit.mople.domain.review.dto.request.ReviewQueryCondition.ReviewSortBy;
 import com.codeit.mople.domain.review.dto.request.ReviewUpdateRequest;
+import com.codeit.mople.domain.review.dto.response.ReviewCursorResponse;
 import com.codeit.mople.domain.review.dto.response.ReviewResponse;
 import com.codeit.mople.domain.review.entity.Review;
 import com.codeit.mople.domain.review.exception.ReviewErrorCode;
@@ -17,6 +20,8 @@ import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.error.CustomException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,6 +71,58 @@ public class ReviewService {
         savedReview.getId(), authorId, request.contentId());
 
     return response;
+  }
+
+  @Transactional(readOnly = true)
+  public ReviewCursorResponse findAll(ReviewQueryCondition condition) {
+
+    // limit + 1만큼 조회
+    List<Review> reviews = reviewRepository.findAll(condition);
+
+    // 다음 페이지 존재 여부 확인
+    boolean hasNext = reviews.size() > condition.limit();
+
+    // 응답용 데이터만 limit 개수 유지
+    List<Review> pageReviews = hasNext ?
+        new ArrayList<>(reviews.subList(0, condition.limit())) : reviews;
+
+    List<ReviewResponse> data = pageReviews.stream()
+        .map(reviewMapper::toResponse)
+        .toList();
+
+    Long totalCount = null;
+
+    if (condition.cursor() == null) {
+      totalCount = reviewRepository.count(condition);
+    }
+
+    // 임시 커서, 보조 커서 초기화
+    String nextCursor = null;
+    UUID nextIdAfter = null;
+
+    // 마지막 원소 조회
+    if (hasNext && !pageReviews.isEmpty()) {
+      Review lastReview = pageReviews.get(pageReviews.size() - 1);
+
+      nextIdAfter = lastReview.getId();
+
+      // 정렬 조건
+      if (condition.sortBy() == ReviewSortBy.CREATED_AT) {
+        nextCursor = lastReview.getCreatedAt().toString();
+      } else if (condition.sortBy() == ReviewSortBy.RATING) {
+        nextCursor = String.valueOf(lastReview.getRating());
+      }
+    }
+
+    return new ReviewCursorResponse(
+        data,
+        nextCursor,
+        nextIdAfter,
+        hasNext,
+        totalCount,
+        condition.sortBy(),
+        condition.sortDirection()
+    );
   }
 
   @Transactional
