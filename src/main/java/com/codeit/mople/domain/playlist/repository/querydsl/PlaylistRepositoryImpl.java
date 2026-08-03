@@ -15,6 +15,7 @@ import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -113,7 +114,7 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
     boolean hasCursor = condition.cursor() != null && !condition.cursor().isBlank();
     boolean hasIdAfter = condition.idAfter() != null;
 
-    // 커서, 보조커서 둘 중 하나만 존재하면 예외 발생
+    // 커서, 보조커서 둘 중 하나만 존재하면 예외 발생(함께 존재해야 함)
     if (hasCursor != hasIdAfter) {
       throw new PlaylistException(PlaylistErrorCode.PLAYLIST_INVALID_CURSOR);
     }
@@ -127,7 +128,13 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
     // 최신순 조건
     if (condition.sortBy() == PlaylistSortBy.UPDATED_AT) {
       // 갱신 시간은 Instant 타입(BaseTimeEntity 참조)
-      Instant cursor = Instant.parse(condition.cursor());
+      Instant cursor;
+
+      try {
+        cursor = Instant.parse(condition.cursor());
+      } catch (DateTimeParseException e) {
+        throw new PlaylistException(PlaylistErrorCode.PLAYLIST_INVALID_CURSOR);
+      }
 
       // 경우 1 : 최신순 오름차순(=오래된 순)
       if (condition.sortDirection() == SortDirection.ASCENDING) {
@@ -149,7 +156,13 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
     // 구독순 조건
     if (condition.sortBy() == PlaylistSortBy.SUBSCRIBER_COUNT) {
       // 구독자수는 long 타입
-      Long cursor = Long.parseLong(condition.cursor());
+      Long cursor;
+
+      try {
+        cursor = Long.parseLong(condition.cursor());
+      } catch (NumberFormatException e) {
+        throw new PlaylistException(PlaylistErrorCode.PLAYLIST_INVALID_CURSOR);
+      }
 
       // 경우 3 : 구독순 오름차순
       if (condition.sortDirection() == SortDirection.ASCENDING) {
