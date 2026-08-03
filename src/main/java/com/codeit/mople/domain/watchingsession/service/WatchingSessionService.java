@@ -1,13 +1,13 @@
-package com.codeit.mople.domain.content.watchingsession.service;
+package com.codeit.mople.domain.watchingsession.service;
 
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
-import com.codeit.mople.domain.content.watchingsession.dto.CursorResponseWatchingSessionDto;
-import com.codeit.mople.domain.content.watchingsession.dto.WatcherDto;
-import com.codeit.mople.domain.content.watchingsession.dto.WatchingSessionContentDto;
-import com.codeit.mople.domain.content.watchingsession.dto.WatchingSessionResponse;
-import com.codeit.mople.domain.content.watchingsession.entity.WatchingSession;
-import com.codeit.mople.domain.content.watchingsession.repository.WatchingSessionQueryRepository;
+import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
+import com.codeit.mople.domain.watchingsession.dto.WatcherDto;
+import com.codeit.mople.domain.watchingsession.dto.WatchingSessionContentDto;
+import com.codeit.mople.domain.watchingsession.dto.WatchingSessionResponse;
+import com.codeit.mople.domain.watchingsession.entity.WatchingSession;
+import com.codeit.mople.domain.watchingsession.repository.WatchingSessionQueryRepository;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.List;

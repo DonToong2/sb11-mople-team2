@@ -1,8 +1,8 @@
-package com.codeit.mople.domain.content.watchingsession.repository;
+package com.codeit.mople.domain.watchingsession.repository;
 
 import static com.codeit.mople.domain.content.watchingsession.entity.QWatchingSession.watchingSession;
 
-import com.codeit.mople.domain.content.watchingsession.entity.WatchingSession;
+import com.codeit.mople.domain.watchingsession.entity.WatchingSession;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;

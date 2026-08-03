@@ -1,4 +1,4 @@
-package com.codeit.mople.domain.content.watchingsession.dto;
+package com.codeit.mople.domain.watchingsession.dto;
 
 import java.util.List;
 import java.util.UUID;

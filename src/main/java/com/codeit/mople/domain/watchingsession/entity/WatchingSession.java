@@ -1,4 +1,4 @@
-package com.codeit.mople.domain.content.watchingsession.entity;
+package com.codeit.mople.domain.watchingsession.entity;
 
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.user.entity.User;
