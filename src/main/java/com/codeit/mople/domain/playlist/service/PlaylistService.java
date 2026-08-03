@@ -142,7 +142,12 @@ public class PlaylistService {
     }
 
     // 목록 조회된 Playlist의 총 개수
-    long totalCount = playlistRepository.count(condition);
+    Long totalCount = null;
+
+    // 첫 페이지때만 totalCount 계산
+    if (condition.cursor() == null) {
+      totalCount = playlistRepository.count(condition);
+    }
 
     // 조회된 플레이리스트 ID
     List<UUID> playlistIds = playlists.stream().map(Playlist::getId).toList();
