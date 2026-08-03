@@ -85,6 +85,8 @@ public class UserService {
     User user = findUserOrThrow(targetUserId);
     user.changePassword(passwordEncoder.encode(request.password()));
     user.destroyTemporaryPassword();
+    user.clearRefreshToken();
+    user.increaseSessionVersion();
   }
 
   private User findUserOrThrow(UUID userId) {
