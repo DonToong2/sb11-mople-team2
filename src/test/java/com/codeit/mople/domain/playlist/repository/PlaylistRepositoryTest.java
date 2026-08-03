@@ -5,13 +5,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition.PlaylistSortBy;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition.SortDirection;
+import com.codeit.mople.domain.playlist.dto.response.PlaylistCursorResponse;
+import com.codeit.mople.domain.playlist.dto.response.PlaylistResponse;
 import com.codeit.mople.domain.playlist.entity.Playlist;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.config.JpaAuditingConfig;
 import com.codeit.mople.global.config.QueryDslConfig;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @Import({JpaAuditingConfig.class, QueryDslConfig.class})
 @DataJpaTest
@@ -35,6 +40,7 @@ public class PlaylistRepositoryTest {
   private User subscriber; // owner의 playlist1 구독자 및 타인 역할
   private Playlist playlist1;
   private Playlist playlist2;
+  private Playlist playlist3;
   private Playlist otherPlaylist;
 
   @BeforeEach
@@ -49,6 +55,7 @@ public class PlaylistRepositoryTest {
     otherPlaylist =
         Playlist.create(subscriber, "다른 사용자의 플레이리스트", "다른 사용자의 플레이리스트입니다.");
 
+    // 영속화
     entityManager.persist(owner);
     entityManager.persist(subscriber);
     entityManager.persist(playlist1);
@@ -375,6 +382,82 @@ public class PlaylistRepositoryTest {
 
       // then
       assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("플레이리스트 목록 조회 성공 - 같은 정렬값에서 idAfter 기준으로 정렬(tie-breaker 테스트)")
+    void findAll_success_withCursorTieBreaker() {
+      // given
+
+      // BeforeEach에서 playlist1, playlist2 저장 및 playlist1Id, playlist3Id를 초기화
+      playlist3 =
+          Playlist.create(owner, "새 플레이리스트 (3)", "새로운 플레이리스트입니다.");
+
+      entityManager.persist(playlist3);
+
+      entityManager.flush();
+
+      // playlist1, playlist3, otherPlaylist 구독자 수 : 2, playlist2 구독자 수 : 1(임시로 지정)
+      playlistRepository.increaseSubscriberCount(playlist3.getId());
+      playlistRepository.increaseSubscriberCount(playlist3.getId());
+      playlistRepository.increaseSubscriberCount(otherPlaylist.getId());
+      playlistRepository.increaseSubscriberCount(otherPlaylist.getId());
+
+      entityManager.flush();
+      entityManager.clear();
+
+      PlaylistQueryCondition condition = new PlaylistQueryCondition(
+          null,
+          null,
+          null,
+          null,
+          null,
+          2,
+          SortDirection.DESCENDING,
+          PlaylistSortBy.SUBSCRIBER_COUNT
+      );
+
+      // when
+      List<Playlist> result = playlistRepository.findAll(condition);
+
+      Playlist last = result.get(1);
+
+      PlaylistQueryCondition nextCondition = new PlaylistQueryCondition(
+          null,
+          null,
+          null,
+          String.valueOf(last.getSubscriberCount()),
+          last.getId(),
+          2,
+          SortDirection.DESCENDING,
+          PlaylistSortBy.SUBSCRIBER_COUNT
+      );
+
+      List<Playlist> nextResult = playlistRepository.findAll(nextCondition);
+
+      // then
+      assertThat(result).hasSize(2 + 1);
+      assertThat(result.get(0).getSubscriberCount()).isEqualTo(2);
+      assertThat(result.get(1).getSubscriberCount()).isEqualTo(2);
+
+      // Tie-Breaker 검증(ASC이기 때문에 작은 UUID를 가진 값이 먼저 나옴
+      // 이후 limit를 통해 잘림(순서는 playlist1, playlist3, otherPlaylist)
+      List<UUID> sameSubscriberIds = Stream.of(playlist1, playlist3, otherPlaylist)
+          .map(Playlist::getId)
+          .sorted(Comparator.comparing(UUID::toString))
+          .toList();
+
+      assertThat(result)
+          .extracting(Playlist::getId)
+          .containsExactly(
+              sameSubscriberIds.get(0),
+              sameSubscriberIds.get(1),
+              sameSubscriberIds.get(2)
+          );
+
+      assertThat(nextResult).hasSize(2)
+          .extracting(Playlist::getId)
+          .containsExactly(sameSubscriberIds.get(2), playlist2.getId());
     }
 
   }
