@@ -332,8 +332,7 @@ public class PlaylistControllerTest {
       // when & then
       mockMvc.perform(get("/api/playlists")
               .param("limit", "10")
-              .param("sortDirection", "ASCENDING")
-              .param("sortBy", "ANY")
+              .param("sortBy", "UPDATED_AT")
               .with(user(userDetails))
               .with(csrf()))
           .andExpect(status().isBadRequest());
@@ -342,7 +341,7 @@ public class PlaylistControllerTest {
     }
 
     @Test
-    @DisplayName("플레이리스트 목록 조회 실패 - 유효하지 않은 limit (1 이상, 400 에러)")
+    @DisplayName("플레이리스트 목록 조회 실패 - 유효하지 않은 limit (1 미만, 400 에러)")
     void findAll_fail_invalidLimit() throws Exception {
       // given
 
@@ -352,7 +351,7 @@ public class PlaylistControllerTest {
       mockMvc.perform(get("/api/playlists")
               .param("limit", "0")
               .param("sortDirection", "ASCENDING")
-              .param("sortBy", "ANY")
+              .param("sortBy", "UPDATED_AT")
               .with(user(userDetails))
               .with(csrf()))
           .andExpect(status().isBadRequest());
@@ -371,6 +370,7 @@ public class PlaylistControllerTest {
       mockMvc.perform(get("/api/playlists")
               .param("limit", "10")
               .param("sortDirection", "ASCENDING")
+              .param("sortBy", "ANY")
               .with(user(userDetails))
               .with(csrf()))
           .andExpect(status().isBadRequest());
