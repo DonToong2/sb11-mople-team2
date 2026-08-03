@@ -116,7 +116,12 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
 
   private BooleanExpression cursorCondition(PlaylistQueryCondition condition) {
 
-    boolean hasCursor = condition.cursor() != null && !condition.cursor().isBlank();
+    // cursor가 공백이면 예외 발생
+    if (condition.cursor() != null && condition.cursor().isBlank()) {
+      throw new PlaylistException(PlaylistErrorCode.PLAYLIST_INVALID_CURSOR);
+    }
+    
+    boolean hasCursor = condition.cursor() != null;
     boolean hasIdAfter = condition.idAfter() != null;
 
     // 커서, 보조커서 둘 중 하나만 존재하면 예외 발생(함께 존재해야 함)
