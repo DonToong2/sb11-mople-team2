@@ -16,6 +16,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,6 +37,7 @@ public class ContentController {
   private final WatchingSessionService watchingSessionService;
 
   //콘텐츠 생성
+  @PreAuthorize("hasRole('ADMIN')")
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ContentResponse> createContent(
       @AuthenticationPrincipal CustomUserDetails userDetails, //JWT에서 추출된 유저 정보 객체 주입
@@ -67,6 +69,7 @@ public class ContentController {
   }
 
   //콘텐츠 수정
+  @PreAuthorize("hasRole('ADMIN')")
   @PatchMapping(value = "/{contentId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ContentResponse> updateContent(
       @PathVariable UUID contentId,
@@ -80,6 +83,7 @@ public class ContentController {
   }
 
   //콘텐츠 삭제
+  @PreAuthorize("hasRole('ADMIN')")
   @DeleteMapping("/{contentId}")
   public ResponseEntity<Void> deleteContent(
       @PathVariable UUID contentId,

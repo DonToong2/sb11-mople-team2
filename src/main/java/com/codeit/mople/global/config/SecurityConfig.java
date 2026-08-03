@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -15,6 +16,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
   @Bean
@@ -38,9 +40,6 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
             .requestMatchers(HttpMethod.PATCH, "/api/users/*/role").hasRole("ADMIN")
             .requestMatchers(HttpMethod.PATCH, "/api/users/*/locked").hasRole("ADMIN")
-            .requestMatchers(HttpMethod.POST, "/api/contents/**").hasRole("ADMIN")
-            .requestMatchers(HttpMethod.PATCH, "/api/contents/**").hasRole("ADMIN")
-            .requestMatchers(HttpMethod.DELETE, "/api/contents/**").hasRole("ADMIN")
             .anyRequest().authenticated()
         )
         .addFilterBefore(
