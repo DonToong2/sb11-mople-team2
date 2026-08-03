@@ -52,8 +52,7 @@ public class AuthControllerTest {
         .param("password", "rawPw123"))
         .andDo(print())
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data.accessToken").isNotEmpty());
+        .andExpect(jsonPath("$.accessToken").isNotEmpty());
   }
 
   @Test
@@ -102,7 +101,7 @@ public class AuthControllerTest {
         .param("password", "rawPw123"))
         .andReturn().getResponse().getContentAsString();
 
-    String oldToken = objectMapper.readTree(firstResponse).get("data").get("accessToken").asText();
+    String oldToken = objectMapper.readTree(firstResponse).get("accessToken").asText();
 
     // 재로그인 전, 첫 토큰이 실제로 유효한지 먼저 확인
     mockMvc.perform(get("/api/users/{userId}", user.getId())
@@ -117,7 +116,7 @@ public class AuthControllerTest {
             .andExpect(status().isOk())
             .andReturn().getResponse().getContentAsString();
 
-    String newToken = objectMapper.readTree(secondResponse).get("data").get("accessToken").asText();
+    String newToken = objectMapper.readTree(secondResponse).get("accessToken").asText();
 
     // 이전 토큰은 무효화됨
     mockMvc.perform(get("/api/users/{userId}", user.getId())

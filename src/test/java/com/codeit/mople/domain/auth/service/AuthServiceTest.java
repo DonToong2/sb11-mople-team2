@@ -7,7 +7,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 import com.codeit.mople.domain.auth.dto.request.SignInRequest;
-import com.codeit.mople.domain.auth.dto.response.TokenResponse;
+import com.codeit.mople.domain.auth.dto.response.AuthTokens;
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
 import com.codeit.mople.domain.user.entity.User;
@@ -52,8 +52,9 @@ public class AuthServiceTest {
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
     when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("issued-token");
+    when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
 
-    TokenResponse response = authService.signIn(request);
+    AuthTokens response = authService.signIn(request);
 
     assertThat(response.accessToken()).isEqualTo("issued-token");
   }
@@ -65,6 +66,7 @@ public class AuthServiceTest {
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
     when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("issued-token");
+    when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
 
     authService.signIn(request);
 
@@ -78,6 +80,7 @@ public class AuthServiceTest {
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
     when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("token");
+    when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
 
     authService.signIn(request);
     long firstSessionVersion = user.getSessionVersion();
