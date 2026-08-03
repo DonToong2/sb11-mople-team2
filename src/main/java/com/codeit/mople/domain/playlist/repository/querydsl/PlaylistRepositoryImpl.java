@@ -70,7 +70,7 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
             ownerIdEqual(condition.ownerIdEqual()),
             subscriberIdEqual(condition.subscriberIdEqual())
         )
-        .fetchOne(); // long타입으로 변환(결과가 하나만 나옴, fetch로 하면 List<Long>이 되어버림))
+        .fetchOne(); // Long 타입으로 변환(결과가 하나만 나옴, fetch로 하면 List<Long>이 되어버림)
 
     return count == null ? 0L : count;
   }
@@ -214,4 +214,5 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
         new OrderSpecifier<>(Order.ASC, playlist.id) // tie-breaker
     };
   }
+
 }
