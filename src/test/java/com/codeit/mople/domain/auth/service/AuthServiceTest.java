@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
+import com.codeit.mople.domain.auth.dto.request.ResetPasswordRequest;
 import com.codeit.mople.domain.auth.dto.request.SignInRequest;
 import com.codeit.mople.domain.auth.dto.response.AuthTokens;
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
@@ -13,7 +14,10 @@ import com.codeit.mople.domain.auth.exception.AuthException;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -157,6 +161,140 @@ public class AuthServiceTest {
           AuthException ae = (AuthException) e;
           assertThat(ae.getDetails()).isEmpty();
         });
+  }
+
+  @Test
+  @DisplayName("존재하는 이메일로 비밀번호 초기화 요청 시 임시 비밀번호가 발급됨")
+  void resetPassword_success() {
+    ResetPasswordRequest request = new ResetPasswordRequest("test@test.com");
+    when(userRepository.findByEmail(request.email())).thenReturn(Optional.of(user));
+    when(passwordEncoder.encode("temporary1!!")).thenReturn("encodedTempPw");
+
+    authService.resetPassword(request);
+
+    assertThat(user.hasValidTemporaryPassword(Instant.now())).isTrue();
+  }
+
+  @Test
+  @DisplayName("존재하지 않는 이메일로 비밀번호 초기화 요청 시 예외가 발생함")
+  void resetPassword_throwsException_whenEmailNotFound() {
+    ResetPasswordRequest request = new ResetPasswordRequest("nobody@test.com");
+    when(userRepository.findByEmail(request.email())).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> authService.resetPassword(request))
+        .isInstanceOf(AuthException.class)
+        .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_CREDENTIALS);
+  }
+
+  @Test
+  @DisplayName("임시 비밀번호로 로그인이 성공함")
+  void signIn_success_withTemporaryPassword() {
+    user.issueTemporaryPassword("encodedTempPw", Instant.now().plus(3, ChronoUnit.MINUTES));
+    SignInRequest request = new SignInRequest("test@test.com", "temporary1!!");
+    when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
+    when(passwordEncoder.matches("temporary1!!", user.getPassword())).thenReturn(false);
+    when(passwordEncoder.matches("temporary1!!", "encodedTempPw")).thenReturn(true);
+    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("token");
+    when(jwtProvider.createRefreshToken(any())).thenReturn("refreshToken");
+
+    AuthTokens response = authService.signIn(request);
+
+    assertThat(response.accessToken()).isEqualTo("token");
+  }
+
+  @Test
+  @DisplayName("만료된 임시 비밀번호로는 로그인이 실패함")
+  void signIn_throwsException_whenTemporaryPasswordExpired() {
+    user.issueTemporaryPassword("encodedTemPw", Instant.now().minus(1, ChronoUnit.MINUTES));
+    SignInRequest request = new SignInRequest("test@test.com", "temporary1!!");
+    when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
+    when(passwordEncoder.matches("temporary1!!", user.getPassword())).thenReturn(false);
+
+    assertThatThrownBy(() -> authService.signIn(request))
+        .isInstanceOf(AuthException.class)
+        .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_CREDENTIALS);
+  }
+
+  @Test
+  @DisplayName("유효한 refreshToken으로 재발급에 성공")
+  void refresh_success() {
+    UUID userId = UUID.randomUUID();
+    user.updateRefreshToken("valid-refresh-token", Instant.now().plus(7,ChronoUnit.DAYS));
+    when(jwtProvider.getUserId("valid-refresh-token")).thenReturn(userId);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("new-access-token");
+    when(jwtProvider.createRefreshToken(any())).thenReturn("new-refresh-token");
+    when(jwtProvider.getRefreshTokenExpiration()).thenReturn(604800000L);
+
+    AuthTokens response = authService.refresh("valid-refresh-token");
+
+    assertThat(response.accessToken()).isEqualTo("new-access-token");
+    assertThat(response.refreshToken()).isEqualTo("new-refresh-token");
+  }
+
+  @Test
+  @DisplayName("파싱할 수 없는 refreshToken이면 예외가 발생")
+  void refresh_throwsException_whenTokenIsInvalidFormat() {
+    when(jwtProvider.getUserId("broken-token")).thenThrow(new io.jsonwebtoken.MalformedJwtException("broken"));
+
+    assertThatThrownBy(() -> authService.refresh("broken-token"))
+        .isInstanceOf(AuthException.class)
+        .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_TOKEN);
+  }
+
+  @Test
+  @DisplayName("토큰의  사용자를 찾을 수 없으면 예외가 발생함")
+  void refresh_throwsException_whenUserNotFound() {
+    UUID userId = UUID.randomUUID();
+    when(jwtProvider.getUserId("some-token")).thenReturn(userId);
+    when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> authService.refresh("some-token"))
+        .isInstanceOf(AuthException.class)
+        .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_TOKEN);
+  }
+
+  @Test
+  @DisplayName("저장된 값과 다른 refreshToken이면 예외가 발생함")
+  void refresh_throwsException_whenRefreshTokenMismatch() {
+    UUID userId = UUID.randomUUID();
+    user.updateRefreshToken("stored-token", Instant.now().plus(7, ChronoUnit.DAYS));
+    when(jwtProvider.getUserId("wrong-token")).thenReturn(userId);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+    assertThatThrownBy(() -> authService.refresh("wrong-token"))
+        .isInstanceOf(AuthException.class)
+        .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_TOKEN);
+  }
+
+  @Test
+  @DisplayName("만료된 refreshToken이면 예외가 발생함")
+  void refresh_throwsException_whenRefreshTokenExpired() {
+    UUID userId = UUID.randomUUID();
+    user.updateRefreshToken("expired-token", Instant.now().minus(1, ChronoUnit.MINUTES));
+    when(jwtProvider.getUserId("expired-token")).thenReturn(userId);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+    assertThatThrownBy(() -> authService.refresh("expired-token"))
+        .isInstanceOf(AuthException.class)
+        .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_TOKEN);
+  }
+
+  @Test
+  @DisplayName("refresh 성공 시 Refresh Token Rotation이 적용되어 저장된 값이 새 값으로 갱신됨")
+  void refresh_success_rotateRefreshToken() {
+    UUID userId = UUID.randomUUID();
+    user.updateRefreshToken("old-token", Instant.now().plus(7, ChronoUnit.DAYS));
+    when(jwtProvider.getUserId("old-token")).thenReturn(userId);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("new-access");
+    when(jwtProvider.createRefreshToken(any())).thenReturn("new-refresh");
+    when(jwtProvider.getRefreshTokenExpiration()).thenReturn(604800000L);
+
+    authService.refresh("old-token");
+
+    assertThat(user.isRefreshTokenValid("new-refresh", Instant.now())).isTrue();
+    assertThat(user.isRefreshTokenValid("old-token", Instant.now())).isFalse();
   }
 
   private AuthErrorCode catchAuthErrorCode(SignInRequest request) {
