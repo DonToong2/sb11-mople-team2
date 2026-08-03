@@ -1,6 +1,6 @@
 package com.codeit.mople.domain.watchingsession.repository;
 
-import static com.codeit.mople.domain.content.watchingsession.entity.QWatchingSession.watchingSession;
+import static com.codeit.mople.domain.watchingsession.entity.QWatchingSession.watchingSession;
 
 import com.codeit.mople.domain.watchingsession.entity.WatchingSession;
 import com.querydsl.core.types.OrderSpecifier;
