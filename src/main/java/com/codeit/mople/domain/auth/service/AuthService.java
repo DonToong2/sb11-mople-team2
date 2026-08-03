@@ -10,6 +10,7 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
 import io.jsonwebtoken.JwtException;
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -22,7 +23,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthService {
 
-  private static final String TEMPORARY_PASSWORD = "temporary1!!";
+  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+  private static final String TEMPORARY_PASSWORD_CHARS =
+      "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+  private static final int TEMPORARY_PASSWORD_LENGTH = 16;
   private static final long TEMPORARY_PASSWORD_EXPIRATION_MINUTES = 3L;
 
   private final UserRepository userRepository;
@@ -58,13 +62,42 @@ public class AuthService {
 
   @Transactional
   public void resetPassword(ResetPasswordRequest request) {
-    User user = userRepository.findByEmail(request.email())
-        .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
+    userRepository.findByEmail(request.email())
+        .ifPresent(user -> {
+          String temporaryPassword = generateTemporaryPassword();
+          Instant expiresAt = Instant.now().plus(TEMPORARY_PASSWORD_EXPIRATION_MINUTES, ChronoUnit.MINUTES);
+          user.issueTemporaryPassword(passwordEncoder.encode(temporaryPassword), expiresAt);
+          // TODO: 이메일 발송
+        });
+    // 이메일이 있든 없든 항상 204 반환(가입 여부를 노출하지 않음)
+  }
 
-    Instant expiresAt = Instant.now().plus(TEMPORARY_PASSWORD_EXPIRATION_MINUTES, ChronoUnit.MINUTES);
-    user.issueTemporaryPassword(passwordEncoder.encode(TEMPORARY_PASSWORD), expiresAt);
-    // TODO: 실제 이메일 발송 로직 -> 별도 이슈에서 구현 예정
-    //  (SMTP 발신 계정 준비 후 진행)
+  private String generateTemporaryPassword() {
+    StringBuilder password = new StringBuilder(TEMPORARY_PASSWORD_LENGTH);
+    for (int i = 0; i < TEMPORARY_PASSWORD_LENGTH; i++) {
+      int index = SECURE_RANDOM.nextInt(TEMPORARY_PASSWORD_CHARS.length());
+      password.append(TEMPORARY_PASSWORD_CHARS.charAt(index));
+    }
+    return password.toString();
+  }
+
+  @Transactional
+  public void signOut(String refreshToken) {
+    if(refreshToken == null) {
+      return;
+    }
+
+    UUID userId;
+    try {
+      userId = jwtProvider.getUserId(refreshToken);
+    } catch (JwtException | IllegalArgumentException e) {
+      return;
+    }
+
+    userRepository.findById(userId).ifPresent(user -> {
+      user.clearRefreshToken();
+      user.increaseSessionVersion();
+    });
   }
 
   @Transactional

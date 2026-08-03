@@ -1,9 +1,12 @@
 package com.codeit.mople.domain.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.codeit.mople.domain.auth.dto.request.ResetPasswordRequest;
@@ -168,7 +171,7 @@ public class AuthServiceTest {
   void resetPassword_success() {
     ResetPasswordRequest request = new ResetPasswordRequest("test@test.com");
     when(userRepository.findByEmail(request.email())).thenReturn(Optional.of(user));
-    when(passwordEncoder.encode("temporary1!!")).thenReturn("encodedTempPw");
+    when(passwordEncoder.encode(any())).thenReturn("encodedTempPw");
 
     authService.resetPassword(request);
 
@@ -176,14 +179,14 @@ public class AuthServiceTest {
   }
 
   @Test
-  @DisplayName("존재하지 않는 이메일로 비밀번호 초기화 요청 시 예외가 발생함")
-  void resetPassword_throwsException_whenEmailNotFound() {
+  @DisplayName("존재하지 않는 이메일로 비밀번호 초기화를 요청해도 예외 없이 조용히 종료됨 (이메일 존재 여부 노출 방지)")
+  void resetPassword_doesNothing_whenEmailNotFound() {
     ResetPasswordRequest request = new ResetPasswordRequest("nobody@test.com");
     when(userRepository.findByEmail(request.email())).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> authService.resetPassword(request))
-        .isInstanceOf(AuthException.class)
-        .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_CREDENTIALS);
+    assertThatCode(() -> authService.resetPassword(request)).doesNotThrowAnyException();
+
+    verify(passwordEncoder, never()).encode(any());
   }
 
   @Test
@@ -213,6 +216,39 @@ public class AuthServiceTest {
     assertThatThrownBy(() -> authService.signIn(request))
         .isInstanceOf(AuthException.class)
         .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_CREDENTIALS);
+  }
+
+  @Test
+  @DisplayName("로그아웃 시 저장된 Refresh Token이 삭제되고 sessionVersion이 증가하여 기존 토큰이 모두 무효화됨")
+  void signOut_success() {
+    UUID userId = UUID.randomUUID();
+    user.updateRefreshToken("stored-refresh-token", Instant.now().plus(7, ChronoUnit.DAYS));
+    long beforeSessionVersion = user.getSessionVersion();
+    when(jwtProvider.getUserId("stored-refresh-token")).thenReturn(userId);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+    authService.signOut("stored-refresh-token");
+
+    assertThat(user.isRefreshTokenValid("stored-refresh-token", Instant.now())).isFalse();
+    assertThat(user.getSessionVersion()).isEqualTo(beforeSessionVersion + 1);
+  }
+
+  @Test
+  @DisplayName("refreshToken이 없으면 아무 처리도 하지 않고 조용히 종료됨")
+  void signOut_doesNothing_whenRefreshTokenIsNull() {
+    assertThatCode(() -> authService.signOut(null)).doesNotThrowAnyException();
+
+    verify(userRepository, never()).findById(any());
+  }
+
+  @Test
+  @DisplayName("유효하지 않은 refreshToken이면 아무 처리도 하지 않고 조용히 종료됨")
+  void signOut_doesNothing_whenRefreshTokenIsInvalid() {
+    when(jwtProvider.getUserId("broken-token")).thenThrow(new io.jsonwebtoken.MalformedJwtException("broken"));
+
+    assertThatCode(() -> authService.signOut("broken-token")).doesNotThrowAnyException();
+
+    verify(userRepository, never()).findById(any());
   }
 
   @Test

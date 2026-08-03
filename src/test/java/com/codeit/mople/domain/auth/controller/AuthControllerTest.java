@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.auth.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -9,6 +10,7 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -175,6 +178,40 @@ public class AuthControllerTest {
     mockMvc.perform(post("/api/auth/sign-out"))
         .andDo(print())
         .andExpect(status().isNoContent());
+  }
+
+  @Test
+  @DisplayName("로그아웃 시 서버 측 인증 상태가 폐기되어 기존 Access/Refresh Token이 모두 무효화됨")
+  void signOut_invalidatesExistingTokens() throws Exception {
+    User user = userRepository.save(User.createUser("logout@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
+
+    MvcResult signInResult = mockMvc.perform(post("/api/auth/sign-in")
+            .param("username", "logout@test.com")
+            .param("password", "rawPw123"))
+        .andExpect(status().isOk())
+        .andReturn();
+
+    String accessToken = objectMapper.readTree(signInResult.getResponse().getContentAsString())
+        .get("accessToken").asText();
+    Cookie refreshTokenCookie = signInResult.getResponse().getCookie("refreshToken");
+    assertThat(refreshTokenCookie).isNotNull();
+
+    mockMvc.perform(post("/api/auth/sign-out")
+            .cookie(refreshTokenCookie))
+        .andDo(print())
+        .andExpect(status().isNoContent());
+
+    // 기존 Access Token은 sessionVersion 불일치로 인증이 거부됨
+    mockMvc.perform(get("/api/users/{userId}", user.getId())
+            .header("Authorization", "Bearer " + accessToken))
+        .andDo(print())
+        .andExpect(status().isUnauthorized());
+
+    // 기존 Refresh Token으로는 재발급도 거부됨
+    mockMvc.perform(post("/api/auth/refresh")
+            .cookie(refreshTokenCookie))
+        .andDo(print())
+        .andExpect(status().isUnauthorized());
   }
 
   @Test

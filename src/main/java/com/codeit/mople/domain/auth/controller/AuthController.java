@@ -7,6 +7,8 @@ import com.codeit.mople.domain.auth.dto.response.TokenResponse;
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
 import com.codeit.mople.domain.auth.service.AuthService;
+import com.codeit.mople.global.error.CommonErrorCode;
+import com.codeit.mople.global.error.CustomException;
 import jakarta.validation.Valid;
 import java.time.Duration;
 import java.time.Instant;
@@ -38,6 +40,9 @@ public class AuthController {
   @Value("${cookie.secure:true}")
   private boolean cookieSecure;
 
+  @Value("${password-reset.enabled:false}")
+  private boolean passwordResetEnabled;
+
   @PostMapping("/sign-in")
   public ResponseEntity<TokenResponse> signIn(@Valid @ModelAttribute SignInRequest request) {
     AuthTokens tokens = authService.signIn(request);
@@ -46,9 +51,10 @@ public class AuthController {
 
   @PostMapping("/sign-out")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public ResponseEntity<Void> signOut() {
-    // 서버 측 별도 처리 없음. 클라이언트가 토큰은 폐기하는 것으로 로그아웃 완료.
-    // (sessionVersion은 재로그인 시 강제 로그아웃을 위해 sign-in 시점에만 증가)
+  public ResponseEntity<Void> signOut(
+      @CookieValue(value = REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {
+    // 저장된 Refresh Token을 삭제하고 sessionVersion을 올려 기존 Access/Refresh Token을 모두 무효화한다.
+    authService.signOut(refreshToken);
     return ResponseEntity.noContent()
         .header(HttpHeaders.SET_COOKIE, expireRefreshTokenCookie().toString())
         .build();
@@ -57,6 +63,10 @@ public class AuthController {
   @PostMapping("/reset-password")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+    if(!passwordResetEnabled) {
+      // 이메일 발송이 검증되기 전까지 비활성화. 엔드포인트 존재 자체를 숨기기 위해 404로 응답.
+      throw new CustomException(CommonErrorCode.NOT_FOUND);
+    }
     authService.resetPassword(request);
   }
 
