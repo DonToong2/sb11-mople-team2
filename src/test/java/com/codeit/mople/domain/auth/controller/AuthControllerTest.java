@@ -59,6 +59,24 @@ public class AuthControllerTest {
   }
 
   @Test
+  @DisplayName("로그인 성공 시 Refresh Token 쿠키가 HttpOnly, Path=/api/auth, 양수 Max-Age로 내려감")
+  void signIn_success_setsRefreshTokenCookieAttributes() throws Exception {
+    userRepository.save(User.createUser("cookie@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
+
+    MvcResult result = mockMvc.perform(post("/api/auth/sign-in")
+            .param("username", "cookie@test.com")
+            .param("password", "rawPw123"))
+        .andExpect(status().isOk())
+        .andReturn();
+
+    Cookie refreshTokenCookie = result.getResponse().getCookie("refreshToken");
+    assertThat(refreshTokenCookie).isNotNull();
+    assertThat(refreshTokenCookie.isHttpOnly()).isTrue();
+    assertThat(refreshTokenCookie.getPath()).isEqualTo("/api/auth");
+    assertThat(refreshTokenCookie.getMaxAge()).isGreaterThan(0);
+  }
+
+  @Test
   @DisplayName("존재하지 않는 이메일로 로그인하면 401을 반환")
   void signIn_returnsUnauthorized_whenEmailNotFound() throws Exception {
     mockMvc.perform(post("/api/auth/sign-in")
@@ -212,6 +230,74 @@ public class AuthControllerTest {
             .cookie(refreshTokenCookie))
         .andDo(print())
         .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  @DisplayName("Refresh Token으로 재발급 요청 시 새 Access/Refresh Token이 발급되고 이전 Refresh Token은 Rotation으로 무효화됨")
+  void refresh_success_rotatesTokens() throws Exception {
+    userRepository.save(User.createUser("rotate@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
+
+    MvcResult signInResult = mockMvc.perform(post("/api/auth/sign-in")
+            .param("username", "rotate@test.com")
+            .param("password", "rawPw123"))
+        .andExpect(status().isOk())
+        .andReturn();
+
+    Cookie oldRefreshTokenCookie = signInResult.getResponse().getCookie("refreshToken");
+    assertThat(oldRefreshTokenCookie).isNotNull();
+
+    MvcResult refreshResult = mockMvc.perform(post("/api/auth/refresh")
+            .cookie(oldRefreshTokenCookie))
+        .andDo(print())
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accessToken").isNotEmpty())
+        .andReturn();
+
+    Cookie newRefreshTokenCookie = refreshResult.getResponse().getCookie("refreshToken");
+    assertThat(newRefreshTokenCookie).isNotNull();
+    assertThat(newRefreshTokenCookie.getValue()).isNotEqualTo(oldRefreshTokenCookie.getValue());
+
+    // 이전 Refresh Token은 Rotation으로 인해 더 이상 사용할 수 없음
+    mockMvc.perform(post("/api/auth/refresh")
+            .cookie(oldRefreshTokenCookie))
+        .andDo(print())
+        .andExpect(status().isUnauthorized());
+
+    // 새로 발급된 Refresh Token은 정상적으로 재발급에 사용할 수 있음
+    mockMvc.perform(post("/api/auth/refresh")
+            .cookie(newRefreshTokenCookie))
+        .andDo(print())
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  @DisplayName("Refresh Token 쿠키가 없으면 재발급 요청이 401을 반환")
+  void refresh_returnsUnauthorized_whenCookieMissing() throws Exception {
+    mockMvc.perform(post("/api/auth/refresh"))
+        .andDo(print())
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  @DisplayName("유효하지 않은 Refresh Token 쿠키면 재발급 요청이 401을 반환")
+  void refresh_returnsUnauthorized_whenCookieInvalid() throws Exception {
+    mockMvc.perform(post("/api/auth/refresh")
+            .cookie(new Cookie("refreshToken", "not-a-valid-jwt")))
+        .andDo(print())
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  @DisplayName("로그아웃 응답의 Refresh Token 쿠키는 즉시 만료되도록 Max-Age=0, 빈 값으로 내려감")
+  void signOut_expiresRefreshTokenCookie() throws Exception {
+    MvcResult result = mockMvc.perform(post("/api/auth/sign-out"))
+        .andExpect(status().isNoContent())
+        .andReturn();
+
+    Cookie refreshTokenCookie = result.getResponse().getCookie("refreshToken");
+    assertThat(refreshTokenCookie).isNotNull();
+    assertThat(refreshTokenCookie.getMaxAge()).isZero();
+    assertThat(refreshTokenCookie.getValue()).isEmpty();
   }
 
   @Test

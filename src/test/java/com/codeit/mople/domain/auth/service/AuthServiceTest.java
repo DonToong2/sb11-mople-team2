@@ -219,6 +219,21 @@ public class AuthServiceTest {
   }
 
   @Test
+  @DisplayName("정식 비밀번호로 변경한 뒤에는 이전 임시 비밀번호로 로그인할 수 없음")
+  void signIn_throwsException_whenTemporaryPasswordDestroyedAfterPasswordChange() {
+    user.issueTemporaryPassword("encodedTempPw", Instant.now().plus(3, ChronoUnit.MINUTES));
+    user.destroyTemporaryPassword(); // UserService.changePassword()가 호출하는 것과 동일한 시나리오
+
+    SignInRequest request = new SignInRequest("test@test.com", "temporary1!!");
+    when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
+    when(passwordEncoder.matches("temporary1!!", user.getPassword())).thenReturn(false);
+
+    assertThatThrownBy(() -> authService.signIn(request))
+        .isInstanceOf(AuthException.class)
+        .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_CREDENTIALS);
+  }
+
+  @Test
   @DisplayName("로그아웃 시 저장된 Refresh Token이 삭제되고 sessionVersion이 증가하여 기존 토큰이 모두 무효화됨")
   void signOut_success() {
     UUID userId = UUID.randomUUID();
