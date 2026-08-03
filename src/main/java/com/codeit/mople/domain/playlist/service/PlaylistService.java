@@ -243,7 +243,7 @@ public class PlaylistService {
     PlaylistResponse response = PlaylistResponse.from(
         playlist,
         ownerResponse,
-        false,
+        false, // 컨트롤러에서 403 권한 부족(타인 플레이리스트 수정 금지) + 자기 자신의 플레이리스트는 구독할 수 없음
         contents
     );
 
