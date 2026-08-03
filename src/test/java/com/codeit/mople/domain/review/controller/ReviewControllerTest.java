@@ -177,6 +177,27 @@ public class ReviewControllerTest {
     }
 
     @Test
+    @DisplayName("리뷰 생성 실패 - 리뷰 내용 길이가 500 초과(400 에러)")
+    void create_fail_textGraterThanMax() throws Exception {
+      // given
+      // 501자 길이의 리뷰 내용
+      String text = "a".repeat(501);
+      ReviewCreateRequest invalidRequest = new ReviewCreateRequest(contentId, text, reviewRating);
+
+      // when & then
+      mockMvc.perform(post("/api/reviews")
+              .with(user(userDetails))
+              .with(csrf())
+              .param("authorId", authorId.toString())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(invalidRequest))
+          )
+          .andExpect(status().isBadRequest());
+
+      verifyNoInteractions(reviewService);
+    }
+
+    @Test
     @DisplayName("리뷰 생성 실패 - 별점이 없음(400 에러)")
     void create_fail_nullRating() throws Exception {
       // given
@@ -294,6 +315,27 @@ public class ReviewControllerTest {
               .content(objectMapper.writeValueAsString(invalidRequest))
               .with(user(userDetails))
               .with(csrf()))
+          .andExpect(status().isBadRequest());
+
+      verifyNoInteractions(reviewService);
+    }
+
+    @Test
+    @DisplayName("리뷰 생성 실패 - 리뷰 내용 길이가 500 초과(400 에러)")
+    void update_fail_textGraterThanMax() throws Exception {
+      // given
+      // 501자 길이의 리뷰 내용
+      String text = "a".repeat(501);
+      ReviewCreateRequest invalidRequest = new ReviewCreateRequest(contentId, text, reviewRating);
+
+      // when & then
+      mockMvc.perform(patch("/api/reviews/{reviewId}", reviewId)
+              .with(user(userDetails))
+              .with(csrf())
+              .param("authorId", authorId.toString())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(invalidRequest))
+          )
           .andExpect(status().isBadRequest());
 
       verifyNoInteractions(reviewService);
