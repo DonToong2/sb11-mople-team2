@@ -341,8 +341,8 @@ public class PlaylistControllerTest {
     }
 
     @Test
-    @DisplayName("플레이리스트 목록 조회 실패 - 유효하지 않은 limit (1 미만, 400 에러)")
-    void findAll_fail_invalidLimit() throws Exception {
+    @DisplayName("플레이리스트 목록 조회 실패 - limit 값 1 미만(400 에러)")
+    void findAll_fail_limitLessThanMin() throws Exception {
       // given
 
       // BeforeEach에서 userDetails 초기화
@@ -350,6 +350,25 @@ public class PlaylistControllerTest {
       // when & then
       mockMvc.perform(get("/api/playlists")
               .param("limit", "0")
+              .param("sortDirection", "ASCENDING")
+              .param("sortBy", "UPDATED_AT")
+              .with(user(userDetails))
+              .with(csrf()))
+          .andExpect(status().isBadRequest());
+
+      verifyNoInteractions(playlistService);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 목록 조회 실패 - limit 값 100 초과(400 에러)")
+    void findAll_fail_limitGreaterThanMax() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails 초기화
+
+      // when & then
+      mockMvc.perform(get("/api/playlists")
+              .param("limit", "1000")
               .param("sortDirection", "ASCENDING")
               .param("sortBy", "UPDATED_AT")
               .with(user(userDetails))
