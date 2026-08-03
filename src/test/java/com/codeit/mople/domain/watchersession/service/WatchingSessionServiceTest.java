@@ -1,4 +1,4 @@
-package com.codeit.mople.domain.content.watchingsession.service;
+package com.codeit.mople.domain.watchersession.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -14,6 +14,7 @@ import static org.mockito.Mockito.mock;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.exception.ContentException;
+import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
 import com.codeit.mople.domain.watchingsession.entity.WatchingSession;
 import com.codeit.mople.domain.watchingsession.repository.WatchingSessionQueryRepository;
@@ -38,10 +39,29 @@ public class WatchingSessionServiceTest {
   @Mock
   private WatchingSessionQueryRepository watchingSessionQueryRepository;
 
+  @Mock
+  private ContentRepository contentRepository; //NPE 방지용 객체
+
+  //404 예외 로직 검증 테스트
+  @Test
+  @DisplayName("시청 세션 목록 조회 실패 - 콘텐츠가 존재하지 않음 (404 예외 발생)")
+  void getWatchingSessions_Fail_ContentNotFound() {
+    UUID contentId = UUID.randomUUID();
+
+    given(contentRepository.existsById(any())).willReturn(false);
+
+    assertThrows(ContentException.class, () ->
+        watchingSessionService.getWatchingSessions(contentId, null,
+            null, null, 10,
+            "ASCENDING", "createdAt"));
+  }
+
   @Test
   @DisplayName("시청 세션 목록 조회 성공 - 빈 목록 반환")
   void getWatchingSessions_Success() {
     UUID contentId = UUID.randomUUID();
+
+    given(contentRepository.existsById(any())).willReturn(true);
 
     given(watchingSessionQueryRepository.findSessionByCursor(
         any(), any(), any(), any(), anyInt(), any(), any()
@@ -67,6 +87,8 @@ public class WatchingSessionServiceTest {
     WatchingSession mockSession = mock(WatchingSession.class);
     User mockUser = mock(User.class);
     Content mockContent = mock(Content.class);
+
+    given(contentRepository.existsById(any())).willReturn(true);
 
     given(mockSession.getId()).willReturn(UUID.randomUUID());
     given(mockSession.getCreatedAt()).willReturn(Instant.now());
@@ -102,6 +124,8 @@ public class WatchingSessionServiceTest {
   void getWatchingSessions_Fail_LimitTooSmall() {
     UUID contentId = UUID.randomUUID();
 
+    given(contentRepository.existsById(any())).willReturn(true);
+
     assertThrows(ContentException.class, () ->
         watchingSessionService.getWatchingSessions(contentId, null,
             null, null, 0,
@@ -116,6 +140,8 @@ public class WatchingSessionServiceTest {
   @DisplayName("시청 세션 목록 조회 실패 - 잘못된 정렬 기준 또는 정렬 방향")
   void getWatchingSessions_Fail_InvalidSortParams() {
     UUID contentId = UUID.randomUUID();
+
+    given(contentRepository.existsById(any())).willReturn(true);
 
     assertThrows(ContentException.class, () ->
         watchingSessionService.getWatchingSessions(contentId, null,
@@ -133,6 +159,8 @@ public class WatchingSessionServiceTest {
     UUID contentId = UUID.randomUUID();
     String validDate = Instant.now().toString();
 
+    given(contentRepository.existsById(any())).willReturn(true);
+
     //cursor만 있고 idAfter가 없는 경우
     assertThrows(ContentException.class, () ->
         watchingSessionService.getWatchingSessions(contentId, null,
@@ -149,6 +177,8 @@ public class WatchingSessionServiceTest {
   @DisplayName("시청 세션 목록 조회 실패 - cursor 날짜 포맷이 올바르지 않은 경우")
   void getWatchingSessions_Fail_InvalidDateFormat() {
     UUID contentId = UUID.randomUUID();
+
+    given(contentRepository.existsById(any())).willReturn(true);
 
     assertThrows(ContentException.class, () ->
         watchingSessionService.getWatchingSessions(contentId, null,

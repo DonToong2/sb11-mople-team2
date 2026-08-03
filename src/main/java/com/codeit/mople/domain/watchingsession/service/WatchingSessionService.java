@@ -2,12 +2,13 @@ package com.codeit.mople.domain.watchingsession.service;
 
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
+import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
-import com.codeit.mople.domain.watchingsession.dto.WatcherDto;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionContentDto;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionResponse;
 import com.codeit.mople.domain.watchingsession.entity.WatchingSession;
 import com.codeit.mople.domain.watchingsession.repository.WatchingSessionQueryRepository;
+import com.codeit.mople.global.dto.UserSummary;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -24,12 +25,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class WatchingSessionService {
 
   private final WatchingSessionQueryRepository watchingSessionQueryRepository;
+  private final ContentRepository contentRepository;
 
   @Transactional(readOnly = true)
   public CursorResponseWatchingSessionDto getWatchingSessions(
       UUID contentId, String watcherNameLike, String cursor, UUID idAfter,
       int limit, String sortDirection, String sortBy) {
     log.debug("시청 세션 목록 조회 시작 - contentId: {}", contentId);
+
+    //콘텐츠 존재 여부 예외 처리
+    if (!contentRepository.existsById(contentId)) {
+      throw new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
+    }
 
     //limit 검증
     if (limit <= 0 || limit > 100) {
@@ -84,7 +91,7 @@ public class WatchingSessionService {
         .map(session -> new WatchingSessionResponse(
             session.getId(),
             session.getCreatedAt(),
-            new WatcherDto(
+            new UserSummary(
                 session.getUser().getId(),
                 session.getUser().getName(),
                 session.getUser().getProfileImageUrl()
