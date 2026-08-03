@@ -92,7 +92,7 @@ public class ContentController {
 
     UUID adminId = userDetails.getUserId();
     contentService.deleteContent(adminId, contentId);
-    return ResponseEntity.ok().build();
+    return ResponseEntity.noContent().build();
   }
 
   //콘텐츠 시청 세션 목록 조회

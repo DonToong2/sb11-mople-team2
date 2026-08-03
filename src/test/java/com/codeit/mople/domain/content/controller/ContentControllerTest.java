@@ -2,6 +2,7 @@ package com.codeit.mople.domain.content.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
@@ -70,8 +71,8 @@ public class ContentControllerTest {
   @MockitoBean
   private WatchingSessionService watchingSessionService;
 
-  private RequestPostProcessor mockAuth(Role role) {
-    CustomUserDetails mockUser = new CustomUserDetails(UUID.randomUUID(), role);
+  private RequestPostProcessor mockAuth(UUID userId, Role role) {
+    CustomUserDetails mockUser = new CustomUserDetails(userId, role);
     UsernamePasswordAuthenticationToken authentication =
         new UsernamePasswordAuthenticationToken(mockUser, null, mockUser.getAuthorities());
     return authentication(authentication);
@@ -85,6 +86,7 @@ public class ContentControllerTest {
   @DisplayName("콘텐츠 생성 성공 - ADMIN 권한일 때 201 Created")
   void createContent_Success() throws Exception {
     UUID contentId = UUID.randomUUID();
+    UUID adminId = UUID.randomUUID(); // 🌟 테스트용 adminId 명시적 생성
 
     ContentCreateRequest requestDto = new ContentCreateRequest(
         "MOVIE", "테스트 영화", "설명", List.of("액션"));
@@ -101,7 +103,7 @@ public class ContentControllerTest {
         "http://example.com/test.png", List.of("액션"), 0.0,
         0, 0L);
 
-    given(contentService.createContent(any(), any(), any())).willReturn(mockResponse);
+    given(contentService.createContent(eq(adminId), any(), any())).willReturn(mockResponse);
 
     mockMvc.perform(
             multipart(HttpMethod.POST, "/api/contents")
@@ -109,14 +111,33 @@ public class ContentControllerTest {
                 .file(thumbnailPart)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .with(csrf())
-                .with(mockAuth(Role.ADMIN))
+                .with(mockAuth(adminId, Role.ADMIN)) // 🌟 adminId 주입
         ).andExpect(status().isCreated())
         .andExpect(jsonPath("$.title").value("테스트 영화"));
   }
 
   @Test
+  @DisplayName("콘텐츠 생성 실패 - 인증 없으면 401 Unauthorized")
+  void createContent_Fail_Unauthorized() throws Exception {
+    ContentCreateRequest requestDto = new ContentCreateRequest(
+        "MOVIE", "테스트 영화", "설명", List.of("액션"));
+    MockMultipartFile requestPart = new MockMultipartFile(
+        "request", "", MediaType.APPLICATION_JSON_VALUE,
+        objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
+
+    mockMvc.perform(
+        multipart(HttpMethod.POST, "/api/contents")
+            .file(requestPart)
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .with(csrf())
+        // mockAuth를 주입하지 않음 (익명 사용자)
+    ).andExpect(status().isUnauthorized());
+  }
+
+  @Test
   @DisplayName("콘텐츠 생성 실패 - 필수 값(제목) 누락 시 400 Bad Request")
   void createContent_Fail_Validation() throws Exception {
+    UUID adminId = UUID.randomUUID();
     ContentCreateRequest requestDto = new ContentCreateRequest(
         "MOVIE", "", "설명", List.of("액션"));
     MockMultipartFile requestPart = new MockMultipartFile(
@@ -132,7 +153,7 @@ public class ContentControllerTest {
                 .file(thumbnailPart)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .with(csrf())
-                .with(mockAuth(Role.ADMIN))
+                .with(mockAuth(adminId, Role.ADMIN))
         )
         .andExpect(status().isBadRequest());
   }
@@ -140,14 +161,18 @@ public class ContentControllerTest {
   @Test
   @DisplayName("콘텐츠 생성 실패 - USER 권한일 때 403 Forbidden")
   void createContent_Fail_Forbidden() throws Exception {
+    UUID userId = UUID.randomUUID();
     ContentCreateRequest requestDto = new ContentCreateRequest("MOVIE", "테스트 영화", "설명",
         List.of("액션"));
     MockMultipartFile requestPart = new MockMultipartFile("request", "",
         MediaType.APPLICATION_JSON_VALUE,
         objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8));
 
-    mockMvc.perform(multipart(HttpMethod.POST, "/api/contents").file(requestPart)
-            .contentType(MediaType.MULTIPART_FORM_DATA).with(csrf()).with(mockAuth(Role.USER)))
+    mockMvc.perform(multipart(HttpMethod.POST, "/api/contents")
+            .file(requestPart)
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .with(csrf())
+            .with(mockAuth(userId, Role.USER)))
         .andExpect(status().isForbidden());
   }
 
@@ -180,7 +205,7 @@ public class ContentControllerTest {
             .param("cursorId", UUID.randomUUID().toString())
             .param("cursorCreatedAt", Instant.now().toString())
             .contentType(MediaType.APPLICATION_JSON)
-            .with(mockAuth(Role.USER))
+            .with(mockAuth(UUID.randomUUID(),Role.USER))
     ).andExpect(status().isOk());
   }
 
@@ -200,7 +225,7 @@ public class ContentControllerTest {
     mockMvc.perform(
         get("/api/contents")
             .contentType(MediaType.APPLICATION_JSON)
-            .with(mockAuth(Role.USER))
+            .with(mockAuth(UUID.randomUUID(),Role.USER))
     ).andExpect(status().isOk());
   }
 
@@ -222,7 +247,7 @@ public class ContentControllerTest {
     mockMvc.perform(
         get("/api/contents/{contentId}", contentId)
             .contentType(MediaType.APPLICATION_JSON)
-            .with(mockAuth(Role.USER))
+            .with(mockAuth(UUID.randomUUID(),Role.USER))
     ).andExpect(status().isOk());
   }
 
@@ -236,7 +261,7 @@ public class ContentControllerTest {
     mockMvc.perform(
         get("/api/contents/{contentId}", contentId)
             .contentType(MediaType.APPLICATION_JSON)
-            .with(mockAuth(Role.USER))
+            .with(mockAuth(UUID.randomUUID(),Role.USER))
     ).andExpect(status().isNotFound());
   }
 
@@ -248,6 +273,7 @@ public class ContentControllerTest {
   @DisplayName("콘텐츠 수정 성공 - 200 OK")
   void updateContent_Success() throws Exception {
     UUID contentId = UUID.randomUUID();
+    UUID adminId = UUID.randomUUID();
 
     ContentUpdateRequest requestDto = new ContentUpdateRequest(
         "수정된 영화 제목", "수정된 설명", List.of("스릴러"));
@@ -263,7 +289,7 @@ public class ContentControllerTest {
         "http://example.com/updated.png", List.of("스릴러"),
         0.0, 0, 0L);
 
-    given(contentService.updateContent(any(), any(), any(), any())).willReturn(mockResponse);
+    given(contentService.updateContent(eq(adminId), eq(contentId), any(), any())).willReturn(mockResponse);
 
     mockMvc.perform(
         multipart(HttpMethod.PATCH, "/api/contents/{contentId}", contentId)
@@ -271,7 +297,7 @@ public class ContentControllerTest {
             .file(thumbnailPart)
             .contentType(MediaType.MULTIPART_FORM_DATA)
             .with(csrf())
-            .with(mockAuth(Role.ADMIN))
+            .with(mockAuth(adminId, Role.ADMIN))
     ).andExpect(status().isOk());
   }
 
@@ -298,7 +324,7 @@ public class ContentControllerTest {
             .file(thumbnailPart)
             .contentType(MediaType.MULTIPART_FORM_DATA)
             .with(csrf())
-            .with(mockAuth(Role.ADMIN))
+            .with(mockAuth(UUID.randomUUID(), Role.ADMIN))
     ).andExpect(status().isNotFound());
   }
 
@@ -307,17 +333,19 @@ public class ContentControllerTest {
   //=========================================================================================
 
   @Test
-  @DisplayName("콘텐츠 삭제 성공 - 200 OK")
+  @DisplayName("콘텐츠 삭제 성공 - 204 OK")
   void deleteContent_Success() throws Exception {
     UUID contentId = UUID.randomUUID();
-    willDoNothing().given(contentService).deleteContent(any(), any());
+    UUID adminId = UUID.randomUUID();
+
+    willDoNothing().given(contentService).deleteContent(eq(adminId), eq(contentId));
 
     mockMvc.perform(
         delete("/api/contents/{contentId}", contentId)
             .contentType(MediaType.APPLICATION_JSON)
             .with(csrf())
-            .with(mockAuth(Role.ADMIN))
-    ).andExpect(status().isOk());
+            .with(mockAuth(adminId, Role.ADMIN))
+    ).andExpect(status().isNoContent());
   }
 
   @Test
@@ -331,7 +359,7 @@ public class ContentControllerTest {
         delete("/api/contents/{contentId}", contentId)
             .contentType(MediaType.APPLICATION_JSON)
             .with(csrf())
-            .with(mockAuth(Role.ADMIN))
+            .with(mockAuth(UUID.randomUUID(),Role.ADMIN))
     ).andExpect(status().isNotFound());
   }
 
@@ -356,7 +384,7 @@ public class ContentControllerTest {
             .param("limit", "10")
             .param("sortDirection", "ASCENDING")
             .contentType(MediaType.APPLICATION_JSON)
-            .with(mockAuth(Role.USER))
+            .with(mockAuth(UUID.randomUUID(),Role.USER))
     ).andExpect(status().isOk());
   }
 
@@ -373,7 +401,7 @@ public class ContentControllerTest {
         get("/api/contents/{contentId}/watching-sessions", contentId)
             .param("limit", "200")
             .contentType(MediaType.APPLICATION_JSON)
-            .with(mockAuth(Role.USER))
+            .with(mockAuth(UUID.randomUUID(),Role.USER))
     ).andExpect(status().isBadRequest());
   }
 }
