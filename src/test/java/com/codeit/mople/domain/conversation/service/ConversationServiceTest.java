@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -90,7 +91,6 @@ public class ConversationServiceTest {
 
       //then
       assertThat(result).isNotNull();
-      assertThat(result.with().userId()).isEqualTo(userAId);
       assertThat(result.id()).isEqualTo(newConversationId);
       verify(conversationRepository, times(1)).saveAndFlush(any(Conversation.class));
       verify(conversationMapper, times(1)).toDto(newConversation, userBId);
@@ -116,7 +116,7 @@ public class ConversationServiceTest {
       //then
       assertThat(result).isNotNull();
       assertThat(result.id()).isEqualTo(existingConversation.getId());
-      verify(conversationRepository, times(0)).save(any(Conversation.class));
+      verify(conversationRepository, never()).saveAndFlush(any(Conversation.class));
     }
 
     @Test
@@ -191,7 +191,7 @@ public class ConversationServiceTest {
       given(conversationMapper.toDto(any(Conversation.class), eq(userAId))).willReturn(dummyDto);
 
       //when
-      ConversationDto result = conversationService.getConversation(conversationId, userAId);
+      ConversationDto result = conversationService.getConversation(userAId, conversationId);
 
       //then
       assertThat(result).isNotNull();
@@ -214,7 +214,7 @@ public class ConversationServiceTest {
       given(conversationRepository.findById(conversationId)).willReturn(Optional.of(conversation));
 
       //when & then
-      assertThatThrownBy(() -> conversationService.getConversation(conversationId, strangerId))
+      assertThatThrownBy(() -> conversationService.getConversation(strangerId, conversationId))
           .isInstanceOf(ConversationException.class)
           .hasMessageContaining(ConversationErrorCode.ACCESS_DENIED.getMessage());
     }

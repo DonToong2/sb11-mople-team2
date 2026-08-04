@@ -66,7 +66,7 @@ public class ConversationService {
     return conversationMapper.toDto(conversation, requesterId);
   }
 
-  public ConversationDto getConversation(UUID conversationId, UUID requesterId) {
+  public ConversationDto getConversation(UUID requesterId, UUID conversationId) {
     log.debug("대화방 단건 조회 요청 - conversationId: {}, requesterId: {}", conversationId, requesterId);
 
     Conversation conversation = conversationRepository.findById(conversationId)
