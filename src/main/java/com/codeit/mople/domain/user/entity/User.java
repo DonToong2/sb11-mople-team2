@@ -6,18 +6,22 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import java.time.Instant;
 import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", uniqueConstraints = {
+    @UniqueConstraint(name = "uq_users_email", columnNames = "email")
+})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseEntity {
 
-  @Column(nullable = false, unique = true)
+  @Column(nullable = false)
   private String email;
 
   @Column(nullable = false)
@@ -34,6 +38,18 @@ public class User extends BaseEntity {
 
   @Column(nullable = false)
   private boolean locked;
+
+  @Column
+  private String temporaryPassword;
+
+  @Column
+  private Instant temporaryPasswordExpiresAt;
+
+  @Column
+  private String refreshToken;
+
+  @Column
+  private Instant refreshTokenExpireAt;
 
   /**
    * TODO: Phase5 — Redis 기반 세션 관리로 전환 시 이 컬럼 제거 예정
@@ -94,5 +110,36 @@ public class User extends BaseEntity {
 
   public void unlock() {
     this.locked = false;
+  }
+
+  public void issueTemporaryPassword(String encodedTemporaryPassword, Instant expiresAt) {
+    this.temporaryPassword = Objects.requireNonNull(encodedTemporaryPassword, "encodedTemporaryPassword");
+    this.temporaryPasswordExpiresAt = Objects.requireNonNull(expiresAt, "expiresAt");
+  }
+
+  public void destroyTemporaryPassword() {
+    this.temporaryPassword = null;
+    this.temporaryPasswordExpiresAt = null;
+  }
+
+  public boolean hasValidTemporaryPassword(Instant now) {
+    return temporaryPassword != null && temporaryPasswordExpiresAt != null && now.isBefore(temporaryPasswordExpiresAt);
+  }
+
+  public void updateRefreshToken(String refreshToken, Instant expiresAt) {
+    this.refreshToken = Objects.requireNonNull(refreshToken, "refreshToken");
+    this.refreshTokenExpireAt = Objects.requireNonNull(expiresAt, "expiresAt");
+  }
+
+  public boolean isRefreshTokenValid(String refreshToken, Instant now) {
+    return this.refreshToken != null
+        && this.refreshToken.equals(refreshToken)
+        && this.refreshTokenExpireAt != null
+        && now.isBefore(this.refreshTokenExpireAt);
+  }
+
+  public void clearRefreshToken() {
+    this.refreshToken = null;
+    this.refreshTokenExpireAt = null;
   }
 }
