@@ -75,7 +75,7 @@ public class ConversationServiceTest {
       //given
       given(userRepository.findById(userAId)).willReturn(Optional.of(userA));
       given(userRepository.findById(userBId)).willReturn(Optional.of(userB));
-      given(conversationRepository.findByUserAAndUserB(userA, userB)).willReturn(Optional.empty());
+      given(conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)).willReturn(Optional.empty());
 
       Conversation newConversation = Conversation.createConversation(userA, userB);
       UUID newConversationId = UUID.randomUUID();
@@ -105,7 +105,7 @@ public class ConversationServiceTest {
 
       Conversation existingConversation = Conversation.createConversation(userA, userB);
       ReflectionTestUtils.setField(existingConversation, "id", UUID.randomUUID());
-      given(conversationRepository.findByUserAAndUserB(userA, userB)).willReturn(Optional.of(existingConversation));
+      given(conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)).willReturn(Optional.of(existingConversation));
 
       ConversationDto dummyDto = new ConversationDto(existingConversation.getId(), null, null, false);
       given(conversationMapper.toDto(existingConversation, userAId)).willReturn(dummyDto);
@@ -143,7 +143,7 @@ public class ConversationServiceTest {
       UUID conversationId = UUID.randomUUID();
       ReflectionTestUtils.setField(conversation, "id", conversationId);
 
-      given(conversationRepository.findByUserAAndUserB(userA, userB)).willReturn(Optional.of(conversation));
+      given(conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)).willReturn(Optional.of(conversation));
 
       ConversationDto dummyDto = new ConversationDto(conversationId, null, null, false);
       given(conversationMapper.toDto(any(Conversation.class), eq(userAId))).willReturn(dummyDto);
@@ -162,7 +162,7 @@ public class ConversationServiceTest {
       //given
       given(userRepository.findById(userAId)).willReturn(Optional.of(userA));
       given(userRepository.findById(userBId)).willReturn(Optional.of(userB));
-      given(conversationRepository.findByUserAAndUserB(userA, userB)).willReturn(Optional.empty());
+      given(conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)).willReturn(Optional.empty());
 
       //when & then
       assertThatThrownBy(() -> conversationService.getConversationWithUser(userAId, userBId))
@@ -185,7 +185,7 @@ public class ConversationServiceTest {
       UUID conversationId = UUID.randomUUID();
       ReflectionTestUtils.setField(conversation, "id", conversationId);
 
-      given(conversationRepository.findById(conversationId)).willReturn(Optional.of(conversation));
+      given(conversationRepository.findWithDetailsById(conversationId)).willReturn(Optional.of(conversation));
 
       ConversationDto dummyDto = new ConversationDto(conversationId, null, null, false);
       given(conversationMapper.toDto(any(Conversation.class), eq(userAId))).willReturn(dummyDto);
@@ -211,7 +211,7 @@ public class ConversationServiceTest {
 
       UUID strangerId = UUID.fromString("00000000-0000-0000-0000-000000000009");
 
-      given(conversationRepository.findById(conversationId)).willReturn(Optional.of(conversation));
+      given(conversationRepository.findWithDetailsById(conversationId)).willReturn(Optional.of(conversation));
 
       //when & then
       assertThatThrownBy(() -> conversationService.getConversation(strangerId, conversationId))
