@@ -62,7 +62,7 @@ public class ReviewService {
     content.updateRatingStats(averageRating, (int) reviewCount);
 
     ReviewResponse response = ReviewResponse.from(savedReview);
-    log.info("리뷰 생성 완료: reviewId={}, userId={}, contentId={}",
+    log.info("리뷰 생성 완료: reviewId={}, authorId={}, contentId={}",
         savedReview.getId(), authorId, request.contentId());
 
     return response;
@@ -132,8 +132,8 @@ public class ReviewService {
   @Transactional
   public ReviewResponse update(UUID reviewId, ReviewUpdateRequest request, UUID authorId) {
 
-    log.debug("리뷰 수정 시도: reviewId={}, authorId={}, text={}, rating={}",
-        reviewId, authorId, request.text(), request.rating());
+    log.debug("리뷰 수정 시도: reviewId={}, authorId={}, rating={}",
+        reviewId, authorId,request.rating());
 
     Review review = reviewRepository.findById(reviewId).orElseThrow(() ->
         new ReviewException(ReviewErrorCode.REVIEW_NOT_FOUND)
@@ -156,8 +156,8 @@ public class ReviewService {
 
     ReviewResponse response = ReviewResponse.from(review);
 
-    log.info("리뷰 수정 완료: reviewId={}, authorId={}, text={}, rating={}",
-        reviewId, authorId, request.text(), request.rating());
+    log.info("리뷰 수정 완료: reviewId={}, authorId={}, contentId={}, rating={}",
+        reviewId, authorId, content.getId(), request.rating());
 
     return response;
   }
