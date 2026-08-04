@@ -1,5 +1,7 @@
 package com.codeit.mople.domain.conversation.entity;
 
+import com.codeit.mople.domain.conversation.exception.ConversationErrorCode;
+import com.codeit.mople.domain.conversation.exception.ConversationException;
 import com.codeit.mople.domain.directmessage.entity.DirectMessage;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.entity.BaseEntity;
@@ -56,6 +58,12 @@ public class Conversation extends BaseEntity {
     return new Conversation(userA, userB);
   }
 
+  public User getPartnerOf(UUID requesterId) {
+    if (this.userA.getId().equals(requesterId)) return this.userB;
+    if (this.userB.getId().equals(requesterId)) return this.userA;
+    throw new ConversationException(ConversationErrorCode.ACCESS_DENIED);
+  }
+
   public void updateLastReadAt(UUID userId, Instant readAt) {
     if (this.userA.getId().equals(userId)) {
       if (this.userALastReadAt == null || readAt.isAfter(this.userALastReadAt)) {
@@ -65,6 +73,8 @@ public class Conversation extends BaseEntity {
       if (this.userBLastReadAt == null || readAt.isAfter(this.userBLastReadAt)) {
         this.userBLastReadAt = readAt;
       }
+    } else {
+      throw new ConversationException(ConversationErrorCode.ACCESS_DENIED);
     }
   }
 
@@ -73,6 +83,8 @@ public class Conversation extends BaseEntity {
   }
 
   public Instant getMyLastReadAt(UUID requesterId) {
-    return this.userA.getId().equals(requesterId) ? userALastReadAt : userBLastReadAt;
+    if (this.userA.getId().equals(requesterId)) return this.userALastReadAt;
+    if (this.userB.getId().equals(requesterId)) return this.userBLastReadAt;
+    throw new ConversationException(ConversationErrorCode.ACCESS_DENIED);
   }
 }
