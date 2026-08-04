@@ -256,17 +256,17 @@ public class ConversationServiceTest {
     }
 
     @Test
-    @DisplayName("성공: 마지막 메시지가 없는 빈 대화방이 마지막 항목일 conversation.createdAt을 nextCursor로 사용한다.")
+    @DisplayName("성공: 마지막 메시지가 없는 빈 대화방이 마지막 항목일 때 lastMessageAt을 nextCursor로 사용한다.")
     void success_get_my_conversations_with_empty_conversation_fallback() {
       //given
       given(userRepository.findById(userAId)).willReturn(Optional.of(userA));
 
       Conversation emptyConversation = Conversation.createConversation(userA, userB);
       UUID conversationId = UUID.randomUUID();
-      Instant roomCreatedAt = Instant.now().minusSeconds(60);
+      Instant lastMessageAtTime = Instant.now().minusSeconds(60);
 
       ReflectionTestUtils.setField(emptyConversation, "id", conversationId);
-      ReflectionTestUtils.setField(emptyConversation, "createdAt", roomCreatedAt);
+      ReflectionTestUtils.setField(emptyConversation, "lastMessageAt", lastMessageAtTime);
 
       ConversationCursorRequest mockRequest = mock(ConversationCursorRequest.class);
       given(mockRequest.limit()).willReturn(1);
@@ -289,7 +289,7 @@ public class ConversationServiceTest {
       assertThat(result.hasNext()).isTrue();
       assertThat(result.data()).hasSize(1);
 
-      assertThat(result.nextCursor()).isEqualTo(roomCreatedAt.toString());
+      assertThat(result.nextCursor()).isEqualTo(lastMessageAtTime.toString());
       assertThat(result.nextIdAfter()).isEqualTo(conversationId);
     }
   }
