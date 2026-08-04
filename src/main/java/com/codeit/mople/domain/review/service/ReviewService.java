@@ -42,15 +42,13 @@ public class ReviewService {
     log.debug("리뷰 생성 시도: authorId={}, contentId={}, rating={}",
         authorId, request.contentId(), request.rating());
 
-    User author = userRepository.findById(authorId).orElseThrow(() -> {
-      log.warn("리뷰 생성 실패: 사용자를 찾을 수 없습니다. userId={}", authorId);
-      return new UserException(UserErrorCode.USER_NOT_FOUND);
-    });
+    User author = userRepository.findById(authorId).orElseThrow(() ->
+        new UserException(UserErrorCode.USER_NOT_FOUND)
+    );
 
-    Content content = contentRepository.findById(request.contentId()).orElseThrow(() -> {
-      log.warn("리뷰 생성 실패: 콘텐츠를 찾을 수 없습니다. contentId={}", request.contentId());
-      return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND);
-    });
+    Content content = contentRepository.findById(request.contentId()).orElseThrow(() ->
+        new ContentException(ContentErrorCode.CONTENT_NOT_FOUND)
+    );
 
     Review review = Review.create(content, author, request.text(), request.rating());
 
@@ -74,7 +72,7 @@ public class ReviewService {
   public ReviewCursorResponse findAll(ReviewQueryCondition condition) {
 
     log.debug("리뷰 목록 조회 시도: contentId={}, cursor={}, idAfter={},"
-        + "limit={}, sortBy={}, sortDirection={}",
+            + "limit={}, sortBy={}, sortDirection={}",
         condition.contentId(),
         condition.cursor(),
         condition.idAfter(),
