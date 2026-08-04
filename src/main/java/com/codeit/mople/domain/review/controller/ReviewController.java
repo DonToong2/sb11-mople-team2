@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.review.controller;
 
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
+import com.codeit.mople.domain.review.controller.api.ReviewApi;
 import com.codeit.mople.domain.review.dto.request.ReviewCreateRequest;
 import com.codeit.mople.domain.review.dto.request.ReviewQueryCondition;
 import com.codeit.mople.domain.review.dto.request.ReviewUpdateRequest;
@@ -26,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/reviews")
 @RequiredArgsConstructor
-public class ReviewController {
+public class ReviewController implements ReviewApi {
 
   private final ReviewService reviewService;
 
@@ -53,7 +54,7 @@ public class ReviewController {
 
   @PatchMapping("/{reviewId}")
   public ResponseEntity<ReviewResponse> update(
-      @AuthenticationPrincipal CustomUserDetails userDetails,
+      @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails,
       @PathVariable UUID reviewId,
       @Valid @RequestBody ReviewUpdateRequest request
   ) {
@@ -64,7 +65,7 @@ public class ReviewController {
 
   @DeleteMapping("/{reviewId}")
   public ResponseEntity<Void> delete(
-      @AuthenticationPrincipal CustomUserDetails userDetails,
+      @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails,
       @PathVariable UUID reviewId
   ) {
     reviewService.delete(reviewId, userDetails.getUserId());
