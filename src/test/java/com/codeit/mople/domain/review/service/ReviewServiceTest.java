@@ -17,10 +17,10 @@ import com.codeit.mople.domain.review.dto.response.ReviewResponse;
 import com.codeit.mople.domain.review.entity.Review;
 import com.codeit.mople.domain.review.exception.ReviewErrorCode;
 import com.codeit.mople.domain.review.exception.ReviewException;
-import com.codeit.mople.domain.review.mapper.ReviewMapper;
 import com.codeit.mople.domain.review.repository.ReviewRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.global.dto.UserSummary;
 import com.codeit.mople.global.error.CustomException;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,9 +38,6 @@ public class ReviewServiceTest {
 
   @Mock
   private ReviewRepository reviewRepository;
-
-  @Mock
-  private ReviewMapper reviewMapper;
 
   @Mock
   private UserRepository userRepository;
@@ -90,11 +87,19 @@ public class ReviewServiceTest {
 
       // BeforeEach에서 author, authorId, content, contentId, Review Create Request 초기화
 
+      // Content
+      given(content.getId()).willReturn(contentId);
+
+      // UserSummary
+      given(author.getId()).willReturn(authorId);
+      given(author.getName()).willReturn("test");
+      given(author.getProfileImageUrl()).willReturn("profile.png");
+
       Review review = Review.create(content, author, createRequest.text(), createRequest.rating());
 
-      ReviewResponse response = mock(ReviewResponse.class);
+      ReviewResponse response = ReviewResponse.from(review);
 
-      // User 조회 → Content 조회 → Review 저장 → ReviewMapper 호출 순
+      // User 조회 → Content 조회 → Review 저장 순
       given(userRepository.findById(authorId))
           .willReturn(Optional.of(author));
 
@@ -113,9 +118,6 @@ public class ReviewServiceTest {
       given(reviewRepository.findAverageRatingByContentId(contentId))
           .willReturn(createRequest.rating());
 
-      given(reviewMapper.toResponse(review))
-          .willReturn(response);
-
       // when
       ReviewResponse result = reviewService.create(authorId, createRequest);
 
@@ -129,8 +131,6 @@ public class ReviewServiceTest {
       verify(reviewRepository).findAverageRatingByContentId(contentId);
 
       verify(content).updateRatingStats(createRequest.rating(), 1);
-
-      verify(reviewMapper).toResponse(review);
     }
 
     @Test
@@ -149,7 +149,7 @@ public class ReviewServiceTest {
           .isInstanceOf(CustomException.class);
 
       verify(userRepository).findById(authorId);
-      verifyNoInteractions(contentRepository, reviewRepository, reviewMapper);
+      verifyNoInteractions(contentRepository, reviewRepository);
     }
 
     @Test
@@ -172,7 +172,7 @@ public class ReviewServiceTest {
 
       verify(userRepository).findById(authorId);
       verify(contentRepository).findById(contentId);
-      verifyNoInteractions(reviewRepository, reviewMapper);
+      verifyNoInteractions(reviewRepository);
     }
 
   }
@@ -188,18 +188,24 @@ public class ReviewServiceTest {
 
       // BeforeEach에서 reviewId, review, authorId, contentId, updateRequest 초기화
 
-      ReviewResponse response = mock(ReviewResponse.class);
+      // Content
+      given(content.getId()).willReturn(contentId);
+
+      // UserSummary
+      given(author.getId()).willReturn(authorId);
+      given(author.getName()).willReturn("test");
+      given(author.getProfileImageUrl()).willReturn("profile.png");
+
+      ReviewResponse expected = new ReviewResponse(
+          review.getId(),
+          contentId,
+          new UserSummary(authorId, "test", "profile.png"),
+          updateRequest.text(),
+          updateRequest.rating()
+      );
 
       given(reviewRepository.findById(reviewId))
           .willReturn(Optional.of(review));
-
-      // 리뷰 작성자 설정
-      given(author.getId())
-          .willReturn(authorId);
-
-      // 콘텐츠 ID 설정
-      given(content.getId())
-          .willReturn(contentId);
 
       given(reviewRepository.countByContentId(contentId))
           .willReturn(1L);
@@ -207,21 +213,17 @@ public class ReviewServiceTest {
       given(reviewRepository.findAverageRatingByContentId(contentId))
           .willReturn(updateRequest.rating());
 
-      given(reviewMapper.toResponse(review))
-          .willReturn(response);
-
       // when
       ReviewResponse result = reviewService.update(reviewId, updateRequest, authorId);
 
       // then
-      assertThat(result).isEqualTo(response);
+      assertThat(result).isEqualTo(expected);
       assertThat(review.getText()).isEqualTo(updateRequest.text());
       assertThat(review.getRating()).isEqualTo(updateRequest.rating());
 
       verify(reviewRepository).findById(reviewId);
       verify(reviewRepository).countByContentId(contentId);
       verify(reviewRepository).findAverageRatingByContentId(contentId);
-      verify(reviewMapper).toResponse(review);
     }
 
     @Test
@@ -244,7 +246,7 @@ public class ReviewServiceTest {
 
       verify(reviewRepository).findById(reviewId);
 
-      verifyNoInteractions(author, content, reviewMapper);
+      verifyNoInteractions(author, content);
     }
 
     @Test
