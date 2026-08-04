@@ -250,8 +250,9 @@ public class ReviewIntegrationTest {
     void update_success() throws Exception {
       // given
       savedReview = reviewRepository.save(review);
-
-      savedContent.updateRatingStats(newRating, 1);
+      
+      // 리뷰 생성 후 savedContent의 평균 평점, 리뷰 개수 설정
+      savedContent.updateRatingStats(reviewRating, 1);
       contentRepository.save(savedContent);
 
       // BeforeEach에서 updateRequest, userDetails를 초기화
