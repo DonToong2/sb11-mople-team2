@@ -87,11 +87,7 @@ public class ReviewService {
         .map(ReviewResponse::from)
         .toList();
 
-    Long totalCount = null;
-
-    if (condition.cursor() == null) {
-      totalCount = reviewRepository.count(condition);
-    }
+    long totalCount = reviewRepository.count(condition);
 
     // 임시 커서, 보조 커서 초기화
     String nextCursor = null;
