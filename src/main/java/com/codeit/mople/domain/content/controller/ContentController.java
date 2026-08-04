@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.content.controller;
 
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
+import com.codeit.mople.domain.content.controller.api.ContentApi;
 import com.codeit.mople.domain.content.dto.ContentCreateRequest;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
@@ -32,11 +33,12 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/contents")
 @RequiredArgsConstructor
-public class ContentController {
+public class ContentController implements ContentApi {
   private final ContentService contentService;
   private final WatchingSessionService watchingSessionService;
 
   //콘텐츠 생성
+  @Override
   @PreAuthorize("hasRole('ADMIN')")
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ContentResponse> createContent(
@@ -49,6 +51,7 @@ public class ContentController {
   }
 
   //콘텐츠 목록 조회
+  @Override
   @GetMapping
   public ResponseEntity<CursorResponseContentDto> getContents(
       @RequestParam(value = "cursorId", required = false) UUID cursorId,
@@ -60,6 +63,7 @@ public class ContentController {
   }
 
   //콘텐츠 단건 조회
+  @Override
   @GetMapping("/{contentId}")
   public ResponseEntity<ContentResponse> getContent(
       @PathVariable UUID contentId) {
@@ -68,6 +72,7 @@ public class ContentController {
   }
 
   //콘텐츠 수정
+  @Override
   @PreAuthorize("hasRole('ADMIN')")
   @PatchMapping(value = "/{contentId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ContentResponse> updateContent(
@@ -80,6 +85,7 @@ public class ContentController {
   }
 
   //콘텐츠 삭제
+  @Override
   @PreAuthorize("hasRole('ADMIN')")
   @DeleteMapping("/{contentId}")
   public ResponseEntity<Void> deleteContent(
@@ -90,6 +96,7 @@ public class ContentController {
   }
 
   //콘텐츠 시청 세션 목록 조회
+  @Override
   @GetMapping("/{contentId}/watching-sessions")
   public ResponseEntity<CursorResponseWatchingSessionDto> getWatchingSessions(
       @PathVariable UUID contentId,
