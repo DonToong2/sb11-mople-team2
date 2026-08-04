@@ -51,14 +51,14 @@ public class ContentServiceTest {
   @DisplayName("콘텐츠 생성 성공 - 레포지토리 저장 및 DTO 변환 정상적 수행")
   void createContent_Success() {
     UUID adminId = UUID.randomUUID();
-    ContentCreateRequest request = new ContentCreateRequest("MOVIE", "테스트 영화",
+    ContentCreateRequest request = new ContentCreateRequest("movie", "테스트 영화",
         "설명", List.of("액션"));
     MockMultipartFile thumbnail = new MockMultipartFile("thumbnail",
         "test.png", "image/png", "dummy".getBytes());
 
-    Content savedContent = new Content(ContentType.MOVIE, "테스트 영화", "설명",
+    Content savedContent = new Content(ContentType.movie, "테스트 영화", "설명",
         "/uploads/test.png", List.of("액션"));
-    ContentResponse expectedResponse = new ContentResponse(UUID.randomUUID(), "MOVIE",
+    ContentResponse expectedResponse = new ContentResponse(UUID.randomUUID(), "movie",
         "테스트 영화", "설명", "/uploads/test.png",
         List.of("액션"), 0.0, 0, 0L);
 
@@ -90,7 +90,7 @@ public class ContentServiceTest {
   @DisplayName("콘텐츠 생성 실패 - 이미지 파일이 아닌 형식(txt 등) 업로드 시 INVALID_IMAGE_FILE 예외 발생")
   void createContent_Fail_InvalidImageFile() {
     UUID adminId = UUID.randomUUID();
-    ContentCreateRequest request = new ContentCreateRequest("MOVIE", "테스트 영화", "설명", List.of());
+    ContentCreateRequest request = new ContentCreateRequest("movie", "테스트 영화", "설명", List.of());
 
     // txt 파일 업로드 시도
     MockMultipartFile invalidFile = new MockMultipartFile("thumbnail",
@@ -113,12 +113,12 @@ public class ContentServiceTest {
     String sortDirection = "DESCENDING";
     String sortBy = "createdAt";
 
-    Content content1 = new Content(ContentType.MOVIE, "영화1",
+    Content content1 = new Content(ContentType.movie, "영화1",
         "설명", null, List.of());
     Page<Content> contentPage = new PageImpl<>(List.of(content1));
 
     ContentResponse responseDto = new ContentResponse(UUID.randomUUID(),
-        "MOVIE", "영화1", "설명", null, List.of(),
+        "movie", "영화1", "설명", null, List.of(),
         0.0, 0, 0L);
 
     ContentPageResponse expectedPageResponse = new ContentPageResponse(
@@ -154,9 +154,9 @@ public class ContentServiceTest {
   @DisplayName("콘텐츠 단건 조회 성공 - 존재하는 ID로 조회 시 정상 반환")
   void getContent_Success() {
     UUID contentId = UUID.randomUUID();
-    Content content = new Content(ContentType.MOVIE, "단건 조회 영화",
+    Content content = new Content(ContentType.movie, "단건 조회 영화",
         "설명", null, List.of());
-    ContentResponse responseDto = new ContentResponse(contentId, "MOVIE",
+    ContentResponse responseDto = new ContentResponse(contentId, "movie",
         "단건 조회 영화", "설명", null, List.of(),
         0.0, 0, 0L);
 
@@ -198,10 +198,10 @@ public class ContentServiceTest {
     MockMultipartFile thumbnail = new MockMultipartFile("thumbnail",
         "update.png", "image/png", "dummy".getBytes());
 
-    Content content = new Content(ContentType.MOVIE, "기존 제목", "기존 설명",
+    Content content = new Content(ContentType.movie, "기존 제목", "기존 설명",
         "/uploads/old.png", new ArrayList<>(List.of("액션")));
 
-    ContentResponse expectedResponse = new ContentResponse(contentId, "MOVIE",
+    ContentResponse expectedResponse = new ContentResponse(contentId, "movie",
         "수정된 제목", "수정된 설명", "/uploads/update.png",
         List.of("스릴러"), 0.0, 0, 0L);
 
@@ -240,7 +240,7 @@ public class ContentServiceTest {
     UUID contentId = UUID.randomUUID();
     UUID adminId = UUID.randomUUID();
 
-    Content content = new Content(ContentType.MOVIE, "삭제할 영화", "설명", null, List.of());
+    Content content = new Content(ContentType.movie, "삭제할 영화", "설명", null, List.of());
 
     given(contentRepository.findById(any(UUID.class))).willReturn(Optional.of(content));
 

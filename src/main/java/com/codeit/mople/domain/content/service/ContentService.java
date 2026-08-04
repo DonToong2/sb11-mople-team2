@@ -53,7 +53,7 @@ public class ContentService{
     //ContentType 변환 방어 로직
     ContentType contentType;
     try {
-      contentType = ContentType.valueOf(request.type().toUpperCase());
+      contentType = ContentType.valueOf(request.type());
     } catch (IllegalArgumentException e) {
       log.warn("콘텐츠 생성 실패(잘못된 ContentType) - type: {}", request.type());
       throw new ContentException(ContentErrorCode.INVALID_CONTENT_TYPE, Map.of("type", request.type()));

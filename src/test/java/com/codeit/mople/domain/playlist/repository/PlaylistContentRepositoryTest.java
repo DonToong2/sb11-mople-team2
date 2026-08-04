@@ -51,7 +51,7 @@ public class PlaylistContentRepositoryTest {
     );
 
     content1 = new Content(
-        ContentType.MOVIE,
+        ContentType.movie,
         "타이타닉",
         "설명1",
         "타이타닉.png",
@@ -59,7 +59,7 @@ public class PlaylistContentRepositoryTest {
     );
 
     content2 = new Content(
-        ContentType.DRAMA,
+        ContentType.tvSeries,
         "전설의 고향",
         "설명2",
         "전설의 고향.png",

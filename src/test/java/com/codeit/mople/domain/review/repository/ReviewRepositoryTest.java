@@ -39,14 +39,14 @@ public class ReviewRepositoryTest {
   void setUp() {
     author = User.createUser("test@test.com", "12345678", "test");
     content1 = new Content(
-        ContentType.DRAMA,
+        ContentType.tvSeries,
         "test",
         "test 콘텐츠",
         "test/image.png",
         List.of("공포")
     );
     content2 = new Content(
-        ContentType.MOVIE,
+        ContentType.movie,
         "test",
         "test 콘텐츠",
         "test/image.png",
