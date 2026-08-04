@@ -66,11 +66,18 @@ public interface ContentApi {
       summary = "콘텐츠 목록 조회",
       description = "커서 기반 페이지네이션으로 콘텐츠 목록을 조회합니다"
   )
-  @ApiResponse(
-      responseCode = "200",
-      description = "성공",
-      content = @Content(schema = @Schema(implementation = CursorResponseContentDto.class))
-  )
+  @ApiResponses({
+      @ApiResponse(
+          responseCode = "200",
+          description = "성공",
+          content = @Content(schema = @Schema(implementation = CursorResponseContentDto.class))
+      ),
+      @ApiResponse(
+          responseCode = "400",
+          description = "잘못된 파라미터 요청",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+      )
+  })
   ResponseEntity<CursorResponseContentDto> getContents(
       @RequestParam(value = "cursorId", required = false) UUID cursorId,
       @RequestParam(value = "cursorCreatedAt", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant cursorCreatedAt,
@@ -106,6 +113,11 @@ public interface ContentApi {
           responseCode = "200",
           description = "수정 성공",
           content = @Content(schema = @Schema(implementation = ContentResponse.class))
+      ),
+      @ApiResponse(
+          responseCode = "400",
+          description = "잘못된 요청",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       ),
       @ApiResponse(
           responseCode = "403",
