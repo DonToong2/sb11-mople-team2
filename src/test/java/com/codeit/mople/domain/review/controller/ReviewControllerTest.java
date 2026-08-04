@@ -590,6 +590,23 @@ public class ReviewControllerTest {
     }
 
     @Test
+    @DisplayName("리뷰 수정 실패 - 수정할 리뷰 내용과 별점 모두 없음(400 에러)")
+    void update_fail_noUpdateField() throws Exception {
+      // given
+      ReviewUpdateRequest invalidRequest = new ReviewUpdateRequest(null, null);
+
+      // BeforeEach에서 reviewId, userDetails 초기화
+
+      // when & then
+      mockMvc.perform(patch("/api/reviews/{reviewId}", reviewId)
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(invalidRequest))
+              .with(user(userDetails))
+              .with(csrf()))
+          .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("리뷰 수정 실패 - 리뷰 작성자가 아님(403 에러)")
     void update_fail_forbidden() throws Exception {
       // given

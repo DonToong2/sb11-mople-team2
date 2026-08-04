@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.review.dto.request;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Pattern;
@@ -21,5 +22,10 @@ public record ReviewUpdateRequest (
     @DecimalMax(value = "5.0", message = "별점은 5점 이하여야 합니다.")
     Double rating
 ) {
+
+    @AssertTrue(message = "수정할 리뷰 내용 또는 별점 중 하나가 필요합니다.")
+    public boolean isAnyFieldPresent() {
+        return text != null || rating != null;
+    }
 
 }
