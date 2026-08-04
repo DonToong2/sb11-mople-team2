@@ -13,9 +13,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 
 @Tag(
@@ -51,9 +57,9 @@ public interface ContentApi {
       )
   })
   ResponseEntity<ContentResponse> createContent(
-      CustomUserDetails userDetails,
-      ContentCreateRequest request,
-      MultipartFile thumbnail
+      @Valid @RequestPart("request") ContentCreateRequest request,
+      @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
+      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
   );
 
   @Operation(
@@ -66,9 +72,9 @@ public interface ContentApi {
       content = @Content(schema = @Schema(implementation = CursorResponseContentDto.class))
   )
   ResponseEntity<CursorResponseContentDto> getContents(
-      UUID cursorId,
-      Instant cursorCreatedAt,
-      int limit
+      @RequestParam(value = "cursorId", required = false) UUID cursorId,
+      @RequestParam(value = "cursorCreatedAt", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant cursorCreatedAt,
+      @RequestParam(value = "limit", defaultValue = "10") int limit
   );
 
   @Operation(
@@ -88,7 +94,7 @@ public interface ContentApi {
       )
   })
   ResponseEntity<ContentResponse> getContent(
-      UUID contentId
+      @PathVariable UUID contentId
   );
 
   @Operation(
@@ -113,9 +119,9 @@ public interface ContentApi {
       )
   })
   ResponseEntity<ContentResponse> updateContent(
-      UUID contentId,
-      ContentUpdateRequest request,
-      MultipartFile thumbnail
+      @PathVariable UUID contentId,
+      @Valid @RequestPart("request") ContentUpdateRequest request,
+      @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail
   );
 
   @Operation(
@@ -134,7 +140,7 @@ public interface ContentApi {
       )
   })
   ResponseEntity<Void> deleteContent(
-      UUID contentId
+      @PathVariable UUID contentId
   );
 
   @Operation(
@@ -160,12 +166,12 @@ public interface ContentApi {
       )
   })
   ResponseEntity<CursorResponseWatchingSessionDto> getWatchingSessions(
-      UUID contentId,
-      String watcherNameLike,
-      String cursor,
-      UUID idAfter,
-      int limit,
-      String sortDirection,
-      String sortBy
+      @PathVariable UUID contentId,
+      @RequestParam(value = "watcherNameLike", required = false) String watcherNameLike,
+      @RequestParam(value = "cursor", required = false) String cursor,
+      @RequestParam(value = "idAfter", required = false) UUID idAfter,
+      @RequestParam(value = "limit", defaultValue = "10") int limit,
+      @RequestParam(value = "sortDirection", defaultValue = "ASCENDING") String sortDirection,
+      @RequestParam(value = "sortBy", defaultValue = "createdAt") String sortBy
   );
 }

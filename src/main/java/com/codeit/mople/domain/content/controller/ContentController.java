@@ -13,6 +13,8 @@ import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -32,8 +34,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/contents")
+@Scope(proxyMode = ScopedProxyMode.TARGET_CLASS)
 @RequiredArgsConstructor
 public class ContentController implements ContentApi {
+
   private final ContentService contentService;
   private final WatchingSessionService watchingSessionService;
 
@@ -42,9 +46,9 @@ public class ContentController implements ContentApi {
   @PreAuthorize("hasRole('ADMIN')")
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ContentResponse> createContent(
-      @AuthenticationPrincipal CustomUserDetails userDetails, //JWT에서 추출된 유저 정보 객체 주입
-      @Valid @RequestPart("request")ContentCreateRequest request,
-      @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail) {
+      @Valid @RequestPart("request") ContentCreateRequest request,
+      @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
+      @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails) {
 
     ContentResponse response = contentService.createContent(request, thumbnail);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -89,8 +93,7 @@ public class ContentController implements ContentApi {
   @PreAuthorize("hasRole('ADMIN')")
   @DeleteMapping("/{contentId}")
   public ResponseEntity<Void> deleteContent(
-      @PathVariable UUID contentId
-  ) {
+      @PathVariable UUID contentId) {
     contentService.deleteContent(contentId);
     return ResponseEntity.noContent().build();
   }
