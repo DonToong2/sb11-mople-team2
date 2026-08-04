@@ -126,7 +126,6 @@ public class ReviewControllerTest {
       mockMvc.perform(post("/api/reviews")
               .with(user(userDetails))
               .with(csrf())
-              .param("authorId", authorId.toString())
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(createRequest))
           )
@@ -154,7 +153,6 @@ public class ReviewControllerTest {
       mockMvc.perform(post("/api/reviews")
               .with(user(userDetails))
               .with(csrf())
-              .param("authorId", authorId.toString())
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(invalidRequest))
           )
@@ -173,7 +171,6 @@ public class ReviewControllerTest {
       mockMvc.perform(post("/api/reviews")
               .with(user(userDetails))
               .with(csrf())
-              .param("authorId", authorId.toString())
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(invalidRequest))
           )
@@ -184,7 +181,7 @@ public class ReviewControllerTest {
 
     @Test
     @DisplayName("리뷰 생성 실패 - 리뷰 내용 길이가 500 초과(400 에러)")
-    void create_fail_textGraterThanMax() throws Exception {
+    void create_fail_textGreaterThanMax() throws Exception {
       // given
       // 501자 길이의 리뷰 내용
       String text = "a".repeat(501);
@@ -194,7 +191,6 @@ public class ReviewControllerTest {
       mockMvc.perform(post("/api/reviews")
               .with(user(userDetails))
               .with(csrf())
-              .param("authorId", authorId.toString())
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(invalidRequest))
           )
@@ -213,7 +209,6 @@ public class ReviewControllerTest {
       mockMvc.perform(post("/api/reviews")
               .with(user(userDetails))
               .with(csrf())
-              .param("authorId", authorId.toString())
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(invalidRequest))
           )
@@ -232,7 +227,6 @@ public class ReviewControllerTest {
       mockMvc.perform(post("/api/reviews")
               .with(user(userDetails))
               .with(csrf())
-              .param("authorId", authorId.toString())
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(invalidRequest))
           )
@@ -251,7 +245,6 @@ public class ReviewControllerTest {
       mockMvc.perform(post("/api/reviews")
               .with(user(userDetails))
               .with(csrf())
-              .param("authorId", authorId.toString())
               .contentType(MediaType.APPLICATION_JSON)
               .content(objectMapper.writeValueAsString(invalidRequest))
           )
