@@ -73,6 +73,16 @@ public class ReviewService {
   @Transactional(readOnly = true)
   public ReviewCursorResponse findAll(ReviewQueryCondition condition) {
 
+    log.debug("리뷰 목록 조회 시도: contentId={}, cursor={}, idAfter={},"
+        + "limit={}, sortBy={}, sortDirection={}",
+        condition.contentId(),
+        condition.cursor(),
+        condition.idAfter(),
+        condition.limit(),
+        condition.sortBy(),
+        condition.sortDirection()
+    );
+
     // limit + 1만큼 조회
     List<Review> reviews = reviewRepository.findAll(condition);
 
@@ -106,6 +116,9 @@ public class ReviewService {
         nextCursor = String.valueOf(lastReview.getRating());
       }
     }
+
+    log.info("리뷰 목록 조회 완료: size={}, totalCount={}, hasNext={}, nextCursor={}, nextIdAfter={}",
+        data.size(), totalCount, hasNext, nextCursor, nextIdAfter);
 
     return new ReviewCursorResponse(
         data,
