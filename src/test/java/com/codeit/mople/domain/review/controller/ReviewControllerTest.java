@@ -524,12 +524,12 @@ public class ReviewControllerTest {
     }
 
     @Test
-    @DisplayName("리뷰 생성 실패 - 리뷰 내용 길이가 500 초과(400 에러)")
+    @DisplayName("리뷰 수정 실패 - 리뷰 내용 길이가 500 초과(400 에러)")
     void update_fail_textGraterThanMax() throws Exception {
       // given
       // 501자 길이의 리뷰 내용
       String text = "a".repeat(501);
-      ReviewCreateRequest invalidRequest = new ReviewCreateRequest(contentId, text, reviewRating);
+      ReviewUpdateRequest invalidRequest = new ReviewUpdateRequest(text, reviewRating);
 
       // when & then
       mockMvc.perform(patch("/api/reviews/{reviewId}", reviewId)
