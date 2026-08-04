@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -56,7 +57,8 @@ public interface AuthApi {
       )
   })
   ResponseEntity<TokenResponse> signIn(
-      @Valid @ModelAttribute SignInRequest request
+      @Valid @ModelAttribute SignInRequest request,
+      @Parameter(hidden = true) HttpServletRequest servletRequest
   );
 
   @Operation(
@@ -93,11 +95,6 @@ public interface AuthApi {
       @ApiResponse(
           responseCode = "400",
           description = "잘못된 요청",
-          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
-      ),
-      @ApiResponse(
-          responseCode = "401",
-          description = "존재하지 않는 이메일",
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       ),
       @ApiResponse(

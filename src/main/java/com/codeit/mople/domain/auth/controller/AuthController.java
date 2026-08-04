@@ -10,6 +10,7 @@ import com.codeit.mople.domain.auth.exception.AuthException;
 import com.codeit.mople.domain.auth.service.AuthService;
 import com.codeit.mople.global.error.CommonErrorCode;
 import com.codeit.mople.global.error.CustomException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.Duration;
 import java.time.Instant;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -45,8 +47,13 @@ public class AuthController implements AuthApi {
   private boolean passwordResetEnabled;
 
   @Override
-  @PostMapping("/sign-in")
-  public ResponseEntity<TokenResponse> signIn(@Valid @ModelAttribute SignInRequest request) {
+  @PostMapping(value = "/sign-in", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+  public ResponseEntity<TokenResponse> signIn(
+      @Valid @ModelAttribute SignInRequest request, HttpServletRequest servletRequest) {
+    if (servletRequest.getQueryString() != null) {
+      // 쿼리 스트링으로 로그인 정보가 전달되면 접근/프록시 로그에 비밀번호가 남을 수 있어 차단한다.
+      throw new CustomException(CommonErrorCode.INVALID_INPUT);
+    }
     AuthTokens tokens = authService.signIn(request);
     return withRefreshTokenCookie(tokens);
   }
