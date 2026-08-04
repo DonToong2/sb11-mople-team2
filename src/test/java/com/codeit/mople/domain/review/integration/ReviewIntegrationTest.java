@@ -251,6 +251,9 @@ public class ReviewIntegrationTest {
       // given
       savedReview = reviewRepository.save(review);
 
+      savedContent.updateRatingStats(newRating, 1);
+      contentRepository.save(savedContent);
+
       // BeforeEach에서 updateRequest, userDetails를 초기화
 
       // when & then
@@ -268,10 +271,17 @@ public class ReviewIntegrationTest {
           .andExpect(jsonPath("$.text").value(newText))
           .andExpect(jsonPath("$.rating").value(newRating));
 
+      // Review 검증
       Review updatedReview = reviewRepository.findById(savedReview.getId()).orElseThrow();
 
       assertThat(updatedReview.getText()).isEqualTo(newText);
       assertThat(updatedReview.getRating()).isEqualTo(newRating);
+
+      // Content 검증
+      Content content = contentRepository.findById(savedContent.getId()).orElseThrow();
+
+      assertThat(content.getReviewCount()).isEqualTo(1);
+      assertThat(content.getAverageRating()).isEqualTo(newRating);
     }
 
     @Test
