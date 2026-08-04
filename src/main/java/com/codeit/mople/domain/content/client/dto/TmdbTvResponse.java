@@ -11,7 +11,7 @@ import java.util.List;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record TmdbTvResponse(
     Long id,                      // id
-    String name,          // 제목
+    String name,                  // 제목
     String overview,              // 영화 소개 줄거리
     String posterPath,            // 포스터 이미지 경로
     List<Integer> genreIds        // 장르 번호 예: [28, 12, 16, 10751]

@@ -8,6 +8,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+// tmdb에 요청하고 응답 json을 dto로 받아서 반환까지
 @FeignClient(
     name = "tmdb",
     url = "${external-api.tmdb.base-url}",
