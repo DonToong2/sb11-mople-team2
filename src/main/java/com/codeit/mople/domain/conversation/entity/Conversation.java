@@ -44,6 +44,8 @@ public class Conversation extends BaseEntity {
   @JoinColumn(name = "last_message_id")
   private DirectMessage lastMessage;
 
+  private Instant lastMessageAt;
+
   private Instant userALastReadAt;
 
   private Instant userBLastReadAt;
@@ -51,6 +53,8 @@ public class Conversation extends BaseEntity {
   private Conversation(User userA, User userB) {
     this.userA = userA;
     this.userB = userB;
+    // 메시지가 0개인 신설 빈 방은 방 생성 시각을 초기 정렬 축으로 사용
+    this.lastMessageAt = Instant.now();
   }
 
   // 대화방 생성을 위한 정적 팩토리 메서드
@@ -80,6 +84,7 @@ public class Conversation extends BaseEntity {
 
   public void updateLastMessage(DirectMessage message) {
     this.lastMessage = message;
+    this.lastMessageAt = message.getCreatedAt();
   }
 
   public Instant getMyLastReadAt(UUID requesterId) {
