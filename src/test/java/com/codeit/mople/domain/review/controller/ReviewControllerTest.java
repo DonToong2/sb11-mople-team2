@@ -271,7 +271,7 @@ public class ReviewControllerTest {
     void findAll_success() throws Exception {
       // given
 
-      // BeforeEach에서 reviewId, contentId, authorId, reviewText, reviewRating을 초기화
+      // BeforeEach에서 reviewId, contentId, authorId, reviewText, reviewRating, userDetails를 초기화
 
       ReviewResponse reviewResponse = new ReviewResponse(
           reviewId,
@@ -304,7 +304,6 @@ public class ReviewControllerTest {
               .param("sortDirection", "DESCENDING")
               .param("sortBy", "RATING")
               .with(user(userDetails))
-              .with(csrf())
           )
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.data").isArray())
@@ -319,12 +318,15 @@ public class ReviewControllerTest {
     @Test
     @DisplayName("리뷰 목록 조회 실패 - limit 누락(400 에러)")
     void findAll_fail_withoutLimit() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails를 초기화
+
       // when & then
       mockMvc.perform(get("/api/reviews")
               .param("sortDirection", "DESCENDING")
               .param("sortBy", "RATING")
               .with(user(userDetails))
-              .with(csrf())
           )
           .andExpect(status().isBadRequest());
 
@@ -334,12 +336,15 @@ public class ReviewControllerTest {
     @Test
     @DisplayName("리뷰 목록 조회 실패 - 정렬 조건 누락(400 에러)")
     void findAll_fail_withoutSortBy() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails를 초기화
+
       // when & then
       mockMvc.perform(get("/api/reviews")
               .param("limit", "10")
               .param("sortDirection", "DESCENDING")
               .with(user(userDetails))
-              .with(csrf())
           )
           .andExpect(status().isBadRequest());
 
@@ -349,12 +354,15 @@ public class ReviewControllerTest {
     @Test
     @DisplayName("리뷰 목록 조회 실패 - 정렬 방향 누락(400 에러)")
     void findAll_fail_withoutSortDirection() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails를 초기화
+
       // when & then
       mockMvc.perform(get("/api/reviews")
               .param("limit", "10")
               .param("sortBy", "RATING")
               .with(user(userDetails))
-              .with(csrf())
           )
           .andExpect(status().isBadRequest());
 
@@ -364,13 +372,16 @@ public class ReviewControllerTest {
     @Test
     @DisplayName("리뷰 목록 조회 실패 - limit 값 1 미만(400 에러)")
     void findAll_fail_limitLessThanMin() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails를 초기화
+
       // when & then
       mockMvc.perform(get("/api/reviews")
               .param("limit", "0")
               .param("sortDirection", "DESCENDING")
               .param("sortBy", "RATING")
               .with(user(userDetails))
-              .with(csrf())
           )
           .andExpect(status().isBadRequest());
 
@@ -380,13 +391,16 @@ public class ReviewControllerTest {
     @Test
     @DisplayName("리뷰 목록 조회 실패 - limit 값 100 초과(400 에러)")
     void findAll_fail_limitGreaterThanMax() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails를 초기화
+
       // when & then
       mockMvc.perform(get("/api/reviews")
               .param("limit", "101")
               .param("sortDirection", "DESCENDING")
               .param("sortBy", "RATING")
               .with(user(userDetails))
-              .with(csrf())
           )
           .andExpect(status().isBadRequest());
 
@@ -396,13 +410,16 @@ public class ReviewControllerTest {
     @Test
     @DisplayName("리뷰 목록 조회 실패 - 잘못된 limit 값(400 에러)")
     void findAll_fail_invalidLimit() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails를 초기화
+
       // when & then
       mockMvc.perform(get("/api/reviews")
               .param("limit", "ANY")
               .param("sortDirection", "DESCENDING")
               .param("sortBy", "RATING")
               .with(user(userDetails))
-              .with(csrf())
           )
           .andExpect(status().isBadRequest());
 
@@ -412,13 +429,16 @@ public class ReviewControllerTest {
     @Test
     @DisplayName("리뷰 목록 조회 실패 - 잘못된 정렬 조건(400 에러)")
     void findAll_fail_invalidSortBy() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails를 초기화
+
       // when & then
       mockMvc.perform(get("/api/reviews")
               .param("limit", "10")
               .param("sortDirection", "DESCENDING")
               .param("sortBy", "ANY")
               .with(user(userDetails))
-              .with(csrf())
           )
           .andExpect(status().isBadRequest());
 
@@ -428,13 +448,16 @@ public class ReviewControllerTest {
     @Test
     @DisplayName("리뷰 목록 조회 실패 - 잘못된 정렬 방향(400 에러)")
     void findAll_fail_invalidSortDirection() throws Exception {
+      // given
+
+      // BeforeEach에서 userDetails를 초기화
+
       // when & then
       mockMvc.perform(get("/api/reviews")
               .param("limit", "10")
               .param("sortDirection", "ANY")
               .param("sortBy", "RATING")
               .with(user(userDetails))
-              .with(csrf())
           )
           .andExpect(status().isBadRequest());
 
