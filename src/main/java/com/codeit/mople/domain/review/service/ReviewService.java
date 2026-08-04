@@ -146,11 +146,13 @@ public class ReviewService {
     Content content = review.getContent();
 
     // TODO 김명근: 동시성 문제(Race Condition)는 다음 스프린트 기간 때 락 사용 등을 활용하여 개선
-    // 콘텐츠의 리뷰 개수, 평균 평점을 조회
-    long reviewCount = reviewRepository.countByContentId(content.getId());
-    Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
+    // 콘텐츠의 평균 평점을 조회
+    // 리뷰 내용만 변경 된 경우 계산하지 않음
+    if (request.rating() != null) {
+      Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
 
-    content.updateRatingStats(averageRating, (int) reviewCount);
+      content.updateRatingStats(averageRating, content.getReviewCount());
+    }
 
     ReviewResponse response = ReviewResponse.from(review);
 

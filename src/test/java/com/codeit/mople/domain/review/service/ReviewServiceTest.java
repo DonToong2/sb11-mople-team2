@@ -433,9 +433,6 @@ public class ReviewServiceTest {
       given(reviewRepository.findById(review1Id))
           .willReturn(Optional.of(review1));
 
-      given(reviewRepository.countByContentId(contentId))
-          .willReturn(1L);
-
       given(reviewRepository.findAverageRatingByContentId(contentId))
           .willReturn(updateRequest.rating());
 
@@ -448,7 +445,6 @@ public class ReviewServiceTest {
       assertThat(review1.getRating()).isEqualTo(updateRequest.rating());
 
       verify(reviewRepository).findById(review1Id);
-      verify(reviewRepository).countByContentId(contentId);
       verify(reviewRepository).findAverageRatingByContentId(contentId);
     }
 
