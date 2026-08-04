@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.auth.controller;
 
+import com.codeit.mople.domain.auth.controller.api.AuthApi;
 import com.codeit.mople.domain.auth.dto.request.ResetPasswordRequest;
 import com.codeit.mople.domain.auth.dto.request.SignInRequest;
 import com.codeit.mople.domain.auth.dto.response.AuthTokens;
@@ -31,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-public class AuthController {
+public class AuthController implements AuthApi {
 
   private static final String REFRESH_TOKEN_COOKIE = "refreshToken";
 
@@ -43,12 +44,14 @@ public class AuthController {
   @Value("${password-reset.enabled:false}")
   private boolean passwordResetEnabled;
 
+  @Override
   @PostMapping("/sign-in")
   public ResponseEntity<TokenResponse> signIn(@Valid @ModelAttribute SignInRequest request) {
     AuthTokens tokens = authService.signIn(request);
     return withRefreshTokenCookie(tokens);
   }
 
+  @Override
   @PostMapping("/sign-out")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public ResponseEntity<Void> signOut(
@@ -60,6 +63,7 @@ public class AuthController {
         .build();
   }
 
+  @Override
   @PostMapping("/reset-password")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
@@ -70,6 +74,7 @@ public class AuthController {
     authService.resetPassword(request);
   }
 
+  @Override
   @PostMapping("/refresh")
   public ResponseEntity<TokenResponse> refresh(
       @CookieValue(value = REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {
@@ -80,6 +85,7 @@ public class AuthController {
     return withRefreshTokenCookie(tokens);
   }
 
+  @Override
   @GetMapping("/csrf-token")
   public ResponseEntity<Void> csrfToken(CsrfToken csrfToken) {
     csrfToken.getToken();
