@@ -51,7 +51,7 @@ public interface ContentApi {
       )
   })
   ResponseEntity<ContentResponse> createContent(
-      @Parameter(hidden = true)CustomUserDetails userDetails,
+      CustomUserDetails userDetails,
       ContentCreateRequest request,
       MultipartFile thumbnail
   );
