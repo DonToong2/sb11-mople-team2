@@ -19,13 +19,17 @@ public class TmdbGenreCache {
 
   private final TmdbClient tmdbClient;
 
+  // cpu 캐시에 사본을 두지 말고 매번 메인 메모리에서 읽고 써라(휘발성)
   private volatile Map<Integer, String> genreNames = Map.of();
 
+  // 앱이 실행되면 리스너 동작
   @EventListener(ApplicationReadyEvent.class)
   public void loadOnStartup() {
     refresh();
   }
 
+  // 1. putAll() 메서드를 호출해서 loaded에 장르list를 넣음
+  // 2. 넣은 장르를 수정할수 없는 Map 카피본을 만들어서 genreNames에 할
   public void refresh() {
     try {
       Map<Integer, String> loaded = new HashMap<>();
@@ -53,6 +57,7 @@ public class TmdbGenreCache {
     return resolve(currentGenres(), genreId);
   }
 
+  // genreNames가 비어있으면 다시 채워넣는 메서드
   private Map<Integer, String> currentGenres() {
     if (genreNames.isEmpty()) {
       refresh();
@@ -60,6 +65,7 @@ public class TmdbGenreCache {
     return genreNames;
   }
 
+  //
   private String resolve(Map<Integer, String> genres, Integer genreId) {
     String name = genres.get(genreId);
     if (name == null) {
@@ -68,6 +74,9 @@ public class TmdbGenreCache {
     return name;
   }
 
+  // 1. 비어있는 hashMap, 장르list <id, name> 를 받음
+  // 2. 요청해서 받은 장르 list가 비어있으면 리턴함
+  // 3. 장르list 값이 채워져 있으면 그것을 target Map에 넣음
   private void putAll(Map<Integer, String> target, TmdbGenreListResponse response) {
     if (response == null || response.genres() == null) {
       return;
