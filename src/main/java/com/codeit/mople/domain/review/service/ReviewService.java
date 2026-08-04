@@ -141,7 +141,13 @@ public class ReviewService {
 
     validateAuthor(review, authorId);
 
-    review.update(request.text(), request.rating());
+    if (request.text() != null) {
+      review.updateText(request.text());
+    }
+
+    if (request.rating() != null) {
+      review.updateRating(request.rating());
+    }
 
     Content content = review.getContent();
 
