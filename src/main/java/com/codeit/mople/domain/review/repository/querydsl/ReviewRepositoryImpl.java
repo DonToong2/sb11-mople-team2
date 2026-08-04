@@ -116,6 +116,11 @@ public class ReviewRepositoryImpl implements ReviewCustomRepository {
         throw new ReviewException(ReviewErrorCode.REVIEW_INVALID_CURSOR);
       }
 
+      // "NaN", "Infinity", 등의 유효하지 않은 값이 들어올 경우 예외 처리
+      if (!Double.isFinite(cursor)) {
+        throw new ReviewException(ReviewErrorCode.REVIEW_INVALID_CURSOR);
+      }
+
       // 경우 3 : 평점순 오름차순
       if (condition.sortDirection() == SortDirection.ASCENDING) {
         return review.rating.gt(cursor)
