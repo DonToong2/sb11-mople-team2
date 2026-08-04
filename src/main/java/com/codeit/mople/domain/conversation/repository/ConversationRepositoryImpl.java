@@ -37,9 +37,8 @@ public class ConversationRepositoryImpl implements ConversationRepositoryCustom{
         .leftJoin(conversation.userB).fetchJoin()
         // 빈 방 누락 방지를 위해 별칭을 주어 명시적 LEFT JOIN 결합 보장
         .leftJoin(conversation.lastMessage, lastMessage).fetchJoin()
-        .leftJoin(lastMessage.sender, sender).fetchJoin()
         // DTO에서 상대방(sender) 정보 스냅샷 매핑 처리를 위해 Fetch Join 적용
-        .leftJoin(conversation.lastMessage.sender).fetchJoin()
+        .leftJoin(lastMessage.sender, sender).fetchJoin()
         .where(
             isMyConversation(requesterId),
             containsKeyword(request.keywordLike(), requesterId),
