@@ -92,7 +92,8 @@ public class SportsContentBatchConfig {
   public ItemProcessor<SportsDbEventDto, Content> sportsDbItemProcessor() {
     //무효한 데이터(필수값 누락) 검증 및 필터링
     return dto -> {
-      if (dto.strEvent() == null || dto.dateEvent() == null) {
+      if (dto.strEvent() == null || dto.dateEvent() == null
+          || dto.strSport() == null || dto.strLeague() == null) {
         log.warn("유효하지 않은 이벤트 데이터 필터링(스킵) - idEvent: {}", dto.idEvent());
         return null; //null을 반환하면 Writer로 넘어가지 않고 스킵
       }
