@@ -21,9 +21,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
   Optional<Conversation> findWithDetailsById(@Param("id") UUID conversationId);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("SELECT c FROM Conversation c "
-      + "JOIN FETCH c.userA JOIN FETCH c.userB "
-      + "WHERE c.id = :id")
+  @Query("SELECT c FROM Conversation c WHERE c.id = :id")
   Optional<Conversation> findWithLockById(@Param("id") UUID conversationId);
 
   @Query("SELECT c FROM Conversation c "

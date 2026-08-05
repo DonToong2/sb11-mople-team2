@@ -115,7 +115,8 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
             UUID userId = principal.getUserId();
 
             // DB 조회 및 참여자 검증 로직
-            conversationRepository.findById(conversationId).ifPresentOrElse(conversation -> {
+            // TODO: 추후 existsByIdAndParticipantId 전용 쿼리를 추가하여 엔티티 로딩 없이 boolean만 반환하도록 개선
+            conversationRepository.findWithDetailsById(conversationId).ifPresentOrElse(conversation -> {
               if (!conversation.getUserA().getId().equals(userId) && !conversation.getUserB().getId().equals(userId)) {
                 log.warn("WebSocket 구독 거부: 참여자가 아닌 유저의 도청 시도 - userId: {}, conversationId: {}", userId, conversationId);
                 throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of("reason", "구독 권한이 없거나 유효하지 않은 경로입니다."));
