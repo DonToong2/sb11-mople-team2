@@ -6,9 +6,8 @@ import org.springframework.context.annotation.Bean;
 
 public class SportsDbFeignConfig {
 
-  //외부 API 통신 요청/응답의 모든 헤더와 바디를 로그로 출력
   @Bean
   public Logger.Level feignLoggerLevel() {
-    return Level.FULL;
+    return Level.NONE; //API 키(민감정보)가 로그에 출력되지 않도록 로깅 비활성화
   }
 }
