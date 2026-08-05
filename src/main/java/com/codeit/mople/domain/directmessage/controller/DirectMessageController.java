@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.directmessage.controller;
 
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
+import com.codeit.mople.domain.directmessage.controller.api.DirectMessageApi;
 import com.codeit.mople.domain.directmessage.dto.request.DirectMessageCursorRequest;
 import com.codeit.mople.domain.directmessage.dto.response.CursorResponseDirectMessageDto;
 import com.codeit.mople.domain.directmessage.service.DirectMessageService;
@@ -18,10 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/conversations/{conversationId}/direct-messages")
-public class DirectMessageController {
+public class DirectMessageController implements DirectMessageApi {
 
   private final DirectMessageService directMessageService;
 
+  @Override
   @GetMapping
   public ResponseEntity<CursorResponseDirectMessageDto> getDirectMessages(
       @PathVariable UUID conversationId,
@@ -32,6 +34,7 @@ public class DirectMessageController {
     return ResponseEntity.ok(response);
   }
 
+  @Override
   @PostMapping("/{directMessageId}/read")
   public ResponseEntity<Void> readMessage(
       @PathVariable UUID conversationId,
