@@ -108,8 +108,8 @@ public class SportsContentBatchConfig {
       String thumbnailUrl = dto.strThumb();
       List<String> tags = List.of("Sports", dto.strSport(), dto.strLeague());
 
-      //ContentType은 임시로 SPORTS 사용
-      return new Content(ContentType.valueOf("SPORTS"), title, description, thumbnailUrl, tags);
+      //ContentType은 임시로 SPORTS 사용, 생성자에 dto.idEvent()를 외부 식별자로 전달
+      return new Content(ContentType.valueOf("SPORTS"), title, description, thumbnailUrl, tags, dto.idEvent());
     };
   }
 
@@ -118,9 +118,36 @@ public class SportsContentBatchConfig {
   public ItemWriter<Content> sportsDbItemWriter() {
     return chunk -> {
       log.info("Content DB 저장 시작 - Chunk 사이즈: {}건", chunk.getItems().size());
-      //Processor를 통과한 유효한 데이터들을 DB에 한 번에 저장
-      contentRepository.saveAll(chunk.getItems());
-      log.info("Content DB 저장 완료");
+
+      //c로 캐스팅하거나 map을 통해 Content 타입으로 명시
+      List<Content> items = chunk.getItems().stream()
+          .map(c -> (Content) c)
+          .toList();
+
+      //이번 Chunk의 외부 식별자 추출
+      List<String> externalIds = items.stream()
+          .map(Content::getExternalId)
+          .filter(id -> id != null) // null 방어 코드 추가
+          .toList();
+
+      //DB에 이미 존재하는 식별자 조회
+      List<String> existingIds = contentRepository.findByExternalIdIn(externalIds).stream()
+          .map(Content::getExternalId)
+          .toList();
+
+      //기존 DB에 없는 새로운 데이터만 필터링
+      List<Content> newContents = items.stream()
+          .filter(content -> content.getExternalId() == null || !existingIds.contains(content.getExternalId()))
+          .toList();
+
+      //새로운 데이터만 저장
+      if (!newContents.isEmpty()) {
+        contentRepository.saveAll(newContents);
+        log.info("새로운 경기 데이터 {}건 저장 완료 (중복 {}건 스킵)",
+            newContents.size(), items.size() - newContents.size());
+      } else {
+        log.info("저장할 새로운 경기 데이터가 없습니다. (모두 중복)");
+      }
     };
   }
 }
