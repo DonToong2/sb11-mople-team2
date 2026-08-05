@@ -11,6 +11,9 @@ import com.codeit.mople.domain.review.dto.request.ReviewUpdateRequest;
 import com.codeit.mople.domain.review.dto.response.ReviewCursorResponse;
 import com.codeit.mople.domain.review.dto.response.ReviewResponse;
 import com.codeit.mople.domain.review.entity.Review;
+import com.codeit.mople.domain.review.event.ReviewCreatedEvent;
+import com.codeit.mople.domain.review.event.ReviewDeletedEvent;
+import com.codeit.mople.domain.review.event.ReviewUpdatedEvent;
 import com.codeit.mople.domain.review.exception.ReviewErrorCode;
 import com.codeit.mople.domain.review.exception.ReviewException;
 import com.codeit.mople.domain.review.repository.ReviewRepository;
@@ -24,6 +27,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +40,8 @@ public class ReviewService {
 
   private final UserRepository userRepository;
   private final ContentRepository contentRepository;
+
+  private final ApplicationEventPublisher publisher;
 
   @Transactional
   public ReviewResponse create(UUID authorId, ReviewCreateRequest request) {
@@ -60,6 +66,8 @@ public class ReviewService {
     Review review = Review.create(content, author, request.text(), request.rating());
 
     Review savedReview = reviewRepository.save(review);
+
+    publisher.publishEvent(new ReviewCreatedEvent(content.getId()));
 
     // TODO 김명근: 동시성 문제(Race Condition)는 다음 스프린트 기간 때 락 사용 등을 활용하여 개선
     // 콘텐츠의 리뷰 개수, 평균 평점을 조회
@@ -165,6 +173,8 @@ public class ReviewService {
     // 콘텐츠의 평균 평점을 조회
     // 리뷰 내용만 변경 된 경우 계산하지 않음
     if (request.rating() != null) {
+      publisher.publishEvent(new ReviewUpdatedEvent(content.getId()));
+      
       Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
 
       content.updateRatingStats(averageRating, content.getReviewCount());
@@ -197,6 +207,7 @@ public class ReviewService {
 
     reviewRepository.delete(review);
 
+    publisher.publishEvent(new ReviewDeletedEvent(content.getId()));
     long reviewCount = reviewRepository.countByContentId(content.getId());
     Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
 
@@ -208,7 +219,8 @@ public class ReviewService {
         (int) reviewCount
     );
 
-    log.info("리뷰 삭제 완료: reviewId={}, requesterId={}, contentId={}, averageRating={}, reviewCount={}",
+    log.info(
+        "리뷰 삭제 완료: reviewId={}, requesterId={}, contentId={}, averageRating={}, reviewCount={}",
         reviewId, requesterId, content.getId(), updateAverageRating, reviewCount);
 
   }
