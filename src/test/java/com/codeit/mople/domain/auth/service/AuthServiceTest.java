@@ -67,6 +67,20 @@ public class AuthServiceTest {
   }
 
   @Test
+  @DisplayName("가입 시와 다른 대소문자로 입력해도 로그인이 성공함")
+  void signIn_success_withDifferentEmailCase() {
+    SignInRequest request = new SignInRequest("TEST@TEST.COM", "rawPassword");
+    when(userRepository.findByEmail("test@test.com")).thenReturn(Optional.of(user));
+    when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
+    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("issued-token");
+    when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
+
+    AuthTokens response = authService.signIn(request);
+
+    assertThat(response.accessToken()).isEqualTo("issued-token");
+  }
+
+  @Test
   @DisplayName("로그인 성공 시 sessionVersion 1 증가")
   void signIn_success_increasesSessionVersion() {
     SignInRequest request = new SignInRequest("test@test.com", "rawPassword");

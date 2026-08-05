@@ -69,22 +69,41 @@ public class UserRepositoryTest {
   }
 
   @Test
-  @DisplayName("emailLike로 부분 검색이 됨")
+  @DisplayName("emailLike로 앞부분(접두어) 검색이 됨")
   void searchUsers_filtersByEmailLike() {
     userRepository.save(User.createUser("test1@test.com", "encoded", "user1"));
     userRepository.save(User.createUser("test2@test.com", "encoded", "user2"));
     userRepository.save(User.createUser("other@mople.com", "encoded", "user3"));
 
     UserSearchRequest request = new UserSearchRequest(
-        "mople", null, null, null, null, 10,
+        "test", null, null, null, null, 10,
         SortDirection.ASCENDING, UserSortBy.name
     );
 
     List<User> result = userRepository.searchUsers(request);
 
-    assertThat(result).hasSize(1);
+    assertThat(result).hasSize(2);
     assertThat(result).extracting(User::getEmail)
-        .allMatch(email -> email.contains("mople"));
+        .allMatch(email -> email.startsWith("test"));
+  }
+
+  @Test
+  @DisplayName("emailLike는 대소문자를 구분하지 않고 앞부분만 매칭한다 (중간 일치는 안 됨)")
+  void searchUsers_emailLike_isPrefixOnly_ignoresCase() {
+    userRepository.save(User.createUser("TestUser@Test.com", "encoded", "user1"));
+    userRepository.save(User.createUser("other@mople.com", "encoded", "user2"));
+
+    UserSearchRequest prefixUpperCase = new UserSearchRequest(
+        "TEST", null, null, null, null, 10,
+        SortDirection.ASCENDING, UserSortBy.name
+    );
+    UserSearchRequest middleMatch = new UserSearchRequest(
+        "mople", null, null, null, null, 10,
+        SortDirection.ASCENDING, UserSortBy.name
+    );
+
+    assertThat(userRepository.searchUsers(prefixUpperCase)).hasSize(1);
+    assertThat(userRepository.searchUsers(middleMatch)).isEmpty();
   }
 
   @Test
@@ -273,5 +292,64 @@ public class UserRepositoryTest {
     assertThatThrownBy(() -> userRepository.searchUsers(request))
         .isInstanceOf(UserException.class)
         .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.INVALID_CURSOR);
+  }
+
+  @Test
+  @DisplayName("cursor와 idAfter 중 하나만 전달되면 예외가 발생함")
+  void searchUsers_throwsException_whenCursorAndIdAfterMismatched() {
+    UserSearchRequest cursorOnly = new UserSearchRequest(
+        null, null, null, "bb", null, 10,
+        SortDirection.ASCENDING, UserSortBy.name
+    );
+    UserSearchRequest idAfterOnly = new UserSearchRequest(
+        null, null, null, null, UUID.randomUUID(), 10,
+        SortDirection.ASCENDING, UserSortBy.name
+    );
+
+    assertThatThrownBy(() -> userRepository.searchUsers(cursorOnly))
+        .isInstanceOf(UserException.class)
+        .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.INVALID_CURSOR);
+
+    assertThatThrownBy(() -> userRepository.searchUsers(idAfterOnly))
+        .isInstanceOf(UserException.class)
+        .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.INVALID_CURSOR);
+  }
+
+  @Test
+  @DisplayName("countUsers는 필터 조건은 반영하지만 limit에는 영향받지 않는다")
+  void countUsers_reflectsFilters_ignoresLimit() {
+    for (int i = 0; i < 5; i++) {
+      userRepository.save(User.createUser("user" + i + "@test.com", "encoded", "user" + i));
+    }
+    User locked = User.createUser("locked@test.com", "encoded", "lockedUser");
+    locked.lock();
+    userRepository.save(locked);
+
+    UserSearchRequest noFilter = new UserSearchRequest(
+        null, null, null, null, null, 2,
+        SortDirection.ASCENDING, UserSortBy.name
+    );
+    UserSearchRequest lockedOnly = new UserSearchRequest(
+        null, null, true, null, null, 10,
+        SortDirection.ASCENDING, UserSortBy.name
+    );
+
+    assertThat(userRepository.countUsers(noFilter)).isEqualTo(6);
+    assertThat(userRepository.countUsers(lockedOnly)).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("countUsers는 cursor 위치와 무관하게 필터에 해당하는 전체 개수를 반환한다")
+  void countUsers_ignoresCursorPosition() {
+    User userA = userRepository.save(User.createUser("a@test.com", "encoded", "aa"));
+    userRepository.save(User.createUser("b@test.com", "encoded", "bb"));
+    userRepository.save(User.createUser("c@test.com", "encoded", "cc"));
+
+    UserSearchRequest afterFirst = new UserSearchRequest(
+        null, null, null, "aa", userA.getId(), 10,
+        SortDirection.ASCENDING, UserSortBy.name
+    );
+
+    assertThat(userRepository.countUsers(afterFirst)).isEqualTo(3);
   }
 }

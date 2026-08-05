@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface UserRepositoryCustom {
   List<User> searchUsers(UserSearchRequest request);
+  long countUsers(UserSearchRequest request);
 }

@@ -59,7 +59,7 @@ public class User extends BaseEntity {
   private long sessionVersion = 0L;
 
   private User(String email, String password, String name, Role role) {
-    this.email = Objects.requireNonNull(email, "email");
+    this.email = Objects.requireNonNull(email, "email").toLowerCase();
     this.password = Objects.requireNonNull(password, "password");
     this.name = Objects.requireNonNull(name, "name");
     this.role = Objects.requireNonNull(role, "role");

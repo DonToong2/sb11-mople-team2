@@ -7,10 +7,8 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.global.dto.SortDirection;
-import com.querydsl.core.types.Ops;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -46,9 +44,23 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
         .fetch();
   }
 
+  @Override
+  public long countUsers(UserSearchRequest request) {
+    Long count = queryFactory
+        .select(user.count())
+        .from(user)
+        .where(
+            emailLikeCondition(request),
+            roleEqualCondition(request),
+            isLockedCondition(request)
+        )
+        .fetchOne();
+    return count == null ? 0 : count;
+  }
+
   private BooleanExpression emailLikeCondition(UserSearchRequest request) {
     return (request.emailLike() != null && !request.emailLike().isBlank())
-        ? user.email.containsIgnoreCase(request.emailLike())
+        ? user.email.startsWith(request.emailLike().toLowerCase())
         : null;
   }
 
@@ -61,8 +73,11 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
   }
 
   private BooleanExpression cursorCondition(UserSearchRequest request, boolean isAsc) {
+    if(request.cursor() == null && request.idAfter() == null) {
+      return null; // 둘 다 없으면 첫 페이지 생성
+    }
     if(request.cursor() == null || request.idAfter() == null) {
-      return null;
+      throw new UserException(UserErrorCode.INVALID_CURSOR); // 한쪽만 있으면 잘못된 요청
     }
 
     UUID idAfter = request.idAfter();
@@ -89,9 +104,12 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
       }
       case role -> {
         Role cursorRole = parseCursorAsRole(cursor);
+        String cursorRoleValue = cursorRole.name();
         yield isAsc
-            ? sameGroupOrAfter(user.role.eq(Role.ADMIN), user.role.eq(Role.USER), cursorRole == Role.ADMIN, idAfter, true)
-            : sameGroupOrAfter(user.role.eq(Role.USER), user.role.eq(Role.ADMIN), cursorRole == Role.USER, idAfter, false);
+            ? user.role.stringValue().gt(cursorRoleValue)
+                .or(user.role.stringValue().eq(cursorRoleValue).and(user.id.gt(idAfter)))
+            : user.role.stringValue().lt(cursorRoleValue)
+                .or(user.role.stringValue().eq(cursorRoleValue).and(user.id.lt(idAfter)));
       }
     };
   }
@@ -114,12 +132,9 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
   ) {
     BooleanExpression idCompare = useGreaterThan ? user.id.gt(idAfter) : user.id.lt(idAfter);
 
-    if (isInFirstGroup) {
-      BooleanExpression sameGroupPart = Expressions.predicate(Ops.AND, firstGroup, idCompare);
-      return Expressions.predicate(Ops.OR, sameGroupPart, secondGroup);
-    } else {
-      return Expressions.predicate(Ops.AND, secondGroup, idCompare);
-    }
+    return isInFirstGroup
+        ? firstGroup.and(idCompare).or(secondGroup)
+        :secondGroup.and(idCompare);
   }
 
   private Instant parseCursorAsInstant(String cursor) {

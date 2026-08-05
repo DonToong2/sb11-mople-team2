@@ -35,7 +35,7 @@ public class AuthService {
 
   @Transactional
   public AuthTokens signIn(SignInRequest request) {
-    User user = userRepository.findByEmail(request.username())
+    User user = userRepository.findByEmail(request.username().toLowerCase())
         .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
 
     if(!isPasswordValid(request.password(), user)) {
@@ -62,7 +62,7 @@ public class AuthService {
 
   @Transactional
   public void resetPassword(ResetPasswordRequest request) {
-    userRepository.findByEmail(request.email())
+    userRepository.findByEmail(request.email().toLowerCase())
         .ifPresent(user -> {
           String temporaryPassword = generateTemporaryPassword();
           Instant expiresAt = Instant.now().plus(TEMPORARY_PASSWORD_EXPIRATION_MINUTES, ChronoUnit.MINUTES);
