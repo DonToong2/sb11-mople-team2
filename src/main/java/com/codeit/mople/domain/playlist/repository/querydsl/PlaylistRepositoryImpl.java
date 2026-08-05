@@ -164,7 +164,7 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
     }
 
     // 구독순 조건
-    if (condition.sortBy() == PlaylistSortBy.SUBSCRIBER_COUNT) {
+    if (condition.sortBy() == PlaylistSortBy.SUBSCRIBE_COUNT) {
       // 구독자수는 long 타입
       Long cursor;
 

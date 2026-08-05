@@ -1,8 +1,12 @@
 package com.codeit.mople.domain.playlist.dto.request;
 
+import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
+import com.codeit.mople.domain.playlist.exception.PlaylistException;
+import com.fasterxml.jackson.annotation.JsonValue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import java.util.Map;
 import java.util.UUID;
 
 public record PlaylistQueryCondition(
@@ -15,10 +19,10 @@ public record PlaylistQueryCondition(
 
     // 구독자 ID
     UUID subscriberIdEqual,
-    
+
     // 커서
     String cursor,
-    
+
     // 보조 커서
     UUID idAfter,
 
@@ -40,8 +44,35 @@ public record PlaylistQueryCondition(
   }
 
   public enum PlaylistSortBy {
-    UPDATED_AT, // 최신순
-    SUBSCRIBER_COUNT // 구독순
+    UPDATED_AT("updatedAt"), // 최신순
+    SUBSCRIBE_COUNT("subscribeCount"); // 구독순
+
+    private final String value;
+
+    PlaylistSortBy(String value) {
+      this.value = value;
+    }
+
+    // 요청으로 value 필드가 들어올 경우 해당 enum으로 변환
+    // (@RequestBody가 아닌 ModelAttribute이기 때문에 Converter를 사용 해야함, @JsonCreater 사용 X)
+    public static PlaylistSortBy from(String value) {
+
+      for (PlaylistSortBy sortBy : PlaylistSortBy.values()) {
+        if (sortBy.value.equals(value)) {
+          return sortBy;
+        }
+      }
+
+      // Converter에서 해당 예외를 catch하여 커스텀 예외로 내보냄
+      throw new IllegalArgumentException();
+    }
+
+    // 응답에 value 필드값이 나가게 설정
+    @JsonValue
+    public String getValue() {
+      return value;
+    }
+
   }
 
 }

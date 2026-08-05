@@ -192,7 +192,7 @@ public class PlaylistService {
       // 정렬조건
       if (condition.sortBy() == PlaylistSortBy.UPDATED_AT) {
         nextCursor = lastItem.getUpdatedAt().toString();
-      } else if (condition.sortBy() == PlaylistSortBy.SUBSCRIBER_COUNT) {
+      } else if (condition.sortBy() == PlaylistSortBy.SUBSCRIBE_COUNT) {
         nextCursor = String.valueOf(lastItem.getSubscriberCount());
       }
     }
