@@ -51,11 +51,15 @@ public class SportsContentBatchConfig {
       JobRepository jobRepository,
       PlatformTransactionManager transactionManager) {
     return new StepBuilder("sportsContentStep", jobRepository)
-        // 한번에 100개씩 데이터를 묶어서(chunk) 처리
+        //한번에 100개씩 데이터를 묶어서(chunk) 처리
         .<SportsDbEventDto, Content>chunk(100, transactionManager)
         .reader(sportsDbItemReader())
         .processor(sportsDbItemProcessor())
         .writer(sportsDbItemWriter())
+        //외부 API 예외 발생 시 재시도 로직 추가
+        .faultTolerant()
+        .retry(Exception.class) //FeignException 등을 포함한 모든 예외 발생 시
+        .retryLimit(3) //최대 3회 재시도
         .build();
   }
 
