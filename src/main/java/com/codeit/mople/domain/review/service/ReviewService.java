@@ -69,13 +69,6 @@ public class ReviewService {
 
     publisher.publishEvent(new ReviewCreatedEvent(content.getId()));
 
-    // TODO 김명근: 동시성 문제(Race Condition)는 다음 스프린트 기간 때 락 사용 등을 활용하여 개선
-    // 콘텐츠의 리뷰 개수, 평균 평점을 조회
-    long reviewCount = reviewRepository.countByContentId(content.getId());
-    Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
-
-    content.updateRatingStats(averageRating, (int) reviewCount);
-
     ReviewResponse response = ReviewResponse.from(savedReview);
     log.info("리뷰 생성 완료: reviewId={}, authorId={}, contentId={}",
         savedReview.getId(), authorId, request.contentId());
@@ -169,15 +162,10 @@ public class ReviewService {
 
     Content content = review.getContent();
 
-    // TODO 김명근: 동시성 문제(Race Condition)는 다음 스프린트 기간 때 락 사용 등을 활용하여 개선
     // 콘텐츠의 평균 평점을 조회
     // 리뷰 내용만 변경 된 경우 계산하지 않음
     if (request.rating() != null) {
       publisher.publishEvent(new ReviewUpdatedEvent(content.getId()));
-      
-      Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
-
-      content.updateRatingStats(averageRating, content.getReviewCount());
     }
 
     ReviewResponse response = ReviewResponse.from(review);
@@ -208,21 +196,10 @@ public class ReviewService {
     reviewRepository.delete(review);
 
     publisher.publishEvent(new ReviewDeletedEvent(content.getId()));
-    long reviewCount = reviewRepository.countByContentId(content.getId());
-    Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
-
-    Double updateAverageRating = reviewCount == 0 ? 0.0 : averageRating;
-
-    // 리뷰 삭제 후 리뷰가 0개일 때 평균 평점을 0점으로(averageRating null 방지)
-    content.updateRatingStats(
-        updateAverageRating,
-        (int) reviewCount
-    );
 
     log.info(
-        "리뷰 삭제 완료: reviewId={}, requesterId={}, contentId={}, averageRating={}, reviewCount={}",
-        reviewId, requesterId, content.getId(), updateAverageRating, reviewCount);
-
+        "리뷰 삭제 완료: reviewId={}, requesterId={}, contentId={}",
+        reviewId, requesterId, content.getId());
   }
 
   private void validateRequesterIsAuthor(Review review, UUID requesterId) {
