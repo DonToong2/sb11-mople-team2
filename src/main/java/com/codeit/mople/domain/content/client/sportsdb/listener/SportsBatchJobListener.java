@@ -18,7 +18,7 @@ public class SportsBatchJobListener implements JobExecutionListener {
   //Job 실행 전 시작 시간 및 로깅 기록
   @Override
   public void beforeJob(JobExecution jobExecution) {
-    log.info("SportsDB Batch Job 시작 - 시간: ", jobExecution.getStartTime());
+    log.info("SportsDB Batch Job 시작 - 시간: {}", jobExecution.getStartTime());
   }
 
   @Override
