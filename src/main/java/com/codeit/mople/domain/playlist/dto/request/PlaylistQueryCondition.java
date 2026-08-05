@@ -1,12 +1,9 @@
 package com.codeit.mople.domain.playlist.dto.request;
 
-import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
-import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.fasterxml.jackson.annotation.JsonValue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import java.util.Map;
 import java.util.UUID;
 
 public record PlaylistQueryCondition(
