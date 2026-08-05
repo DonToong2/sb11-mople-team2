@@ -1,9 +1,10 @@
-package com.codeit.mople.domain.content.client;
+package com.codeit.mople.domain.content.client.tmdb;
 
-import com.codeit.mople.domain.content.client.dto.TmdbGenreListResponse;
-import com.codeit.mople.domain.content.client.dto.TmdbMovieResponse;
-import com.codeit.mople.domain.content.client.dto.TmdbPageResponse;
-import com.codeit.mople.domain.content.client.dto.TmdbTvResponse;
+import com.codeit.mople.domain.content.client.tmdb.config.TmdbFeignConfig;
+import com.codeit.mople.domain.content.client.tmdb.dto.TmdbGenreListResponse;
+import com.codeit.mople.domain.content.client.tmdb.dto.TmdbMovieResponse;
+import com.codeit.mople.domain.content.client.tmdb.dto.TmdbPageResponse;
+import com.codeit.mople.domain.content.client.tmdb.dto.TmdbTvResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;

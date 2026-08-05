@@ -1,4 +1,4 @@
-package com.codeit.mople.domain.content.client;
+package com.codeit.mople.domain.content.client.tmdb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -6,8 +6,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.codeit.mople.domain.content.client.dto.TmdbGenreListResponse;
-import com.codeit.mople.domain.content.client.dto.TmdbGenreListResponse.Genre;
+import com.codeit.mople.domain.content.client.tmdb.dto.TmdbGenreListResponse;
+import com.codeit.mople.domain.content.client.tmdb.dto.TmdbGenreListResponse.Genre;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

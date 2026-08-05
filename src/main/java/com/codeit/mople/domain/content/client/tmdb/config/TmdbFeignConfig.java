@@ -1,4 +1,4 @@
-package com.codeit.mople.domain.content.client;
+package com.codeit.mople.domain.content.client.tmdb.config;
 
 import feign.RequestInterceptor;
 import feign.Retryer;

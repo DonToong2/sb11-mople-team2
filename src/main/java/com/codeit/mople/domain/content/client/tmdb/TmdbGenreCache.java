@@ -1,6 +1,6 @@
-package com.codeit.mople.domain.content.client;
+package com.codeit.mople.domain.content.client.tmdb;
 
-import com.codeit.mople.domain.content.client.dto.TmdbGenreListResponse;
+import com.codeit.mople.domain.content.client.tmdb.dto.TmdbGenreListResponse;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;

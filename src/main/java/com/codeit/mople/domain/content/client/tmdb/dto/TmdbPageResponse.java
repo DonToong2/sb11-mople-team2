@@ -1,4 +1,4 @@
-package com.codeit.mople.domain.content.client.dto;
+package com.codeit.mople.domain.content.client.tmdb.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
