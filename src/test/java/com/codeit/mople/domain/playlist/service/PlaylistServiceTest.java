@@ -207,7 +207,7 @@ public class PlaylistServiceTest {
       given(content.getId())
           .willReturn(contentId);
       given(content.getType())
-          .willReturn(ContentType.movie);
+          .willReturn(ContentType.MOVIE);
       given(content.getTitle())
           .willReturn("타이타닉");
       given(content.getDescription())

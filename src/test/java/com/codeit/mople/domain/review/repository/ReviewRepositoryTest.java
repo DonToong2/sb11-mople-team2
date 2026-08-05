@@ -49,14 +49,14 @@ public class ReviewRepositoryTest {
     user1 = User.createUser("user1@test.com", "12345678", "user1");
     user2 = User.createUser("user2@test.com", "12345678", "user2");
     content1 = new Content(
-        ContentType.tvSeries,
+        ContentType.TV_SERIES,
         "test",
         "test 콘텐츠",
         "test/image.png",
         List.of("공포")
     );
     content2 = new Content(
-        ContentType.movie,
+        ContentType.MOVIE,
         "test2",
         "test 콘텐츠",
         "test/image.png",
@@ -496,7 +496,7 @@ public class ReviewRepositoryTest {
     void count_success_empty() {
       // given
       Content content3 = new Content(
-          ContentType.movie,
+          ContentType.MOVIE,
           "test3",
           "test 콘텐츠",
           "test/image.png",

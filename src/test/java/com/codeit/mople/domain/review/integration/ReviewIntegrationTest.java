@@ -86,7 +86,7 @@ public class ReviewIntegrationTest {
     userDetails = new CustomUserDetails(savedAuthor.getId(), Role.USER);
 
     savedContent = contentRepository.save(new Content(
-            ContentType.tvSeries,
+            ContentType.TV_SERIES,
             "test",
             "test 콘텐츠",
             "test/image.png",

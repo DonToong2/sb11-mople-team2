@@ -100,7 +100,7 @@ public class WatchingSessionServiceTest {
     given(mockUser.getProfileImageUrl()).willReturn("url");
 
     given(mockContent.getId()).willReturn(contentId);
-    given(mockContent.getType()).willReturn(ContentType.movie);
+    given(mockContent.getType()).willReturn(ContentType.MOVIE);
 
     //limit 1 요청에 데이터 2개가 반환되었다고 가정(hasNext = true)
     given(watchingSessionQueryRepository.findSessionByCursor(

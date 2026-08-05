@@ -28,7 +28,7 @@ public class ContentRepositoryTest {
   @Test
   @DisplayName("콘텐츠 저장 및 조회 테스트 - 엔티티 매핑 및 컬렉션(tags) 정상 작동 확인")
   void saveAndFindContent_Success() {
-    Content content = new Content(ContentType.movie, "테스트 영화", "설명",
+    Content content = new Content(ContentType.MOVIE, "테스트 영화", "설명",
         "http://example.com/thumb.png", new ArrayList<>(List.of("액션", "스릴러")));
 
     Content savedContent = contentRepository.save(content);
@@ -40,7 +40,7 @@ public class ContentRepositoryTest {
 
     assertThat(foundContent).isNotNull();
     assertThat(foundContent.getTitle()).isEqualTo("테스트 영화");
-    assertThat(foundContent.getType()).isEqualTo(ContentType.movie);
+    assertThat(foundContent.getType()).isEqualTo(ContentType.MOVIE);
 
     //별도 테이블로 빠지는 @ElementCollection 데이터가 잘 저장되고 불러와지는지 검증
     assertThat(foundContent.getTags()).containsExactly("액션", "스릴러");
