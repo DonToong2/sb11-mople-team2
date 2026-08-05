@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -51,6 +52,7 @@ public class AuthControllerTest {
     userRepository.save(User.createUser("test@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
 
     mockMvc.perform(post("/api/auth/sign-in")
+        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
         .param("username", "test@test.com")
         .param("password", "rawPw123"))
         .andDo(print())
@@ -59,11 +61,23 @@ public class AuthControllerTest {
   }
 
   @Test
+  @DisplayName("로그인 정보를 쿼리 스트링으로 전달하면 400을 반환")
+  void signIn_returnsBadRequest_whenCredentialsInQueryString() throws Exception {
+    userRepository.save(User.createUser("query@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
+
+    mockMvc.perform(post("/api/auth/sign-in?username=query@test.com&password=rawPw123")
+        .contentType(MediaType.APPLICATION_FORM_URLENCODED))
+        .andDo(print())
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
   @DisplayName("로그인 성공 시 Refresh Token 쿠키가 HttpOnly, Path=/api/auth, 양수 Max-Age로 내려감")
   void signIn_success_setsRefreshTokenCookieAttributes() throws Exception {
     userRepository.save(User.createUser("cookie@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
 
     MvcResult result = mockMvc.perform(post("/api/auth/sign-in")
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
             .param("username", "cookie@test.com")
             .param("password", "rawPw123"))
         .andExpect(status().isOk())
@@ -80,6 +94,7 @@ public class AuthControllerTest {
   @DisplayName("존재하지 않는 이메일로 로그인하면 401을 반환")
   void signIn_returnsUnauthorized_whenEmailNotFound() throws Exception {
     mockMvc.perform(post("/api/auth/sign-in")
+        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
         .param("username", "nobody@test.com")
         .param("password", "rawPw123"))
         .andDo(print())
@@ -91,6 +106,7 @@ public class AuthControllerTest {
   @DisplayName("로그인 실패 응답에는 details가 포함되지 않는다")
   void signIn_returnsUnauthorized_withoutDetails() throws Exception {
     mockMvc.perform(post("/api/auth/sign-in")
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
             .param("username", "nobody@test.com")
             .param("password", "rawPw123"))
         .andDo(print())
@@ -105,6 +121,7 @@ public class AuthControllerTest {
     userRepository.save(User.createUser("test2@test.com", passwordEncoder.encode("correctPw"), "testUser"));
 
     mockMvc.perform(post("/api/auth/sign-in")
+        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
         .param("username", "test2@test.com")
         .param("password", "wrongPw"))
         .andDo(print())
@@ -118,6 +135,7 @@ public class AuthControllerTest {
     User user = userRepository.save(User.createUser("multi@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
 
     String firstResponse = mockMvc.perform(post("/api/auth/sign-in")
+        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
         .param("username", "multi@test.com")
         .param("password", "rawPw123"))
         .andReturn().getResponse().getContentAsString();
@@ -131,6 +149,7 @@ public class AuthControllerTest {
             .andExpect(status().isOk());
 
     String secondResponse = mockMvc.perform(post("/api/auth/sign-in")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .param("username", "multi@test.com")
                     .param("password", "rawPw123"))
             .andDo(print())
@@ -160,6 +179,7 @@ public class AuthControllerTest {
     userRepository.save(user);
 
     mockMvc.perform(post("/api/auth/sign-in")
+        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
         .param("username", "locked@test.com")
         .param("password", "rawPw123"))
         .andDo(print())
@@ -204,6 +224,7 @@ public class AuthControllerTest {
     User user = userRepository.save(User.createUser("logout@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
 
     MvcResult signInResult = mockMvc.perform(post("/api/auth/sign-in")
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
             .param("username", "logout@test.com")
             .param("password", "rawPw123"))
         .andExpect(status().isOk())
@@ -238,6 +259,7 @@ public class AuthControllerTest {
     userRepository.save(User.createUser("rotate@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
 
     MvcResult signInResult = mockMvc.perform(post("/api/auth/sign-in")
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
             .param("username", "rotate@test.com")
             .param("password", "rawPw123"))
         .andExpect(status().isOk())
