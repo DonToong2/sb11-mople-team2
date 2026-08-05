@@ -20,6 +20,7 @@ import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,11 +44,17 @@ public class ReviewService {
         authorId, request.contentId(), request.rating());
 
     User author = userRepository.findById(authorId).orElseThrow(() ->
-        new UserException(UserErrorCode.USER_NOT_FOUND)
+        new UserException(
+            UserErrorCode.USER_NOT_FOUND,
+            Map.of("userId", authorId)
+        )
     );
 
     Content content = contentRepository.findById(request.contentId()).orElseThrow(() ->
-        new ContentException(ContentErrorCode.CONTENT_NOT_FOUND)
+        new ContentException(
+            ContentErrorCode.CONTENT_NOT_FOUND,
+            Map.of("contentId", request.contentId())
+        )
     );
 
     Review review = Review.create(content, author, request.text(), request.rating());
@@ -130,16 +137,19 @@ public class ReviewService {
   }
 
   @Transactional
-  public ReviewResponse update(UUID reviewId, ReviewUpdateRequest request, UUID authorId) {
+  public ReviewResponse update(UUID reviewId, ReviewUpdateRequest request, UUID requesterId) {
 
-    log.debug("리뷰 수정 시도: reviewId={}, authorId={}, rating={}",
-        reviewId, authorId,request.rating());
+    log.debug("리뷰 수정 시도: reviewId={}, requesterId={}, rating={}",
+        reviewId, requesterId, request.rating());
 
     Review review = reviewRepository.findById(reviewId).orElseThrow(() ->
-        new ReviewException(ReviewErrorCode.REVIEW_NOT_FOUND)
+        new ReviewException(
+            ReviewErrorCode.REVIEW_NOT_FOUND,
+            Map.of("reviewId", reviewId)
+        )
     );
 
-    validateAuthor(review, authorId);
+    validateRequesterIsAuthor(review, requesterId);
 
     if (request.text() != null) {
       review.updateText(request.text());
@@ -162,23 +172,26 @@ public class ReviewService {
 
     ReviewResponse response = ReviewResponse.from(review);
 
-    log.info("리뷰 수정 완료: reviewId={}, authorId={}, contentId={}, rating={}",
-        reviewId, authorId, content.getId(), request.rating());
+    log.info("리뷰 수정 완료: reviewId={}, requesterId={}, contentId={}, rating={}",
+        reviewId, requesterId, content.getId(), request.rating());
 
     return response;
   }
 
   @Transactional
-  public void delete(UUID reviewId, UUID authorId) {
+  public void delete(UUID reviewId, UUID requesterId) {
 
-    log.debug("리뷰 삭제 시도: reviewId={}, authorId={}",
-        reviewId, authorId);
+    log.debug("리뷰 삭제 시도: reviewId={}, requesterId={}",
+        reviewId, requesterId);
 
     Review review = reviewRepository.findById(reviewId).orElseThrow(() ->
-        new ReviewException(ReviewErrorCode.REVIEW_NOT_FOUND)
+        new ReviewException(
+            ReviewErrorCode.REVIEW_NOT_FOUND,
+            Map.of("reviewId", reviewId)
+        )
     );
 
-    validateAuthor(review, authorId);
+    validateRequesterIsAuthor(review, requesterId);
 
     Content content = review.getContent();
 
@@ -195,14 +208,18 @@ public class ReviewService {
         (int) reviewCount
     );
 
-    log.info("리뷰 삭제 완료: reviewId={}, authorId={}, contentId={}, averageRating={}, reviewCount={}",
-        reviewId, authorId, content.getId(), updateAverageRating, reviewCount);
+    log.info("리뷰 삭제 완료: reviewId={}, requesterId={}, contentId={}, averageRating={}, reviewCount={}",
+        reviewId, requesterId, content.getId(), updateAverageRating, reviewCount);
 
   }
 
-  private void validateAuthor(Review review, UUID authorId) {
-    if (!review.getAuthor().getId().equals(authorId)) {
-      throw new ReviewException(ReviewErrorCode.REVIEW_FORBIDDEN);
+  private void validateRequesterIsAuthor(Review review, UUID requesterId) {
+    UUID authorId = review.getAuthor().getId();
+    if (!authorId.equals(requesterId)) {
+      throw new ReviewException(
+          ReviewErrorCode.REVIEW_FORBIDDEN,
+          Map.of("authorId", authorId, "requesterId", requesterId)
+      );
     }
   }
 
