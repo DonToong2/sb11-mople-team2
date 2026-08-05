@@ -90,12 +90,12 @@ public interface DirectMessageApi {
       ),
       @ApiResponse(
           responseCode = "403",
-          description = "권한 없음 (요청자가 해당 메시지의 수신자가 아니거나 대화방 소속 불일치)",
+          description = "권한 없음 (요청 유저가 해당 메시지의 수신자가 아님)",
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       ),
       @ApiResponse(
           responseCode = "404",
-          description = "메시지 또는 대화방을 찾을 수 없음",
+          description = "메시지를 찾을 수 없음 (존재하지 않는 directMessageId이거나 해당 대화방 소속이 아님)",
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       ),
       @ApiResponse(
