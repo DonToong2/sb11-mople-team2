@@ -78,7 +78,8 @@ public class ReviewRepositoryImpl implements ReviewCustomRepository {
     boolean hasIdAfter = condition.idAfter() != null;
 
     if (hasCursor != hasIdAfter) {
-      throw new ReviewException(ReviewErrorCode.REVIEW_INVALID_CURSOR,
+      throw new ReviewException(
+          ReviewErrorCode.REVIEW_INVALID_CURSOR,
           Map.of(
               "cursor", condition.cursor() != null ? condition.cursor() : "null",
               "idAfter", condition.idAfter() != null ? condition.idAfter().toString() : "null"

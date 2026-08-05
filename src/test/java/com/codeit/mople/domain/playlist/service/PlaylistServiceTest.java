@@ -695,9 +695,6 @@ public class PlaylistServiceTest {
       given(playlistRepository.findById(playlistId))
           .willReturn(Optional.of(mockPlaylist));
 
-      given(mockPlaylist.getId())
-          .willReturn(playlistId);
-
       given(mockPlaylist.getOwner())
           .willReturn(owner);
 
@@ -781,9 +778,6 @@ public class PlaylistServiceTest {
       UUID noOwnerId = UUID.randomUUID();
 
       // BeforeEach에서 playlist, playlistId 초기화
-
-      given(mockPlaylist.getId())
-          .willReturn(playlistId);
 
       given(mockPlaylist.getOwner())
           .willReturn(owner);
@@ -1049,7 +1043,6 @@ public class PlaylistServiceTest {
       Playlist playlist = mock(Playlist.class);
 
       given(playlistRepository.findById(playlistId)).willReturn(Optional.of(playlist));
-      given(playlist.getId()).willReturn(playlistId);
       given(playlist.getOwner()).willReturn(owner);
       given(owner.getId()).willReturn(ownerId);
 
@@ -1116,7 +1109,6 @@ public class PlaylistServiceTest {
       Playlist playlist = mock(Playlist.class);
 
       given(playlistRepository.findById(playlistId)).willReturn(Optional.of(playlist));
-      given(playlist.getId()).willReturn(playlistId);
       given(playlist.getOwner()).willReturn(owner);
       given(owner.getId()).willReturn(ownerId);
 
