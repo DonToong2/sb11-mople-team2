@@ -1,10 +1,12 @@
 package com.codeit.mople.domain.content.client;
 
 import com.codeit.mople.domain.content.client.dto.TmdbGenreListResponse;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -17,10 +19,15 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class TmdbGenreCache {
 
+  private static final Duration RETRY_INTERVAL = Duration.ofMinutes(5);
+
   private final TmdbClient tmdbClient;
 
   // cpu 캐시에 사본을 두지 말고 매번 메인 메모리에서 읽고 써라(휘발성)
   private volatile Map<Integer, String> genreNames = Map.of();
+
+  // 마지막으로 적재 시도한 시각
+  private final AtomicLong lastAttemptedAt = new AtomicLong(0L);
 
   // 앱이 실행되면 리스너 동작
   @EventListener(ApplicationReadyEvent.class)
@@ -28,25 +35,22 @@ public class TmdbGenreCache {
     refresh();
   }
 
-  // 1. putAll() 메서드를 호출해서 loaded에 장르list를 넣음
-  // 2. 넣은 장르를 수정할수 없는 Map 카피본을 만들어서 genreNames에 할
+
   public void refresh() {
-    try {
-      Map<Integer, String> loaded = new HashMap<>();
-      putAll(loaded, tmdbClient.getMovieGenres());
-      putAll(loaded, tmdbClient.getTvGenres());
-      genreNames = Map.copyOf(loaded);
-      log.info("TMDB 장르 캐시 적재 완료: {}건", genreNames.size());
-    } catch (Exception e) {
-      log.warn("TMDB 장르 캐시 적재 실패, 다음 조회 시 재시도한다.", e);
-    }
+    lastAttemptedAt.set(System.currentTimeMillis());
+    load();
   }
 
   public List<String> getNames(List<Integer> genreIds) {
     if (genreIds == null || genreIds.isEmpty()) {
       return List.of();
     }
+
     Map<Integer, String> current = currentGenres();
+    if (current.isEmpty()) {
+      return List.of();
+    }
+
     return genreIds.stream()
         .map(id -> resolve(current, id))
         .filter(Objects::nonNull)
@@ -54,15 +58,38 @@ public class TmdbGenreCache {
   }
 
   public String getName(Integer genreId) {
-    return resolve(currentGenres(), genreId);
+    Map<Integer, String> current = currentGenres();
+    return current.isEmpty() ? null : resolve(current, genreId);
   }
 
   // genreNames가 비어있으면 다시 채워넣는 메서드
   private Map<Integer, String> currentGenres() {
-    if (genreNames.isEmpty()) {
-      refresh();
+    if (genreNames.isEmpty() && tryAcquireAttempt()) {
+      load();
     }
     return genreNames;
+  }
+
+  private boolean tryAcquireAttempt() {
+    long now = System.currentTimeMillis();
+    long last = lastAttemptedAt.get();
+
+    if (now - last < RETRY_INTERVAL.toMillis()) {
+      return false;
+    }
+    return lastAttemptedAt.compareAndSet(last, now);
+  }
+
+  private void load() {
+    try {
+      Map<Integer, String> loaded = new HashMap<>();
+      putAll(loaded, tmdbClient.getMovieGenres());
+      putAll(loaded, tmdbClient.getTvGenres());
+      genreNames = Map.copyOf(loaded);
+      log.info("TMDB 장르 캐시 적재 완료: {}건", genreNames.size());
+    } catch (Exception e) {
+      log.warn("TMDB 장르 캐시 적재 실패, 최대 {}분간 태크 없이 진행", RETRY_INTERVAL.toMinutes(), e);
+    }
   }
 
   //
