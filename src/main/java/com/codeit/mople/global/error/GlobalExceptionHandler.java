@@ -119,7 +119,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
   public ResponseEntity<ApiResponse<Void>> handleMethodArgumentTypeMismatchException(
       MethodArgumentTypeMismatchException e) {
-    log.warn("[TypeMismatch] Parameter: {}, Message: {}", e.getPropertyName(), e.getMessage());
+    log.warn("[TypeMismatch] Parameter: {}", e.getPropertyName());
     return ResponseEntity
         .status(CommonErrorCode.INVALID_INPUT.getStatus())
         .body(ApiResponse.error(CommonErrorCode.INVALID_INPUT.getCode(), "파라미터 타입이 올바르지 않습니다."));
