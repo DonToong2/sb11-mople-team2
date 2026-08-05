@@ -116,6 +116,7 @@ public class GlobalExceptionHandler {
   }
 
   //경로 변수(PathVariable)나 쿼리 파라미터(RequestParam)의 타입 변환 실패 시 발생
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
   public ResponseEntity<ApiResponse<Void>> handleMethodArgumentTypeMismatchException(
       MethodArgumentTypeMismatchException e) {
     log.warn("[TypeMismatch] Parameter: {}, Message: {}", e.getPropertyName(), e.getMessage());
