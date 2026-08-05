@@ -22,6 +22,7 @@ import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
@@ -62,7 +63,7 @@ public class SportsContentBatchConfig {
     return new StepBuilder("sportsContentStep", jobRepository)
         //한번에 100개씩 데이터를 묶어서(chunk) 처리
         .<SportsDbEventDto, Content>chunk(100, transactionManager)
-        .reader(sportsDbItemReader())
+        .reader(sportsDbItemReader(null))
         .processor(sportsDbItemProcessor())
         .writer(sportsDbItemWriter())
         .faultTolerant()
@@ -74,7 +75,8 @@ public class SportsContentBatchConfig {
 
   @Bean
   @StepScope
-  public ItemReader<SportsDbEventDto> sportsDbItemReader() {
+  public ItemReader<SportsDbEventDto> sportsDbItemReader(
+      @Value("#{jobParameters['runDate']}") String runDate) {
     return new ItemReader<>() {
       private Iterator<SportsDbEventDto> eventIterator;
 
@@ -83,9 +85,9 @@ public class SportsContentBatchConfig {
       public SportsDbEventDto read() {
         //실행 시 최초 1회만 API를 호출하여 데이터를 메모리에 로드
         if (eventIterator == null) {
-          String today = LocalDate.now().toString(); //오늘 날짜 기준 데이터 조회
-          log.info("SportsDB API 조회 시작 - 일자: {}", today);
-          SportsDbEventResponse response = feignClient.getEventsByDate(today, "Soccer");
+          String targetDate = (runDate != null && !runDate.isBlank()) ? runDate : LocalDate.now().toString();
+          log.info("SportsDB API 조회 시작 - 일자: {}", targetDate);
+          SportsDbEventResponse response = feignClient.getEventsByDate(targetDate, "Soccer");
 
           if (response != null && response.events() != null) {
             eventIterator = response.events().iterator();
@@ -105,7 +107,8 @@ public class SportsContentBatchConfig {
   public ItemProcessor<SportsDbEventDto, Content> sportsDbItemProcessor() {
     //무효한 데이터(필수값 누락) 검증 및 필터링
     return dto -> {
-      if (dto.strEvent() == null || dto.dateEvent() == null
+      if (dto.idEvent() == null || dto.idEvent().isBlank()
+          || dto.strEvent() == null || dto.dateEvent() == null
           || dto.strSport() == null || dto.strLeague() == null) {
         log.warn("유효하지 않은 이벤트 데이터 필터링(스킵) - idEvent: {}", dto.idEvent());
         return null; //null을 반환하면 Writer로 넘어가지 않고 스킵
