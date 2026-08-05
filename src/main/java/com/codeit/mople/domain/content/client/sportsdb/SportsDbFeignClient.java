@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.content.client.sportsdb;
 
+import com.codeit.mople.domain.content.client.sportsdb.config.SportsDbFeignConfig;
 import com.codeit.mople.domain.content.client.sportsdb.dto.SportsDbEventResponse;
 import com.codeit.mople.domain.content.client.sportsdb.dto.SportsDbLeagueResponse;
 import org.springframework.cloud.openfeign.FeignClient;

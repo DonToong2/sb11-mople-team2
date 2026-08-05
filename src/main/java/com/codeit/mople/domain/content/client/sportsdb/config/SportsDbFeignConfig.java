@@ -1,4 +1,4 @@
-package com.codeit.mople.domain.content.client.sportsdb;
+package com.codeit.mople.domain.content.client.sportsdb.config;
 
 import feign.Logger;
 import feign.Logger.Level;
