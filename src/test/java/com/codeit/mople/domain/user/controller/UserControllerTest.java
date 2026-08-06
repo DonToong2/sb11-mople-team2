@@ -140,7 +140,7 @@ public class UserControllerTest {
 
     mockMvc.perform(get("/api/users")
         .param("limit", "10")
-        .param("sortBy", "name")
+        .param("sortBy", "NAME")
         .param("sortDirection", "ASCENDING")
         .header("Authorization", "Bearer " + adminToken))
         .andDo(print())

@@ -105,11 +105,11 @@ public class UserService {
 
   private String cursorValueOf(UserDto dto, UserSortBy sortBy) {
     return switch (sortBy) {
-      case name -> dto.name();
-      case email -> dto.email();
-      case createdAt -> dto.createdAt().toString();
-      case isLocked -> String.valueOf(dto.locked());
-      case role -> dto.role().name();
+      case NAME -> dto.name();
+      case EMAIL -> dto.email();
+      case CREATED_AT -> dto.createdAt().toString();
+      case IS_LOCKED -> String.valueOf(dto.locked());
+      case ROLE -> dto.role().name();
     };
   }
 }

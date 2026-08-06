@@ -84,25 +84,25 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
     String cursor = request.cursor();
 
     return switch (request.sortByOrDefault()) {
-      case name -> isAsc
+      case NAME -> isAsc
           ? user.name.gt(cursor).or(user.name.eq(cursor).and(user.id.gt(idAfter)))
           : user.name.lt(cursor).or(user.name.eq(cursor).and(user.id.lt(idAfter)));
-      case email -> isAsc
+      case EMAIL -> isAsc
           ? user.email.gt(cursor).or(user.email.eq(cursor).and(user.id.gt(idAfter)))
           : user.email.lt(cursor).or(user.email.eq(cursor).and(user.id.lt(idAfter)));
-      case createdAt -> {
+      case CREATED_AT -> {
         Instant cursorTime = parseCursorAsInstant(cursor);
         yield isAsc
             ? user.createdAt.gt(cursorTime).or(user.createdAt.eq(cursorTime).and(user.id.gt(idAfter)))
             : user.createdAt.lt(cursorTime).or(user.createdAt.eq(cursorTime).and(user.id.lt(idAfter)));
       }
-      case isLocked -> {
+      case IS_LOCKED -> {
         boolean cursorLocked = parseCursorAsBoolean(cursor);
         yield isAsc
             ? sameGroupOrAfter(user.locked.eq(false), user.locked.eq(true), !cursorLocked, idAfter, true)
             : sameGroupOrAfter(user.locked.eq(true), user.locked.eq(false), cursorLocked, idAfter, false);
       }
-      case role -> {
+      case ROLE -> {
         Role cursorRole = parseCursorAsRole(cursor);
         String cursorRoleValue = cursorRole.name();
         yield isAsc
@@ -116,11 +116,11 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
 
   private OrderSpecifier<?>[] orderSpecifiers(UserSearchRequest request, boolean isAsc) {
     OrderSpecifier<?> primary = switch (request.sortByOrDefault()) {
-      case name -> isAsc ? user.name.asc() : user.name.desc();
-      case email -> isAsc ? user.email.asc() : user.email.desc();
-      case createdAt -> isAsc ? user.createdAt.asc() : user.createdAt.desc();
-      case isLocked -> isAsc ? user.locked.asc() : user.locked.desc();
-      case role -> isAsc ? user.role.asc() : user.role.desc();
+      case NAME -> isAsc ? user.name.asc() : user.name.desc();
+      case EMAIL -> isAsc ? user.email.asc() : user.email.desc();
+      case CREATED_AT -> isAsc ? user.createdAt.asc() : user.createdAt.desc();
+      case IS_LOCKED -> isAsc ? user.locked.asc() : user.locked.desc();
+      case ROLE -> isAsc ? user.role.asc() : user.role.desc();
     };
     OrderSpecifier<?> secondary = isAsc ? user.id.asc() : user.id.desc();
     return new OrderSpecifier[]{primary, secondary};

@@ -29,6 +29,6 @@ public record UserSearchRequest(
   }
 
   public UserSortBy sortByOrDefault() {
-    return sortBy == null ? UserSortBy.name : sortBy;
+    return sortBy == null ? UserSortBy.NAME : sortBy;
   }
 }

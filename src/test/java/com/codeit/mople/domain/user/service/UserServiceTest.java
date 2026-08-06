@@ -128,7 +128,7 @@ public class UserServiceTest {
   void getUsers_success_withoutFilters() {
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, null, null, 10,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
     User user1 = User.createUser("user1@test.com", "encoded", "user1");
     when(userRepository.searchUsers(request)).thenReturn(List.of(user1));
@@ -145,7 +145,7 @@ public class UserServiceTest {
   void getUsers_returnsActualTotalCount_notPageSize() {
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, null, null, 2,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
     User user1 = User.createUser("a@test.com", "encoded", "aa");
     User user2 = User.createUser("b@test.com", "encoded", "bb");
@@ -164,7 +164,7 @@ public class UserServiceTest {
   void getUsers_returnsCorrectCursorResponse() {
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, null, null, 2,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
 
     User user1 = User.createUser("a@test.com", "encoded", "aa");
@@ -177,7 +177,7 @@ public class UserServiceTest {
     assertThat(response.data()).hasSize(2);
     assertThat(response.hasNext()).isTrue();
     assertThat(response.nextCursor()).isEqualTo("bb");
-    assertThat(response.sortBy()).isEqualTo("name");
+    assertThat(response.sortBy()).isEqualTo("NAME");
   }
 
   @Test
@@ -185,7 +185,7 @@ public class UserServiceTest {
   void getUsers_returnsHasNextTrue_whenMoreItemsExist() {
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, null, null, 2,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
     User user1 = User.createUser("user1@test.com", "encoded", "user1");
     User user2 = User.createUser("user2@test.com", "encoded", "user2");
@@ -205,7 +205,7 @@ public class UserServiceTest {
   void getUsers_returnsHasNextFalse_whenLastPage() {
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, null, null, 10,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
     User user1 = User.createUser("user1@test.com", "encoded", "user1");
     when(userRepository.searchUsers(request)).thenReturn(List.of(user1));
@@ -222,7 +222,7 @@ public class UserServiceTest {
   void getUsers_usesEmailAsCursor_whenSortByEmail() {
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, null, null, 1,
-        SortDirection.ASCENDING, UserSortBy.email
+        SortDirection.ASCENDING, UserSortBy.EMAIL
     );
     User user1 = User.createUser("user1@test.com", "encoded", "user1");
     User user2 = User.createUser("user2@test.com", "encoded", "user2");
