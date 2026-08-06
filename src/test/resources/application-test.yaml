@@ -22,3 +22,8 @@ external-api:
   sportsdb:
     base-url: http://localhost:0
     api-key: test-key
+
+batch:
+  tmdb:
+    collect:
+      cron: "-"

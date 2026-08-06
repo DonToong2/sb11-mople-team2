@@ -11,6 +11,9 @@ spring:
             connect-timeout: 3000
             read-timeout: 10000
             logger-level: basic
+  batch:
+    job:
+      enabled: false
 
 server:
   port: 8080
@@ -34,3 +37,14 @@ admin:
 external-api:
   tmdb:
     image-base-url: https://image.tmdb.org/t/p/w500
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+
+batch:
+  tmdb:
+    collect:
+      max-pages: 5
