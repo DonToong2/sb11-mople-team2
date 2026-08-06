@@ -11,9 +11,12 @@ import com.codeit.mople.domain.watchingsession.repository.WatchingSessionQueryRe
 import com.codeit.mople.global.dto.UserSummary;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -169,5 +172,27 @@ public class WatchingSessionService {
     //퇴장 후 남은 총 시청자 수 반환(키가 만료되거나 없으면 0반환
     Long remainingCount = redisTemplate.opsForSet().size(contentKey);
     return remainingCount != null ? remainingCount : 0L;
+  }
+
+  //특정 유저가 현재 시청 중인 콘텐츠의 ID를 조회
+  public UUID getWatchingContentId(UUID userId) {
+    String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
+    String contentIdStr = (String) redisTemplate.opsForValue().get(userKey);
+
+    return contentIdStr != null ? UUID.fromString(contentIdStr) : null;
+  }
+
+  //특정 콘텐츠를 현재 실시간으로 시청 중인 유저 ID 목록을 조회
+  public Set<UUID> getWatcherIds(UUID contentId) {
+    String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentId.toString();
+    Set<Object> members = redisTemplate.opsForSet().members(contentKey);
+
+    if (members == null || members.isEmpty()) {
+      return Collections.emptySet();
+    }
+
+    return members.stream()
+        .map(member -> UUID.fromString((String) member))
+        .collect(Collectors.toSet());
   }
 }
