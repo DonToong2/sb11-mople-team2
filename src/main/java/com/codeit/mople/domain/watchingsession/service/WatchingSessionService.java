@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,9 @@ public class WatchingSessionService {
 
   private final WatchingSessionQueryRepository watchingSessionQueryRepository;
   private final ContentRepository contentRepository;
+  private final RedisTemplate<String, Object> redisTemplate;
+  private static final String USER_WATCHING_KEY_PREFIX = "user:watching:";
+  private static final String CONTENT_WATCHERS_KEY_PREFIX = "content:watchers:";
 
   @Transactional(readOnly = true)
   public CursorResponseWatchingSessionDto getWatchingSessions(
@@ -127,5 +131,27 @@ public class WatchingSessionService {
         sortBy,
         sortDirection
     );
+  }
+
+  //유저가 콘텐츠 시청을 시작(입장)할 때 실시간 세션을 Redis에 기록
+  public Long enterSession(UUID userId, UUID contentId) {
+    String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
+    String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentId.toString();
+
+    //유저가 다른 콘텐츠를 보고 있었다면 이전 기록 삭제(방 이동 고려)
+    String previousContentId = (String) redisTemplate.opsForValue().get(userKey);
+    if (previousContentId != null && !previousContentId.equals(contentId.toString())) {
+      String prevContentKey = CONTENT_WATCHERS_KEY_PREFIX + previousContentId;
+      redisTemplate.opsForSet().remove(prevContentKey, userId.toString());
+    }
+
+    //유저별 현재 시청 중인 콘텐츠 업데이트(String 자료구조)
+    redisTemplate.opsForValue().set(userKey, contentId.toString());
+
+    //콘텐츠별 시청자 목록에 추가(Set 자료구조 - 중복 방지)
+    redisTemplate.opsForSet().add(contentKey, userId.toString());
+
+    //현재 해당 콘텐츠를 보고 있는 총 시청자 수 반환
+    return redisTemplate.opsForSet().size(contentKey);
   }
 }
