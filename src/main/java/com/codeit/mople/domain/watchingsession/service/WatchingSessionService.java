@@ -4,6 +4,7 @@ import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
+import com.codeit.mople.domain.watchingsession.dto.WatchingSessionChange;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionContentDto;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionResponse;
 import com.codeit.mople.domain.watchingsession.entity.WatchingSession;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,7 @@ public class WatchingSessionService {
   private final WatchingSessionQueryRepository watchingSessionQueryRepository;
   private final ContentRepository contentRepository;
   private final RedisTemplate<String, Object> redisTemplate;
+  private final SimpMessagingTemplate messagingTemplate;
   private static final String USER_WATCHING_KEY_PREFIX = "user:watching:";
   private static final String CONTENT_WATCHERS_KEY_PREFIX = "content:watchers:";
 
@@ -155,7 +158,19 @@ public class WatchingSessionService {
     redisTemplate.opsForSet().add(contentKey, userId.toString());
 
     //현재 해당 콘텐츠를 보고 있는 총 시청자 수 반환
-    return redisTemplate.opsForSet().size(contentKey);
+    Long watcherCount = redisTemplate.opsForSet().size(contentKey);
+
+    //웹소켓으로 입장 이벤트 브로드캐스팅
+    WatchingSessionChange changeEvent = new WatchingSessionChange(
+        contentId.toString(),
+        userId,
+        "ENTER",
+        watcherCount
+    );
+    messagingTemplate.convertAndSend(
+        "/sub/contents/" + contentId.toString() + "/watching-sessions", changeEvent);
+
+    return watcherCount;
   }
 
   //유저가 콘텐츠 시청을 종료(퇴장)할 때 Redis에서 세션을 제거
@@ -171,7 +186,19 @@ public class WatchingSessionService {
 
     //퇴장 후 남은 총 시청자 수 반환(키가 만료되거나 없으면 0반환
     Long remainingCount = redisTemplate.opsForSet().size(contentKey);
-    return remainingCount != null ? remainingCount : 0L;
+    Long watcherCount = remainingCount != null ? remainingCount : 0L;
+
+    //웹소켓으로 퇴장 이벤트 브로드캐스팅
+    WatchingSessionChange changeEvent = new WatchingSessionChange(
+        contentId.toString(),
+        userId,
+        "LEAVE",
+        watcherCount
+    );
+    messagingTemplate.convertAndSend(
+        "/sub/contents/" + contentId.toString() + "/watching-sessions", changeEvent);
+
+    return watcherCount;
   }
 
   //특정 유저가 현재 시청 중인 콘텐츠의 ID를 조회
