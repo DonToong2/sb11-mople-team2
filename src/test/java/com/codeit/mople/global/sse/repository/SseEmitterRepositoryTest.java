@@ -160,7 +160,7 @@ public class SseEmitterRepositoryTest {
     void delete_ignore_notFoundReceiverId() {
       // given
 
-      // BeforeEach에서 receiverId, sseEmitter1 초기화
+      // BeforeEach에서 receiverId, sseEmitter1를 초기화
 
       // receiverId가 존재하지 않는 경우를 증명하기 위해 (receiverId, sseEmitter1)를 save하지 않음
 
@@ -176,7 +176,7 @@ public class SseEmitterRepositoryTest {
     void delete_ignore_notFoundEmitter() {
       // given
 
-      // BeforeEach에서 receiverId, sseEmitter1, sseEmitter2 초기화
+      // BeforeEach에서 receiverId, sseEmitter1, sseEmitter2를 초기화
 
       // sseEmitter2는 저장하지 않음
       repository.save(receiverId, sseEmitter1);
