@@ -13,6 +13,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
@@ -60,7 +61,7 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
 
   private BooleanExpression emailLikeCondition(UserSearchRequest request) {
     return (request.emailLike() != null && !request.emailLike().isBlank())
-        ? user.email.startsWith(request.emailLike().toLowerCase())
+        ? user.email.startsWith(request.emailLike().toLowerCase(Locale.ROOT))
         : null;
   }
 

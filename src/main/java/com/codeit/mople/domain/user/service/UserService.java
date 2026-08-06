@@ -17,6 +17,7 @@ import com.codeit.mople.global.storage.FileStorageService;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +37,7 @@ public class UserService {
 
   @Transactional
   public UserDto signUp(UserCreateRequest request) {
-    String normalizedEmail = request.email().toLowerCase();
+    String normalizedEmail = request.email().toLowerCase(Locale.ROOT);
     if(userRepository.existsByEmail(normalizedEmail)) {
       throw new UserException(UserErrorCode.DUPLICATE_EMAIL, Map.of("email", normalizedEmail));
     }
