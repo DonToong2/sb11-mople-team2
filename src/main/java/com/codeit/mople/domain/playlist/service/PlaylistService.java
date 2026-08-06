@@ -14,6 +14,7 @@ import com.codeit.mople.domain.playlist.entity.PlaylistContent;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.playlist.event.PlaylistContentAddedEvent;
 import com.codeit.mople.domain.playlist.event.PlaylistSubscribedEvent;
+import com.codeit.mople.domain.playlist.event.PlaylistUnsubscribedEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
@@ -47,7 +48,7 @@ public class PlaylistService {
   private final ContentRepository contentRepository;
   private final PlaylistSubscriptionRepository playlistSubscriptionRepository;
 
-  private final ApplicationEventPublisher publisher;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
   public PlaylistResponse create(PlaylistCreateRequest request, UUID ownerId) {
@@ -320,7 +321,7 @@ public class PlaylistService {
     log.info("플레이리스트 구독 성공: playlistSubscriptionId={}, playlistId={}, subscriberId={}",
         saved.getId(), playlistId, subscriberId);
 
-    publisher.publishEvent(new PlaylistSubscribedEvent(ownerId, playlistId, subscriberId));
+    eventPublisher.publishEvent(new PlaylistSubscribedEvent(ownerId, playlistId, subscriberId));
   }
 
   @Transactional
@@ -335,6 +336,7 @@ public class PlaylistService {
       throw new PlaylistException(PlaylistErrorCode.UNSUBSCRIBE_NOT_FOUND,
           Map.of("playlistId", playlistId, "subscriberId", subscriberId));
     }
+
     int decreased = playlistRepository.decreaseSubscriberCount(playlistId);
     if (decreased == 0) {
       log.warn("구독자 수 감소 실패(이미 0): playlistId={}, subscriberId={}", playlistId, subscriberId);
@@ -342,6 +344,8 @@ public class PlaylistService {
 
     log.info("플레이리스트 구독 취소 성공: playlist={}, subscriberId={}",
         playlistId, subscriberId);
+
+    eventPublisher.publishEvent(new PlaylistUnsubscribedEvent(playlistId));
   }
 
   @Transactional
@@ -373,7 +377,7 @@ public class PlaylistService {
     log.info("플레이리스트에 콘텐츠 추가 성공: playlistContentId={}, playlistId={}, contentId={}, requesterId={}",
         playlistContent.getId(), playlistId, contentId, requesterId);
 
-    publisher.publishEvent(new PlaylistContentAddedEvent(playlistId, contentId));
+    eventPublisher.publishEvent(new PlaylistContentAddedEvent(playlistId, contentId));
   }
 
   @Transactional
