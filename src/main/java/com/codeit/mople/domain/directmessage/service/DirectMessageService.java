@@ -93,8 +93,7 @@ public class DirectMessageService {
       log.warn("대화방-DM 소속 불일치 - path conversationId: {}, actual conversationId: {}, messageId: {}",
           conversationId, message.getConversation().getId(), directMessageId);
       throw new DirectMessageException(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND,
-          Map.of("pathConversationId", conversationId,
-              "actualConversationId", message.getConversation().getId(),
+          Map.of("conversationId", conversationId,
               "directMessageId", directMessageId));
     }
 
@@ -102,8 +101,7 @@ public class DirectMessageService {
       log.warn("수신자가 아닌 유저의 접근, DM 읽음 처리 인가 실패 - messageId: {}, requesterId: {}", directMessageId,
           requesterId);
       throw new DirectMessageException(DirectMessageErrorCode.UNAUTHORIZED_RECEIVER,
-          Map.of("actualReceiverId", message.getReceiver().getId(),
-              "requesterId", requesterId,
+          Map.of("requesterId", requesterId,
               "directMessageId", directMessageId));
     }
 
