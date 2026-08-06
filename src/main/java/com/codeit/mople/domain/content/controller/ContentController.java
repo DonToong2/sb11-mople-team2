@@ -97,22 +97,4 @@ public class ContentController implements ContentApi {
     contentService.deleteContent(contentId);
     return ResponseEntity.noContent().build();
   }
-
-  //콘텐츠 시청 세션 목록 조회
-  @Override
-  @GetMapping("/{contentId}/watching-sessions")
-  public ResponseEntity<CursorResponseWatchingSessionDto> getWatchingSessions(
-      @PathVariable UUID contentId,
-      @RequestParam(value = "watcherNameLike", required = false) String watcherNameLike,
-      @RequestParam(value = "cursor", required = false) String cursor,
-      @RequestParam(value = "idAfter", required = false) UUID idAfter,
-      @RequestParam(value = "limit", defaultValue = "10") int limit,
-      @RequestParam(value = "sortDirection", defaultValue = "ASCENDING") String sortDirection,
-      @RequestParam(value = "sortBy", defaultValue = "createdAt") String sortBy) {
-
-    CursorResponseWatchingSessionDto response = watchingSessionService.getWatchingSessions(
-        contentId, watcherNameLike, cursor, idAfter, limit, sortDirection, sortBy);
-
-    return ResponseEntity.ok(response);
-  }
 }
