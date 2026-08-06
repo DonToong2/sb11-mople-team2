@@ -316,12 +316,11 @@ public class PlaylistService {
 
     PlaylistSubscription saved = playlistSubscriptionRepository.save(
         PlaylistSubscription.create(playlist, subscriber));
-    playlistRepository.increaseSubscriberCount(playlistId);
+
+    eventPublisher.publishEvent(new PlaylistSubscribedEvent(ownerId, playlistId, subscriberId));
 
     log.info("플레이리스트 구독 성공: playlistSubscriptionId={}, playlistId={}, subscriberId={}",
         saved.getId(), playlistId, subscriberId);
-
-    eventPublisher.publishEvent(new PlaylistSubscribedEvent(ownerId, playlistId, subscriberId));
   }
 
   @Transactional
@@ -337,15 +336,10 @@ public class PlaylistService {
           Map.of("playlistId", playlistId, "subscriberId", subscriberId));
     }
 
-    int decreased = playlistRepository.decreaseSubscriberCount(playlistId);
-    if (decreased == 0) {
-      log.warn("구독자 수 감소 실패(이미 0): playlistId={}, subscriberId={}", playlistId, subscriberId);
-    }
+    eventPublisher.publishEvent(new PlaylistUnsubscribedEvent(playlistId, subscriberId));
 
     log.info("플레이리스트 구독 취소 성공: playlist={}, subscriberId={}",
         playlistId, subscriberId);
-
-    eventPublisher.publishEvent(new PlaylistUnsubscribedEvent(playlistId));
   }
 
   @Transactional
