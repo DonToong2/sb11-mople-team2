@@ -154,4 +154,22 @@ public class WatchingSessionService {
     //현재 해당 콘텐츠를 보고 있는 총 시청자 수 반환
     return redisTemplate.opsForSet().size(contentKey);
   }
+
+  //유저가 콘텐츠 시청을 종료(퇴장)할 때 Redis에서 세션을 제거
+  public Long leaveSession(UUID userId, UUID contentId) {
+    String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
+    String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentId.toString();
+
+    //해당 유저가 시청 중이라는 상태 삭제
+    redisTemplate.delete(userKey);
+
+    //콘텐츠의 실시간 시청자 목록에서 해당 유저 제거
+    redisTemplate.opsForSet().remove(contentKey, userId.toString());
+
+    //퇴장 후 남은 총 시청자 수 반환(키가 만료되거나 없으면 0반환
+    Long remainingCount = redisTemplate.opsForSet().size(contentKey);
+    return remainingCount != null ? remainingCount : 0L;
+
+    return null;
+  }
 }
