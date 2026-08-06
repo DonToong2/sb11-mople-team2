@@ -16,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -31,12 +32,13 @@ public class ReviewListenerTest {
   @Mock
   private Content content;
 
-  private ReviewEventListener listener;
+  @InjectMocks
+  private ReviewEventListener eventListener;
+
   private UUID contentId;
 
   @BeforeEach
   void setUp() {
-    listener = new ReviewEventListener(reviewRepository, contentRepository);
     contentId = UUID.randomUUID();
   }
 
@@ -64,7 +66,7 @@ public class ReviewListenerTest {
           .willReturn(4.5);
 
       // when
-      listener.handle(event);
+      eventListener.handle(event);
 
       // then
       verify(contentRepository).findById(contentId);
@@ -86,7 +88,7 @@ public class ReviewListenerTest {
           .willReturn(Optional.empty());
 
       // when & then
-      assertThatThrownBy(() -> listener.handle(event))
+      assertThatThrownBy(() -> eventListener.handle(event))
           .isInstanceOf(ContentException.class);
 
       verify(contentRepository).findById(contentId);
@@ -119,7 +121,7 @@ public class ReviewListenerTest {
           .willReturn(3.8);
 
       // when
-      listener.handle(event);
+      eventListener.handle(event);
 
       // then
       verify(contentRepository).findById(contentId);
@@ -140,7 +142,7 @@ public class ReviewListenerTest {
           .willReturn(Optional.empty());
 
       // when & then
-      assertThatThrownBy(() -> listener.handle(event))
+      assertThatThrownBy(() -> eventListener.handle(event))
           .isInstanceOf(ContentException.class);
 
       verify(contentRepository).findById(contentId);
@@ -175,7 +177,7 @@ public class ReviewListenerTest {
           .willReturn(null);
 
       // when
-      listener.handle(event);
+      eventListener.handle(event);
 
       // then
       verify(contentRepository).findById(contentId);
@@ -197,7 +199,7 @@ public class ReviewListenerTest {
           .willReturn(Optional.empty());
 
       // when & then
-      assertThatThrownBy(() -> listener.handle(event))
+      assertThatThrownBy(() -> eventListener.handle(event))
           .isInstanceOf(ContentException.class);
 
       verify(contentRepository).findById(contentId);
