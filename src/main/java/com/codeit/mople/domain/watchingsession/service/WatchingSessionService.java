@@ -169,7 +169,5 @@ public class WatchingSessionService {
     //퇴장 후 남은 총 시청자 수 반환(키가 만료되거나 없으면 0반환
     Long remainingCount = redisTemplate.opsForSet().size(contentKey);
     return remainingCount != null ? remainingCount : 0L;
-
-    return null;
   }
 }
