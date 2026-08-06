@@ -2,6 +2,7 @@ package com.codeit.mople.domain.watchingsession.controller;
 
 import com.codeit.mople.domain.watchingsession.service.WatchingSessionService;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -29,5 +30,19 @@ public class WatchingSessionController {
 
     //JSON 형태로 감싸서 반환
     return ResponseEntity.ok(Map.of("contentId", contentId));
+  }
+
+  //특정 콘텐츠를 현재 실시간으로 시청 중인 유저 목록 조회(Redis 기반)
+  @GetMapping("/contents/{contentId}/watching-sessions/live")
+  public ResponseEntity<?> getLiveWatchingSessions(
+      @PathVariable UUID contentId) {
+    Set<UUID> watcherIds = watchingSessionService.getWatcherIds(contentId);
+
+    //시청자 수와 유저 ID 목록을 함께 반환
+    return ResponseEntity.ok(Map.of(
+        "contentId", contentId,
+        "watcherCount", watcherIds.size(),
+        "watcherIds", watcherIds
+    ));
   }
 }
