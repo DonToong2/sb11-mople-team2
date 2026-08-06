@@ -12,6 +12,7 @@ import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.global.config.JpaAuditingConfig;
 import com.codeit.mople.global.config.QueryDslConfig;
 import com.codeit.mople.global.dto.SortDirection;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -59,7 +60,7 @@ public class UserRepositoryTest {
 
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, null, null, 10,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
 
     List<User> result = userRepository.searchUsers(request);
@@ -77,7 +78,7 @@ public class UserRepositoryTest {
 
     UserSearchRequest request = new UserSearchRequest(
         "test", null, null, null, null, 10,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
 
     List<User> result = userRepository.searchUsers(request);
@@ -95,11 +96,11 @@ public class UserRepositoryTest {
 
     UserSearchRequest prefixUpperCase = new UserSearchRequest(
         "TEST", null, null, null, null, 10,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
     UserSearchRequest middleMatch = new UserSearchRequest(
         "mople", null, null, null, null, 10,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
 
     assertThat(userRepository.searchUsers(prefixUpperCase)).hasSize(1);
@@ -116,7 +117,7 @@ public class UserRepositoryTest {
 
     UserSearchRequest request = new UserSearchRequest(
         null, Role.ADMIN, null, null, null, 10,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
 
     List<User> result = userRepository.searchUsers(request);
@@ -135,7 +136,7 @@ public class UserRepositoryTest {
 
     UserSearchRequest request = new UserSearchRequest(
         null, null, true, null, null, 10,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
 
     List<User> result = userRepository.searchUsers(request);
@@ -153,7 +154,7 @@ public class UserRepositoryTest {
 
     UserSearchRequest secondPageRequest = new UserSearchRequest(
         null, null, null, "bb", userB.getId(), 10,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
 
     List<User> result = userRepository.searchUsers(secondPageRequest);
@@ -171,7 +172,7 @@ public class UserRepositoryTest {
 
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, null, null, 3,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
 
     List<User> result = userRepository.searchUsers(request);
@@ -189,7 +190,7 @@ public class UserRepositoryTest {
 
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, "false", normal2.getId(), 10,
-        SortDirection.ASCENDING, UserSortBy.isLocked
+        SortDirection.ASCENDING, UserSortBy.IS_LOCKED
     );
 
     List<User> result = userRepository.searchUsers(request);
@@ -208,7 +209,7 @@ public class UserRepositoryTest {
 
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, "true", locked1.getId(), 10,
-        SortDirection.DESCENDING, UserSortBy.isLocked
+        SortDirection.DESCENDING, UserSortBy.IS_LOCKED
     );
 
     List<User> result = userRepository.searchUsers(request);
@@ -227,7 +228,7 @@ public class UserRepositoryTest {
 
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, "ADMIN", admin1.getId(), 10,
-        SortDirection.ASCENDING, UserSortBy.role
+        SortDirection.ASCENDING, UserSortBy.ROLE
     );
 
     List<User> result = userRepository.searchUsers(request);
@@ -246,7 +247,7 @@ public class UserRepositoryTest {
 
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, "USER", user1.getId(), 10,
-        SortDirection.DESCENDING, UserSortBy.role
+        SortDirection.DESCENDING, UserSortBy.ROLE
     );
 
     List<User> result = userRepository.searchUsers(request);
@@ -260,7 +261,7 @@ public class UserRepositoryTest {
   void searchUsers_throwsException_whenCreatedAtCursorInvalid() {
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, "잘못된값", UUID.randomUUID(), 10,
-        SortDirection.ASCENDING, UserSortBy.createdAt
+        SortDirection.ASCENDING, UserSortBy.CREATED_AT
     );
 
     assertThatThrownBy(() -> userRepository.searchUsers(request))
@@ -273,7 +274,7 @@ public class UserRepositoryTest {
   void searchUsers_throwsException_whenRoleCursorInvalid() {
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, "SUPERADMIN", UUID.randomUUID(), 10,
-        SortDirection.ASCENDING, UserSortBy.role
+        SortDirection.ASCENDING, UserSortBy.ROLE
     );
 
     assertThatThrownBy(() -> userRepository.searchUsers(request))
@@ -286,7 +287,7 @@ public class UserRepositoryTest {
   void searchUsers_throwsException_whenIsLockedCursorInvalid() {
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, "잠김", UUID.randomUUID(), 10,
-        SortDirection.ASCENDING, UserSortBy.isLocked
+        SortDirection.ASCENDING, UserSortBy.IS_LOCKED
     );
 
     assertThatThrownBy(() -> userRepository.searchUsers(request))
@@ -299,11 +300,11 @@ public class UserRepositoryTest {
   void searchUsers_throwsException_whenCursorAndIdAfterMismatched() {
     UserSearchRequest cursorOnly = new UserSearchRequest(
         null, null, null, "bb", null, 10,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
     UserSearchRequest idAfterOnly = new UserSearchRequest(
         null, null, null, null, UUID.randomUUID(), 10,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
 
     assertThatThrownBy(() -> userRepository.searchUsers(cursorOnly))
@@ -327,11 +328,11 @@ public class UserRepositoryTest {
 
     UserSearchRequest noFilter = new UserSearchRequest(
         null, null, null, null, null, 2,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
     UserSearchRequest lockedOnly = new UserSearchRequest(
         null, null, true, null, null, 10,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
 
     assertThat(userRepository.countUsers(noFilter)).isEqualTo(6);
@@ -347,9 +348,42 @@ public class UserRepositoryTest {
 
     UserSearchRequest afterFirst = new UserSearchRequest(
         null, null, null, "aa", userA.getId(), 10,
-        SortDirection.ASCENDING, UserSortBy.name
+        SortDirection.ASCENDING, UserSortBy.NAME
     );
 
     assertThat(userRepository.countUsers(afterFirst)).isEqualTo(3);
+  }
+
+  @Test
+  @DisplayName("정렬값이 동일한 행이 있어도 커서 페이지네이션 시 데이터가 누락되거나 중복되지 않는다")
+  void searchUsers_cursorPagination_handlesTiedSortValues() {
+    userRepository.save(User.createUser("a@test.com", "encoded", "same"));
+    userRepository.save(User.createUser("b@test.com", "encoded", "same"));
+    userRepository.save(User.createUser("c@test.com", "encoded", "same"));
+
+    UserSearchRequest firstPageRequest = new UserSearchRequest(
+        null, null, null, null, null, 2,
+        SortDirection.ASCENDING, UserSortBy.NAME
+    );
+    List<User> firstFetch = userRepository.searchUsers(firstPageRequest);
+    List<User> firstPage = firstFetch.subList(0, 2);
+    User lastOfFirstPage = firstPage.get(1);
+
+    UserSearchRequest secondPageRequest = new UserSearchRequest(
+        null, null, null, lastOfFirstPage.getName(), lastOfFirstPage.getId(), 2,
+        SortDirection.ASCENDING, UserSortBy.NAME
+    );
+    List<User> secondPage = userRepository.searchUsers(secondPageRequest);
+
+    List<UUID> firstPageIds = firstPage.stream().map(User::getId).toList();
+    List<UUID> secondPageIds = secondPage.stream().map(User::getId).toList();
+
+    assertThat(secondPageIds).doesNotContainAnyElementsOf(firstPageIds);
+    assertThat(firstPageIds).doesNotHaveDuplicates();
+
+    List<UUID> allIds = new ArrayList<>(firstPageIds);
+    allIds.addAll(secondPageIds);
+    assertThat(allIds).doesNotHaveDuplicates();
+    assertThat(allIds).hasSize(3);
   }
 }
