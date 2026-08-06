@@ -1,22 +1,23 @@
 package com.codeit.mople.domain.watchingsession.service;
 
+import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.repository.ContentRepository;
+import com.codeit.mople.domain.user.entity.User;
+import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionChange;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionContentDto;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionResponse;
-import com.codeit.mople.domain.watchingsession.entity.WatchingSession;
-import com.codeit.mople.domain.watchingsession.repository.WatchingSessionQueryRepository;
 import com.codeit.mople.global.dto.UserSummary;
 import java.time.Instant;
-import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,10 +31,11 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class WatchingSessionService {
 
-  private final WatchingSessionQueryRepository watchingSessionQueryRepository;
   private final ContentRepository contentRepository;
+  private final UserRepository userRepository; // UserRepository 주입
   private final RedisTemplate<String, Object> redisTemplate;
   private final SimpMessagingTemplate messagingTemplate;
+
   private static final String USER_WATCHING_KEY_PREFIX = "user:watching:";
   private static final String CONTENT_WATCHERS_KEY_PREFIX = "content:watchers:";
 
@@ -44,9 +46,8 @@ public class WatchingSessionService {
     log.debug("시청 세션 목록 조회 시작 - contentId: {}", contentId);
 
     //콘텐츠 존재 여부 예외 처리
-    if (!contentRepository.existsById(contentId)) {
-      throw new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
-    }
+    Content content = contentRepository.findById(contentId)
+        .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
 
     //limit 검증
     if (limit <= 0 || limit > 100) {
@@ -55,16 +56,13 @@ public class WatchingSessionService {
 
     //정렬 기준 및 정렬 방향 정규화
     if (sortBy == null) {
-      sortBy = "createdAt";
+      sortBy = "id";
     }
     if (sortDirection == null) {
       sortDirection = "ASCENDING";
     }
 
     //정렬 기준 및 정렬 방향 검증
-    if (!"createdAt".equalsIgnoreCase(sortBy)) {
-      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("sortBy", sortBy));
-    }
     if (!"ASCENDING".equalsIgnoreCase(sortDirection) &&
         !"DESCENDING".equalsIgnoreCase(sortDirection)) {
       throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("sortDirection", sortDirection));
@@ -76,55 +74,78 @@ public class WatchingSessionService {
           Map.of("cursor", String.valueOf(cursor), "idAfter", String.valueOf(idAfter)));
     }
 
-    //커서 날짜 포맷 검증(500에러를 400 Bad Request로 변환)
-    if (cursor != null) {
-      try {
-        Instant.parse(cursor);
-      } catch (DateTimeParseException e) {
-        throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("cursor", cursor));
+    //Redis에서 현재 실시간으로 시청 중인 유저 ID 전체 목록 조회
+    Set<UUID> watcherIds = getWatcherIds(contentId);
+
+    //Redis Set은 순서가 없으므로 정렬 방향에 맞춰 리스트로 변환 및 정렬(메모리 정렬)
+    List<String> watcherIdList = watcherIds.stream()
+        .map(UUID::toString)
+        .sorted("DESCENDING".equalsIgnoreCase(sortDirection)
+            ? Collections.reverseOrder()
+            : String::compareTo)
+        .toList();
+
+    //전체 데이터 수 카운트
+    long totalCount = watcherIdList.size();
+
+    //커서 위치 탐색(idAfter 기준)
+    int startIndex = 0;
+    if (idAfter != null) {
+      int foundIndex = watcherIdList.indexOf(idAfter.toString());
+      if (foundIndex != -1) {
+        startIndex = foundIndex + 1; //커서 다음 항목부터 시작
       }
     }
 
-    //QueryDSL 레포지토리 호출(limit + 1개 조회)
-    List<WatchingSession> sessions = watchingSessionQueryRepository.findSessionByCursor(
-        contentId, watcherNameLike, cursor, idAfter, limit, sortBy, sortDirection);
+    //hasNext 판단 및 limit 사이즈만큼 자르기(Slicing)
+    int endIndex = Math.min(startIndex + limit + 1, watcherIdList.size());
+    List<String> pagedIdStrings = startIndex < watcherIdList.size()
+        ? watcherIdList.subList(startIndex, endIndex)
+        : Collections.emptyList();
 
-    //전체 데이터 수 카운트
-    long totalCount = watchingSessionQueryRepository.countSessions(contentId, watcherNameLike);
+    boolean hasNext = pagedIdStrings.size() > limit;
+    List<String> resultIds = hasNext ? pagedIdStrings.subList(0, limit) : pagedIdStrings;
 
-    //hasNext 판단 및 limit 사이즈만큼 자르기
-    boolean hasNext = sessions.size() > limit;
-    List<WatchingSession> pageSessions = hasNext ? sessions.subList(0, limit) : sessions;
+    //페이징된 target UUID 리스트 추출
+    List<UUID> targetUserIds = resultIds.stream().map(UUID::fromString).toList();
 
-    //entity -> response dto 매핑
-    List<WatchingSessionResponse> responses = pageSessions.stream()
-        .map(session -> new WatchingSessionResponse(
-            session.getId(),
-            session.getCreatedAt(),
-            new UserSummary(
-                session.getUser().getId(),
-                session.getUser().getName(),
-                session.getUser().getProfileImageUrl()
-            ),
-            new WatchingSessionContentDto(
-                session.getContent().getId(),
-                session.getContent().getType().name(),
-                session.getContent().getTitle(),
-                session.getContent().getDescription(),
-                session.getContent().getThumbnailUrl(),
-                session.getContent().getTags(),
-                session.getContent().getAverageRating(),
-                session.getContent().getReviewCount()
-            )
-        )).toList();
+    //DB에서 페이징 대상 유저들을 한 번에 조회하여 Map으로 캐싱 (N+1 방지)
+    Map<UUID, User> userMap = userRepository.findAllById(targetUserIds).stream()
+        .collect(Collectors.toMap(User::getId, Function.identity()));
+
+    //콘텐츠 정보를 담을 DTO 생성
+    WatchingSessionContentDto contentDto = new WatchingSessionContentDto(
+        content.getId(), content.getType().name(), content.getTitle(),
+        content.getDescription(), content.getThumbnailUrl(), content.getTags(),
+        content.getAverageRating(), content.getReviewCount()
+    );
+
+    //Redis 데이터 -> response dto 매핑
+    List<WatchingSessionResponse> responses = resultIds.stream().map(idStr -> {
+      UUID uId = UUID.fromString(idStr);
+      User user = userMap.get(uId);
+
+      //유저가 DB에 없을 경우를 대비한 Null-safe 방어 로직
+      String name = user != null ? user.getName() : "알 수 없는 유저";
+      String profileImageUrl = user != null ? user.getProfileImageUrl() : null;
+
+      UserSummary userSummary = new UserSummary(uId, name, profileImageUrl);
+
+      return new WatchingSessionResponse(
+          UUID.randomUUID(), //실시간 세션 식별용 임시 ID
+          Instant.now(),
+          userSummary,
+          contentDto
+      );
+    }).toList();
 
     //다음 커서 값 추출
     String nextCursor = null;
     UUID nextIdAfter = null;
-    if (hasNext && !pageSessions.isEmpty()) {
-      WatchingSession lastItem = pageSessions.get(pageSessions.size() - 1);
-      nextCursor = lastItem.getCreatedAt() != null ? lastItem.getCreatedAt().toString() : null;
-      nextIdAfter = lastItem.getId();
+    if (hasNext && !resultIds.isEmpty()) {
+      String lastId = resultIds.get(resultIds.size() - 1);
+      nextCursor = lastId;
+      nextIdAfter = UUID.fromString(lastId);
     }
 
     //최종 CursorResponse DTO 반환
@@ -168,7 +189,7 @@ public class WatchingSessionService {
         watcherCount
     );
     messagingTemplate.convertAndSend(
-        "/sub/contents/" + contentId.toString() + "/watching-sessions", changeEvent);
+        "/sub/contents/" + contentId.toString() + "/watch", changeEvent);
 
     return watcherCount;
   }
@@ -184,7 +205,7 @@ public class WatchingSessionService {
     //콘텐츠의 실시간 시청자 목록에서 해당 유저 제거
     redisTemplate.opsForSet().remove(contentKey, userId.toString());
 
-    //퇴장 후 남은 총 시청자 수 반환(키가 만료되거나 없으면 0반환
+    //퇴장 후 남은 총 시청자 수 반환(키가 만료되거나 없으면 0반환)
     Long remainingCount = redisTemplate.opsForSet().size(contentKey);
     Long watcherCount = remainingCount != null ? remainingCount : 0L;
 
@@ -196,7 +217,7 @@ public class WatchingSessionService {
         watcherCount
     );
     messagingTemplate.convertAndSend(
-        "/sub/contents/" + contentId.toString() + "/watching-sessions", changeEvent);
+        "/sub/contents/" + contentId.toString() + "/watch", changeEvent);
 
     return watcherCount;
   }

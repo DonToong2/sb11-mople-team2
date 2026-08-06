@@ -1,7 +1,7 @@
 package com.codeit.mople.domain.watchingsession.controller;
 
-import com.codeit.mople.domain.watchingsession.dto.ChatMessageRequest;
-import com.codeit.mople.domain.watchingsession.dto.ChatMessageResponse;
+import com.codeit.mople.domain.watchingsession.dto.ContentChatSendRequest;
+import com.codeit.mople.domain.watchingsession.dto.ContentChatDto;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -22,10 +22,10 @@ public class ContentWebSocketController {
   @MessageMapping("/contents/{contentId}/chat")
   public void sendMessage(
       @DestinationVariable("contentId") UUID contentId,
-      ChatMessageRequest request
+      ContentChatSendRequest request
   ) {
     //응답용 DTO(서버 시간 기록)
-    ChatMessageResponse response = new ChatMessageResponse(
+    ContentChatDto response = new ContentChatDto(
         contentId.toString(),
         request.senderId(),
         request.senderName(),
