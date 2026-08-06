@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.watchingsession.controller;
 
+import com.codeit.mople.domain.watchingsession.controller.api.WatchingSessionApi;
 import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
 import com.codeit.mople.domain.watchingsession.service.WatchingSessionService;
 import java.util.Map;
@@ -15,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
-public class WatchingSessionController {
+public class WatchingSessionController implements WatchingSessionApi {
 
   private final WatchingSessionService watchingSessionService;
 
