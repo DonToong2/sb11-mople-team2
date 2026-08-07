@@ -14,12 +14,13 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Controller;
+
 @Controller
 @RequiredArgsConstructor
 public class ContentWebSocketController {
 
   private final SimpMessagingTemplate messagingTemplate;
-  private final UserRepository  userRepository;
+  private final UserRepository userRepository;
 
 
   //클라이언트가 SEND /pub/contents/{contentId}/chat 으로 메시지를 보내면 이 메서드가 실행
@@ -34,24 +35,29 @@ public class ContentWebSocketController {
       return;
     }
 
-    //인증된 Principal에서 안전하게 userId 추출
-    UsernamePasswordAuthenticationToken authentication = (UsernamePasswordAuthenticationToken) principal;
-    CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-    UUID senderId = userDetails.getUserId();
+    //안전한 타입 검사 및 변환(instanceof 패턴 매칭)
+    if (principal instanceof UsernamePasswordAuthenticationToken authentication &&
+        authentication.getPrincipal() instanceof CustomUserDetails userDetails) {
 
-    //서버 측 DB에서 유저 이름 조회
-    String senderName = userRepository.findById(senderId)
-        .map(User::getName)
-        .orElse("알 수 없는 유저");
+      UUID senderId = userDetails.getUserId();
 
-    ContentChatDto response = new ContentChatDto(
-        contentId.toString(),
-        senderId,
-        senderName,
-        request.message(),
-        Instant.now()
-    );
+      //서버 측 DB에서 유저 이름 조회
+      String senderName = userRepository.findById(senderId)
+          .map(User::getName)
+          .orElse("알 수 없는 유저");
 
-    messagingTemplate.convertAndSend("/sub/contents/" + contentId + "/chat", response);
+      ContentChatDto response = new ContentChatDto(
+          contentId.toString(),
+          senderId,
+          senderName,
+          request.message(),
+          Instant.now()
+      );
+
+      messagingTemplate.convertAndSend("/sub/contents/" + contentId + "/chat", response);
+    } else {
+      //인증 객체 타입이 맞지 않거나 CustomUserDetails가 아닌 경우 조용히 무시(또는 에러 로깅)
+      return;
+    }
   }
 }
