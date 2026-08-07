@@ -72,10 +72,12 @@ public class User extends BaseEntity {
   }
 
   public static User createUser(String email, String password, String name) {
+    Objects.requireNonNull(password, "password");
     return new User(email, password, name, Role.USER, AuthProvider.LOCAL);
   }
 //어드민 계정 자동으로 초기화
   public static User createAdmin(String email, String password, String name) {
+    Objects.requireNonNull(password, "password");
     return new User(email, password, name, Role.ADMIN, AuthProvider.LOCAL);
   }
 
