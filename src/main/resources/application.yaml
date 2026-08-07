@@ -3,6 +3,9 @@ spring:
     name: mople
   profiles:
     active: dev
+  batch:
+    job:
+      enabled: false
   cloud:
     openfeign:
       client:
@@ -11,9 +14,6 @@ spring:
             connect-timeout: 3000
             read-timeout: 10000
             logger-level: basic
-  batch:
-    job:
-      enabled: false
 
 server:
   port: 8080
@@ -34,15 +34,14 @@ admin:
   password: ${ADMIN_PASSWORD}
   name: "관리자"
 
-external-api:
-  tmdb:
-    image-base-url: https://image.tmdb.org/t/p/w500
-
 management:
   endpoints:
     web:
       exposure:
         include: health, info, metrics
+external-api:
+  tmdb:
+    image-base-url: https://image.tmdb.org/t/p/w500
 
 batch:
   tmdb:
