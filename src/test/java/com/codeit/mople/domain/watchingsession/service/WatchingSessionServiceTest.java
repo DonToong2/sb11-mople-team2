@@ -152,12 +152,18 @@ public class WatchingSessionServiceTest {
   void enterSession_Success() {
     UUID userId = UUID.randomUUID();
     UUID contentId = UUID.randomUUID();
+    String userKey = "user:watching:" + userId;
     String contentKey = "content:watchers:" + contentId;
 
     Content mockContent = mock(Content.class);
 
-    // SessionCallback 트랜잭션 모킹(이전 방이 없었음 = "NULL_PREV" 반환)
-    given(redisTemplate.execute(any(SessionCallback.class))).willReturn("NULL_PREV");
+    given(redisTemplate.execute(any(SessionCallback.class))).willAnswer(invocation -> {
+      SessionCallback<?> action = invocation.getArgument(0);
+      action.execute(redisTemplate);
+      return "NULL_PREV";
+    });
+
+    given(valueOperations.get(userKey)).willReturn(null);
     given(setOperations.size(contentKey)).willReturn(1L); //입장 후 총 1명
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
 
@@ -174,12 +180,18 @@ public class WatchingSessionServiceTest {
   void leaveSession_Success() {
     UUID userId = UUID.randomUUID();
     UUID contentId = UUID.randomUUID();
+    String userKey = "user:watching:" + userId;
     String contentKey = "content:watchers:" + contentId;
 
     Content mockContent = mock(Content.class); //DB 동기화 검증용 모의 객체
 
-    //SessionCallback 트랜잭션 모킹(유저가 해당 방을 보고 있었고 삭제 성공함 = "SUCCESS" 반환)
-    given(redisTemplate.execute(any(SessionCallback.class))).willReturn("SUCCESS");
+    given(redisTemplate.execute(any(SessionCallback.class))).willAnswer(invocation -> {
+      SessionCallback<?> action = invocation.getArgument(0);
+      action.execute(redisTemplate);
+      return "SUCCESS";
+    });
+
+    given(valueOperations.get(userKey)).willReturn(contentId.toString());
     given(setOperations.size(contentKey)).willReturn(0L); //퇴장 후 총 0명
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
 
@@ -220,5 +232,28 @@ public class WatchingSessionServiceTest {
         watchingSessionService.getWatchingSessions(contentId, null,
             null, null, 101,
             "ASCENDING", "id"));
+  }
+
+  @Test
+  @DisplayName("유저 퇴장 무시 - 현재 시청 중인 콘텐츠가 아님(Redis 트랜잭션 취소)")
+  void leaveSession_Ignored_NotWatching() {
+    UUID userId = UUID.randomUUID();
+    UUID contentId = UUID.randomUUID();
+    String userKey = "user:watching:" + userId;
+    String contentKey = "content:watchers:" + contentId;
+
+    given(redisTemplate.execute(any(SessionCallback.class))).willAnswer(invocation -> {
+      SessionCallback<?> action = invocation.getArgument(0);
+      action.execute(redisTemplate);
+      return "NOT_WATCHING";
+    });
+
+    given(valueOperations.get(userKey)).willReturn(null);
+    given(setOperations.size(contentKey)).willReturn(5L); //방에 다른 유저 5명 남음
+
+    Long result = watchingSessionService.leaveSession(userId, contentId);
+
+    //퇴장이 무시되고 현재 남은 인원(5명)이 그대로 반환되어야 함
+    assertEquals(5L, result);
   }
 }
