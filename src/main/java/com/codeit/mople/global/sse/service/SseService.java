@@ -22,7 +22,7 @@ public class SseService {
   private final SseEmitterRepository emitterRepository;
   private final SseEventRepository sseEventRepository;
 
-  public SseEmitter connect(UUID receiverId) {
+  public SseEmitter connect(UUID receiverId, UUID lastEventId) {
     SseEmitter emitter = new SseEmitter(TIMEOUT);
 
     // 입력, 반환 둘 다 없음(Runnable)
@@ -49,18 +49,32 @@ public class SseService {
 
     emitterRepository.save(receiverId, emitter);
 
+    resendEvents(receiverId, lastEventId, emitter);
+
     return emitter;
   }
 
   public void send(UUID receiverId, String eventName, Object data) {
+    
     Set<SseEmitter> emitters = emitterRepository.findAll(receiverId);
+    
+    UUID eventId = UUID.randomUUID();
+    
+    SseEvent sseEvent = new SseEvent(
+        eventId,
+        receiverId,
+        eventName,
+        data
+    );
+    
+    sseEventRepository.save(sseEvent);
 
+    // 각 emitter들에게 전송
     for (SseEmitter emitter : emitters) {
-
       try {
         emitter.send(
             SseEmitter.event()
-                .id(UUID.randomUUID().toString())
+                .id(eventId.toString())
                 .name(eventName)
                 .data(data)
         );

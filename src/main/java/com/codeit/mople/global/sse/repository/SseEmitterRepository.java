@@ -10,7 +10,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Repository
 public class SseEmitterRepository {
 
-  // TODO 김명근: 동시 로그인이 허용되는지 파악 후 Set 집합으로 SseEmitter 모을지 단일로 할지 결정
+  // TODO 김명근: 동시 로그인이 허용되는지 파악 후 Set 집합으로 SseEmitter 모을지 단일로 할지 결정(동시 로그인이면 코드 유지, 단일 로그인이면 Set 취소)
   private final ConcurrentHashMap<UUID, Set<SseEmitter>> emitters = new ConcurrentHashMap<>();
 
   public void save(UUID receiverId, SseEmitter emitter) {

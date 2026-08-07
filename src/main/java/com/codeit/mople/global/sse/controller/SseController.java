@@ -24,8 +24,7 @@ public class SseController {
       @AuthenticationPrincipal CustomUserDetails userDetails,
       @RequestParam(required = false) UUID lastEventId
   ) {
-    return sseService.connect(userDetails.getUserId());
+    return sseService.connect(userDetails.getUserId(), lastEventId);
   }
-
 
 }
