@@ -4,6 +4,7 @@ import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +25,11 @@ public interface SseApi {
           responseCode = "200",
           description = "성공",
           content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE)
+      ),
+      @ApiResponse(
+          responseCode = "500",
+          description = "서버 오류",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       )
   })
   SseEmitter connect(
