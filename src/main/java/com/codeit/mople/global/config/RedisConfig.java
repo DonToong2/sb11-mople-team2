@@ -19,7 +19,7 @@ public class RedisConfig {
     template.setKeySerializer(new StringRedisSerializer());
 
     //Redis의 Value는 JSON 형태로 저장(객체 저장을 위함)
-    template.setKeySerializer(new GenericJackson2JsonRedisSerializer());
+    template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
 
     //Hash 자료구조를 사용할 경우를 대비한 직렬화 설정
     template.setHashKeySerializer(new StringRedisSerializer());

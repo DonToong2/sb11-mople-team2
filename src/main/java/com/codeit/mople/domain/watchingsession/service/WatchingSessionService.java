@@ -58,6 +58,10 @@ public class WatchingSessionService {
     if (sortBy == null) {
       sortBy = "id";
     }
+    //sortBy가 id가 아닌 다른 정렬 값이 오면 거부
+    if (!"id".equalsIgnoreCase(sortBy)) {
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("sortBy", sortBy));
+    }
     if (sortDirection == null) {
       sortDirection = "ASCENDING";
     }
@@ -90,22 +94,35 @@ public class WatchingSessionService {
     }
 
     //Redis Set은 순서가 없으므로 정렬 방향에 맞춰 리스트로 변환 및 정렬(메모리 정렬)
+    boolean isDesc = "DESCENDING".equalsIgnoreCase(sortDirection);
     List<String> watcherIdList = watcherIds.stream()
         .map(UUID::toString)
-        .sorted("DESCENDING".equalsIgnoreCase(sortDirection)
-            ? Collections.reverseOrder()
-            : String::compareTo)
+        .sorted(isDesc ? Collections.reverseOrder() : String::compareTo)
         .toList();
 
     //전체 데이터 수 카운트
     long totalCount = watcherIdList.size();
 
     //커서 위치 탐색(idAfter 기준)
+    //커서 유저가 퇴장해서 idAfter를 찾아내지 못한 경우(-1) 정렬 위치 계산
     int startIndex = 0;
     if (idAfter != null) {
-      int foundIndex = watcherIdList.indexOf(idAfter.toString());
+      String targetId = idAfter.toString();
+      int foundIndex = watcherIdList.indexOf(targetId);
       if (foundIndex != -1) {
         startIndex = foundIndex + 1; //커서 다음 항목부터 시작
+      } else {
+        // 유저가 퇴장하여 커서 ID를 찾지 못한 경우 정렬 위치 보정
+        for (int i = 0; i < watcherIdList.size(); i++) {
+          int cmp = watcherIdList.get(i).compareTo(targetId);
+          if ((isDesc && cmp < 0) || (!isDesc && cmp > 0)) {
+            startIndex = i;
+            break;
+          }
+          if (i == watcherIdList.size() - 1) {
+            startIndex = watcherIdList.size();
+          }
+        }
       }
     }
 
@@ -185,9 +202,20 @@ public class WatchingSessionService {
       redisTemplate.opsForSet().remove(prevContentKey, userId.toString());
 
       Long prevCount = redisTemplate.opsForSet().size(prevContentKey);
+      Long watcherCount = prevCount != null ? prevCount : 0L;
+
       contentRepository.findById(UUID.fromString(previousContentId))
-          .ifPresent(prevContent -> prevContent.updateWatcherCount(
-              prevCount != null ? prevCount : 0L));
+          .ifPresent(prevContent -> prevContent.updateWatcherCount(watcherCount));
+
+      //이전 방 방 이동 퇴장(LEAVE) 이벤트 브로드캐스팅
+      WatchingSessionChange prevChangeEvent = new WatchingSessionChange(
+          previousContentId,
+          userId,
+          "LEAVE",
+          watcherCount
+      );
+      messagingTemplate.convertAndSend(
+          "/sub/contents/" + previousContentId + "/watch", prevChangeEvent);
     }
 
     //유저별 현재 시청 중인 콘텐츠 업데이트(String 자료구조)
@@ -223,6 +251,14 @@ public class WatchingSessionService {
     String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
     String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentId.toString();
 
+    //유저가 현재 시청 중인 콘텐츠가 퇴장 요청 콘텐츠와 일치하는지 확인
+    String currentWatchingId = (String) redisTemplate.opsForValue().get(userKey);
+    if (currentWatchingId == null || !currentWatchingId.equals(contentId.toString())) {
+      log.warn("퇴장 요청 무시: 유저가 해당 콘텐츠를 시청 중이지 않음. userId: {}, contentId: {}", userId, contentId);
+      Long currentCount = redisTemplate.opsForSet().size(contentKey);
+      return currentCount != null ? currentCount : 0L;
+    }
+
     //해당 유저가 시청 중이라는 상태 삭제
     redisTemplate.delete(userKey);
 
@@ -251,11 +287,20 @@ public class WatchingSessionService {
   }
 
   //특정 유저가 현재 시청 중인 콘텐츠의 ID를 조회
+  //시청 세션이 없을 경우 404 예외 던짐
   public UUID getWatchingContentId(UUID userId) {
+    //유저 존재 여부 확인
+    userRepository.findById(userId)
+        .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("userId", userId)));
+
     String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
     String contentIdStr = (String) redisTemplate.opsForValue().get(userKey);
 
-    return contentIdStr != null ? UUID.fromString(contentIdStr) : null;
+    if (contentIdStr == null) {
+      throw new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("watcherId", userId));
+    }
+
+    return UUID.fromString(contentIdStr);
   }
 
   //특정 콘텐츠를 현재 실시간으로 시청 중인 유저 ID 목록을 조회
