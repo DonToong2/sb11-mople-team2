@@ -21,7 +21,6 @@ public class DirectMessageEventListener {
   private final SseService sseService;
   private final DirectMessageRepository directMessageRepository;
 
-  @Transactional(readOnly = true)
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handle(DirectMessageCreatedEvent event) {
     log.debug("SSE 이벤트 전송 시도: receiverId={}, directMessageId={}",
