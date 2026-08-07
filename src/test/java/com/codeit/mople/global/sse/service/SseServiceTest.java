@@ -37,7 +37,7 @@ public class SseServiceTest {
   private SseService sseService;
 
   private UUID receiverId;
-  private SseEmitter emitter;
+  private SseEmitter sseEmitter;
 
   private UUID lastEventId;
   private SseEvent sseEvent1;
@@ -46,7 +46,7 @@ public class SseServiceTest {
   @BeforeEach
   void setUp() {
     receiverId = UUID.randomUUID();
-    emitter = mock(SseEmitter.class);
+    sseEmitter = mock(SseEmitter.class);
 
     lastEventId = UUID.randomUUID();
     sseEvent1 = new SseEvent(
@@ -119,16 +119,16 @@ public class SseServiceTest {
     void send_success() throws IOException {
       // given
 
-      // BeforeEach에서 receiverId, emitter1를 초기화
+      // BeforeEach에서 receiverId, sseEmitter를 초기화
 
       when(emitterRepository.find(receiverId))
-          .thenReturn(emitter);
+          .thenReturn(sseEmitter);
 
       // when
       sseService.send(receiverId, "eventName", "data");
 
       // then
-      verify(emitter).send(any(SseEmitter.SseEventBuilder.class));
+      verify(sseEmitter).send(any(SseEmitter.SseEventBuilder.class));
 
       verify(sseEventRepository).save(any(SseEvent.class));
     }
@@ -155,18 +155,21 @@ public class SseServiceTest {
     @DisplayName("SSE 이벤트 전송 실패 - 연결 종료")
     void send_fail_completeWithError() throws IOException {
       // given
+
+      // BeforeEach에서 receiverId, sseEmitter를 초기화
+
       when(emitterRepository.find(receiverId))
-          .thenReturn(emitter);
+          .thenReturn(sseEmitter);
 
       doThrow(new IOException())
-          .when(emitter)
+          .when(sseEmitter)
           .send(any(SseEmitter.SseEventBuilder.class));
 
       // when
       sseService.send(receiverId, "eventName", "data");
 
       // then
-      verify(emitter).completeWithError(any(IOException.class));
+      verify(sseEmitter).completeWithError(any(IOException.class));
     }
 
   }

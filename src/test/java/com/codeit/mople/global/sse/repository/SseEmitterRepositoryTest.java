@@ -34,7 +34,7 @@ public class SseEmitterRepositoryTest {
     void save_success() {
       // given
 
-      // BeforeEach에서 receiverId, sseEmitter1를 초기화
+      // BeforeEach에서 receiverId, sseEmitter를 초기화
 
       // when
       repository.save(receiverId, sseEmitter);
@@ -47,6 +47,9 @@ public class SseEmitterRepositoryTest {
     @DisplayName("SseEmitter 저장 성공 - 기존 연결 교체")
     void save_success_replace() {
       // given
+
+      // BeforeEach에서 receiverId, sseEmitter를 초기화
+
       SseEmitter newEmitter = new SseEmitter();
 
       repository.save(receiverId, sseEmitter);
@@ -69,7 +72,7 @@ public class SseEmitterRepositoryTest {
     void findAll_success() {
       // given
 
-      // BeforeEach에서 receiverId, sseEmitter1, sseEmitter2를 초기화
+      // BeforeEach에서 receiverId, sseEmitter를 초기화
       repository.save(receiverId, sseEmitter);
 
       // when
@@ -104,7 +107,7 @@ public class SseEmitterRepositoryTest {
     void delete_success() {
       // given
 
-      // BeforeEach에서 receiverId, sseEmitter1, sseEmitter2를 초기화
+      // BeforeEach에서 receiverId, sseEmitter를 초기화
 
       repository.save(receiverId, sseEmitter);
 
@@ -120,9 +123,9 @@ public class SseEmitterRepositoryTest {
     void delete_ignore_notFoundReceiverId() {
       // given
 
-      // BeforeEach에서 receiverId, sseEmitter1를 초기화
+      // BeforeEach에서 receiverId, sseEmitter를 초기화
 
-      // receiverId가 존재하지 않는 경우를 증명하기 위해 (receiverId, sseEmitter1)를 save하지 않음
+      // receiverId가 존재하지 않는 경우를 증명하기 위해 (receiverId, sseEmitter)를 save하지 않음
 
       // when
       repository.remove(receiverId, sseEmitter);
@@ -136,7 +139,7 @@ public class SseEmitterRepositoryTest {
     void delete_ignore_notFoundEmitter() {
       // given
 
-      // BeforeEach에서 receiverId, sseEmitter1, sseEmitter2를 초기화
+      // BeforeEach에서 receiverId, sseEmitter를 초기화
 
       SseEmitter anotherEmitter = new SseEmitter();
 
