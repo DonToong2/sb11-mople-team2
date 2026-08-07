@@ -18,6 +18,10 @@ spring:
             client-secret: ${GOOGLE_CLIENT_SECRET}
             scope: email, profile
 
+  batch:
+    jdbc:
+      initialize-schema: always
+
 logging:
   level:
     com.codeit.mople: DEBUG
@@ -37,6 +41,7 @@ external-api:
     api-key: ${TMDB_API_KEY:}
   sportsdb:
     base-url: https://www.thesportsdb.com/api/v1/json
+    api-key: ${SPORTSDB_API_KEY:3}
     api-key: ${SPORTSDB_API_KEY:}
 
 oauth2:
