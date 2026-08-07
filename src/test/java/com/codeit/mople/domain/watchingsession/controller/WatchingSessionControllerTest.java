@@ -40,20 +40,22 @@ class WatchingSessionControllerTest {
 
     given(watchingSessionService.getWatchingContentId(watcherId)).willReturn(contentId);
 
-    mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", watcherId))
+    mockMvc.perform(get("/api/users/{watcherId}/watching-session", watcherId))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.contentId").value(contentId.toString()));
   }
 
   @Test
-  @DisplayName("특정 유저 시청 중인 콘텐츠 ID 조회 성공 (시청 중 아님) - 204 No Content")
-  void getWatchingSessionForUser_NoContent() throws Exception {
+  @DisplayName("특정 유저 시청 중인 콘텐츠 ID 조회 실패 (시청 중 아님) - 404 Not Found")
+  void getWatchingSessionForUser_NotFound() throws Exception {
     UUID watcherId = UUID.randomUUID();
 
-    given(watchingSessionService.getWatchingContentId(watcherId)).willReturn(null);
+    given(watchingSessionService.getWatchingContentId(watcherId))
+        .willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("watcherId", watcherId)));
 
-    mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", watcherId))
-        .andExpect(status().isNoContent());
+    //단수형 경로로 요청하고 404 상태를 기대
+    mockMvc.perform(get("/api/users/{watcherId}/watching-session", watcherId))
+        .andExpect(status().isNotFound());
   }
 
   @Test
