@@ -120,8 +120,8 @@ public class SportsContentBatchConfig {
       String thumbnailUrl = dto.strThumb();
       List<String> tags = List.of("Sports", dto.strSport(), dto.strLeague());
 
-      //ContentType은 임시로 SPORTS 사용, 생성자에 dto.idEvent()를 외부 식별자로 전달
-      return new Content(ContentType.valueOf("SPORTS"), title, description, thumbnailUrl, tags, dto.idEvent());
+      //ContentType은 임시로 SPORT 사용, 생성자에 dto.idEvent()를 외부 식별자로 전달
+      return new Content(ContentType.valueOf("SPORT"), title, description, thumbnailUrl, tags, dto.idEvent());
     };
   }
 
