@@ -2,7 +2,6 @@ package com.codeit.mople.global.sse.controller;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -49,7 +48,7 @@ public class SseControllerTest {
     @DisplayName("SSE 연결 성공")
     void connect_success() throws Exception {
       // given
-      when(sseService.connect(userId))
+      when(sseService.connect(userId, null))
           .thenReturn(emitter);
 
       // when & then
@@ -58,7 +57,7 @@ public class SseControllerTest {
           )
           .andExpect(status().isOk());
 
-      verify(sseService).connect(userId);
+      verify(sseService).connect(userId, null);
     }
 
     @Test
@@ -67,7 +66,7 @@ public class SseControllerTest {
       // given
       UUID lastEventId = UUID.randomUUID();
 
-      when(sseService.connect(userId))
+      when(sseService.connect(userId, lastEventId))
           .thenReturn(emitter);
 
       // when & then
@@ -77,7 +76,7 @@ public class SseControllerTest {
           )
           .andExpect(status().isOk());
 
-      verify(sseService).connect(userId);
+      verify(sseService).connect(userId, lastEventId);
     }
 
   }

@@ -2,15 +2,17 @@ package com.codeit.mople.global.sse.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.codeit.mople.global.sse.model.SseEvent;
 import com.codeit.mople.global.sse.repository.SseEmitterRepository;
+import com.codeit.mople.global.sse.repository.SseEventRepository;
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +31,9 @@ public class SseServiceTest {
   @Mock
   private SseEmitterRepository emitterRepository;
 
+  @Mock
+  private SseEventRepository sseEventRepository;
+
   @InjectMocks
   private SseService sseService;
 
@@ -36,11 +41,30 @@ public class SseServiceTest {
   private SseEmitter emitter1;
   private SseEmitter emitter2;
 
+  private UUID lastEventId;
+  private SseEvent sseEvent1;
+  private SseEvent sseEvent2;
+
   @BeforeEach
   void setUp() {
     receiverId = UUID.randomUUID();
     emitter1 = mock(SseEmitter.class);
     emitter2 = mock(SseEmitter.class);
+
+    lastEventId = UUID.randomUUID();
+    sseEvent1 = new SseEvent(
+        UUID.randomUUID(),
+        receiverId,
+        "notifications",
+        "data"
+    );
+    sseEvent2 = new SseEvent(
+        UUID.randomUUID(),
+        receiverId,
+        "direct-messages",
+        "data2"
+    );
+
   }
 
   @Nested
@@ -55,13 +79,36 @@ public class SseServiceTest {
       // BeforeEach에서 receiverId를 초기화
 
       // when
-      SseEmitter result = sseService.connect(receiverId);
+      SseEmitter result = sseService.connect(receiverId, null);
 
       // then
       assertThat(result).isNotNull();
 
       // 레포지토리 호출 검증
       verify(emitterRepository).save(receiverId, result);
+
+      // resendEvents() 메서드 검증(내부에 sseEventRepository.findAfter 메서드 검증)
+      verify(sseEventRepository, never()).findAfter(any(), any());
+    }
+
+    @Test
+    @DisplayName("SSE 연결 성공 - 유실 이벤트 재전송")
+    void connect_success_resendEvents() throws IOException {
+      // given
+
+      // BeforeEach에서 receiverId, lastEventId, sseEvent1, sseEvent2를 초기화
+
+      when(sseEventRepository.findAfter(receiverId, lastEventId))
+          .thenReturn(List.of(sseEvent1, sseEvent2));
+
+      // when
+      SseEmitter result = sseService.connect(receiverId, lastEventId);
+
+      // then
+      assertThat(result).isNotNull();
+
+      verify(emitterRepository).save(receiverId, result);
+      verify(sseEventRepository).findAfter(receiverId, lastEventId);
     }
 
   }
@@ -85,6 +132,8 @@ public class SseServiceTest {
 
       // then
       verify(emitter1).send(any(SseEmitter.SseEventBuilder.class));
+
+      verify(sseEventRepository).save(any(SseEvent.class));
     }
 
     @Test
@@ -103,6 +152,8 @@ public class SseServiceTest {
       // then
       verify(emitter1).send(any(SseEmitter.SseEventBuilder.class));
       verify(emitter2).send(any(SseEmitter.SseEventBuilder.class));
+
+      verify(sseEventRepository).save(any(SseEvent.class));
     }
 
     @Test
@@ -120,6 +171,7 @@ public class SseServiceTest {
 
       // then
       verify(emitterRepository).findAll(receiverId);
+      verify(sseEventRepository).save(any(SseEvent.class));
     }
 
     @Test
@@ -147,6 +199,7 @@ public class SseServiceTest {
       verify(emitterRepository).remove(receiverId, emitter1);
 
       verify(emitter1).completeWithError(any(IOException.class));
+      verify(sseEventRepository).save(any(SseEvent.class));
     }
 
     @Test
