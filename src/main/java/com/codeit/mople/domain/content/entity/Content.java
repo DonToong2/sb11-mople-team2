@@ -102,4 +102,9 @@ public class Content extends BaseTimeEntity {
       this.tags.addAll(tags);
     }
   }
+
+  //실시간 시청자 수 동기화용 메서드
+  public void updateWatcherCount(long watcherCount) {
+    this.watcherCount = watcherCount;
+  }
 }

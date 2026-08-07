@@ -77,6 +77,18 @@ public class WatchingSessionService {
     //Redis에서 현재 실시간으로 시청 중인 유저 ID 전체 목록 조회
     Set<UUID> watcherIds = getWatcherIds(contentId);
 
+    //이름 검색 조건이 있을 경우 메모리 필터링
+    if (watcherNameLike != null && !watcherNameLike.trim().isEmpty()) {
+      List<User> matchingUsers = userRepository.findAllById(watcherIds).stream()
+          .filter(user -> user.getName() != null && user.getName().contains(watcherNameLike.trim()))
+          .toList();
+
+      //필터링된 유저들의 ID로 watcherIds 교체
+      watcherIds = matchingUsers.stream()
+          .map(User::getId)
+          .collect(Collectors.toSet());
+    }
+
     //Redis Set은 순서가 없으므로 정렬 방향에 맞춰 리스트로 변환 및 정렬(메모리 정렬)
     List<String> watcherIdList = watcherIds.stream()
         .map(UUID::toString)
@@ -160,7 +172,8 @@ public class WatchingSessionService {
     );
   }
 
-  //유저가 콘텐츠 시청을 시작(입장)할 때 실시간 세션을 Redis에 기록
+  //유저가 콘텐츠 시청을 시작(입장)할 때 실시간 세션을 Redis에 기록하고 DB 갱신
+  @Transactional
   public Long enterSession(UUID userId, UUID contentId) {
     String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
     String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentId.toString();
@@ -170,6 +183,11 @@ public class WatchingSessionService {
     if (previousContentId != null && !previousContentId.equals(contentId.toString())) {
       String prevContentKey = CONTENT_WATCHERS_KEY_PREFIX + previousContentId;
       redisTemplate.opsForSet().remove(prevContentKey, userId.toString());
+
+      Long prevCount = redisTemplate.opsForSet().size(prevContentKey);
+      contentRepository.findById(UUID.fromString(previousContentId))
+          .ifPresent(prevContent -> prevContent.updateWatcherCount(
+              prevCount != null ? prevCount : 0L));
     }
 
     //유저별 현재 시청 중인 콘텐츠 업데이트(String 자료구조)
@@ -180,6 +198,11 @@ public class WatchingSessionService {
 
     //현재 해당 콘텐츠를 보고 있는 총 시청자 수 반환
     Long watcherCount = redisTemplate.opsForSet().size(contentKey);
+
+    //현재 입장한 콘텐츠 DB 시청자 수 동기화
+    contentRepository.findById(contentId)
+        .ifPresent(content -> content.updateWatcherCount(
+            watcherCount != null ? watcherCount : 0L));
 
     //웹소켓으로 입장 이벤트 브로드캐스팅
     WatchingSessionChange changeEvent = new WatchingSessionChange(
@@ -194,7 +217,8 @@ public class WatchingSessionService {
     return watcherCount;
   }
 
-  //유저가 콘텐츠 시청을 종료(퇴장)할 때 Redis에서 세션을 제거
+  //유저가 콘텐츠 시청을 종료(퇴장)할 때 Redis에서 세션을 제거하고 DB 갱신
+  @Transactional
   public Long leaveSession(UUID userId, UUID contentId) {
     String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
     String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentId.toString();
@@ -208,6 +232,10 @@ public class WatchingSessionService {
     //퇴장 후 남은 총 시청자 수 반환(키가 만료되거나 없으면 0반환)
     Long remainingCount = redisTemplate.opsForSet().size(contentKey);
     Long watcherCount = remainingCount != null ? remainingCount : 0L;
+
+    //퇴장한 콘텐츠 DB 시청자 수 동기화
+    contentRepository.findById(contentId)
+        .ifPresent(content -> content.updateWatcherCount(watcherCount));
 
     //웹소켓으로 퇴장 이벤트 브로드캐스팅
     WatchingSessionChange changeEvent = new WatchingSessionChange(

@@ -68,7 +68,7 @@ public class WatchingSessionServiceTest {
   }
 
   @Test
-  @DisplayName("시청 세션 목록 조회 실패 - 콘텐츠가 존재하지 않음 (404 예외 발생)")
+  @DisplayName("시청 세션 목록 조회 실패 - 콘텐츠가 존재하지 않음(404 예외 발생)")
   void getWatchingSessions_Fail_ContentNotFound() {
     UUID contentId = UUID.randomUUID();
 
@@ -93,10 +93,10 @@ public class WatchingSessionServiceTest {
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
     given(mockContent.getId()).willReturn(contentId);
 
-    // Redis에 1명의 유저가 접속 중이라고 가정
+    //Redis에 1명의 유저가 접속 중이라고 가정
     given(setOperations.members(contentKey)).willReturn(Set.of(userId.toString()));
 
-    // DB에서 해당 유저 정보 조회 모킹
+    //DB에서 해당 유저 정보 조회 모킹
     given(userRepository.findAllById(anyList())).willReturn(List.of(mockUser));
     given(mockUser.getId()).willReturn(userId);
     given(mockContent.getType()).willReturn(ContentType.MOVIE);
@@ -114,39 +114,82 @@ public class WatchingSessionServiceTest {
   }
 
   @Test
-  @DisplayName("유저 입장 성공 - Redis 기록 및 웹소켓 브로드캐스팅 확인")
+  @DisplayName("시청 세션 목록 조회 성공 - watcherNameLike 키워드 검색 필터링 확인")
+  void getWatchingSessions_Success_WithWatcherNameLike() {
+    UUID contentId = UUID.randomUUID();
+    UUID user1Id = UUID.randomUUID();
+    UUID user2Id = UUID.randomUUID();
+    String contentKey = "content:watchers:" + contentId;
+
+    Content mockContent = mock(Content.class);
+    User user1 = mock(User.class);
+    User user2 = mock(User.class);
+
+    given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
+    given(setOperations.members(contentKey)).willReturn(Set.of(user1Id.toString(), user2Id.toString()));
+
+    given(userRepository.findAllById(any())).willReturn(List.of(user1, user2));
+
+    given(user1.getId()).willReturn(user1Id);
+    given(user2.getId()).willReturn(user2Id);
+
+    given(user1.getName()).willReturn("홍길동");
+    given(user2.getName()).willReturn("김철수");
+    given(mockContent.getType()).willReturn(ContentType.MOVIE);
+
+    CursorResponseWatchingSessionDto result = watchingSessionService.getWatchingSessions(
+        contentId, "홍길", null, null, 10,
+        "DESCENDING", "id");
+
+    assertNotNull(result);
+    assertEquals(1, result.totalCount()); // "홍길동" 1명만 필터링되어야 함
+    assertEquals("홍길동", result.data().get(0).watcher().name());
+  }
+
+  @Test
+  @DisplayName("유저 입장 성공 - Redis 기록, DB 동기화 및 웹소켓 브로드캐스팅 확인")
   void enterSession_Success() {
     UUID userId = UUID.randomUUID();
     UUID contentId = UUID.randomUUID();
     String userKey = "user:watching:" + userId;
     String contentKey = "content:watchers:" + contentId;
 
-    given(valueOperations.get(userKey)).willReturn(null); // 이전 시청 기록 없음
-    given(setOperations.size(contentKey)).willReturn(1L); // 입장 후 총 1명
+    Content mockContent = mock(Content.class);
+
+    given(valueOperations.get(userKey)).willReturn(null); //이전 시청 기록 없음
+    given(setOperations.size(contentKey)).willReturn(1L); //입장 후 총 1명
+    given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
 
     Long result = watchingSessionService.enterSession(userId, contentId);
 
     assertEquals(1L, result);
     verify(valueOperations).set(userKey, contentId.toString());
     verify(setOperations).add(contentKey, userId.toString());
-    verify(messagingTemplate).convertAndSend(eq("/sub/contents/" + contentId + "/watch"), any(WatchingSessionChange.class));
+    verify(mockContent).updateWatcherCount(1L); //DB 동기화가 정상 호출되었는지 검증
+    verify(messagingTemplate).convertAndSend(eq(
+        "/sub/contents/" + contentId + "/watch"), any(WatchingSessionChange.class));
   }
 
   @Test
-  @DisplayName("유저 퇴장 성공 - Redis 삭제 및 웹소켓 브로드캐스팅 확인")
+  @DisplayName("유저 퇴장 성공 - Redis 삭제, DB 동기화 및 웹소켓 브로드캐스팅 확인")
   void leaveSession_Success() {
     UUID userId = UUID.randomUUID();
     UUID contentId = UUID.randomUUID();
     String userKey = "user:watching:" + userId;
     String contentKey = "content:watchers:" + contentId;
 
-    given(setOperations.size(contentKey)).willReturn(0L); // 퇴장 후 총 0명
+    Content mockContent = mock(Content.class); //DB 동기화 검증용 모의 객체
+
+    given(setOperations.size(contentKey)).willReturn(0L); //퇴장 후 총 0명
+    given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
 
     Long result = watchingSessionService.leaveSession(userId, contentId);
 
     assertEquals(0L, result);
     verify(redisTemplate).delete(userKey);
     verify(setOperations).remove(contentKey, userId.toString());
-    verify(messagingTemplate).convertAndSend(eq("/sub/contents/" + contentId + "/watch"), any(WatchingSessionChange.class));
+    verify(mockContent).updateWatcherCount(0L); //DB 동기화가 정상 호출되었는지 검증
+    verify(messagingTemplate).convertAndSend(eq(
+        "/sub/contents/" + contentId + "/watch"), any(WatchingSessionChange.class));
   }
 }
