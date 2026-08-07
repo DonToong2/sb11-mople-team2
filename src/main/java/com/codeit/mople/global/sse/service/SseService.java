@@ -1,7 +1,10 @@
 package com.codeit.mople.global.sse.service;
 
+import com.codeit.mople.global.sse.model.SseEvent;
 import com.codeit.mople.global.sse.repository.SseEmitterRepository;
+import com.codeit.mople.global.sse.repository.SseEventRepository;
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -17,23 +20,30 @@ public class SseService {
   private static final long TIMEOUT = 60 * 60 * 1000L; // 1시간
 
   private final SseEmitterRepository emitterRepository;
+  private final SseEventRepository sseEventRepository;
 
   public SseEmitter connect(UUID receiverId) {
     SseEmitter emitter = new SseEmitter(TIMEOUT);
 
     // 입력, 반환 둘 다 없음(Runnable)
-    emitter.onCompletion(() ->  {
-      log.debug("SSE 연결 종료 - receiverId={}", receiverId);
+    emitter.onCompletion(() -> {
+      log.debug("SSE 연결 종료 - receiverId={}",
+          receiverId);
+
       emitterRepository.remove(receiverId, emitter);
     });
     emitter.onTimeout(() -> {
-      log.debug("SSE 연결 시간 초과 - receiverId={}", receiverId);
+      log.debug("SSE 연결 시간 초과 - receiverId={}",
+          receiverId);
+
       emitterRepository.remove(receiverId, emitter);
     });
 
     // Consumer(void)
     emitter.onError(throwable -> {
-      log.warn("SSE 연결 오류 발생 - receiverId={}", receiverId, throwable);
+      log.warn("SSE 연결 오류 발생 - receiverId={}",
+          receiverId, throwable);
+
       emitterRepository.remove(receiverId, emitter);
     });
 
@@ -55,10 +65,40 @@ public class SseService {
                 .data(data)
         );
       } catch (IOException e) {
-        log.warn("SSE 전송 실패 receiverId={}", receiverId, e);
+        log.warn("SSE 전송 실패 receiverId={}",
+            receiverId, e);
 
+        // 해당 연결 제거 및 connect()의 onError 콜백 메서드 실행
         emitterRepository.remove(receiverId, emitter);
+        emitter.completeWithError(e);
+      }
+    }
+  }
 
+  private void resendEvents(UUID receiverId, UUID lastEventId, SseEmitter emitter) {
+    // lastEventId가 존재하지 않을 경우 스킵
+    if (lastEventId == null) {
+      return;
+    }
+
+    // 유실 이벤트들을 리스트로 가져옴(순서 보장)
+    List<SseEvent> events = sseEventRepository.findAfter(receiverId, lastEventId);
+
+    // 리스트의 각 SseEvent를 전송시킴
+    for (SseEvent event : events) {
+      try {
+        emitter.send(
+            SseEmitter.event()
+                .id(event.id().toString())
+                .name(event.eventName())
+                .data(event.data())
+        );
+      } catch (IOException e) {
+        log.warn("SSE 유실 이벤트 재전송 실패 - receiverId={}",
+            receiverId, e);
+
+        // 해당 연결 제거 및 connect()의 onError 콜백 메서드 실행
+        emitterRepository.remove(receiverId, emitter);
         emitter.completeWithError(e);
       }
     }
