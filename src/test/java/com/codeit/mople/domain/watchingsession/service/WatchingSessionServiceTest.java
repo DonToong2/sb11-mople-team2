@@ -192,4 +192,32 @@ public class WatchingSessionServiceTest {
     verify(messagingTemplate).convertAndSend(eq(
         "/sub/contents/" + contentId + "/watch"), any(WatchingSessionChange.class));
   }
+
+  @Test
+  @DisplayName("특정 유저가 시청 중인 콘텐츠 ID 조회 성공")
+  void getWatchingContentId_Success() {
+    UUID userId = UUID.randomUUID();
+    UUID contentId = UUID.randomUUID();
+    String userKey = "user:watching:" + userId;
+
+    given(valueOperations.get(userKey)).willReturn(contentId.toString());
+
+    UUID result = watchingSessionService.getWatchingContentId(userId);
+
+    assertEquals(contentId, result);
+  }
+
+  @Test
+  @DisplayName("시청 세션 목록 조회 실패 - limit 범위 초과 검증")
+  void getWatchingSessions_Fail_InvalidLimit() {
+    UUID contentId = UUID.randomUUID();
+    Content mockContent = mock(Content.class);
+    given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
+
+    //limit가 100을 초과할 때 ContentException 발생 검증
+    assertThrows(ContentException.class, () ->
+        watchingSessionService.getWatchingSessions(contentId, null,
+            null, null, 101,
+            "ASCENDING", "id"));
+  }
 }
