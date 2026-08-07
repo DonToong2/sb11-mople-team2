@@ -5,7 +5,6 @@ import com.codeit.mople.global.sse.repository.SseEmitterRepository;
 import com.codeit.mople.global.sse.repository.SseEventRepository;
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,37 +54,37 @@ public class SseService {
   }
 
   public void send(UUID receiverId, String eventName, Object data) {
-    
-    Set<SseEmitter> emitters = emitterRepository.findAll(receiverId);
-    
+
+    SseEmitter emitter = emitterRepository.find(receiverId);
+
     UUID eventId = UUID.randomUUID();
-    
+
     SseEvent sseEvent = new SseEvent(
         eventId,
         receiverId,
         eventName,
         data
     );
-    
+
     sseEventRepository.save(sseEvent);
 
-    // 각 emitter들에게 전송
-    for (SseEmitter emitter : emitters) {
-      try {
-        emitter.send(
-            SseEmitter.event()
-                .id(eventId.toString())
-                .name(eventName)
-                .data(data)
-        );
-      } catch (IOException e) {
-        log.warn("SSE 전송 실패 receiverId={}",
-            receiverId, e);
+    if (emitter == null) {
+      return;
+    }
 
-        // 해당 연결 제거 및 connect()의 onError 콜백 메서드 실행
-        emitterRepository.remove(receiverId, emitter);
-        emitter.completeWithError(e);
-      }
+    try {
+      emitter.send(
+          SseEmitter.event()
+              .id(eventId.toString())
+              .name(eventName)
+              .data(data)
+      );
+    } catch (IOException e) {
+      log.warn("SSE 전송 실패 receiverId={}",
+          receiverId, e);
+
+      // connect()의 onError 콜백 메서드 실행
+      emitter.completeWithError(e);
     }
   }
 
@@ -111,8 +110,7 @@ public class SseService {
         log.warn("SSE 유실 이벤트 재전송 실패 - receiverId={}",
             receiverId, e);
 
-        // 해당 연결 제거 및 connect()의 onError 콜백 메서드 실행
-        emitterRepository.remove(receiverId, emitter);
+        // connect()의 onError 콜백 메서드 실행
         emitter.completeWithError(e);
       }
     }
