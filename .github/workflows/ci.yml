@@ -40,7 +40,7 @@ jobs:
         uses: dorny/test-reporter@v1
         with:
           name: 테스트 결과
-          path: '**/build/test-results/test/*.xml'
+          path: '**/build/test-results/test/TEST-*.xml'
           reporter: java-junit
           fail-on-error: false
 
