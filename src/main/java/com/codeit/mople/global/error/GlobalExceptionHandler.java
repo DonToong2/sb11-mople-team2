@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanInstantiationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,27 @@ public class GlobalExceptionHandler {
     return ResponseEntity
         .status(errorCode.getStatus())
         .body(ApiResponse.error(errorCode.getCode(), errorCode.getMessage(), e.getDetails()));
+  }
+
+  // Record 생성자에서 던진 CustomException이 BeanInstantiationException으로 감싸진 경우
+  @ExceptionHandler(BeanInstantiationException.class)
+  public ResponseEntity<ApiResponse<Void>> handleBeanInstantiationException(
+      BeanInstantiationException e) {
+    if (e.getCause() instanceof CustomException customException) {
+      return handleCustomException(customException);
+    }
+    return handleException(e);
+  }
+
+  // 경로 변수/파라미터 타입 변환 실패 (e.g. UUID 형식 오류)
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ApiResponse<Void>> handleMethodArgumentTypeMismatch(
+      MethodArgumentTypeMismatchException e) {
+    log.warn("[TypeMismatch] Parameter: {}, ExpectedType: {}", e.getName(), e.getRequiredType());
+    return ResponseEntity
+        .status(CommonErrorCode.INVALID_INPUT.getStatus())
+        .body(ApiResponse.error(CommonErrorCode.INVALID_INPUT.getCode(),
+            CommonErrorCode.INVALID_INPUT.getMessage()));
   }
 
   // @Valid 검증 실패 (요청 body)
@@ -116,10 +138,9 @@ public class GlobalExceptionHandler {
   }
 
   //경로 변수(PathVariable)나 쿼리 파라미터(RequestParam)의 타입 변환 실패 시 발생
-  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
   public ResponseEntity<ApiResponse<Void>> handleMethodArgumentTypeMismatchException(
       MethodArgumentTypeMismatchException e) {
-    log.warn("[TypeMismatch] Parameter: {}", e.getPropertyName());
+    log.warn("[TypeMismatch] Parameter: {}, Message: {}", e.getPropertyName(), e.getMessage());
     return ResponseEntity
         .status(CommonErrorCode.INVALID_INPUT.getStatus())
         .body(ApiResponse.error(CommonErrorCode.INVALID_INPUT.getCode(), "파라미터 타입이 올바르지 않습니다."));

@@ -5,10 +5,10 @@ import com.codeit.mople.domain.auth.exception.AuthException;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
-import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.SignatureException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.ExpiredJwtException;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +33,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
   private final ConversationRepository conversationRepository;
 
   @Override
-  public Message<?> preSend(@Nullable Message<?> message, MessageChannel channel) {
+  public @Nullable Message<?> preSend(Message<?> message, MessageChannel channel) {
     StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
     if (accessor != null) {
@@ -134,6 +134,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
         }
       }
     }
+
     return message;
   }
 
