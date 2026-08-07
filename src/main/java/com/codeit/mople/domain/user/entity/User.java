@@ -24,7 +24,7 @@ public class User extends BaseEntity {
   @Column(nullable = false)
   private String email;
 
-  @Column(nullable = false)
+  @Column
   private String password;
 
   @Column(nullable = false)
@@ -51,6 +51,10 @@ public class User extends BaseEntity {
   @Column
   private Instant refreshTokenExpireAt;
 
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private AuthProvider provider;
+
   /**
    * TODO: Phase5 — Redis 기반 세션 관리로 전환 시 이 컬럼 제거 예정
    * (Redis에 "현재 유효한 토큰"을 저장하는 방식으로 대체)
@@ -58,20 +62,27 @@ public class User extends BaseEntity {
   @Column(nullable = false)
   private long sessionVersion = 0L;
 
-  private User(String email, String password, String name, Role role) {
+  private User(String email, String password, String name, Role role, AuthProvider provider) {
     this.email = Objects.requireNonNull(email, "email");
-    this.password = Objects.requireNonNull(password, "password");
+    this.password = password;
     this.name = Objects.requireNonNull(name, "name");
     this.role = Objects.requireNonNull(role, "role");
+    this.provider = Objects.requireNonNull(provider, "provider");
     this.locked = false;
   }
 
   public static User createUser(String email, String password, String name) {
-    return new User(email, password, name, Role.USER);
+    return new User(email, password, name, Role.USER, AuthProvider.LOCAL);
   }
 //어드민 계정 자동으로 초기화
   public static User createAdmin(String email, String password, String name) {
-    return new User(email, password, name, Role.ADMIN);
+    return new User(email, password, name, Role.ADMIN, AuthProvider.LOCAL);
+  }
+
+  public static User createOAuthUser(String email, String name, String profileImageUrl, AuthProvider provider) {
+    User user = new User(email, null, name, Role.USER, provider);
+    user.profileImageUrl = profileImageUrl;
+    return user;
   }
 
   // 프로필 변경
