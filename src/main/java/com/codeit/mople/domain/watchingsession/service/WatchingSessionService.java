@@ -21,7 +21,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -195,11 +197,51 @@ public class WatchingSessionService {
     String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
     String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentId.toString();
 
+    //Redis 세션 전환을 재시도 가능한 트랜잭션(SessionCallback)으로 원자적 처리
+    String previousContentId = null;
+    boolean txSuccess = false;
+    int maxRetries = 5;
+
+    for (int i = 0; i < maxRetries; i++) {
+      Object result = redisTemplate.execute(new SessionCallback<Object>() {
+        @Override
+        public Object execute(RedisOperations operations) {
+          //해당 키 변경을 감시
+          operations.watch(userKey);
+          String prevId = (String) operations.opsForValue().get(userKey);
+
+          //트랜잭션 시작
+          operations.multi();
+          if (prevId != null && !prevId.equals(contentId.toString())) {
+            operations.opsForSet().remove(CONTENT_WATCHERS_KEY_PREFIX + prevId, userId.toString());
+          }
+          operations.opsForValue().set(userKey, contentId.toString());
+          operations.opsForSet().add(contentKey, userId.toString());
+
+          //트랜잭션 실행(다른 곳에서 키가 변경되었다면 execResult는 null이 됨)
+          List<Object> execResult = operations.exec();
+          if (execResult == null || execResult.isEmpty()) {
+            return null;
+          }
+          return prevId == null ? "NULL_PREV" : prevId;
+        }
+      });
+
+      if (result != null) {
+        txSuccess = true;
+        previousContentId = "NULL_PREV".equals(result) ? null : (String) result;
+        break;
+      }
+    }
+
+    if (!txSuccess) {
+      log.error("입장 Redis 트랜잭션 실패 (최대 재시도 초과) - userId: {}", userId);
+      throw new RuntimeException("일시적인 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+
     //유저가 다른 콘텐츠를 보고 있었다면 이전 기록 삭제(방 이동 고려)
-    String previousContentId = (String) redisTemplate.opsForValue().get(userKey);
     if (previousContentId != null && !previousContentId.equals(contentId.toString())) {
       String prevContentKey = CONTENT_WATCHERS_KEY_PREFIX + previousContentId;
-      redisTemplate.opsForSet().remove(prevContentKey, userId.toString());
 
       Long prevCount = redisTemplate.opsForSet().size(prevContentKey);
       Long watcherCount = prevCount != null ? prevCount : 0L;
@@ -217,12 +259,6 @@ public class WatchingSessionService {
       messagingTemplate.convertAndSend(
           "/sub/contents/" + previousContentId + "/watch", prevChangeEvent);
     }
-
-    //유저별 현재 시청 중인 콘텐츠 업데이트(String 자료구조)
-    redisTemplate.opsForValue().set(userKey, contentId.toString());
-
-    //콘텐츠별 시청자 목록에 추가(Set 자료구조 - 중복 방지)
-    redisTemplate.opsForSet().add(contentKey, userId.toString());
 
     //현재 해당 콘텐츠를 보고 있는 총 시청자 수 반환
     Long watcherCount = redisTemplate.opsForSet().size(contentKey);
@@ -251,19 +287,53 @@ public class WatchingSessionService {
     String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
     String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentId.toString();
 
-    //유저가 현재 시청 중인 콘텐츠가 퇴장 요청 콘텐츠와 일치하는지 확인
-    String currentWatchingId = (String) redisTemplate.opsForValue().get(userKey);
-    if (currentWatchingId == null || !currentWatchingId.equals(contentId.toString())) {
+    //유저가 현재 시청 중인 콘텐츠가 퇴장 요청 콘텐츠와 일치하는지 확인 및 삭제를 원자적으로 처리
+    boolean txSuccess = false;
+    boolean wasWatching = false;
+    int maxRetries = 5;
+
+    for (int i = 0; i < maxRetries; i++) {
+      Object result = redisTemplate.execute(new SessionCallback<Object>() {
+        @Override
+        public Object execute(RedisOperations operations) {
+          operations.watch(userKey);
+          String currentWatchingId = (String) operations.opsForValue().get(userKey);
+
+          //현재 시청중인 컨텐츠가 아니면 트랜잭션 취소
+          if (currentWatchingId == null || !currentWatchingId.equals(contentId.toString())) {
+            operations.unwatch();
+            return "NOT_WATCHING";
+          }
+
+          operations.multi();
+          operations.delete(userKey);
+          operations.opsForSet().remove(contentKey, userId.toString());
+
+          List<Object> execResult = operations.exec();
+          if (execResult == null || execResult.isEmpty()) {
+            return null; // 충돌 발생, 재시도
+          }
+          return "SUCCESS";
+        }
+      });
+
+      if (result != null) {
+        txSuccess = true;
+        wasWatching = !"NOT_WATCHING".equals(result);
+        break;
+      }
+    }
+
+    if (!txSuccess) {
+      log.error("퇴장 Redis 트랜잭션 실패 (최대 재시도 초과) - userId: {}", userId);
+      throw new RuntimeException("일시적인 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+
+    if (!wasWatching) {
       log.warn("퇴장 요청 무시: 유저가 해당 콘텐츠를 시청 중이지 않음. userId: {}, contentId: {}", userId, contentId);
       Long currentCount = redisTemplate.opsForSet().size(contentKey);
       return currentCount != null ? currentCount : 0L;
     }
-
-    //해당 유저가 시청 중이라는 상태 삭제
-    redisTemplate.delete(userKey);
-
-    //콘텐츠의 실시간 시청자 목록에서 해당 유저 제거
-    redisTemplate.opsForSet().remove(contentKey, userId.toString());
 
     //퇴장 후 남은 총 시청자 수 반환(키가 만료되거나 없으면 0반환)
     Long remainingCount = redisTemplate.opsForSet().size(contentKey);

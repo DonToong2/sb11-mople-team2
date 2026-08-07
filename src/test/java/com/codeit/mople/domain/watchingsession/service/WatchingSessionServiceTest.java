@@ -32,6 +32,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -151,20 +152,18 @@ public class WatchingSessionServiceTest {
   void enterSession_Success() {
     UUID userId = UUID.randomUUID();
     UUID contentId = UUID.randomUUID();
-    String userKey = "user:watching:" + userId;
     String contentKey = "content:watchers:" + contentId;
 
     Content mockContent = mock(Content.class);
 
-    given(valueOperations.get(userKey)).willReturn(null); //이전 시청 기록 없음
+    // SessionCallback 트랜잭션 모킹(이전 방이 없었음 = "NULL_PREV" 반환)
+    given(redisTemplate.execute(any(SessionCallback.class))).willReturn("NULL_PREV");
     given(setOperations.size(contentKey)).willReturn(1L); //입장 후 총 1명
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
 
     Long result = watchingSessionService.enterSession(userId, contentId);
 
     assertEquals(1L, result);
-    verify(valueOperations).set(userKey, contentId.toString());
-    verify(setOperations).add(contentKey, userId.toString());
     verify(mockContent).updateWatcherCount(1L); //DB 동기화가 정상 호출되었는지 검증
     verify(messagingTemplate).convertAndSend(eq(
         "/sub/contents/" + contentId + "/watch"), any(WatchingSessionChange.class));
@@ -175,19 +174,18 @@ public class WatchingSessionServiceTest {
   void leaveSession_Success() {
     UUID userId = UUID.randomUUID();
     UUID contentId = UUID.randomUUID();
-    String userKey = "user:watching:" + userId;
     String contentKey = "content:watchers:" + contentId;
 
     Content mockContent = mock(Content.class); //DB 동기화 검증용 모의 객체
 
+    //SessionCallback 트랜잭션 모킹(유저가 해당 방을 보고 있었고 삭제 성공함 = "SUCCESS" 반환)
+    given(redisTemplate.execute(any(SessionCallback.class))).willReturn("SUCCESS");
     given(setOperations.size(contentKey)).willReturn(0L); //퇴장 후 총 0명
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
 
     Long result = watchingSessionService.leaveSession(userId, contentId);
 
     assertEquals(0L, result);
-    verify(redisTemplate).delete(userKey);
-    verify(setOperations).remove(contentKey, userId.toString());
     verify(mockContent).updateWatcherCount(0L); //DB 동기화가 정상 호출되었는지 검증
     verify(messagingTemplate).convertAndSend(eq(
         "/sub/contents/" + contentId + "/watch"), any(WatchingSessionChange.class));
@@ -200,6 +198,9 @@ public class WatchingSessionServiceTest {
     UUID contentId = UUID.randomUUID();
     String userKey = "user:watching:" + userId;
 
+    User mockUser = mock(User.class);
+
+    given(userRepository.findById(userId)).willReturn(Optional.of(mockUser));
     given(valueOperations.get(userKey)).willReturn(contentId.toString());
 
     UUID result = watchingSessionService.getWatchingContentId(userId);
