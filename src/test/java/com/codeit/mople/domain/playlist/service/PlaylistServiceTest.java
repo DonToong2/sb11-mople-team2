@@ -3,6 +3,7 @@ package com.codeit.mople.domain.playlist.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -25,6 +26,7 @@ import com.codeit.mople.domain.playlist.entity.PlaylistContent;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.playlist.event.PlaylistContentAddedEvent;
 import com.codeit.mople.domain.playlist.event.PlaylistSubscribedEvent;
+import com.codeit.mople.domain.playlist.event.PlaylistUnsubscribedEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
 import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
@@ -45,6 +47,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -70,6 +74,15 @@ public class PlaylistServiceTest {
 
   @Mock
   private ApplicationEventPublisher eventPublisher;
+
+  @Captor
+  private ArgumentCaptor<PlaylistSubscribedEvent> subscribedEventCaptor;
+
+  @Captor
+  private ArgumentCaptor<PlaylistUnsubscribedEvent> unsubscribedEventCaptor;
+
+  @Captor
+  private ArgumentCaptor<PlaylistContentAddedEvent> contentAddedEventCaptor;
 
   @InjectMocks
   private PlaylistService playlistService;
@@ -832,7 +845,12 @@ public class PlaylistServiceTest {
 
       // then
       verify(playlistSubscriptionRepository).save(any(PlaylistSubscription.class));
-      verify(eventPublisher).publishEvent(any(PlaylistSubscribedEvent.class));
+      verify(eventPublisher).publishEvent(subscribedEventCaptor.capture());
+
+      PlaylistSubscribedEvent event = subscribedEventCaptor.getValue();
+
+      assertThat(event.playlistId()).isEqualTo(playlistId);
+      assertThat(event.subscriberId()).isEqualTo(subscriberId);
     }
 
     @Test
@@ -929,6 +947,12 @@ public class PlaylistServiceTest {
       // then
       verify(playlistSubscriptionRepository).deleteByPlaylistIdAndSubscriberId(playlistId,
           subscriberId);
+      verify(eventPublisher).publishEvent(unsubscribedEventCaptor.capture());
+
+      PlaylistUnsubscribedEvent event = unsubscribedEventCaptor.getValue();
+
+      assertThat(event.playlistId()).isEqualTo(playlistId);
+      assertThat(event.subscriberId()).isEqualTo(subscriberId);
     }
 
     @Test
@@ -969,8 +993,13 @@ public class PlaylistServiceTest {
       playlistService.addContent(playlistId, contentId, ownerId);
 
       // then
-      verify(eventPublisher).publishEvent(any(PlaylistContentAddedEvent.class));
       verify(playlistContentRepository).save(any(PlaylistContent.class));
+      verify(eventPublisher).publishEvent(contentAddedEventCaptor.capture());
+
+      PlaylistContentAddedEvent event = contentAddedEventCaptor.getValue();
+
+      assertThat(event.playlistId()).isEqualTo(playlistId);
+      assertThat(event.contentId()).isEqualTo(contentId);
     }
 
     @Test
