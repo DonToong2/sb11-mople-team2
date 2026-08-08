@@ -112,6 +112,12 @@ public class SseIntegrationTest {
               containsString(newEventId.toString())
           ))
           .andExpect(content().string(
+              containsString("notifications")
+          ))
+          .andExpect(content().string(
+              containsString("data2")
+          ))
+          .andExpect(content().string(
               not(containsString(lastEventId.toString()))
           ));
 
