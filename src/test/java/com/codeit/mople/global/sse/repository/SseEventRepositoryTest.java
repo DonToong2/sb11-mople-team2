@@ -91,7 +91,7 @@ public class SseEventRepositoryTest {
 
     @Test
     @DisplayName("SSE 이벤트 이후 조회 성공 - 마지막 이벤트일 경우 빈 리스트 반환(유실 이벤트가 존재하지 않을 경우)")
-    void findAfter_success_empty_lastEvent() {
+    void findAfter_success_lastEvent() {
       // given
 
       // BeforeEach에서 receiverId, sseEvent1을 초기화
@@ -106,8 +106,8 @@ public class SseEventRepositoryTest {
     }
     
     @Test
-    @DisplayName("SSE 이벤트 이후 조회 성공 - lastEventId가 존재하지 않는 이벤트 ID일 경우 빈 리스트 반환")
-    void findAfter_success_empty_notFoundEvent() {
+    @DisplayName("SSE 이벤트 이후 조회 성공 - lastEventId가 존재하지 않는 이벤트 ID일 경우 전체 이벤트 반환")
+    void findAfter_success_notFoundEvent() {
       // given
       UUID notExistEventId = UUID.randomUUID();
 
@@ -119,7 +119,7 @@ public class SseEventRepositoryTest {
       List<SseEvent> result = sseEventRepository.findAfter(receiverId, notExistEventId);
 
       // then
-      assertThat(result).isEmpty();
+      assertThat(result).containsExactly(sseEvent1);
     }
     
   }
