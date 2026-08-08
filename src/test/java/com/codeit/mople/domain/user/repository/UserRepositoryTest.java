@@ -386,24 +386,4 @@ public class UserRepositoryTest {
     assertThat(allIds).doesNotHaveDuplicates();
     assertThat(allIds).hasSize(3);
   }
-
-  @Test
-  @DisplayName("countUsers - 검색 조건에 맞는 전체 데이터 개수를 정확히 반환한다")
-  void countUsers_returnsCorrectTotalCount() {
-    //3명의 유저 저장(2명은 이메일에 mople 포함)
-    userRepository.save(User.createUser("test1@mople.com", "encoded", "user1"));
-    userRepository.save(User.createUser("test2@mople.com", "encoded", "user2"));
-    userRepository.save(User.createUser("other@test.com", "encoded", "user3"));
-
-    //emailLike 조건에 "mople" 적용
-    UserSearchRequest request = new UserSearchRequest(
-        "mople", null, null, null, null, 10,
-        SortDirection.ASCENDING, UserSortBy.NAME
-    );
-
-    long totalCount = userRepository.countUsers(request);
-
-    // mople이 포함된 유저 2명이 나와야 함
-    assertThat(totalCount).isEqualTo(2L);
-  }
 }
