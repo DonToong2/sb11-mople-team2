@@ -137,6 +137,7 @@ public class UserServiceTest {
     CursorResponse<UserDto> response = userService.getUsers(request);
 
     assertThat(response.data()).hasSize(1);
+    assertThat(response.totalCount()).isEqualTo(1L);
     verify(userRepository).searchUsers(request);
   }
 
@@ -171,6 +172,7 @@ public class UserServiceTest {
     User user2 = User.createUser("b@test.com", "encoded", "bb");
     User user3 = User.createUser("c@test.com", "encoded", "cc");
     when(userRepository.searchUsers(request)).thenReturn(List.of(user1, user2, user3));
+    when(userRepository.countUsers(request)).thenReturn(3L);
 
     CursorResponse<UserDto> response = userService.getUsers(request);
 
@@ -178,6 +180,7 @@ public class UserServiceTest {
     assertThat(response.hasNext()).isTrue();
     assertThat(response.nextCursor()).isEqualTo("bb");
     assertThat(response.sortBy()).isEqualTo("NAME");
+    assertThat(response.totalCount()).isEqualTo(3L);
   }
 
   @Test
@@ -191,6 +194,7 @@ public class UserServiceTest {
     User user2 = User.createUser("user2@test.com", "encoded", "user2");
     User user3 = User.createUser("user3@test.com", "encoded", "user3");
     when(userRepository.searchUsers(request)).thenReturn(List.of(user1, user2, user3));
+    when(userRepository.countUsers(request)).thenReturn(3L);
 
     CursorResponse<UserDto> response = userService.getUsers(request);
 
@@ -209,6 +213,7 @@ public class UserServiceTest {
     );
     User user1 = User.createUser("user1@test.com", "encoded", "user1");
     when(userRepository.searchUsers(request)).thenReturn(List.of(user1));
+    when(userRepository.countUsers(request)).thenReturn(1L);
 
     CursorResponse<UserDto> response = userService.getUsers(request);
 
@@ -227,6 +232,7 @@ public class UserServiceTest {
     User user1 = User.createUser("user1@test.com", "encoded", "user1");
     User user2 = User.createUser("user2@test.com", "encoded", "user2");
     when(userRepository.searchUsers(request)).thenReturn(List.of(user1, user2));
+    when(userRepository.countUsers(request)).thenReturn(2L);
 
     CursorResponse<UserDto> response = userService.getUsers(request);
 

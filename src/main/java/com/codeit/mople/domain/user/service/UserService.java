@@ -56,9 +56,12 @@ public class UserService {
     List<User> users = userRepository.searchUsers(request);
     long totalCount = userRepository.countUsers(request);
 
+    long totalCount = userRepository.countUsers(request);
+
     return CursorResponse.of(
         users.stream().map(UserDto::from).toList(),
         request.limitOrDefault(),
+        totalCount,
         request.sortByOrDefault().name(),
         request.sortDirectionOrDefault().name(),
         dto -> cursorValueOf(dto, request.sortByOrDefault()),
