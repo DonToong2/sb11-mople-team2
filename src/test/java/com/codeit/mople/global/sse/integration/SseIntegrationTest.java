@@ -1,8 +1,11 @@
 package com.codeit.mople.global.sse.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
@@ -86,11 +89,17 @@ public class SseIntegrationTest {
       // BeforeEach에서 savedUser, userDetails를 초기화
 
       UUID lastEventId = UUID.randomUUID();
+      UUID newEventId = UUID.randomUUID();
 
-      SseEvent event = new SseEvent(
-          UUID.randomUUID(), savedUser.getId(), "notifications", "data");
+      SseEvent lastEvent = new SseEvent(
+          lastEventId, savedUser.getId(), "notifications", "data");
 
-      sseEventRepository.save(event);
+      SseEvent newEvent = new SseEvent(
+          newEventId, savedUser.getId(), "notifications", "data2"
+      );
+
+      sseEventRepository.save(lastEvent);
+      sseEventRepository.save(newEvent);
 
       // when & then
       mockMvc.perform(get("/api/sse")
@@ -98,7 +107,13 @@ public class SseIntegrationTest {
               .accept(MediaType.TEXT_EVENT_STREAM)
               .with(user(userDetails))
           )
-          .andExpect(status().isOk());
+          .andExpect(status().isOk())
+          .andExpect(content().string(
+              containsString(newEventId.toString())
+          ))
+          .andExpect(content().string(
+              not(containsString(lastEventId.toString()))
+          ));
 
       // then
       assertThat(emitterRepository.find(savedUser.getId())).isNotNull();
