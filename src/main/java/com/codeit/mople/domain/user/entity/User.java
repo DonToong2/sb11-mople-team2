@@ -12,6 +12,7 @@ import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Table(name = "users", uniqueConstraints = {
@@ -54,6 +55,7 @@ public class User extends BaseEntity {
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
+  @ColumnDefault("'LOCAL'")
   private AuthProvider provider;
 
   @Column(name = "provider_id")
@@ -86,6 +88,9 @@ public class User extends BaseEntity {
   }
 
   public static User createOAuthUser(String email, String name, String profileImageUrl, AuthProvider provider, String providerId) {
+    if(provider == AuthProvider.LOCAL) {
+      throw new IllegalArgumentException("OAuth provider must not be LOCAL");
+    }
     User user = new User(email, null, name, Role.USER, provider);
     user.profileImageUrl = profileImageUrl;
     user.providerId = Objects.requireNonNull(providerId, "providerId");
