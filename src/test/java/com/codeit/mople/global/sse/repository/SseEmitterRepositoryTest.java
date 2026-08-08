@@ -1,6 +1,8 @@
 package com.codeit.mople.global.sse.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.Set;
 import java.util.UUID;
@@ -22,7 +24,7 @@ public class SseEmitterRepositoryTest {
     repository = new SseEmitterRepository();
 
     receiverId = UUID.randomUUID();
-    sseEmitter = new SseEmitter();
+    sseEmitter = mock(SseEmitter.class);
   }
 
   @Nested
@@ -59,6 +61,9 @@ public class SseEmitterRepositoryTest {
 
       // then
       assertThat(repository.find(receiverId)).isEqualTo(newEmitter);
+      
+      // 이전 emitter가 종료되었는지 검증
+      verify(sseEmitter).complete();
     }
 
   }
