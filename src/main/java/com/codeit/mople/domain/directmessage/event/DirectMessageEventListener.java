@@ -9,6 +9,7 @@ import com.codeit.mople.global.sse.service.SseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -21,6 +22,8 @@ public class DirectMessageEventListener {
   private final SseService sseService;
   private final DirectMessageRepository directMessageRepository;
 
+  // Lazy 연관관계(User 2개)가 있기 때문에 영속성 컨텍스트를 거쳐야 할 필요가 있음
+  @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handle(DirectMessageCreatedEvent event) {
     log.debug("SSE 이벤트 전송 시도: receiverId={}, directMessageId={}",
