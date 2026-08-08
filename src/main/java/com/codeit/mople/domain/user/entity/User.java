@@ -15,7 +15,8 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "users", uniqueConstraints = {
-    @UniqueConstraint(name = "uq_users_email", columnNames = "email")
+    @UniqueConstraint(name = "uq_users_email", columnNames = "email"),
+    @UniqueConstraint(name = "uq_users_provider_provider_id", columnNames = {"provider", "provider_id"})
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -55,6 +56,9 @@ public class User extends BaseEntity {
   @Column(nullable = false)
   private AuthProvider provider;
 
+  @Column(name = "provider_id")
+  private String providerId;
+
   /**
    * TODO: Phase5 — Redis 기반 세션 관리로 전환 시 이 컬럼 제거 예정
    * (Redis에 "현재 유효한 토큰"을 저장하는 방식으로 대체)
@@ -81,9 +85,10 @@ public class User extends BaseEntity {
     return new User(email, password, name, Role.ADMIN, AuthProvider.LOCAL);
   }
 
-  public static User createOAuthUser(String email, String name, String profileImageUrl, AuthProvider provider) {
+  public static User createOAuthUser(String email, String name, String profileImageUrl, AuthProvider provider, String providerId) {
     User user = new User(email, null, name, Role.USER, provider);
     user.profileImageUrl = profileImageUrl;
+    user.providerId = Objects.requireNonNull(providerId, "providerId");
     return user;
   }
 

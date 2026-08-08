@@ -34,32 +34,34 @@ public class CustomOAuth2UserServiceTest {
   @InjectMocks
   private CustomOAuth2UserService customOAuth2UserService;
 
-  private OAuth2User googleOAuth2User(String email, String name, String picture) {
+  private OAuth2User googleOAuth2User(String sub, String email, String name, String picture) {
     return new DefaultOAuth2User(
         List.of(new SimpleGrantedAuthority("ROLE_USER")),
-        Map.of("email", email, "name", name, "picture", picture),
-        "email");
+        Map.of("sub", sub, "email", email, "name", name, "picture", picture),
+        "sub");
   }
 
   @Test
-  @DisplayName("기존 가입 이메일이면 신규 가입 없이 기존 유저를 그대로 사용함")
-  void toCustomOAuth2User_returnsExistingUser_whenEmailAlreadyExists() {
-    User existingUser = User.createOAuthUser("test@gmail.com", "existingUser", "https://old.image", AuthProvider.GOOGLE);
+  @DisplayName("기존 가입된 Google sub이면 신규 가입 없이 기존 유저를 그대로 사용함")
+  void toCustomOAuth2User_returnsExistingUser_whenProviderIdAlreadyExists() {
+    User existingUser = User.createOAuthUser("test@gmail.com", "existingUser", "https://old.image", AuthProvider.GOOGLE, "google-sub-1");
     UUID existingId = UUID.randomUUID();
     ReflectionTestUtils.setField(existingUser, "id", existingId);
-    when(userRepository.findByEmail("test@gmail.com")).thenReturn(Optional.of(existingUser));
+    when(userRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "google-sub-1"))
+        .thenReturn(Optional.of(existingUser));
 
     CustomOAuth2User result = customOAuth2UserService.toCustomOAuth2User(
-        googleOAuth2User("test@gmail.com", "googleName", "https://new.image"));
+        googleOAuth2User("google-sub-1", "test@gmail.com", "googleName", "https://new.image"));
 
     assertThat(result.getUserId()).isEqualTo(existingId);
     verify(userRepository, never()).save(any());
   }
 
   @Test
-  @DisplayName("처음 로그인하는 이메일이면 GOOGLE provider로 신규 가입 시킴")
-  void toCustomOAuth2User_createNewUser_whenEmailNotFound() {
-    when(userRepository.findByEmail("new@gmail.com")).thenReturn(Optional.empty());
+  @DisplayName("처음 로그인하는 Google sub이면 GOOGLE provider로 신규 가입 시킴")
+  void toCustomOAuth2User_createNewUser_whenProviderIdNotFound() {
+    when(userRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "google-sub-2"))
+        .thenReturn(Optional.empty());
     when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
       User saved = invocation.getArgument(0);
       ReflectionTestUtils.setField(saved, "id", UUID.randomUUID());
@@ -67,12 +69,13 @@ public class CustomOAuth2UserServiceTest {
     });
 
     CustomOAuth2User result = customOAuth2UserService.toCustomOAuth2User(
-        googleOAuth2User("new@gmail.com", "newUser", "https://new.image"));
+        googleOAuth2User("google-sub-2", "new@gmail.com", "newUser", "https://new.image"));
 
     assertThat(result).isNotNull();
     verify(userRepository).save(argThat(saved ->
         saved.getEmail().equals("new@gmail.com")
             && saved.getProvider() == AuthProvider.GOOGLE
+            && saved.getProviderId().equals("google-sub-2")
             && saved.getPassword() == null));
   }
 }

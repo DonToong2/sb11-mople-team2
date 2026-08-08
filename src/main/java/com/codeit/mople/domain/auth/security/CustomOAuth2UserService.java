@@ -22,13 +22,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
   }
 
   CustomOAuth2User toCustomOAuth2User(OAuth2User oAuth2User) {
+    String providerId = oAuth2User.getAttribute("sub");
     String email = oAuth2User.getAttribute("email");
     String name = oAuth2User.getAttribute("name");
     String picture = oAuth2User.getAttribute("picture");
 
-    User user = userRepository.findByEmail(email)
+    User user = userRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, providerId)
         .orElseGet(() -> userRepository.save(
-            User.createOAuthUser(email, name, picture, AuthProvider.GOOGLE)));
+            User.createOAuthUser(email, name, picture, AuthProvider.GOOGLE, providerId)));
 
     return new CustomOAuth2User(oAuth2User, user.getId());
   }

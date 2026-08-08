@@ -352,7 +352,7 @@ public class AuthServiceTest {
   @Test
   @DisplayName("소셜 로그인 계정으로 이메일/비밀번호 로그인 시도 시 비밀번호 검증 없이 예외가 발생함")
   void signIn_throwsException_whenAccountIsOAuthUser() {
-    User googleUser = User.createOAuthUser("oauth@test.com", "oauthUser", null, AuthProvider.GOOGLE);
+    User googleUser = User.createOAuthUser("oauth@test.com", "oauthUser", null, AuthProvider.GOOGLE, "google-sub");
     SignInRequest request = new SignInRequest("oauth@test.com", "anyPassword");
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(googleUser));
 
