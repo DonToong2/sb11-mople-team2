@@ -42,7 +42,6 @@ external-api:
   sportsdb:
     base-url: https://www.thesportsdb.com/api/v1/json
     api-key: ${SPORTSDB_API_KEY:3}
-    api-key: ${SPORTSDB_API_KEY:}
 
 oauth2:
   redirect:
