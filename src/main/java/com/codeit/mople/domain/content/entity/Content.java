@@ -21,8 +21,8 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "contents",
     uniqueConstraints = @UniqueConstraint(
-    name = "uk_contents_external_source_external_id",
-    columnNames = {"external_source", "external_id"}))
+    name = "uk_contents_type_external_id",
+    columnNames = {"type", "external_id"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Content extends BaseTimeEntity {
@@ -55,10 +55,6 @@ public class Content extends BaseTimeEntity {
   @Column(name = "watcher_count", nullable = false)
   private long watcherCount = 0L; //실시간 사용자 수
 
-  @Enumerated(EnumType.STRING)
-  @Column(name = "external_source")
-  private ExternalSource externalSource;
-
   @Column(name = "external_id")
   private String externalId;
 
@@ -73,20 +69,12 @@ public class Content extends BaseTimeEntity {
   }
 
   //외부 데이터 전용 생성자 오버로딩
-  public Content(
-      ContentType type,
-      String title,
-      String description,
-      String thumbnailUrl,
-      List<String> tags,
-      ExternalSource externalSource,
-      String externalId) {
+  public Content(ContentType type, String title, String description, String thumbnailUrl, List<String> tags, String externalId) {
     this.type = type;
     this.title = title;
     this.description = description;
     this.thumbnailUrl = thumbnailUrl;
     this.tags = tags != null ? new ArrayList<>(tags) : new ArrayList<>();
-    this.externalSource = externalSource;
     this.externalId = externalId;
   }
 

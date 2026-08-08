@@ -6,7 +6,6 @@ import com.codeit.mople.domain.content.client.sportsdb.dto.SportsDbEventResponse
 import com.codeit.mople.domain.content.client.sportsdb.listener.SportsBatchJobListener;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
-import com.codeit.mople.domain.content.entity.ExternalSource;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import feign.FeignException;
 import java.time.LocalDate;
@@ -122,7 +121,7 @@ public class SportsContentBatchConfig {
       List<String> tags = List.of("Sports", dto.strSport(), dto.strLeague());
 
       // 생성자에 dto.idEvent()를 외부 식별자로 전달
-      return new Content(ContentType.SPORT, title, description, thumbnailUrl, tags, ExternalSource.SPORT_DB, dto.idEvent());
+      return new Content(ContentType.SPORT, title, description, thumbnailUrl, tags, dto.idEvent());
     };
   }
 
@@ -144,7 +143,7 @@ public class SportsContentBatchConfig {
           .toList();
 
       //DB에 이미 존재하는 식별자 조회
-      List<String> existingIds = contentRepository.findByExternalIdIn(externalIds).stream()
+      List<String> existingIds = contentRepository.findByTypeAndExternalIdIn(ContentType.SPORT, externalIds).stream()
           .map(Content::getExternalId)
           .toList();
 

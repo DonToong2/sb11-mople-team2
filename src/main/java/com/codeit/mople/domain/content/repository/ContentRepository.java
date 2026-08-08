@@ -14,11 +14,11 @@ import org.springframework.stereotype.Repository;
 public interface ContentRepository extends JpaRepository<Content, UUID> {
 
   // 청크 단위 중복 판정용
-  @Query("SELECT c.title FROM Content c WHERE c.type = :type and c.title in :titles")
-  List<String> findTitleByTypeAndTitleIn(
+  @Query("SELECT c.externalId FROM Content c WHERE c.type = :type And c.externalId in :externalIds")
+  List<String> findExternalIdsByTypeAndExternalIdIn(
       @Param("type") ContentType type,
-      @Param("titles") Collection<String> titles);
+      @Param("externalIds") Collection<String> externalIds);
 
   //배치 중복 검사용 메서드
-  List<Content> findByExternalIdIn(List<String> externalIds);
+  List<Content> findByTypeAndExternalIdIn(ContentType type, List<String> externalIds);
 }

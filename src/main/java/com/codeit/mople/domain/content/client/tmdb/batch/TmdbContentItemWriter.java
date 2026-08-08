@@ -41,20 +41,17 @@ public class TmdbContentItemWriter implements ItemWriter<Content> {
       return;
     }
 
-    // items에 있는 content의 제목만 String 뽑아서 아서 할당
-    List<String> titles = items.stream().map(Content::getTitle).toList();
+    List<String> externalIds = items.stream().map(Content::getExternalId).toList();
 
-    // DB에 chunk에 있는 (ContentType And title)이 있는거만 꺼내와서 Set으로 바꿈(조회 빠름)
-    Set<String> existingTitles = Set.copyOf(
-        contentRepository.findTitleByTypeAndTitleIn(contentType, titles));
+    Set<String> existingIds = Set.copyOf(
+        contentRepository.findExternalIdsByTypeAndExternalIdIn(contentType, externalIds));
 
-    // 중복 필터링
     Map<String, Content> newContents = new LinkedHashMap<>();
     for (Content content : items) {
-      if (existingTitles.contains(content.getTitle())) {
+      if (existingIds.contains(content.getExternalId())) {
         continue;
       }
-      newContents.putIfAbsent(content.getTitle(), content);
+      newContents.putIfAbsent(content.getExternalId(), content);
     }
 
     int duplicateCount = items.size() - newContents.size();

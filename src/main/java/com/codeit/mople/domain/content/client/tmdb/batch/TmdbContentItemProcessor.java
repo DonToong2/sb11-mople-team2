@@ -5,7 +5,6 @@ import com.codeit.mople.domain.content.client.tmdb.config.TmdbProperties;
 import com.codeit.mople.domain.content.client.tmdb.dto.TmdbContentItem;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
-import com.codeit.mople.domain.content.entity.ExternalSource;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +45,6 @@ public class TmdbContentItemProcessor implements ItemProcessor<TmdbContentItem, 
         item.overview(),
         thumbnailUrl,
         tags,
-        ExternalSource.TMDB,
         externalId);
   }
 

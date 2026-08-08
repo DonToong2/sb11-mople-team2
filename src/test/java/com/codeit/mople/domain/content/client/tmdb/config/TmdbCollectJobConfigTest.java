@@ -144,8 +144,8 @@ public class TmdbCollectJobConfigTest {
     return new TmdbPageResponse<>(
         1,
         List.of(
-            new TmdbTvResponse(3L, "김부장", "줄거리", "/kim.jpg", List.of(10759)),
-            new TmdbTvResponse(4L, "킬러들의 쇼핑몰", "줄거리", null, List.of())),
+            new TmdbTvResponse(1L, "김부장", "줄거리", "/kim.jpg", List.of(10759)),
+            new TmdbTvResponse(2L, "킬러들의 쇼핑몰", "줄거리", null, List.of())),
         1,
         2);
   }
