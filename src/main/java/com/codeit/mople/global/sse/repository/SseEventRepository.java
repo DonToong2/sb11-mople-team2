@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class SseEventRepository {
 
+  // TODO 김명근: 추후 Redis 도입 시 Redis Stream을 사용하여 상한선 적용(크기 500, 기간 하루로 설정 예정)
   private final ConcurrentHashMap<UUID, ConcurrentLinkedQueue<SseEvent>> events =
       new ConcurrentHashMap<>();
 
