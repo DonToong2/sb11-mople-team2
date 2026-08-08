@@ -46,6 +46,17 @@ public class CustomOAuth2UserServiceTest {
         "sub");
   }
 
+  private OAuth2User kakaoOauth2User(Long id, String email, String nickname, String profileImageUrl) {
+    Map<String, Object> profile = Map.of("nickname", nickname, "profile_image_url", profileImageUrl);
+    Map<String, Object> kakaoAccount = Map.of("email", email, "profile", profile);
+    Map<String, Object> attributes = Map.of("id", id, "kakao_account", kakaoAccount);
+
+    return new DefaultOAuth2User(
+        List.of(new SimpleGrantedAuthority("ROLE_USER")),
+        attributes,
+        "id");
+  }
+
   @Test
   @DisplayName("기존 가입된 Google sub이면 신규 가입 없이 기존 유저를 그대로 사용함")
   void toCustomOAuth2User_returnsExistingUser_whenProviderIdAlreadyExists() {
@@ -56,7 +67,7 @@ public class CustomOAuth2UserServiceTest {
         .thenReturn(Optional.of(existingUser));
 
     CustomOAuth2User result = customOAuth2UserService.toCustomOAuth2User(
-        googleOAuth2User("google-sub-1", "test@gmail.com", "googleName", "https://new.image"));
+        googleOAuth2User("google-sub-1", "test@gmail.com", "googleName", "https://new.image"), "google");
 
     assertThat(result.getUserId()).isEqualTo(existingId);
     verify(userRepository, never()).save(any());
@@ -74,7 +85,7 @@ public class CustomOAuth2UserServiceTest {
     });
 
     CustomOAuth2User result = customOAuth2UserService.toCustomOAuth2User(
-        googleOAuth2User("google-sub-2", "new@gmail.com", "newUser", "https://new.image"));
+        googleOAuth2User("google-sub-2", "new@gmail.com", "newUser", "https://new.image"), "google");
 
     assertThat(result).isNotNull();
     verify(userRepository).save(argThat(saved ->
@@ -98,7 +109,7 @@ public class CustomOAuth2UserServiceTest {
         .thenThrow(new DataIntegrityViolationException("duplicate key"));
 
     CustomOAuth2User result = customOAuth2UserService.toCustomOAuth2User(
-        googleOAuth2User("google-sub-3", "test@test.com", "testUser", "https://new.image"));
+        googleOAuth2User("google-sub-3", "test@test.com", "testUser", "https://new.image"), "google");
 
     assertThat(result.getUserId()).isEqualTo(existingId);
     verify(userRepository, times(2))
@@ -114,7 +125,7 @@ public class CustomOAuth2UserServiceTest {
     when(userRepository.save(any(User.class))).thenThrow(original);
 
     assertThatThrownBy(() -> customOAuth2UserService.toCustomOAuth2User(
-        googleOAuth2User("google-sub-4", "other@gmail.com", "otherUser", "https://new.image")))
+        googleOAuth2User("google-sub-4", "other@gmail.com", "otherUser", "https://new.image"), "google"))
         .isSameAs(original);
   }
 
@@ -127,10 +138,35 @@ public class CustomOAuth2UserServiceTest {
         .thenReturn(Optional.of(lockedUser));
 
     assertThatThrownBy(() -> customOAuth2UserService.toCustomOAuth2User(
-        googleOAuth2User("google-sub-5", "locked@gmail.com", "lockedUser", "https://new.image")))
+        googleOAuth2User("google-sub-5", "locked@gmail.com", "lockedUser", "https://new.image"), "google"))
         .isInstanceOf(OAuth2AuthenticationException.class)
         .hasFieldOrPropertyWithValue("error.errorCode", AuthErrorCode.LOCKED_ACCOUNT.getCode());
 
     verify(userRepository, never()).save(any());
   }
+
+  @Test
+  @DisplayName("처음 로그인하는 Kakao id일 경우 KAKAO provider로 신규 가입")
+  void toCustomOAuth2User_createNewUser_whenKakaoProviderIdNotFound() {
+    when(userRepository.findByProviderAndProviderId(AuthProvider.KAKAO, "123456789"))
+        .thenReturn(Optional.empty());
+    when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+      User saved = invocation.getArgument(0);
+      ReflectionTestUtils.setField(saved, "id", UUID.randomUUID());
+      return saved;
+    });
+
+    CustomOAuth2User result = customOAuth2UserService.toCustomOAuth2User(
+        kakaoOauth2User(123456789L, "kakao@test.com", "kakaoNickname", "https://kakao.image"),
+        "kakao");
+
+    assertThat(result).isNotNull();
+    verify(userRepository).save(argThat(saved ->
+        saved.getEmail().equals("kakao@test.com")
+            && saved.getProvider() == AuthProvider.KAKAO
+            && saved.getProviderId().equals("123456789")
+            && saved.getPassword() == null));
+  }
+
+
 }
