@@ -60,7 +60,7 @@ public class UserService {
         users.stream().map(UserDto::from).toList(),
         request.limitOrDefault(),
         totalCount,
-        request.sortByOrDefault().name(),
+        request.sortByOrDefault().getValue(),
         request.sortDirectionOrDefault().name(),
         dto -> cursorValueOf(dto, request.sortByOrDefault()),
         UserDto::id

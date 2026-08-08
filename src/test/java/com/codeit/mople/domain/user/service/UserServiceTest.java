@@ -179,7 +179,7 @@ public class UserServiceTest {
     assertThat(response.data()).hasSize(2);
     assertThat(response.hasNext()).isTrue();
     assertThat(response.nextCursor()).isEqualTo("bb");
-    assertThat(response.sortBy()).isEqualTo("NAME");
+    assertThat(response.sortBy()).isEqualTo("name");
     assertThat(response.totalCount()).isEqualTo(3L);
   }
 
