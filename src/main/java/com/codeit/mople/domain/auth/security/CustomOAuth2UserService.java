@@ -21,17 +21,16 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
   public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
     OAuth2User oAuth2User = super.loadUser(userRequest);
-    return toCustomOAuth2User(oAuth2User);
+    String registrationId = userRequest.getClientRegistration().getRegistrationId();
+    return toCustomOAuth2User(oAuth2User, registrationId);
   }
 
-  CustomOAuth2User toCustomOAuth2User(OAuth2User oAuth2User) {
-    String providerId = oAuth2User.getAttribute("sub");
-    String email = oAuth2User.getAttribute("email");
-    String name = oAuth2User.getAttribute("name");
-    String picture = oAuth2User.getAttribute("picture");
+  CustomOAuth2User toCustomOAuth2User(OAuth2User oAuth2User, String registrationId) {
+    AuthProvider provider = AuthProvider.valueOf(registrationId.toUpperCase());
+    OAuthAttributes attributes = OAuthAttributes.of(provider, oAuth2User.getAttributes());
 
-    User user = userRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, providerId)
-        .orElseGet(() -> createOAuthUser(email, name, picture, providerId));
+    User user = userRepository.findByProviderAndProviderId(provider, attributes.getProviderId())
+        .orElseGet(() -> createOAuthUser(attributes, provider));
 
     if(user.isLocked()) {
       throw new OAuth2AuthenticationException(new OAuth2Error(
@@ -41,12 +40,12 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     return new CustomOAuth2User(oAuth2User, user.getId());
   }
 
-  private User createOAuthUser(String email, String name, String picture, String providerId) {
+  private User createOAuthUser(OAuthAttributes attributes, AuthProvider provider) {
     try {
       return userRepository.save(
-          User.createOAuthUser(email, name, picture, AuthProvider.GOOGLE, providerId));
+          User.createOAuthUser(attributes.getEmail(), attributes.getName(), attributes.getPicture(), provider, attributes.getProviderId()));
     } catch (DataIntegrityViolationException e) {
-      return userRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, providerId)
+      return userRepository.findByProviderAndProviderId(provider, attributes.getProviderId())
           .orElseThrow(() -> e);
     }
   }
