@@ -6,8 +6,10 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
+@Slf4j
 @Repository
 public class SseEventRepository {
 
@@ -48,6 +50,14 @@ public class SseEventRepository {
       if (event.id().equals(lastEventId)) {
         found = true;
       }
+    }
+
+    // Redis Stream 도입 후 상한선 추가로인한 lastEvent가 밀려서 못 찾을 경우 전체 이벤트를 반환
+    if (!found) {
+      log.warn("lastEventId 유실 가능성 존재: 현재 lastEventId={}, receiverId={}, Resend SSE size={}",
+          lastEventId, receiverId, userEvents.size());
+
+      return new ArrayList<>(userEvents);
     }
 
     return result;
