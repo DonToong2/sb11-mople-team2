@@ -21,6 +21,9 @@ import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
+import com.codeit.mople.domain.auth.security.CustomOAuth2UserService;
+import com.codeit.mople.domain.auth.security.handler.OAuth2FailureHandler;
+import com.codeit.mople.domain.auth.security.handler.OAuth2SuccessHandler;
 import com.codeit.mople.domain.content.service.ContentService;
 import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
 import com.codeit.mople.domain.watchingsession.service.WatchingSessionService;
@@ -70,6 +73,15 @@ public class ContentControllerTest {
 
   @MockitoBean
   private WatchingSessionService watchingSessionService;
+
+  @MockitoBean
+  private CustomOAuth2UserService customOAuth2UserService;
+
+  @MockitoBean
+  private OAuth2SuccessHandler oAuth2SuccessHandler;
+
+  @MockitoBean
+  private OAuth2FailureHandler oAuth2FailureHandler;
 
   private RequestPostProcessor mockAuth(UUID userId, Role role) {
     CustomUserDetails mockUser = new CustomUserDetails(userId, role);
