@@ -4,6 +4,7 @@ import com.codeit.mople.domain.user.entity.AuthProvider;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -28,9 +29,18 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     String picture = oAuth2User.getAttribute("picture");
 
     User user = userRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, providerId)
-        .orElseGet(() -> userRepository.save(
-            User.createOAuthUser(email, name, picture, AuthProvider.GOOGLE, providerId)));
+        .orElseGet(() -> createOAuthUser(email, name, picture, providerId));
 
     return new CustomOAuth2User(oAuth2User, user.getId());
+  }
+
+  private User createOAuthUser(String email, String name, String picture, String providerId) {
+    try {
+      return userRepository.save(
+          User.createOAuthUser(email, name, picture, AuthProvider.GOOGLE, providerId));
+    } catch (DataIntegrityViolationException e) {
+      return userRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, providerId)
+          .orElseThrow(() -> e);
+    }
   }
 }

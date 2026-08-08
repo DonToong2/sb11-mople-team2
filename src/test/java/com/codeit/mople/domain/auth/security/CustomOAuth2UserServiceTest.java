@@ -1,9 +1,11 @@
 package com.codeit.mople.domain.auth.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -77,5 +80,39 @@ public class CustomOAuth2UserServiceTest {
             && saved.getProvider() == AuthProvider.GOOGLE
             && saved.getProviderId().equals("google-sub-2")
             && saved.getPassword() == null));
+  }
+
+  @Test
+  @DisplayName("동시 최초 로그인으로의 저장이 유니크 제약 위반에 걸리면 재조회한 기존 유저를 사용함")
+  void toCustomOAuth2User_returnsExistingUser_whenConcurrentInsertViolatesConstraint() {
+    User existingUser = User.createOAuthUser("test@test.com", "testUser", "https://old.image", AuthProvider.GOOGLE, "google-sub-3");
+    UUID existingId = UUID.randomUUID();
+    ReflectionTestUtils.setField(existingUser, "id", existingId);
+
+    when(userRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "google-sub-3"))
+        .thenReturn(Optional.empty())
+        .thenReturn(Optional.of(existingUser));
+    when(userRepository.save(any(User.class)))
+        .thenThrow(new DataIntegrityViolationException("duplicate key"));
+
+    CustomOAuth2User result = customOAuth2UserService.toCustomOAuth2User(
+        googleOAuth2User("google-sub-3", "test@test.com", "testUser", "https://new.image"));
+
+    assertThat(result.getUserId()).isEqualTo(existingId);
+    verify(userRepository, times(2))
+        .findByProviderAndProviderId(AuthProvider.GOOGLE, "google-sub-3");
+  }
+
+  @Test
+  @DisplayName("유니크 제약 위반 후 재조회에서도 유저를 찾지 못하면 원래 예외를 그대로 던짐")
+  void toCustomOAuth2User_rethrowsOriginalException_whenRetryAlsoFindsNothing() {
+    when(userRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "google-sub-4"))
+        .thenReturn(Optional.empty());
+    DataIntegrityViolationException original = new DataIntegrityViolationException("duplicate key");
+    when(userRepository.save(any(User.class))).thenThrow(original);
+
+    assertThatThrownBy(() -> customOAuth2UserService.toCustomOAuth2User(
+        googleOAuth2User("google-sub-4", "other@gmail.com", "otherUser", "https://new.image")))
+        .isSameAs(original);
   }
 }
