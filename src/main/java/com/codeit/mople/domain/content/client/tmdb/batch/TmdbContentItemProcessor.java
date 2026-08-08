@@ -5,6 +5,7 @@ import com.codeit.mople.domain.content.client.tmdb.config.TmdbProperties;
 import com.codeit.mople.domain.content.client.tmdb.dto.TmdbContentItem;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
+import com.codeit.mople.domain.content.entity.ExternalSource;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,8 +34,20 @@ public class TmdbContentItemProcessor implements ItemProcessor<TmdbContentItem, 
     // 도메인 + 이미지이름
     String thumbnailUrl = resolveThumbnailUrl(item.posterPath());
     List<String> tags = genreCache.getNames(item.genreIds());
+    if (item.id() == null) {
+      log.warn("Id값이 없습니다 title={}", title);
+      return null;
+    }
+    String externalId = item.id().toString();
 
-    return new Content(contentType, title, item.overview(), thumbnailUrl, tags);
+    return new Content(
+        contentType,
+        title,
+        item.overview(),
+        thumbnailUrl,
+        tags,
+        ExternalSource.TMDB,
+        externalId);
   }
 
   private String resolveThumbnailUrl(String posterPath) {

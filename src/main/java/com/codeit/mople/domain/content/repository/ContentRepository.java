@@ -21,6 +21,4 @@ public interface ContentRepository extends JpaRepository<Content, UUID> {
 
   //배치 중복 검사용 메서드
   List<Content> findByExternalIdIn(List<String> externalIds);
-  boolean existsByTypeAndTitle(ContentType type, String title);
-
 }

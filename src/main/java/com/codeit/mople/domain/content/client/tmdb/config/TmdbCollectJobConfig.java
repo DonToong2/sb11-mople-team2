@@ -41,9 +41,11 @@ public class TmdbCollectJobConfig {
 
   @Bean
   public Job tmdbCollectJob(
-      JobRepository jobRepository, TmdbCollectJobListener listener,
+      JobRepository jobRepository,
+      TmdbCollectJobListener listener,
       @Qualifier("tmdbMovieStep") Step tmdbMovieStep,
-      @Qualifier("tmdbTvStep") Step tmdbTvStep) {
+      @Qualifier("tmdbTvStep") Step tmdbTvStep
+  ) {
     return new JobBuilder("tmdbCollectJob", jobRepository)
         .listener(listener)
         .start(tmdbMovieStep)
