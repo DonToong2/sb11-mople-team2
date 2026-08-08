@@ -45,20 +45,6 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
         .fetch();
   }
 
-  @Override
-  public long countUsers(UserSearchRequest request) {
-    Long count = queryFactory
-        .select(user.count())
-        .from(user)
-        .where(
-            emailLikeCondition(request),
-            roleEqualCondition(request),
-            isLockedCondition(request)
-        )
-        .fetchOne();
-    return count == null ? 0 : count;
-  }
-
   private BooleanExpression emailLikeCondition(UserSearchRequest request) {
     return (request.emailLike() != null && !request.emailLike().isBlank())
         ? user.email.startsWith(request.emailLike().toLowerCase(Locale.ROOT))

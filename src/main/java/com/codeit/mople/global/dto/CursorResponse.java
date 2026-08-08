@@ -20,8 +20,7 @@ public record CursorResponse<T>(
       String sortBy,
       String sortDirection,
       Function<T, String> cursorExtractor,
-      Function<T, UUID> idExtractor,
-      long totalCount
+      Function<T, UUID> idExtractor
   ) {
     boolean hasNext = fetched.size() > limit;
     List<T> data = hasNext ? fetched.subList(0, limit) : fetched;
