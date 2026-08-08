@@ -41,7 +41,7 @@ public class OAuthAttributes {
         .providerId(providerId)
         .email(email != null ? email : "kakao_" + providerId + "@kakao.local") // 비즈앱 전환 문제로 이메일 미제공. 임시 이메일 등록
         .name((String) profile.get("nickname"))
-        .picture((String) profile.get("picture_image_url"))
+        .picture((String) profile.get("profile_image_url"))
         .build();
   }
 }
