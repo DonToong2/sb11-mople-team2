@@ -9,6 +9,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.user.entity.AuthProvider;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
@@ -24,6 +25,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -114,5 +116,21 @@ public class CustomOAuth2UserServiceTest {
     assertThatThrownBy(() -> customOAuth2UserService.toCustomOAuth2User(
         googleOAuth2User("google-sub-4", "other@gmail.com", "otherUser", "https://new.image")))
         .isSameAs(original);
+  }
+
+  @Test
+  @DisplayName("잠긴 계정으로 로그인하면 OAuth2AuthenticationException이 발생하고 토큰 발급 대상 유저가 반환되지 않음")
+  void toCustomOAuth2User_throwsException_whenUserIsLocked() {
+    User lockedUser = User.createOAuthUser("locked@gmail.com", "lockedUser", "https://old.image", AuthProvider.GOOGLE, "google-sub-5");
+    lockedUser.lock();
+    when(userRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "google-sub-5"))
+        .thenReturn(Optional.of(lockedUser));
+
+    assertThatThrownBy(() -> customOAuth2UserService.toCustomOAuth2User(
+        googleOAuth2User("google-sub-5", "locked@gmail.com", "lockedUser", "https://new.image")))
+        .isInstanceOf(OAuth2AuthenticationException.class)
+        .hasFieldOrPropertyWithValue("error.errorCode", AuthErrorCode.LOCKED_ACCOUNT.getCode());
+
+    verify(userRepository, never()).save(any());
   }
 }
