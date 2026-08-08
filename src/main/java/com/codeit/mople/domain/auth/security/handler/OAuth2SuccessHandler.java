@@ -39,7 +39,6 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         .orElseThrow(() -> new IllegalStateException("OAuth 로그인 후 사용자를 찾을 수 없습니다."));
 
     long sessionVersion = user.increaseSessionVersion();
-    jwtProvider.createAccessToken(user.getId(), sessionVersion);
     String refreshToken = jwtProvider.createRefreshToken(user.getId());
     Instant refreshExpiresAt = Instant.now().plusMillis(jwtProvider.getRefreshTokenExpiration());
     user.updateRefreshToken(refreshToken, refreshExpiresAt);
