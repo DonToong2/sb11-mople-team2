@@ -111,7 +111,9 @@ public class SseService {
             receiverId, e);
 
         // connect()의 onError 콜백 메서드 실행
+        // 해당 SSE 재전송 실패 이후의 SSE들도 막도록 설정(현재 emitter가 정상적이지 않은 상태로 간주)
         emitter.completeWithError(e);
+        return;
       }
     }
   }
