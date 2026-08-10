@@ -5,6 +5,7 @@ import com.codeit.mople.domain.user.entity.AuthProvider;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -16,6 +17,9 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
+
+  private static final String UQ_PROVIDER_ID = "uq_users_provider_provider_id";
+  private static final String UQ_EMAIL = "uq_users_email";
 
   private final UserRepository userRepository;
 
@@ -45,8 +49,25 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
       return userRepository.save(
           User.createOAuthUser(attributes.getEmail(), attributes.getName(), attributes.getPicture(), provider, attributes.getProviderId()));
     } catch (DataIntegrityViolationException e) {
-      return userRepository.findByProviderAndProviderId(provider, attributes.getProviderId())
-          .orElseThrow(() -> e);
+      String constraintName = extractConstraintName(e);
+
+      if(UQ_PROVIDER_ID.equals(constraintName)) {
+        return userRepository.findByProviderAndProviderId(provider, attributes.getProviderId())
+            .orElseThrow(() -> e);
+      }
+      if(UQ_EMAIL.equals(constraintName)) {
+        throw new OAuth2AuthenticationException(new OAuth2Error(
+            AuthErrorCode.EMAIL_ALREADY_REGISTERED.getCode(), AuthErrorCode.EMAIL_ALREADY_REGISTERED.getMessage(), null), e);
+      }
+
+      throw e;
     }
+  }
+
+  private String extractConstraintName(DataIntegrityViolationException e) {
+    if(e.getCause() instanceof ConstraintViolationException cve) {
+      return cve.getConstraintName();
+    }
+    return null;
   }
 }
