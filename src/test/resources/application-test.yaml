@@ -32,6 +32,11 @@ external-api:
     base-url: http://localhost:0
     api-key: test-key
 
+batch:
+  tmdb:
+    collect:
+      cron: "-"
+
 oauth2:
   redirect:
     success-uri: http://localhost:3000/

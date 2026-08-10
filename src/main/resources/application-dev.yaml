@@ -43,6 +43,11 @@ external-api:
     base-url: https://www.thesportsdb.com/api/v1/json
     api-key: ${SPORTSDB_API_KEY:3}
 
+batch:
+  tmdb:
+    collect:
+      cron: "-"
+
 oauth2:
   redirect:
     success-uri: http://localhost:8080/
