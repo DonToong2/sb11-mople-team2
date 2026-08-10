@@ -6,6 +6,7 @@ import com.codeit.mople.domain.auth.dto.response.AuthTokens;
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
 import com.codeit.mople.domain.user.dto.response.UserDto;
+import com.codeit.mople.domain.user.entity.AuthProvider;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
@@ -54,6 +55,10 @@ public class AuthService {
   }
 
   private boolean isPasswordValid(String rawPassword, User user) {
+    // LOCAL이 아니면 비밀번호 로그인 자체를 차단
+    if(user.getProvider() != AuthProvider.LOCAL) {
+      return false;
+    }
     if(passwordEncoder.matches(rawPassword, user.getPassword())) {
       return true;
     }
