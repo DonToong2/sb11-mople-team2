@@ -18,7 +18,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.codeit.mople.domain.auth.security.CustomOAuth2UserService;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
+import com.codeit.mople.domain.auth.security.handler.OAuth2FailureHandler;
+import com.codeit.mople.domain.auth.security.handler.OAuth2SuccessHandler;
 import com.codeit.mople.domain.review.dto.request.ReviewCreateRequest;
 import com.codeit.mople.domain.review.dto.request.ReviewQueryCondition;
 import com.codeit.mople.domain.review.dto.request.ReviewQueryCondition.ReviewSortBy;
@@ -60,6 +63,16 @@ public class ReviewControllerTest {
 
   @MockitoBean
   private JwtProvider jwtProvider;
+
+  @MockitoBean
+  private CustomOAuth2UserService customOAuth2UserService;
+
+  @MockitoBean
+  private OAuth2SuccessHandler oAuth2SuccessHandler;
+
+  @MockitoBean
+  private OAuth2FailureHandler oAuth2FailureHandler;
+
 
   @MockitoBean
   private UserRepository userRepository;

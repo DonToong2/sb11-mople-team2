@@ -9,6 +9,19 @@ spring:
       ddl-auto: update
     show-sql: true
 
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: email, profile
+
+  batch:
+    jdbc:
+      initialize-schema: always
+
 logging:
   level:
     com.codeit.mople: DEBUG
@@ -28,4 +41,14 @@ external-api:
     api-key: ${TMDB_API_KEY:}
   sportsdb:
     base-url: https://www.thesportsdb.com/api/v1/json
-    api-key: ${SPORTSDB_API_KEY:}
+    api-key: ${SPORTSDB_API_KEY:3}
+
+batch:
+  tmdb:
+    collect:
+      cron: "-"
+
+oauth2:
+  redirect:
+    success-uri: http://localhost:8080/
+    failure-uri: http://localhost:8080/

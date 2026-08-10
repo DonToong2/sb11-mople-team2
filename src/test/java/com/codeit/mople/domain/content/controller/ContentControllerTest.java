@@ -21,6 +21,9 @@ import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
+import com.codeit.mople.domain.auth.security.CustomOAuth2UserService;
+import com.codeit.mople.domain.auth.security.handler.OAuth2FailureHandler;
+import com.codeit.mople.domain.auth.security.handler.OAuth2SuccessHandler;
 import com.codeit.mople.domain.content.service.ContentService;
 import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
 import com.codeit.mople.domain.watchingsession.service.WatchingSessionService;
@@ -71,6 +74,15 @@ public class ContentControllerTest {
   @MockitoBean
   private WatchingSessionService watchingSessionService;
 
+  @MockitoBean
+  private CustomOAuth2UserService customOAuth2UserService;
+
+  @MockitoBean
+  private OAuth2SuccessHandler oAuth2SuccessHandler;
+
+  @MockitoBean
+  private OAuth2FailureHandler oAuth2FailureHandler;
+
   private RequestPostProcessor mockAuth(UUID userId, Role role) {
     CustomUserDetails mockUser = new CustomUserDetails(userId, role);
     UsernamePasswordAuthenticationToken authentication =
@@ -86,7 +98,7 @@ public class ContentControllerTest {
   @DisplayName("콘텐츠 생성 성공 - ADMIN 권한일 때 201 Created")
   void createContent_Success() throws Exception {
     UUID contentId = UUID.randomUUID();
-    UUID adminId = UUID.randomUUID(); // 🌟 테스트용 adminId 명시적 생성
+    UUID adminId = UUID.randomUUID();
 
     ContentCreateRequest requestDto = new ContentCreateRequest(
         "MOVIE", "테스트 영화", "설명", List.of("액션"));
@@ -111,7 +123,7 @@ public class ContentControllerTest {
                 .file(thumbnailPart)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .with(csrf())
-                .with(mockAuth(adminId, Role.ADMIN)) // 🌟 adminId 주입
+                .with(mockAuth(adminId, Role.ADMIN))
         ).andExpect(status().isCreated())
         .andExpect(jsonPath("$.title").value("테스트 영화"));
   }

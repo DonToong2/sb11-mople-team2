@@ -1,6 +1,6 @@
 package com.codeit.mople.domain.notification.dto.response;
 
-import com.codeit.mople.domain.notification.entity.NotificationLevel;
+import com.codeit.mople.domain.notification.NotificationLevel;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -11,6 +11,4 @@ public record NotificationResponse(
     String title,
     String content,
     NotificationLevel level
-) {
-
-}
+) {}

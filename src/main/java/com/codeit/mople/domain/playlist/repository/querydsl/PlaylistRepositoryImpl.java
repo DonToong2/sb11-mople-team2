@@ -198,6 +198,11 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
         );
       }
 
+      // 구독자 수는 0 이상(음수가 들어올 경우 예외 처리)
+      if (cursor < 0) {
+        throw new PlaylistException(PlaylistErrorCode.PLAYLIST_INVALID_CURSOR);
+      }
+
       // 경우 3 : 구독순 오름차순
       if (condition.sortDirection() == SortDirection.ASCENDING) {
         return playlist.subscriberCount.gt(cursor)
