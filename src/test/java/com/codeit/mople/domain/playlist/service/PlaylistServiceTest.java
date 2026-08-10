@@ -69,7 +69,7 @@ public class PlaylistServiceTest {
   private PlaylistSubscriptionRepository playlistSubscriptionRepository;
 
   @Mock
-  private ApplicationEventPublisher publisher;
+  private ApplicationEventPublisher eventPublisher;
 
   @InjectMocks
   private PlaylistService playlistService;
@@ -832,8 +832,7 @@ public class PlaylistServiceTest {
 
       // then
       verify(playlistSubscriptionRepository).save(any(PlaylistSubscription.class));
-      verify(publisher).publishEvent(any(PlaylistSubscribedEvent.class));
-      verify(playlistRepository).increaseSubscriberCount(playlistId);
+      verify(eventPublisher).publishEvent(any(PlaylistSubscribedEvent.class));
     }
 
     @Test
@@ -854,7 +853,7 @@ public class PlaylistServiceTest {
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_DUPLICATE);
 
       verify(playlistSubscriptionRepository, never()).save(any());
-      verify(publisher, never()).publishEvent(any());
+      verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -870,7 +869,7 @@ public class PlaylistServiceTest {
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_NOT_FOUND);
 
       verify(playlistSubscriptionRepository, never()).save(any());
-      verify(publisher, never()).publishEvent(any());
+      verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -888,7 +887,7 @@ public class PlaylistServiceTest {
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_USER_NOT_FOUND);
 
       verify(playlistSubscriptionRepository, never()).save(any());
-      verify(publisher, never()).publishEvent(any());
+      verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -906,7 +905,7 @@ public class PlaylistServiceTest {
 
       verify(userRepository, never()).findById(any());
       verify(playlistSubscriptionRepository, never()).save(any());
-      verify(publisher, never()).publishEvent(any());
+      verify(eventPublisher, never()).publishEvent(any());
     }
 
   }
@@ -923,7 +922,6 @@ public class PlaylistServiceTest {
 
       given(playlistSubscriptionRepository.deleteByPlaylistIdAndSubscriberId(playlistId,
           subscriberId)).willReturn(1);
-      given(playlistRepository.decreaseSubscriberCount(playlistId)).willReturn(1);
 
       // when
       playlistService.unSubscribe(playlistId, subscriberId);
@@ -931,7 +929,6 @@ public class PlaylistServiceTest {
       // then
       verify(playlistSubscriptionRepository).deleteByPlaylistIdAndSubscriberId(playlistId,
           subscriberId);
-      verify(playlistRepository).decreaseSubscriberCount(playlistId);
     }
 
     @Test
@@ -972,7 +969,7 @@ public class PlaylistServiceTest {
       playlistService.addContent(playlistId, contentId, ownerId);
 
       // then
-      verify(publisher).publishEvent(any(PlaylistContentAddedEvent.class));
+      verify(eventPublisher).publishEvent(any(PlaylistContentAddedEvent.class));
       verify(playlistContentRepository).save(any(PlaylistContent.class));
     }
 
@@ -988,7 +985,7 @@ public class PlaylistServiceTest {
           .isInstanceOf(PlaylistException.class)
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_CONTENT_PLAY_NOT_FOUND);
 
-      verify(publisher, never()).publishEvent(any());
+      verify(eventPublisher, never()).publishEvent(any());
       verify(playlistContentRepository, never()).save(any());
     }
 
@@ -1007,7 +1004,7 @@ public class PlaylistServiceTest {
           .isInstanceOf(PlaylistException.class)
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_CONTENT_CONTENT_NOT_FOUND);
 
-      verify(publisher, never()).publishEvent(any());
+      verify(eventPublisher, never()).publishEvent(any());
       verify(playlistContentRepository, never()).save(any());
     }
 
@@ -1030,7 +1027,7 @@ public class PlaylistServiceTest {
           .isInstanceOf(PlaylistException.class)
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_CONTENT_DUPLICATE);
 
-      verify(publisher, never()).publishEvent(any());
+      verify(eventPublisher, never()).publishEvent(any());
       verify(playlistContentRepository, never()).save(any());
     }
 
@@ -1051,7 +1048,7 @@ public class PlaylistServiceTest {
           .isInstanceOf(PlaylistException.class)
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_FORBIDDEN);
 
-      verify(publisher, never()).publishEvent(any());
+      verify(eventPublisher, never()).publishEvent(any());
       verify(playlistContentRepository, never()).existsByPlaylistIdAndContentId(any(), any());
       verify(playlistContentRepository, never()).save(any());
     }
@@ -1079,7 +1076,7 @@ public class PlaylistServiceTest {
       playlistService.removeContent(playlistId, contentId, ownerId);
 
       // then
-      verify(publisher, never()).publishEvent(any());
+      verify(eventPublisher, never()).publishEvent(any());
       verify(playlistContentRepository).delete(playlistContent);
     }
 
