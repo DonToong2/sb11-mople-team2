@@ -126,7 +126,7 @@ public class ContentService{
         actualSortBy,
         "DESCENDING",
         content -> {
-          if ("averageRating".equals(actualSortBy) || "rating".equals(actualSortBy)) {
+          if ("averageRating".equals(actualSortBy) || "rating".equals(actualSortBy) || "score".equals(actualSortBy) || "rate".equals(actualSortBy)) {
             return String.valueOf(content.getAverageRating());
           } else if ("watcherCount".equals(actualSortBy)) {
             return String.valueOf(content.getWatcherCount());

@@ -53,8 +53,7 @@ public class ContentQueryRepository {
     return type != null ? content.type.eq(type) : null;
   }
 
-  //커서 필터링 조건
-  //watcherCount Long 타입 매핑 에러 해결 및 정렬 기준별 커서 파싱
+  // 커서 필터링 조건
   private BooleanExpression cursorCondition(UUID cursorId, String cursorValue, String sortBy) {
     if (cursorId == null || cursorValue == null || cursorValue.isBlank()) {
       return null;
@@ -64,22 +63,22 @@ public class ContentQueryRepository {
       long count = Long.parseLong(cursorValue);
       return content.watcherCount.lt(count)
           .or(content.watcherCount.eq(count).and(content.id.gt(cursorId)));
-    } else if ("averageRating".equals(sortBy) || "rating".equals(sortBy)) {
+    } else if ("averageRating".equals(sortBy) || "rating".equals(sortBy) || "score".equals(sortBy) || "rate".equals(sortBy)) {
       double rating = Double.parseDouble(cursorValue);
       return content.averageRating.lt(rating)
           .or(content.averageRating.eq(rating).and(content.id.gt(cursorId)));
-    } else { //기본값: 최신순 (createdAt)
+    } else { // 기본값: 최신순 (createdAt)
       Instant time = Instant.parse(cursorValue);
       return content.createdAt.lt(time)
           .or(content.createdAt.eq(time).and(content.id.gt(cursorId)));
     }
   }
 
-  //동적 정렬 조건 메서드
+  // 동적 정렬 조건 메서드
   private OrderSpecifier<?>[] orderSpecifiers(String sortBy) {
     if ("watcherCount".equals(sortBy)) {
       return new OrderSpecifier<?>[]{content.watcherCount.desc().nullsLast(), content.id.asc()};
-    } else if ("averageRating".equals(sortBy) || "rating".equals(sortBy)) {
+    } else if ("averageRating".equals(sortBy) || "rating".equals(sortBy) || "score".equals(sortBy) || "rate".equals(sortBy)) {
       return new OrderSpecifier<?>[]{content.averageRating.desc().nullsLast(), content.id.asc()};
     }
     return new OrderSpecifier<?>[]{content.createdAt.desc().nullsLast(), content.id.asc()};
