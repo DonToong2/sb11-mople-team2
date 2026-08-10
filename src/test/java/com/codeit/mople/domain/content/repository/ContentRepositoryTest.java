@@ -68,8 +68,7 @@ public class ContentRepositoryTest {
 
     //존재하는 externalId("ext-001")와 존재하지 않는 ID("ext-999")로 조회
     List<String> searchExternalIds = List.of("ext-001", "ext-999");
-    List<Content> foundContents = contentRepository.findByExternalIdIn(searchExternalIds);
-
+    List<Content> foundContents = contentRepository.findByTypeAndExternalIdIn(ContentType.MOVIE, searchExternalIds);
     //일치하는 1개의 콘텐츠만 정상적으로 조회되는지 검증
     assertThat(foundContents).isNotNull();
     assertThat(foundContents).hasSize(1);
