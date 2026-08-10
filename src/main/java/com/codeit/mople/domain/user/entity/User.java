@@ -8,6 +8,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -69,7 +70,7 @@ public class User extends BaseEntity {
   private long sessionVersion = 0L;
 
   private User(String email, String password, String name, Role role, AuthProvider provider) {
-    this.email = Objects.requireNonNull(email, "email");
+    this.email = Objects.requireNonNull(email, "email").toLowerCase(Locale.ROOT);
     this.password = password;
     this.name = Objects.requireNonNull(name, "name");
     this.role = Objects.requireNonNull(role, "role");

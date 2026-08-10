@@ -19,6 +19,14 @@ public class UserTest {
   }
 
   @Test
+  @DisplayName("email에 대문자가 섞여 있어도 소문자로 정규화되어 저장됨")
+  void createUser_normalizesEmailToLowerCase() {
+    User user = User.createUser("TestUser@Test.com", "encodedPassword", "testUser");
+
+    assertThat(user.getEmail()).isEqualTo("testuser@test.com");
+  }
+
+  @Test
   @DisplayName("email이 null이면 User 생성 시 예외가 발생함")
   void createUser_throwsException_whenEmailIsNull() {
     assertThatThrownBy(() -> User.createUser(null, "encodedPassword", "testUser"))
