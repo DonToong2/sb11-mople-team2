@@ -307,14 +307,14 @@ public class ReviewControllerTest {
       mockMvc.perform(get("/api/reviews")
               .param("limit", "10")
               .param("sortDirection", "DESCENDING")
-              .param("sortBy", "RATING")
+              .param("sortBy", "rating")
               .with(user(userDetails))
           )
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.data").isArray())
           .andExpect(jsonPath("$.hasNext").value(false))
           .andExpect(jsonPath("$.totalCount").value(1L))
-          .andExpect(jsonPath("$.sortBy").value("RATING"))
+          .andExpect(jsonPath("$.sortBy").value("rating"))
           .andExpect(jsonPath("$.sortDirection").value("DESCENDING"));
 
       verify(reviewService).findAll(any(ReviewQueryCondition.class));
@@ -330,7 +330,7 @@ public class ReviewControllerTest {
       // when & then
       mockMvc.perform(get("/api/reviews")
               .param("sortDirection", "DESCENDING")
-              .param("sortBy", "RATING")
+              .param("sortBy", "rating")
               .with(user(userDetails))
           )
           .andExpect(status().isBadRequest());
@@ -366,7 +366,7 @@ public class ReviewControllerTest {
       // when & then
       mockMvc.perform(get("/api/reviews")
               .param("limit", "10")
-              .param("sortBy", "RATING")
+              .param("sortBy", "rating")
               .with(user(userDetails))
           )
           .andExpect(status().isBadRequest());
@@ -385,7 +385,7 @@ public class ReviewControllerTest {
       mockMvc.perform(get("/api/reviews")
               .param("limit", "0")
               .param("sortDirection", "DESCENDING")
-              .param("sortBy", "RATING")
+              .param("sortBy", "rating")
               .with(user(userDetails))
           )
           .andExpect(status().isBadRequest());
@@ -404,7 +404,7 @@ public class ReviewControllerTest {
       mockMvc.perform(get("/api/reviews")
               .param("limit", "101")
               .param("sortDirection", "DESCENDING")
-              .param("sortBy", "RATING")
+              .param("sortBy", "rating")
               .with(user(userDetails))
           )
           .andExpect(status().isBadRequest());
@@ -423,7 +423,7 @@ public class ReviewControllerTest {
       mockMvc.perform(get("/api/reviews")
               .param("limit", "ANY")
               .param("sortDirection", "DESCENDING")
-              .param("sortBy", "RATING")
+              .param("sortBy", "rating")
               .with(user(userDetails))
           )
           .andExpect(status().isBadRequest());
@@ -461,7 +461,7 @@ public class ReviewControllerTest {
       mockMvc.perform(get("/api/reviews")
               .param("limit", "10")
               .param("sortDirection", "ANY")
-              .param("sortBy", "RATING")
+              .param("sortBy", "rating")
               .with(user(userDetails))
           )
           .andExpect(status().isBadRequest());
