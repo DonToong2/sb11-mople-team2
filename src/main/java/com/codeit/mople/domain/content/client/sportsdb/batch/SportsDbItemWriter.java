@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.content.client.sportsdb.batch;
 
 import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import java.util.List;
 import java.util.Objects;
@@ -34,9 +35,8 @@ public class SportsDbItemWriter implements ItemWriter<Content> {
         .toList();
 
     //DB에 이미 존재하는 식별자 조회
-    List<String> existingIds = contentRepository.findByExternalIdIn(externalIds).stream()
-        .map(Content::getExternalId)
-        .toList();
+    List<String> existingIds = contentRepository
+        .findExternalIdsByTypeAndExternalIdIn(ContentType.SPORT, externalIds);
 
     //기존 DB에 없는 새로운 데이터만 필터링
     List<Content> newContents = items.stream()

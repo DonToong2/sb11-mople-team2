@@ -40,7 +40,8 @@ public class SportsContentBatchConfig {
 
   //Chunk  기반 Spring Batch Step 구성(read -> process -> write)
   @Bean
-  public Step sportsContentStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
+  public Step sportsContentStep(JobRepository jobRepository,
+      PlatformTransactionManager transactionManager) {
 
     //점점 대기 시간이 길어지는 BackOff 정책 설정
     ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
