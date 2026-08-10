@@ -46,9 +46,9 @@ public class Content extends BaseTimeEntity {
   @Column(name = "tags")
   private List<String> tags;
 
-  @Column(name = "average_rating", nullable = false)
-  private double averageRating = 0.0; //리뷰 평균 별점
-
+  // 동시성 문제를 개선하기 위해 총 별점 필드를 추가
+  // 기존 리뷰 평균 별점은 서비스 로직에서 계산하여 응답으로 보냄
+  // 단순 평균 별점으로 원자적 Update시 반올림으로 인한 정확한 계산이 어렵기 때문에 총 별점으로 필드 대체
   @Column(name = "rating_sum", nullable = false)
   private double ratingSum = 0.0;
 
