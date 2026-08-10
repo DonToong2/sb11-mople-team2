@@ -39,7 +39,7 @@ public class DirectMessageController implements DirectMessageApi {
   @MessageMapping("/conversations/{conversationId}/direct-messages")
   public void sendDirectMessage(
       @DestinationVariable UUID conversationId,
-      DirectMessageSendRequest request,
+      @Valid DirectMessageSendRequest request,
       Principal principal
   ) {
     if (principal == null) {
@@ -65,8 +65,7 @@ public class DirectMessageController implements DirectMessageApi {
       @AuthenticationPrincipal CustomUserDetails userDetails,
       @Valid DirectMessageCursorRequest request
   ) {
-    CursorResponseDirectMessageDto response = directMessageService.getDirectMessages(conversationId,
-        userDetails.getUserId(), request);
+    CursorResponseDirectMessageDto response = directMessageService.getDirectMessages(conversationId, userDetails.getUserId(), request);
     return ResponseEntity.ok(response);
   }
 

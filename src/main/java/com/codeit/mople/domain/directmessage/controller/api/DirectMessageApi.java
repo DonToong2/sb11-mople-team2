@@ -2,6 +2,7 @@ package com.codeit.mople.domain.directmessage.controller.api;
 
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.directmessage.dto.request.DirectMessageCursorRequest;
+import com.codeit.mople.domain.directmessage.dto.request.DirectMessageSendRequest;
 import com.codeit.mople.domain.directmessage.dto.response.CursorResponseDirectMessageDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +24,30 @@ import org.springframework.web.bind.annotation.PathVariable;
     description = "특정 대화방 내부의 쪽지(DM) 관련 API"
 )
 public interface DirectMessageApi {
+
+  @Operation(
+      summary = "[WebSocket STOMP] 실시간 DM 발송 명세",
+      description = "**※ 주의: 본 API는 HTTP REST가 아닌 WebSocket STOMP 프로토콜을 사용합니다. (Swagger UI에서 직접 테스트 불가)**<br><br>"
+          + "**클라이언트 발송(PUB) 경로:** `SEND /pub/conversations/{conversationId}/direct-messages`<br>"
+          + "**클라이언트 수신(SUB) 경로:** `SUBSCRIBE /sub/conversations/{conversationId}/direct-messages`<br><br>"
+          + "프론트엔드에서 STOMP 클라이언트를 통해 위 PUB 경로로 JSON 데이터를 전송하면, "
+          + "서버가 DB 영속화 및 읽음 워터마크 갱신 후 SUB 경로를 구독 중인 유저들에게 `DirectMessageDto` 스펙으로 실시간 브로드캐스팅합니다."
+  )
+  @Parameters({
+      @Parameter(name = "conversationId", description = "메시지를 발송할 대화방의 고유 ID", in = ParameterIn.PATH, schema = @Schema(type = "string", format = "uuid"))
+  })
+  @ApiResponses({
+      @ApiResponse(
+          responseCode = "200",
+          description = "메시지 발송 성공 시 구독자들에게 브로드캐스팅되는 데이터 스펙",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.domain.directmessage.dto.response.DirectMessageDto.class))
+      )
+  })
+  void sendDirectMessage(
+      @Parameter(hidden = true) @PathVariable UUID conversationId,
+      @Valid DirectMessageSendRequest request,
+      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
+  );
 
   @Operation(
       summary = "대화방 내부 메시지 목록 조회 (무한 스크롤)",
