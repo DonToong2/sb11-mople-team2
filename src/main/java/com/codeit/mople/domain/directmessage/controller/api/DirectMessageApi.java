@@ -4,6 +4,8 @@ import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.directmessage.dto.request.DirectMessageCursorRequest;
 import com.codeit.mople.domain.directmessage.dto.request.DirectMessageSendRequest;
 import com.codeit.mople.domain.directmessage.dto.response.CursorResponseDirectMessageDto;
+import com.codeit.mople.domain.directmessage.dto.response.DirectMessageDto;
+import com.codeit.mople.global.dto.CursorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
@@ -14,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -46,7 +49,7 @@ public interface DirectMessageApi {
   void sendDirectMessage(
       @Parameter(hidden = true) @PathVariable UUID conversationId,
       @Valid DirectMessageSendRequest request,
-      @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
+      @Parameter(hidden = true) Principal principal
   );
 
   @Operation(
@@ -93,7 +96,7 @@ public interface DirectMessageApi {
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       )
   })
-  ResponseEntity<CursorResponseDirectMessageDto> getDirectMessages(
+  ResponseEntity<CursorResponse<DirectMessageDto>> getDirectMessages(
       @Parameter(hidden = true) @PathVariable UUID conversationId,
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
       @Valid DirectMessageCursorRequest request
