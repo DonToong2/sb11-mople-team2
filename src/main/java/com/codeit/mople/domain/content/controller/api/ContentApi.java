@@ -13,9 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.time.Instant;
 import java.util.UUID;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -66,13 +64,25 @@ public interface ContentApi {
       description = "커서 기반 페이지네이션으로 콘텐츠 목록을 조회합니다"
   )
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "성공", content = @Content(schema = @Schema(implementation = CursorResponseContentDto.class))),
-      @ApiResponse(responseCode = "400", description = "잘못된 파라미터 요청", content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class)))
+      @ApiResponse(
+          responseCode = "200",
+          description = "성공",
+          content = @Content(schema = @Schema(implementation = CursorResponseContentDto.class))
+      ),
+      @ApiResponse(
+          responseCode = "400",
+          description = "잘못된 파라미터 요청",
+          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
+      )
   })
   ResponseEntity<CursorResponseContentDto> getContents(
       @RequestParam(name = "idAfter", required = false) UUID cursorId,
-      @RequestParam(name = "cursor", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant cursorCreatedAt,
-      @RequestParam(name = "limit", defaultValue = "20") int limit
+      @RequestParam(name = "cursor", required = false) String cursorValue,
+      @RequestParam(name = "limit", defaultValue = "20") int limit,
+      @RequestParam(name = "type", required = false) String type,
+      @RequestParam(name = "contentType", required = false) String contentTypeParam,
+      @RequestParam(name = "typeEqual", required = false) String typeEqual,
+      @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy
   );
 
   @Operation(

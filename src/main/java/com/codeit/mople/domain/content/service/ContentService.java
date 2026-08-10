@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -85,8 +84,9 @@ public class ContentService{
 
   //콘텐츠 목록 조회
   @Transactional(readOnly = true)
-  public CursorResponseContentDto getContents(UUID cursorId, Instant cursorCreatedAt, int limit) {
-    log.debug("콘텐츠 목록 조회 시작 - cursorId: {}, cursorCreatedAt: {}, limit: {}", cursorId, cursorCreatedAt, limit);
+  public CursorResponseContentDto getContents(
+      UUID cursorId, String cursorValue, int limit, String type, String sortBy) {
+    log.debug("콘텐츠 목록 조회 시작 - cursorId: {}, cursorValue: {}, limit: {}, type: {}, sortBy: {}", cursorId, cursorValue, limit, type, sortBy);
 
     if (limit <= 0 || limit > 100) {
       log.warn("콘텐츠 목록 조회 실패(잘못된 페이징 조건) - limit: {}", limit);
@@ -94,24 +94,46 @@ public class ContentService{
     }
 
     //커서 피라미터가 둘 중 하나만 드어온 경우 예외 처리
-    if ((cursorId == null) != (cursorCreatedAt == null)) {
-      log.warn("콘텐츠 목록 조회 실패(불완전한 커서 조건) - cursorId: {}, cursorCreatedAt: {}", cursorId, cursorCreatedAt);
+    if ((cursorId == null) != (cursorValue == null)) {
+      log.warn("콘텐츠 목록 조회 실패(불완전한 커서 조건) - cursorId: {}, cursorValue: {}", cursorId, cursorValue);
       throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST,
-          Map.of("cursorId", String.valueOf(cursorId), "cursorCreatedAt", String.valueOf(cursorCreatedAt)));
+          Map.of("cursorId", String.valueOf(cursorId), "cursorValue", String.valueOf(cursorValue)));
     }
 
-    //데이터 조회 및 카운트
-    List<Content> contents = contentQueryRepository.findContentByCursor(cursorId, cursorCreatedAt, limit);
-    long totalCount = contentQueryRepository.countAllContents();
+    //ContentType 필터 처리 (ALL 또는 빈 값일 경우 전체 조회)
+    ContentType contentType = null;
+    if (type != null && !type.isBlank() && !type.equalsIgnoreCase("ALL")) {
+      try {
+        contentType = ContentType.from(type);
+      } catch (IllegalArgumentException e) {
+        log.warn("지원하지 않는 분류 필터 무시: {}", type);
+      }
+    }
 
+    //정렬 기본값 설정
+    String actualSortBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
+
+    //데이터 조회 및 카운트
+    List<Content> contents = contentQueryRepository
+        .findContentByCursor(cursorId, cursorValue, limit, contentType, actualSortBy);
+    long totalCount = contentQueryRepository.countContentsByType(contentType);
+
+    //정렬 기준에 맞는 커서 값 동적 추출
     CursorResponse<Content> cursorResponse = CursorResponse.of(
         contents,
         limit,
         totalCount,
-        "createdAt",
+        actualSortBy,
         "DESCENDING",
-        content -> content.getCreatedAt() != null ?
-            content.getCreatedAt().toString() : null, Content::getId
+        content -> {
+          if ("averageRating".equals(actualSortBy) || "rating".equals(actualSortBy)) {
+            return String.valueOf(content.getAverageRating());
+          } else if ("watcherCount".equals(actualSortBy)) {
+            return String.valueOf(content.getWatcherCount());
+          } else {
+            return content.getCreatedAt() != null ? content.getCreatedAt().toString() : null;
+          }
+        }, Content::getId
     );
 
     List<ContentResponse> contentResponses = cursorResponse.data().stream()
