@@ -3,8 +3,10 @@ package com.codeit.mople.domain.content.client.sportsdb.batch;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.repository.ContentRepository;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.Chunk;
@@ -31,7 +33,6 @@ public class SportsDbItemWriter implements ItemWriter<Content> {
     //이번 Chunk의 외부 식별자 추출
     List<String> externalIds = items.stream()
         .map(Content::getExternalId)
-        .filter(Objects::nonNull) //null 방어 코드
         .toList();
 
     //DB에 이미 존재하는 식별자 조회
@@ -39,8 +40,9 @@ public class SportsDbItemWriter implements ItemWriter<Content> {
         .findExternalIdsByTypeAndExternalIdIn(ContentType.SPORT, externalIds);
 
     //기존 DB에 없는 새로운 데이터만 필터링
+    Set<String> knownExternalIds = new HashSet<>(existingIds);
     List<Content> newContents = items.stream()
-        .filter(content -> content.getExternalId() == null || !existingIds.contains(content.getExternalId()))
+        .filter(content -> knownExternalIds.add(content.getExternalId()))
         .toList();
 
     //새로운 데이터만 저장
