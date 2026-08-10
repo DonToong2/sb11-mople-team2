@@ -66,21 +66,13 @@ public interface ContentApi {
       description = "커서 기반 페이지네이션으로 콘텐츠 목록을 조회합니다"
   )
   @ApiResponses({
-      @ApiResponse(
-          responseCode = "200",
-          description = "성공",
-          content = @Content(schema = @Schema(implementation = CursorResponseContentDto.class))
-      ),
-      @ApiResponse(
-          responseCode = "400",
-          description = "잘못된 파라미터 요청",
-          content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
-      )
+      @ApiResponse(responseCode = "200", description = "성공", content = @Content(schema = @Schema(implementation = CursorResponseContentDto.class))),
+      @ApiResponse(responseCode = "400", description = "잘못된 파라미터 요청", content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class)))
   })
   ResponseEntity<CursorResponseContentDto> getContents(
-      @RequestParam(value = "cursorId", required = false) UUID cursorId,
-      @RequestParam(value = "cursorCreatedAt", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant cursorCreatedAt,
-      @RequestParam(value = "limit", defaultValue = "10") int limit
+      @RequestParam(name = "idAfter", required = false) UUID cursorId,
+      @RequestParam(name = "cursor", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant cursorCreatedAt,
+      @RequestParam(name = "limit", defaultValue = "20") int limit
   );
 
   @Operation(

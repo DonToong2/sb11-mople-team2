@@ -213,9 +213,9 @@ public class ContentControllerTest {
 
     mockMvc.perform(
         get("/api/contents")
-            .param("limit", "10")
-            .param("cursorId", UUID.randomUUID().toString())
-            .param("cursorCreatedAt", Instant.now().toString())
+            .param("limit", "20")
+            .param("idAfter", UUID.randomUUID().toString())
+            .param("cursor", Instant.now().toString())
             .contentType(MediaType.APPLICATION_JSON)
             .with(mockAuth(UUID.randomUUID(),Role.USER))
     ).andExpect(status().isOk());

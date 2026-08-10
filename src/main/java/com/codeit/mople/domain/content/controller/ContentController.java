@@ -57,9 +57,9 @@ public class ContentController implements ContentApi {
   @Override
   @GetMapping
   public ResponseEntity<CursorResponseContentDto> getContents(
-      @RequestParam(value = "cursorId", required = false) UUID cursorId,
-      @RequestParam(value = "cursorCreatedAt", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant cursorCreatedAt,
-      @RequestParam(value = "limit", defaultValue = "10") int limit) {
+      @RequestParam(name = "idAfter", required = false) UUID cursorId,
+      @RequestParam(name = "cursor", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant cursorCreatedAt,
+      @RequestParam(name = "limit", defaultValue = "20") int limit) {
 
     CursorResponseContentDto response = contentService.getContents(cursorId, cursorCreatedAt, limit);
     return ResponseEntity.ok(response);
