@@ -160,7 +160,7 @@ public interface UserApi {
       @PathVariable UUID userId,
       @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails principal,
       @Valid @RequestPart UserUpdateRequest request,
-      @RequestPart MultipartFile image
+      @RequestPart(value = "image", required = false) MultipartFile image
   );
 
   @Operation(

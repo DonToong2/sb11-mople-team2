@@ -50,7 +50,7 @@ external-api:
 batch:
   tmdb:
     collect:
-      cron: "*/10 * * * * *"
+      cron: "-"
 
 oauth2:
   redirect:
