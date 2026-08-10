@@ -49,6 +49,9 @@ public class Content extends BaseTimeEntity {
   @Column(name = "average_rating", nullable = false)
   private double averageRating = 0.0; //리뷰 평균 별점
 
+  @Column(name = "rating_sum", nullable = false)
+  private double ratingSum = 0.0;
+
   @Column(name = "review_count", nullable = false)
   private int reviewCount = 0; //리뷰 개수
 
