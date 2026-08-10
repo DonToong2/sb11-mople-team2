@@ -16,8 +16,10 @@ public class SportsDbItemProcessor implements ItemProcessor<SportsDbEventDto, Co
   public Content process(SportsDbEventDto dto) {
     //무효한 데이터(필수값 누락) 검증 및 필터링
     if (dto.idEvent() == null || dto.idEvent().isBlank()
-        || dto.strEvent() == null || dto.dateEvent() == null
-        || dto.strSport() == null || dto.strLeague() == null) {
+        || dto.strEvent() == null || dto.strEvent().isBlank()
+        || dto.dateEvent() == null
+        || dto.strSport() == null || dto.strSport().isBlank()
+        || dto.strLeague() == null || dto.strLeague().isBlank()) {
       log.warn("유효하지 않은 이벤트 데이터 필터링(스킵) - idEvent: {}", dto.idEvent());
       return null; //null을 반환하면 Writer로 넘어가지 않고 스킵
     }
@@ -29,6 +31,7 @@ public class SportsDbItemProcessor implements ItemProcessor<SportsDbEventDto, Co
     List<String> tags = List.of("Sports", dto.strSport(), dto.strLeague());
 
     //ContentType은 임시로 SPORT 사용, 생성자에 dto.idEvent()를 외부 식별자로 전달
-    return new Content(ContentType.valueOf("SPORT"), title, description, thumbnailUrl, tags, dto.idEvent());
+    return new Content(ContentType.valueOf("SPORT"), title, description,
+        thumbnailUrl, tags, dto.idEvent());
   }
 }
