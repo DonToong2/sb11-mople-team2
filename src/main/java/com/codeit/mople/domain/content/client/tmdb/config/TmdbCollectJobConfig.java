@@ -31,7 +31,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 @RequiredArgsConstructor
 public class TmdbCollectJobConfig {
 
-  private static final int CHUNK_SIZE = 20;
+  private static final int CHUNK_SIZE = TmdbPageItemReader.PAGE_SIZE;
 
   private final TmdbClient tmdbClient;
   private final TmdbGenreCache tmdbGenreCache;
