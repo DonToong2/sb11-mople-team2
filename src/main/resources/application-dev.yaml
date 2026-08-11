@@ -26,6 +26,9 @@ spring:
     jdbc:
       initialize-schema: always
 
+  kafka:
+    bootstrap-servers: localhost:9093
+
 logging:
   level:
     com.codeit.mople: DEBUG
