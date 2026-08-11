@@ -68,7 +68,7 @@ public class AuthService {
   }
 
   private boolean isPasswordValid(String rawPassword, User user) {
-    // LOCAL이 아니면 비밀번호 로그인 자체를 차단
+    // 소셜 계정은 password가 null이라 matches 호출 자체가 위험
     if(user.getProvider() != AuthProvider.LOCAL) {
       return false;
     }
@@ -82,6 +82,7 @@ public class AuthService {
   @Transactional
   public void resetPassword(ResetPasswordRequest request) {
     userRepository.findByEmail(request.email())
+        .filter(user -> user.getProvider() == AuthProvider.LOCAL)
         .ifPresent(user -> {
           String temporaryPassword = generateTemporaryPassword();
           Instant expiresAt = Instant.now().plus(TEMPORARY_PASSWORD_EXPIRATION_MINUTES, ChronoUnit.MINUTES);
