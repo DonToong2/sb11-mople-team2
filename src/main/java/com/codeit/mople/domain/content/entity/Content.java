@@ -102,6 +102,11 @@ public class Content extends BaseTimeEntity {
     }
   }
 
+  //실시간 시청자 수 동기화용 메서드
+  public void updateWatcherCount(long watcherCount) {
+    this.watcherCount = watcherCount;
+  }
+
   // 평균 평점을 구하는 로직
   public double calculateAverageRating() {
     if (reviewCount == 0) {
