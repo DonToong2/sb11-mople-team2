@@ -61,7 +61,7 @@ public class JwtChannelInterceptorTest {
       // given
       StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
       accessor.addNativeHeader("Authorization", "Bearer " + validToken);
-      accessor.setLeaveMutable(true); // 인터셉터에서 수정 가능하도록 불변성 해제
+      accessor.setLeaveMutable(true); // 인터셉터에서 수정 가능하도록 스프링 헤더 불변성 우회
       Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
 
       User user = User.createUser("test@test.com", "password", "테스트유저");
@@ -133,6 +133,31 @@ public class JwtChannelInterceptorTest {
       assertThatThrownBy(() -> jwtChannelInterceptor.preSend(message, messageChannel))
           .isInstanceOf(AuthException.class)
           .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.EXPIRED_SESSION);
+    }
+
+    @Test
+    @DisplayName("실패: 관리자에 의해 잠금 처리된 계정으로 접근 시 예외가 발생한다")
+    void connect_fail_locked_account() {
+      // given
+      StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
+      accessor.addNativeHeader("Authorization", "Bearer " + validToken);
+      accessor.setLeaveMutable(true);
+      Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+
+      User user = User.createUser("locked@test.com", "password", "잠긴유저");
+      ReflectionTestUtils.setField(user, "id", userId);
+      ReflectionTestUtils.setField(user, "sessionVersion", 1L);
+
+      user.lock();
+
+      given(jwtProvider.getUserId(validToken)).willReturn(userId);
+      given(jwtProvider.getSessionVersion(validToken)).willReturn(1L);
+      given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+      // when & then
+      assertThatThrownBy(() -> jwtChannelInterceptor.preSend(message, messageChannel))
+          .isInstanceOf(AuthException.class)
+          .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.LOCKED_ACCOUNT);
     }
   }
 
