@@ -4,6 +4,7 @@ import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.user.entity.AuthProvider;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -30,7 +31,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
   }
 
   CustomOAuth2User toCustomOAuth2User(OAuth2User oAuth2User, String registrationId) {
-    AuthProvider provider = AuthProvider.valueOf(registrationId.toUpperCase());
+    AuthProvider provider = resolveProvider(registrationId);
     OAuthAttributes attributes = OAuthAttributes.of(provider, oAuth2User.getAttributes());
 
     User user = userRepository.findByProviderAndProviderId(provider, attributes.getProviderId())
@@ -64,10 +65,30 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     }
   }
 
+  private AuthProvider resolveProvider(String registerId) {
+    AuthProvider provider;
+    try {
+      provider = AuthProvider.valueOf(registerId.toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException e) {
+      throw unsupportedProviderException(registerId);
+    }
+
+    if(provider != AuthProvider.GOOGLE && provider != AuthProvider.KAKAO) {
+      throw unsupportedProviderException(registerId);
+    }
+    return provider;
+  }
+
   private String extractConstraintName(DataIntegrityViolationException e) {
     if(e.getCause() instanceof ConstraintViolationException cve) {
       return cve.getConstraintName();
     }
     return null;
+  }
+
+  private OAuth2AuthenticationException unsupportedProviderException(String registrationId) {
+    return new OAuth2AuthenticationException(new OAuth2Error(
+        AuthErrorCode.UNSUPPORTED_OAUTH_PROVIDER.getCode(),
+        AuthErrorCode.UNSUPPORTED_OAUTH_PROVIDER.getMessage() + " > " + registrationId, null));
   }
 }

@@ -14,7 +14,8 @@ public enum AuthErrorCode implements ErrorCode {
   EXPIRED_SESSION(HttpStatus.UNAUTHORIZED, "AUTH-003", "다른 기기에서 로그인하여 세션이 만료되었습니다."),
   LOCKED_ACCOUNT(HttpStatus.FORBIDDEN, "AUTH-004", "잠긴 계정입니다."),
   EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT, "AUTH-005", "이미 다른 방식으로 가입된 이메일입니다."),
-  OAUTH_PROVIDER_ID_MISSING(HttpStatus.UNAUTHORIZED, "AUTH-006", "OAuth 제공자로부터 사용자 식별자를 받지 못했습니다.");
+  OAUTH_PROVIDER_ID_MISSING(HttpStatus.UNAUTHORIZED, "AUTH-006", "OAuth 제공자로부터 사용자 식별자를 받지 못했습니다."),
+  UNSUPPORTED_OAUTH_PROVIDER(HttpStatus.BAD_REQUEST, "AUTH-007", "지원하지 않는 로그인 방식입니다.");
 
   private final HttpStatus status;
   private final String code;
