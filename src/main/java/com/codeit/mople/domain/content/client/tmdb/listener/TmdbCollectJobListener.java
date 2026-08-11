@@ -19,10 +19,14 @@ public class TmdbCollectJobListener implements JobExecutionListener {
   private final TmdbGenreCache genreCache;
   private final Counter successCounter;
   private final Counter failureCounter;
+  private final Counter skipCounter;
   private final Timer durationTimer;
 
   public TmdbCollectJobListener(TmdbGenreCache genreCache, MeterRegistry meterRegistry) {
     this.genreCache = genreCache;
+    this.skipCounter = Counter.builder("batch.tmdb.skip")
+        .description("TMDB 수집 배치 skip 건수")
+        .register(meterRegistry);
     this.successCounter = Counter.builder("batch.tmdb.success")
         .description("TMDB 수집 배치 성공 횟수")
         .register(meterRegistry);
@@ -45,25 +49,28 @@ public class TmdbCollectJobListener implements JobExecutionListener {
     long readCount = 0;
     long writeCount = 0;
     long filterCount = 0;
+    long skipCount = 0;
     for (StepExecution step : jobExecution.getStepExecutions()) {
       readCount += step.getReadCount();
       writeCount += step.getWriteCount();
       filterCount += step.getFilterCount();
+      skipCount += step.getSkipCount();
     }
 
     Duration duration = elapsed(jobExecution);
     durationTimer.record(duration);
+    skipCounter.increment(skipCount);
 
     if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
       successCounter.increment();
-      log.info("TMDB 수집 배치 완료: 읽음={}, 저장={}, 필터={}, 소요={}ms",
-          readCount, writeCount, filterCount, duration.toMillis());
+      log.info("TMDB 수집 배치 완료: 읽음={}, 저장={}, 필터={}, 스킵={}, 소요={}ms",
+          readCount, writeCount, filterCount, skipCount, duration.toMillis());
       return;
     }
 
     failureCounter.increment();
-    log.error("TMDB 수집 배치 실패: status={}, 읽음={}, 저장={}, 필터={}, 소요={}ms",
-        jobExecution.getStatus(), readCount, writeCount, filterCount, duration.toMillis(), firstFailure(jobExecution));
+    log.error("TMDB 수집 배치 실패: status={}, 읽음={}, 저장={}, 필터={}, 스킵={}, 소요={}ms",
+        jobExecution.getStatus(), readCount, writeCount, filterCount, skipCount, duration.toMillis(), firstFailure(jobExecution));
   }
 
   private Duration elapsed(JobExecution jobExecution) {

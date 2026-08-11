@@ -47,3 +47,4 @@ batch:
   tmdb:
     collect:
       max-pages: 5
+      skip-limit: 10

@@ -92,6 +92,8 @@ public class TmdbContentItemWriter implements ItemWriter<Content> {
 
     int inserted = toInsert.isEmpty() ? 0 : contentRepository.saveAll(toInsert).size();
 
+    contentRepository.flush();
+
     insertedCounter.increment(inserted);
     updatedCounter.increment(updated);
     unchangedCounter.increment(unchanged);
