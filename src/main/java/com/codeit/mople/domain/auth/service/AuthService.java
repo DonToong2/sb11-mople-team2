@@ -3,6 +3,7 @@ package com.codeit.mople.domain.auth.service;
 import com.codeit.mople.domain.auth.dto.request.ResetPasswordRequest;
 import com.codeit.mople.domain.auth.dto.request.SignInRequest;
 import com.codeit.mople.domain.auth.dto.response.AuthTokens;
+import com.codeit.mople.domain.auth.dto.response.RefreshToken;
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
 import com.codeit.mople.domain.user.dto.response.UserDto;
@@ -51,6 +52,19 @@ public class AuthService {
     String accessToken = jwtProvider.createAccessToken(user.getId(), newSessionVersion);
 
     return issueRefreshToken(user, accessToken);
+  }
+
+  @Transactional
+  public RefreshToken issueOAuthRefreshToken(UUID userId) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new IllegalStateException("OAuth 로그인 후 사용자를 찾을 수 없습니다."));
+
+    user.increaseSessionVersion();
+    String refreshToken = jwtProvider.createRefreshToken(user.getId());
+    Instant refreshExpiresAt = Instant.now().plusMillis(jwtProvider.getRefreshTokenExpiration());
+    user.updateRefreshToken(refreshToken, refreshExpiresAt);
+
+    return new RefreshToken(refreshToken, refreshExpiresAt);
   }
 
   private boolean isPasswordValid(String rawPassword, User user) {
