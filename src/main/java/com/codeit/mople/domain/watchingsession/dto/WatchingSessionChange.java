@@ -1,12 +1,20 @@
 package com.codeit.mople.domain.watchingsession.dto;
 
-import java.util.UUID;
+import com.codeit.mople.global.dto.UserSummary;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record WatchingSessionChange(
     String contentId,
-    UUID watcherId,
-    String action, //"ENTER"(입장) 또는 "LEAVE"(퇴장)
-    Long watcherCount //갱신된 실시간 시청자 수
-) {
 
+    @JsonProperty("user")
+    UserSummary user,
+
+    //이벤트 타입(ENTER / LEAVE)
+    @JsonProperty("type")
+    String type,
+
+    //실시간 시청자 수
+    @JsonProperty("count")
+    Long count
+) {
 }
