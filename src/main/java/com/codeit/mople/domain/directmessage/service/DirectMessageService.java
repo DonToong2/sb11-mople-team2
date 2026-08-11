@@ -5,7 +5,6 @@ import com.codeit.mople.domain.conversation.exception.ConversationErrorCode;
 import com.codeit.mople.domain.conversation.exception.ConversationException;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
 import com.codeit.mople.domain.directmessage.dto.request.DirectMessageCursorRequest;
-import com.codeit.mople.domain.directmessage.dto.response.CursorResponseDirectMessageDto;
 import com.codeit.mople.domain.directmessage.dto.response.DirectMessageDto;
 import com.codeit.mople.domain.directmessage.entity.DirectMessage;
 import com.codeit.mople.domain.directmessage.event.DirectMessageCreatedEvent;
