@@ -1,6 +1,7 @@
 package com.codeit.mople.global.config;
 
 import com.codeit.mople.domain.auth.security.JwtChannelInterceptor;
+import com.codeit.mople.global.error.CustomStompErrorHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -15,6 +16,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
   private final JwtChannelInterceptor jwtChannelInterceptor;
+  private final CustomStompErrorHandler customStompErrorHandler;
 
   @Override
   public void registerStompEndpoints(StompEndpointRegistry registry) {
@@ -22,6 +24,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         // TODO: 운영 단계에서는 실제 도메인(또는 IP) 주소 명시
         .setAllowedOriginPatterns("*")
         .withSockJS();
+
+    registry.setErrorHandler(customStompErrorHandler);
   }
 
   @Override
