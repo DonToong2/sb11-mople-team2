@@ -30,7 +30,7 @@ public interface ContentRepository extends JpaRepository<Content, UUID> {
       c.reviewCount = c.reviewCount + 1
       where c.id = :contentId
       """)
-  int increaseRating(@Param("contentId") UUID contentId, @Param("rating") double rating);
+  void increaseRating(@Param("contentId") UUID contentId, @Param("rating") double rating);
 
   @Modifying(flushAutomatically = true, clearAutomatically = true)
   @Query("""
@@ -38,7 +38,7 @@ public interface ContentRepository extends JpaRepository<Content, UUID> {
       c.ratingSum = c.ratingSum - :oldRating + :newRating
       where c.id = :contentId
       """)
-  int updateRating(
+  void updateRating(
       @Param("contentId") UUID contentId,
       @Param("oldRating") double oldRating,
       @Param("newRating") double newRating
@@ -51,5 +51,5 @@ public interface ContentRepository extends JpaRepository<Content, UUID> {
       c.reviewCount = c.reviewCount - 1
       where c.id = :contentId
       """)
-  int decreaseRating(@Param("contentId") UUID contentId, @Param("rating") double rating);
+  void decreaseRating(@Param("contentId") UUID contentId, @Param("rating") double rating);
 }
