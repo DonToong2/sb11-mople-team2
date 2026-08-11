@@ -47,10 +47,16 @@ public class TmdbCollectJobListener implements JobExecutionListener {
   // 장르 태그가 비어있지 않도록 수집 시작 전에 캐시 갱신
   @Override
   public void beforeJob(JobExecution jobExecution) {
-    if (!genreCache.refresh()) {
-      genreLoadFailureCounter.increment();
-      log.error("TMDB 장르 캐시 적재 실패 상태로 수집을 진행합니다. 장르가 빈 채 저장되고 다음 실행이 채웁니다.");
+    if (genreCache.refresh()) {
+      return;
     }
+
+    genreLoadFailureCounter.increment();
+    if (genreCache.isAvailable()) {
+      log.warn("TMDB 장르 캐시 갱신 실패. 직전에 적재된 장르로 수집 진행합니다.");
+      return;
+    }
+    log.error("TMDB 장르 캐시가 비어 tags 없이 저장됩니다. 다음 실행이 채웁니다.");
   }
 
   @Override

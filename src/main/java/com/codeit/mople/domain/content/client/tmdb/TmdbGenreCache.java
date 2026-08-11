@@ -29,8 +29,8 @@ public class TmdbGenreCache {
   // cpu 캐시에 사본을 두지 말고 매번 메인 메모리에서 읽고 써라(휘발성)
   private volatile Map<Integer, String> genreNames = Map.of();
 
-  // 비어있는 데이터가 장르 없음 인지 못가져온것인지 구분용도
-  private volatile boolean loaded = false;
+  // 마지막 갱신 시도가 실패했는지
+  private volatile boolean lastRefreshFailed = false;
 
   // 마지막으로 적재 시도한 시각
   private final AtomicLong lastAttemptedAt = new AtomicLong(0L);
@@ -41,8 +41,11 @@ public class TmdbGenreCache {
   public TmdbGenreCache(TmdbClient tmdbClient, MeterRegistry meterRegistry) {
     this.tmdbClient = tmdbClient;
 
-    Gauge.builder("tmdb.genre.cache.loaded", this, cache -> cache.loaded ? 1 : 0)
-        .description("TMDB 장르 캐시 적재 상태 (1=정상, 0=미적재)")
+    Gauge.builder("tmdb.genre.cache.available", this, cache -> cache.genreNames.isEmpty() ? 0 : 1)
+        .description("TMDB 장르 캐시 사용 가능 여부(1 = 태그를 붙일 수 있는 상태)")
+        .register(meterRegistry);
+    Gauge.builder("tmdb.genre.cache.stale", this, cache -> cache.lastRefreshFailed ? 1 : 0)
+        .description("TMDB 장르 갱신 실패 여부(1 = 마지막 갱신이 실패한 상태)")
         .register(meterRegistry);
     Gauge.builder("tmdb.genre.cache.size", this, cache -> cache.genreNames.size())
         .description("TMDB 장르 캐시에 적재된 장르 수")
@@ -61,9 +64,9 @@ public class TmdbGenreCache {
     return load();
   }
 
-  // 마지막 적재 시도 성공했는지?
-  public boolean isLoaded() {
-    return loaded;
+  // true이면 캐시에 장르가 남아있어서 태그를 붙일 수 있는상태
+  public boolean isAvailable() {
+    return !genreNames.isEmpty();
   }
 
   public List<String> getNames(List<Integer> genreIds) {
@@ -107,18 +110,18 @@ public class TmdbGenreCache {
     Map<Integer, String> loading = new HashMap<>();
     try {
       if (!putAll(loading, tmdbClient.getMovieGenres()) || !putAll(loading, tmdbClient.getTvGenres())) {
-        loaded = false;
+        lastRefreshFailed = true;
         log.error("TMDB 장르 목록이 비어 적재하지 않았습니다. 기존 캐시 {}건 유지", genreNames.size());
         return false;
       }
     } catch (Exception e) {
-      loaded = false;
+      lastRefreshFailed = true;
       log.error("TMDB 장르 캐시 적재 실패. 기존 캐시 {}건 유지, 최대 {}분간 재시도 없음",
           genreNames.size(), RETRY_INTERVAL.toMinutes(), e);
       return false;
     }
     genreNames = Map.copyOf(loading);
-    loaded = true;
+    lastRefreshFailed = false;
     log.info("TMDB 장르 캐시 적재 완료: {}건", genreNames.size());
     return true;
   }
@@ -143,8 +146,8 @@ public class TmdbGenreCache {
 
     List<Integer> unknown = List.copyOf(unknownGenreIds);
     unknown.forEach(unknownGenreIds::remove);
-    log.warn("캐시에 없는 TMDB 장르 id {}종: {} (캐시 적재 상태={}. {}건)",
-        unknown.size(), unknown, loaded, genreNames.size());
+    log.warn("캐시에 없는 TMDB 장르 id {}종: {} (캐시 {}건, 마지막 갱신 실패={})",
+        unknown.size(), unknown, genreNames.size(), lastRefreshFailed);
   }
 
   // 한 것도 못 담으면 실패로 처리함
