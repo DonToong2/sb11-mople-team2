@@ -4,7 +4,7 @@ import java.util.UUID;
 
 public record ReviewCreatedEvent(
     UUID contentId,
-    UUID reviewId
+    double rating
 ) {
 
 }

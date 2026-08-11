@@ -4,8 +4,8 @@ import java.util.UUID;
 
 public record ReviewUpdatedEvent(
     UUID contentId,
-    UUID reviewId,
-    double oldRating
+    double oldRating,
+    double newRating
 ) {
 
 }

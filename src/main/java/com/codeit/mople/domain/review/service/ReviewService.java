@@ -67,7 +67,10 @@ public class ReviewService {
 
     Review savedReview = reviewRepository.save(review);
 
-    publisher.publishEvent(new ReviewCreatedEvent(content.getId(), savedReview.getId()));
+    publisher.publishEvent(new ReviewCreatedEvent(
+        content.getId(),
+        savedReview.getRating()
+    ));
 
     ReviewResponse response = ReviewResponse.from(savedReview);
     log.info("리뷰 생성 완료: reviewId={}, authorId={}, contentId={}",
@@ -169,7 +172,11 @@ public class ReviewService {
 
     // 리뷰 내용만 변경 된 경우 계산하지 않음
     if (request.rating() != null) {
-      publisher.publishEvent(new ReviewUpdatedEvent(content.getId(), reviewId, oldRating));
+      publisher.publishEvent(new ReviewUpdatedEvent(
+          content.getId(),
+          oldRating,
+          review.getRating()
+      ));
     }
 
     log.info("리뷰 수정 완료: reviewId={}, requesterId={}, contentId={}, rating={}",
@@ -200,7 +207,10 @@ public class ReviewService {
 
     reviewRepository.delete(review);
 
-    publisher.publishEvent(new ReviewDeletedEvent(content.getId(), rating));
+    publisher.publishEvent(new ReviewDeletedEvent(
+        content.getId(),
+        rating
+    ));
 
     log.info(
         "리뷰 삭제 완료: reviewId={}, requesterId={}, contentId={}",

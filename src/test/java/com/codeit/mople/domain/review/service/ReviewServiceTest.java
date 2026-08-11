@@ -143,7 +143,7 @@ public class ReviewServiceTest {
 
       verify(eventPublisher).publishEvent(new ReviewCreatedEvent(
           contentId,
-          review.getId()
+          reviewRating
       ));
     }
 
@@ -446,8 +446,8 @@ public class ReviewServiceTest {
 
       verify(eventPublisher).publishEvent(new ReviewUpdatedEvent(
           contentId,
-          review1Id,
-          5.0
+          5.0,
+          3.0
       ));
     }
 

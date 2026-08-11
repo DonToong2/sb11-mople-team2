@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.domain.review.entity.Review;
-import com.codeit.mople.domain.review.repository.ReviewRepository;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,9 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 public class ReviewListenerTest {
-
-  @Mock
-  private ReviewRepository reviewRepository;
 
   @Mock
   private ContentRepository contentRepository;
@@ -50,20 +46,12 @@ public class ReviewListenerTest {
     @DisplayName("리뷰 생성 이벤트 성공")
     void handle_success() {
       // given
-      ReviewCreatedEvent event = new ReviewCreatedEvent(contentId, reviewId);
-
-      given(reviewRepository.findById(reviewId))
-          .willReturn(Optional.of(review));
-
-      given(review.getRating())
-          .willReturn(4.0);
+      ReviewCreatedEvent event = new ReviewCreatedEvent(contentId, 4.0);
 
       // when
       eventListener.handle(event);
 
       // then
-      verify(reviewRepository).findById(reviewId);
-
       verify(contentRepository).increaseRating(contentId, 4.0);
     }
 
@@ -77,21 +65,13 @@ public class ReviewListenerTest {
     @DisplayName("리뷰 수정 이벤트 성공")
     void handle_success() {
       // given
-      ReviewUpdatedEvent event = new ReviewUpdatedEvent(contentId, reviewId, 4.0);
-
-      given(reviewRepository.findById(reviewId))
-          .willReturn(Optional.of(review));
-
-      given(review.getRating())
-          .willReturn(3.0);
+      ReviewUpdatedEvent event = new ReviewUpdatedEvent(contentId, 4.0, 5.0);
 
       // when
       eventListener.handle(event);
 
       // then
-      verify(reviewRepository).findById(reviewId);
-
-      verify(contentRepository).updateRating(contentId, 4.0, 3.0);
+      verify(contentRepository).updateRating(contentId, 4.0, 5.0);
     }
 
   }
@@ -112,8 +92,6 @@ public class ReviewListenerTest {
 
       // then
       verify(contentRepository).decreaseRating(contentId, 4.0);
-
-      verifyNoInteractions(reviewRepository);
     }
 
   }
