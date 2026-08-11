@@ -20,10 +20,14 @@ public class TmdbCollectJobListener implements JobExecutionListener {
   private final Counter successCounter;
   private final Counter failureCounter;
   private final Counter skipCounter;
+  private final Counter genreLoadFailureCounter;
   private final Timer durationTimer;
 
   public TmdbCollectJobListener(TmdbGenreCache genreCache, MeterRegistry meterRegistry) {
     this.genreCache = genreCache;
+    this.genreLoadFailureCounter = Counter.builder("batch.tmdb.genre.load.failure")
+        .description("TMDB 수집 배치 시작 시 장르 캐시 적재 실패 횟수")
+        .register(meterRegistry);
     this.skipCounter = Counter.builder("batch.tmdb.skip")
         .description("TMDB 수집 배치 skip 건수")
         .register(meterRegistry);
@@ -41,7 +45,10 @@ public class TmdbCollectJobListener implements JobExecutionListener {
   // 장르 태그가 비어있지 않도록 수집 시작 전에 캐시 갱신
   @Override
   public void beforeJob(JobExecution jobExecution) {
-    genreCache.refresh();
+    if (!genreCache.refresh()) {
+      genreLoadFailureCounter.increment();
+      log.error("TMDB 장르 캐시 적재 실패 상태로 수집을 진행합니다. 장르가 빈 채 저장되고 다음 실행이 채웁니다.");
+    }
   }
 
   @Override
