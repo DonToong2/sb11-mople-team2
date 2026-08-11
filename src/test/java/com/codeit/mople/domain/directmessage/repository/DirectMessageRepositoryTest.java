@@ -30,15 +30,13 @@ public class DirectMessageRepositoryTest {
   @Autowired
   private TestEntityManager tem;
 
-  private User sender;
-  private User receiver;
   private Conversation targetConversation;
   private Conversation otherConversation;
 
   @BeforeEach
   void setup() {
-    sender = tem.persist(User.createUser("sender@test.com", "12345678", "발신자"));
-    receiver = tem.persist(User.createUser("receiver@test.com", "12345678", "수신자"));
+    User sender = tem.persist(User.createUser("sender@test.com", "12345678", "발신자"));
+    User receiver = tem.persist(User.createUser("receiver@test.com", "12345678", "수신자"));
     User thirdUser = tem.persist(User.createUser("third@test.com", "12345678", "제3자"));
 
     targetConversation = tem.persist(Conversation.createConversation(sender, receiver));
