@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 public interface DirectMessageRepository extends JpaRepository<DirectMessage, UUID>,
     DirectMessageRepositoryCustom {
 
-  @Query("SELECT count(d) FROM DirectMessage d "
+  @Query("SELECT COUNT(d) FROM DirectMessage d "
       + "WHERE d.conversation.id = :conversationId")
   long countByConversationId(@Param("conversationId") UUID conversationId);
 }
