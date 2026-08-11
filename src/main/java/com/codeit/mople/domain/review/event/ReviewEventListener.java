@@ -1,9 +1,9 @@
 package com.codeit.mople.domain.review.event;
 
-import com.codeit.mople.domain.content.entity.Content;
-import com.codeit.mople.domain.content.exception.ContentErrorCode;
-import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.repository.ContentRepository;
+import com.codeit.mople.domain.review.entity.Review;
+import com.codeit.mople.domain.review.exception.ReviewErrorCode;
+import com.codeit.mople.domain.review.exception.ReviewException;
 import com.codeit.mople.domain.review.repository.ReviewRepository;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -26,64 +26,50 @@ public class ReviewEventListener {
   @EventListener
   @Transactional
   public void handle(ReviewCreatedEvent event) {
-
-    Content content = contentRepository.findById(event.contentId()).orElseThrow(() ->
-        new ContentException(
-            ContentErrorCode.CONTENT_NOT_FOUND,
-            Map.of("contentId", event.contentId())
-        )
+    Review review = reviewRepository.findById(event.reviewId()).orElseThrow(() ->
+        new ReviewException(
+            ReviewErrorCode.REVIEW_NOT_FOUND,
+            Map.of("reviewId", event.reviewId()))
     );
 
-    long reviewCount = reviewRepository.countByContentId(content.getId());
-    Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
+    contentRepository.increaseRating(
+        event.contentId(),
+        review.getRating()
+    );
 
-    content.updateRatingStats(averageRating, (int) reviewCount);
-
-    log.info("리뷰 생성 후 콘텐츠 통계 업데이트 완료: contentId={}, averageRating={}, reviewCount={}",
-        content.getId(), averageRating, reviewCount);
+    log.info("리뷰 생성 후 콘텐츠 통계 업데이트 완료: contentId={}, reviewId={}, rating={}",
+        event.contentId(), event.reviewId(), review.getRating());
   }
 
   @EventListener
   @Transactional
   public void handle(ReviewUpdatedEvent event) {
-    Content content = contentRepository.findById(event.contentId()).orElseThrow(() ->
-        new ContentException(
-            ContentErrorCode.CONTENT_NOT_FOUND,
-            Map.of("contentId", event.contentId())
-        )
+    Review review = reviewRepository.findById(event.reviewId()).orElseThrow(() ->
+        new ReviewException(
+            ReviewErrorCode.REVIEW_NOT_FOUND,
+            Map.of("reviewId", event.reviewId()))
     );
 
-    Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
+    contentRepository.updateRating(
+        event.contentId(),
+        event.oldRating(),
+        review.getRating()
+    );
 
-    content.updateRatingStats(averageRating, content.getReviewCount());
-
-    log.info("리뷰 수정 후 콘텐츠 통계 업데이트 완료: contentId={}, averageRating={}",
-        content.getId(), averageRating);
+    log.info("리뷰 수정 후 콘텐츠 통계 업데이트 완료: contentId={}, reviewId={}, oldRating={}, newRating={}",
+        event.contentId(), event.reviewId(), event.oldRating(), review.getRating());
   }
 
   @EventListener
   @Transactional
   public void handle(ReviewDeletedEvent event) {
-    Content content = contentRepository.findById(event.contentId()).orElseThrow(() ->
-        new ContentException(
-            ContentErrorCode.CONTENT_NOT_FOUND,
-            Map.of("contentId", event.contentId())
-        )
+    contentRepository.decreaseRating(
+        event.contentId(),
+        event.rating()
     );
 
-    long reviewCount = reviewRepository.countByContentId(content.getId());
-    Double averageRating = reviewRepository.findAverageRatingByContentId(content.getId());
-
-    Double updateAverageRating = reviewCount == 0 ? 0.0 : averageRating;
-
-    // 리뷰 삭제 후 리뷰가 0개일 때 평균 평점을 0점으로(averageRating null 방지)
-    content.updateRatingStats(
-        updateAverageRating,
-        (int) reviewCount
-    );
-
-    log.info("리뷰 삭제 후 콘텐츠 통계 업데이트 완료: contentId={}, averageRating={}, reviewCount={}",
-        content.getId(), updateAverageRating, reviewCount);
+    log.info("리뷰 삭제 후 콘텐츠 통계 업데이트 완료: contentId={}, rating={}",
+        event.contentId(), event.rating());
   }
 
 

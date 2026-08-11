@@ -77,7 +77,7 @@ public class ContentService{
         savedContent.getDescription(),
         savedContent.getThumbnailUrl(),
         savedContent.getTags(),
-        savedContent.getAverageRating(),
+        savedContent.calculateAverageRating(),
         savedContent.getReviewCount(),
         savedContent.getWatcherCount()
     );
@@ -122,7 +122,7 @@ public class ContentService{
             content.getDescription(),
             content.getThumbnailUrl(),
             content.getTags(),
-            content.getAverageRating(),
+            content.calculateAverageRating(),
             content.getReviewCount(),
             content.getWatcherCount()
         )).toList();
@@ -162,7 +162,7 @@ public class ContentService{
         content.getDescription(),
         content.getThumbnailUrl(),
         content.getTags(),
-        content.getAverageRating(),
+        content.calculateAverageRating(),
         content.getReviewCount(),
         content.getWatcherCount()
     );
@@ -202,7 +202,7 @@ public class ContentService{
         content.getDescription(),
         content.getThumbnailUrl(),
         content.getTags(),
-        content.getAverageRating(),
+        content.calculateAverageRating(),
         content.getReviewCount(),
         content.getWatcherCount()
     );

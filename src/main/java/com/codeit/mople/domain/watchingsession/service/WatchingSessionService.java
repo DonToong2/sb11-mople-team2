@@ -88,7 +88,8 @@ public class WatchingSessionService {
 
     //entity -> response dto 매핑
     List<WatchingSessionResponse> responses = pageSessions.stream()
-        .map(session -> new WatchingSessionResponse(
+        .map(session ->
+            new WatchingSessionResponse(
             session.getId(),
             session.getCreatedAt(),
             new UserSummary(
@@ -103,7 +104,7 @@ public class WatchingSessionService {
                 session.getContent().getDescription(),
                 session.getContent().getThumbnailUrl(),
                 session.getContent().getTags(),
-                session.getContent().getAverageRating(),
+                session.getContent().calculateAverageRating(),
                 session.getContent().getReviewCount()
             )
         )).toList();

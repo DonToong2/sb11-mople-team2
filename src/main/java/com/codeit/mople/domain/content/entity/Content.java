@@ -81,13 +81,6 @@ public class Content extends BaseTimeEntity {
     this.externalId = externalId;
   }
 
-  //새로운 리뷰가 작성되거나 삭제 될 때,
-  //서비스 계층에서 계산된 새로운 평점 평균과 리뷰 총 개수를 DB에 갱신하기 위한 메서드
-  public void updateRatingStats(Double averageRating, Integer reviewCount) {
-    this.averageRating = averageRating;
-    this.reviewCount = reviewCount;
-  }
-
   //관리자가 콘텐츠의 기본 정보를 수정할 때 사용하는 메서드
   public void updateContentInfo(String title, String description, String thumbnailUrl, List<String> tags) {
     if (title != null) {
@@ -108,4 +101,13 @@ public class Content extends BaseTimeEntity {
       this.tags.addAll(tags);
     }
   }
+
+  // 평균 평점을 구하는 로직
+  public double calculateAverageRating() {
+    if (reviewCount == 0) {
+      return 0.0;
+    }
+    return ratingSum / reviewCount;
+  }
+
 }
