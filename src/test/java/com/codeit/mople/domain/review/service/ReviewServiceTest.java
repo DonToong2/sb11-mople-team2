@@ -41,6 +41,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 public class ReviewServiceTest {
@@ -88,6 +89,8 @@ public class ReviewServiceTest {
 
     review1Id = UUID.randomUUID();
     review1 = Review.create(content, author, reviewText, reviewRating);
+    ReflectionTestUtils.setField(review1, "id", review1Id);
+
     updateRequest = new ReviewUpdateRequest("수정된 내용", 3.0);
   }
 
@@ -136,6 +139,7 @@ public class ReviewServiceTest {
 
       // then
       assertThat(result).isEqualTo(response);
+      assertThat(review1.getId()).isEqualTo(review1Id);
 
       verify(userRepository).findById(authorId);
       verify(contentRepository).findById(contentId);
@@ -202,6 +206,10 @@ public class ReviewServiceTest {
       review2 = Review.create(content, author, "리뷰 내용 2", 5.0);
       review3 = Review.create(content, author, "리뷰 내용 3", 2.0);
       review4 = Review.create(content, author, "리뷰 내용 4", 5.0);
+
+      ReflectionTestUtils.setField(review2, "id", UUID.randomUUID());
+      ReflectionTestUtils.setField(review3, "id", UUID.randomUUID());
+      ReflectionTestUtils.setField(review4, "id", UUID.randomUUID());
     }
 
     @Test
