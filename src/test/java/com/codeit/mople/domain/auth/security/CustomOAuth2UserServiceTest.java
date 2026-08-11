@@ -13,10 +13,12 @@ import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.user.entity.AuthProvider;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -106,7 +108,8 @@ public class CustomOAuth2UserServiceTest {
         .thenReturn(Optional.empty())
         .thenReturn(Optional.of(existingUser));
     when(userRepository.save(any(User.class)))
-        .thenThrow(new DataIntegrityViolationException("duplicate key"));
+        .thenThrow(new DataIntegrityViolationException("duplicate key", new ConstraintViolationException(
+            "duplicate key", new SQLException("dup"), "uq_users_provider_provider_id")));
 
     CustomOAuth2User result = customOAuth2UserService.toCustomOAuth2User(
         googleOAuth2User("google-sub-3", "test@test.com", "testUser", "https://new.image"), "google");
@@ -117,16 +120,42 @@ public class CustomOAuth2UserServiceTest {
   }
 
   @Test
-  @DisplayName("유니크 제약 위반 후 재조회에서도 유저를 찾지 못하면 원래 예외를 그대로 던짐")
+  @DisplayName("동시 가입으로 provider_id 제약 위반 후 재조회에서도 유저를 찾지 못하면 원래 예외를 그대로 던짐")
   void toCustomOAuth2User_rethrowsOriginalException_whenRetryAlsoFindsNothing() {
+    DataIntegrityViolationException original = new DataIntegrityViolationException(
+        "duplicate key", new ConstraintViolationException("duplicate key", new SQLException("dup"), "uq_users_provider_provider_id"));
+
     when(userRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "google-sub-4"))
+        .thenReturn(Optional.empty())
         .thenReturn(Optional.empty());
-    DataIntegrityViolationException original = new DataIntegrityViolationException("duplicate key");
     when(userRepository.save(any(User.class))).thenThrow(original);
 
     assertThatThrownBy(() -> customOAuth2UserService.toCustomOAuth2User(
         googleOAuth2User("google-sub-4", "other@gmail.com", "otherUser", "https://new.image"), "google"))
         .isSameAs(original);
+
+    verify(userRepository, times(2))
+        .findByProviderAndProviderId(AuthProvider.GOOGLE, "google-sub-4");
+  }
+
+  @Test
+  @DisplayName("이메일이 이미 다른 계정으로 등록되어 있으면 재조회 없이 OAuth2AuthenticationException(EMAIL_ALREADY_REGISTERED)를 던짐")
+  void toCustomOAuth2User_throwsEmailAlreadyRegistered_whenEmailConstraintViolated() {
+    DataIntegrityViolationException original = new DataIntegrityViolationException(
+        "duplicate key", new ConstraintViolationException("duplicate key", new SQLException("dup"), "uq_users_email"));
+
+    when(userRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "google-sub-6"))
+        .thenReturn(Optional.empty());
+    when(userRepository.save(any(User.class))).thenThrow(original);
+
+    assertThatThrownBy(() -> customOAuth2UserService.toCustomOAuth2User(
+        googleOAuth2User("google-sub-6", "test2@test.com", "testUser", "https://new.image"), "google"))
+        .isInstanceOf(OAuth2AuthenticationException.class)
+        .hasFieldOrPropertyWithValue("error.errorCode", AuthErrorCode.EMAIL_ALREADY_REGISTERED.getCode())
+        .hasCause(original);
+
+    verify(userRepository, times(1))
+        .findByProviderAndProviderId(AuthProvider.GOOGLE, "google-sub-6");
   }
 
   @Test
