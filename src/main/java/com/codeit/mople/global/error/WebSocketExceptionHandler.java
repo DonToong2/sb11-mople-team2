@@ -26,10 +26,19 @@ public class WebSocketExceptionHandler {
   @MessageExceptionHandler(MethodArgumentNotValidException.class)
   @SendToUser("/queue/errors")
   public Map<String, String> handleValidationException(MethodArgumentNotValidException e) {
-    String errorMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
-    String defaultMessage = errorMessage != null ? errorMessage : "잘못된 요청 형식입니다.";
+    String errorMessage = "잘못된 요청 형식입니다.";
+
+    // BindingResult와 에러 리스트가 비어있지 않은지 안전하게 확인
+    if (e.getBindingResult() != null && e.getBindingResult().hasErrors()) {
+      String parsedMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
+
+      if (parsedMessage != null && !parsedMessage.isBlank()) {
+        errorMessage = parsedMessage;
+      }
+    }
+
     log.warn("WebSocket SEND 실패 (DTO 검증): {}", errorMessage);
-    return Map.of("reason", Objects.requireNonNull(defaultMessage));
+    return Map.of("reason", errorMessage);
   }
 
 }
