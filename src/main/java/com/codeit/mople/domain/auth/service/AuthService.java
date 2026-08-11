@@ -15,6 +15,7 @@ import io.jsonwebtoken.JwtException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,7 +38,7 @@ public class AuthService {
 
   @Transactional
   public AuthTokens signIn(SignInRequest request) {
-    User user = userRepository.findByEmail(request.username())
+    User user = userRepository.findByEmail(request.username().toLowerCase(Locale.ROOT))
         .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
 
     if(!isPasswordValid(request.password(), user)) {
@@ -81,7 +82,7 @@ public class AuthService {
 
   @Transactional
   public void resetPassword(ResetPasswordRequest request) {
-    userRepository.findByEmail(request.email())
+    userRepository.findByEmail(request.email().toLowerCase(Locale.ROOT))
         .filter(user -> user.getProvider() == AuthProvider.LOCAL)
         .ifPresent(user -> {
           String temporaryPassword = generateTemporaryPassword();

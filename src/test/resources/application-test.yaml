@@ -9,6 +9,12 @@ spring:
       ddl-auto: create-drop
     show-sql: false
 
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always
+
   security:
     oauth2:
       client:
@@ -44,6 +50,11 @@ external-api:
   sportsdb:
     base-url: http://localhost:0
     api-key: test-key
+
+batch:
+  tmdb:
+    collect:
+      cron: "-"
 
 oauth2:
   redirect:

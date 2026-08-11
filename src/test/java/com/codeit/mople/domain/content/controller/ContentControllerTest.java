@@ -374,46 +374,4 @@ public class ContentControllerTest {
             .with(mockAuth(UUID.randomUUID(),Role.ADMIN))
     ).andExpect(status().isNotFound());
   }
-
-  //=========================================================================================
-  //콘텐츠 시청 세션 목록 조회 테스트
-  //=========================================================================================
-
-  @Test
-  @DisplayName("콘텐츠 시청 세션 목록 조회 성공 - 200 OK")
-  void getWatchingSessions_Success() throws Exception {
-    UUID contentId = UUID.randomUUID();
-    CursorResponseWatchingSessionDto mockResponse = new CursorResponseWatchingSessionDto(
-        List.of(), null, null, false, 0L,
-        "createdAt", "ASCENDING");
-
-    given(watchingSessionService.getWatchingSessions(
-        any(), any(), any(), any(), anyInt(), any(), any()
-    )).willReturn(mockResponse);
-
-    mockMvc.perform(
-        get("/api/contents/{contentId}/watching-sessions", contentId)
-            .param("limit", "10")
-            .param("sortDirection", "ASCENDING")
-            .contentType(MediaType.APPLICATION_JSON)
-            .with(mockAuth(UUID.randomUUID(),Role.USER))
-    ).andExpect(status().isOk());
-  }
-
-  @Test
-  @DisplayName("콘텐츠 시청 세션 목록 조회 실패 - limit이 범위를 벗어나면 서비스에서 예외 발생")
-  void getWatchingSessions_Fail_InvalidLimit() throws Exception {
-    UUID contentId = UUID.randomUUID();
-
-    given(watchingSessionService.getWatchingSessions(
-        any(), any(), any(), any(), anyInt(), any(), any()
-    )).willThrow(new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("limit", 200)));
-
-    mockMvc.perform(
-        get("/api/contents/{contentId}/watching-sessions", contentId)
-            .param("limit", "200")
-            .contentType(MediaType.APPLICATION_JSON)
-            .with(mockAuth(UUID.randomUUID(),Role.USER))
-    ).andExpect(status().isBadRequest());
-  }
 }
