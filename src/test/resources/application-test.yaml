@@ -36,6 +36,7 @@ batch:
   tmdb:
     collect:
       cron: "-"
+      enabled: false
 
 oauth2:
   redirect:

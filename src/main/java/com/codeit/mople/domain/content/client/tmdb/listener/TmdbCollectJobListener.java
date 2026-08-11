@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.content.client.tmdb.listener;
 
 import com.codeit.mople.domain.content.client.tmdb.TmdbGenreCache;
+import com.codeit.mople.domain.content.client.tmdb.batch.TmdbContentItemWriter;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -12,6 +13,7 @@ import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.item.ExecutionContext;
 
 @Slf4j
 public class TmdbCollectJobListener implements JobExecutionListener {
@@ -53,31 +55,22 @@ public class TmdbCollectJobListener implements JobExecutionListener {
 
   @Override
   public void afterJob(JobExecution jobExecution) {
-    long readCount = 0;
-    long writeCount = 0;
-    long filterCount = 0;
-    long skipCount = 0;
-    for (StepExecution step : jobExecution.getStepExecutions()) {
-      readCount += step.getReadCount();
-      writeCount += step.getWriteCount();
-      filterCount += step.getFilterCount();
-      skipCount += step.getSkipCount();
-    }
-
+    Summary summary = summarize(jobExecution);
     Duration duration = elapsed(jobExecution);
+
     durationTimer.record(duration);
-    skipCounter.increment(skipCount);
+    skipCounter.increment(summary.skipped());
 
     if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
       successCounter.increment();
-      log.info("TMDB 수집 배치 완료: 읽음={}, 저장={}, 필터={}, 스킵={}, 소요={}ms",
-          readCount, writeCount, filterCount, skipCount, duration.toMillis());
+      log.info("TMDB 수집 배치 완료: {}, 소요={}ms", summary.format(), duration.toMillis());
       return;
     }
 
     failureCounter.increment();
-    log.error("TMDB 수집 배치 실패: status={}, 읽음={}, 저장={}, 필터={}, 스킵={}, 소요={}ms",
-        jobExecution.getStatus(), readCount, writeCount, filterCount, skipCount, duration.toMillis(), firstFailure(jobExecution));
+    log.error("TMDB 수집 배치 실패: status={}, {}, 소요={}ms",
+        jobExecution.getStatus(), summary.format(), duration.toMillis(),
+        firstFailure(jobExecution));
   }
 
   private Duration elapsed(JobExecution jobExecution) {
@@ -93,6 +86,36 @@ public class TmdbCollectJobListener implements JobExecutionListener {
   private Throwable firstFailure(JobExecution jobExecution) {
     List<Throwable> failures = jobExecution.getAllFailureExceptions();
     return failures.isEmpty() ? null : failures.get(0);
+  }
+
+  private Summary summarize(JobExecution jobExecution) {
+    long read = 0;
+    long delivered = 0;
+    long filtered = 0;
+    long skipped = 0;
+    long inserted = 0;
+    long updated = 0;
+    long unchanged = 0;
+
+    for (StepExecution step : jobExecution.getStepExecutions()) {
+      read += step.getReadCount();
+      delivered += step.getWriteCount();
+      filtered += step.getFilterCount();
+      skipped += step.getSkipCount();
+
+      ExecutionContext context = step.getExecutionContext();
+      inserted += context.getLong(TmdbContentItemWriter.INSERTED_KEY, 0L);
+      updated += context.getLong(TmdbContentItemWriter.UPDATED_KEY, 0L);
+      unchanged += context.getLong(TmdbContentItemWriter.UNCHANGED_KEY, 0L);
+    }
+    return new Summary(read, delivered, filtered, skipped, inserted, updated, unchanged);
+  }
+
+  private record Summary(long read, long delivered, long filtered, long skipped, long inserted, long updated, long unchanged) {
+    private String format() {
+      return "읽음=%d, 전달=%d, 필터=%d, 신규=%d, 갱신=%d, 무변화=%d,  스킵=%d"
+          .formatted(read, delivered, filtered, inserted, updated, unchanged, skipped);
+    }
   }
 
 

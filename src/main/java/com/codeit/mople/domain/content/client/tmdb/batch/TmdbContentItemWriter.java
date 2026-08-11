@@ -13,17 +13,25 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
+import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.item.Chunk;
+import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemWriter;
 
 @Slf4j
-public class TmdbContentItemWriter implements ItemWriter<Content> {
+public class TmdbContentItemWriter implements ItemWriter<Content>, StepExecutionListener {
+
+  public static final String INSERTED_KEY = "tmdb.upsert.inserted";
+  public static final String UPDATED_KEY = "tmdb.upsert.updated";
+  public static final String UNCHANGED_KEY = "tmdb.upsert.unchanged";
 
   private final ContentRepository contentRepository;
   private final ContentType contentType;
   private final Counter insertedCounter;
   private final Counter updatedCounter;
   private final Counter unchangedCounter;
+  private ExecutionContext stepContext;
 
   public TmdbContentItemWriter(
       ContentRepository contentRepository,
@@ -98,7 +106,23 @@ public class TmdbContentItemWriter implements ItemWriter<Content> {
     updatedCounter.increment(updated);
     unchangedCounter.increment(unchanged);
 
+    record(INSERTED_KEY, inserted);
+    record(UPDATED_KEY, updated);
+    record(UNCHANGED_KEY, unchanged);
+
     log.info("TMDB 수집({}), 전달={}, 신규={}, 갱신={}, 무변화={}",
         contentType, items.size(), inserted, updated, unchanged);
+  }
+
+  @Override
+  public void beforeStep(@NonNull StepExecution stepExecution) {
+    this.stepContext = stepExecution.getExecutionContext();
+  }
+
+  private void record(String key, long delta) {
+    if (stepContext == null || delta == 0) {
+      return;
+    }
+    stepContext.putLong(key, stepContext.getLong(key, 0L) + delta);
   }
 }
