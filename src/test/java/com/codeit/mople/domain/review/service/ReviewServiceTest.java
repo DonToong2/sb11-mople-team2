@@ -141,7 +141,10 @@ public class ReviewServiceTest {
       verify(contentRepository).findById(contentId);
       verify(reviewRepository).save(any(Review.class));
 
-      verify(eventPublisher).publishEvent(new ReviewCreatedEvent(contentId));
+      verify(eventPublisher).publishEvent(new ReviewCreatedEvent(
+          contentId,
+          review.getId()
+      ));
     }
 
     @Test
@@ -441,7 +444,11 @@ public class ReviewServiceTest {
 
       verify(reviewRepository).findById(review1Id);
 
-      verify(eventPublisher).publishEvent(new ReviewUpdatedEvent(contentId));
+      verify(eventPublisher).publishEvent(new ReviewUpdatedEvent(
+          contentId,
+          review1Id,
+          5.0
+      ));
     }
 
     @Test
@@ -511,7 +518,6 @@ public class ReviewServiceTest {
 
       given(content.getId())
           .willReturn(contentId);
-
       // reviewRepository.delete() 메서드는 void이기 때문에 값을 반환하지 않음
 
       // when
@@ -521,7 +527,10 @@ public class ReviewServiceTest {
       verify(reviewRepository).findById(review1Id);
       verify(reviewRepository).delete(review1);
 
-      verify(eventPublisher).publishEvent(new ReviewDeletedEvent(contentId));
+      verify(eventPublisher).publishEvent(new ReviewDeletedEvent(
+          contentId,
+          reviewRating
+      ));
     }
 
     @Test

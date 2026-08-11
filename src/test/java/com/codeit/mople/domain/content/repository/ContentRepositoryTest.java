@@ -172,7 +172,7 @@ public class ContentRepositoryTest {
       // then
       Content updateContent = contentRepository.findById(content.getId()).orElseThrow();
 
-      assertThat(updateContent.getRatingSum()).isEqualTo(6.0);
+      assertThat(updateContent.getRatingSum()).isEqualTo(5.0);
       assertThat(updateContent.getReviewCount()).isEqualTo(1);
     }
 
