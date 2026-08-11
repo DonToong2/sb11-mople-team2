@@ -70,6 +70,7 @@ public class ReviewServiceTest {
   private ReviewCreateRequest createRequest;
 
   private UUID review1Id;
+  private UUID reviewId;
   private Review review1;
   private Review review2;
   private Review review3;
@@ -87,6 +88,7 @@ public class ReviewServiceTest {
     reviewRating = 5.0;
     createRequest = new ReviewCreateRequest(contentId, reviewText, reviewRating);
 
+    reviewId = UUID.randomUUID();
     review1Id = UUID.randomUUID();
     review1 = Review.create(content, author, reviewText, reviewRating);
     ReflectionTestUtils.setField(review1, "id", review1Id);
@@ -118,6 +120,7 @@ public class ReviewServiceTest {
           .willReturn("profile.png");
 
       Review review = Review.create(content, author, createRequest.text(), createRequest.rating());
+      ReflectionTestUtils.setField(review, "id", reviewId);
 
       ReviewResponse response = ReviewResponse.from(review);
 
@@ -139,7 +142,7 @@ public class ReviewServiceTest {
 
       // then
       assertThat(result).isEqualTo(response);
-      assertThat(review1.getId()).isEqualTo(review1Id);
+      assertThat(review.getId()).isEqualTo(reviewId);
 
       verify(userRepository).findById(authorId);
       verify(contentRepository).findById(contentId);
