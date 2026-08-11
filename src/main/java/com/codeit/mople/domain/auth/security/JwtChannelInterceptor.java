@@ -3,6 +3,7 @@ package com.codeit.mople.domain.auth.security;
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
+import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
 import io.jsonwebtoken.JwtException;
@@ -19,6 +20,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Component;
@@ -43,6 +45,8 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     if (accessor != null) {
       if (StompCommand.CONNECT.equals(accessor.getCommand())) {
         handleConnect(accessor);
+        // CONNECT 처리가 정상 완료되면, 변경된 가변 헤더를 적용한 새 메시지를 빌드해서 반환
+        return MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
       } else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
         handleSubscribe(accessor);
       }
@@ -64,33 +68,33 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
       UUID userId = jwtProvider.getUserId(token);
       long tokenSessionVersion = jwtProvider.getSessionVersion(token);
 
-      userRepository.findById(userId).ifPresentOrElse(user -> {
-        // 1. 중복 로그인으로 인한 이전 기기 세션 만료 검증
-        if (user.getSessionVersion() != tokenSessionVersion) {
-          log.warn("WebSocket 연결 거부: 만료된 토큰 세션 버전 사용 시도 - userId: {}", userId);
-          throw new AuthException(AuthErrorCode.EXPIRED_SESSION,
-              Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
-        }
-        // 2. 관리자 등에 의해 잠금 처리된 계정인지 검증
-        if (user.isLocked()) {
-          log.warn("WebSocket 연결 거부: 비활성화(잠금) 상태의 계정 접근 - userId: {}", userId);
-          throw new AuthException(AuthErrorCode.LOCKED_ACCOUNT,
-              Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
-        }
+      User user = userRepository.findById(userId)
+          .orElseThrow(() -> {
+            log.warn("WebSocket 연결 거부: DB에 존재하지 않는 유저 - userId: {}", userId);
+            return new AuthException(AuthErrorCode.INVALID_TOKEN,
+                Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+          });
 
-        // 위의 인가 통과 시 CustomUserDetails 생성 및 WebSocket 세션 컨텍스트 내 유저 등록
-        CustomUserDetails principal = new CustomUserDetails(user.getId(), user.getRole());
-        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-            principal, null, principal.getAuthorities());
-
-        accessor.setUser(authentication);
-        log.info("WebSocket 보안 인증 및 세션 연동 성공 - userId: {}", userId);
-
-      }, () -> {
-        log.warn("WebSocket 연결 거부: 토큰 파싱은 되었으나 DB에 존재하지 않는 유저 접근 - userId: {}", userId);
-        throw new AuthException(AuthErrorCode.INVALID_TOKEN,
+      // 1. 중복 로그인으로 인한 이전 기기 세션 만료 검증
+      if (user.getSessionVersion() != tokenSessionVersion) {
+        log.warn("WebSocket 연결 거부: 만료된 토큰 세션 버전 사용 시도 - userId: {}", userId);
+        throw new AuthException(AuthErrorCode.EXPIRED_SESSION,
             Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
-      });
+      }
+      // 2. 관리자 등에 의해 잠금 처리된 계정인지 검증
+      if (user.isLocked()) {
+        log.warn("WebSocket 연결 거부: 비활성화(잠금) 상태의 계정 접근 - userId: {}", userId);
+        throw new AuthException(AuthErrorCode.LOCKED_ACCOUNT,
+            Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+      }
+
+      // 위의 인가 통과 시 CustomUserDetails 생성 및 WebSocket 세션 컨텍스트 내 유저 등록
+      CustomUserDetails principal = new CustomUserDetails(user.getId(), user.getRole());
+      UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+          principal, null, principal.getAuthorities());
+
+      accessor.setUser(authentication);
+      log.info("WebSocket 보안 인증 및 세션 연동 성공 - userId: {}", userId);
 
     } catch (ExpiredJwtException e) {
       log.warn("WebSocket 연결 실패: 만료된 JWT 토큰 사용 시도 - error: {}", e.getMessage());
@@ -160,6 +164,9 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
     } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
       log.warn("WebSocket 구독 실패: 잘못된 구독 경로 형식 - destination: {}", destination);
+      throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+    } catch (Exception e) {
+      log.error("WebSocket 구독 검증 중 예외 발생 - destination: " + destination, e);
       throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
     }
   }
