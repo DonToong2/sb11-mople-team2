@@ -42,7 +42,7 @@ admin:
 external-api:
   tmdb:
     base-url: https://api.themoviedb.org/3
-    api-key: ${TMDB_API_KEY:}
+    api-key: ${TMDB_API_KEY}
   sportsdb:
     base-url: https://www.thesportsdb.com/api/v1/json
     api-key: ${SPORTSDB_API_KEY:3}
