@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.dto.request.ChangePasswordRequest;
 import com.codeit.mople.domain.user.dto.request.UserCreateRequest;
 import com.codeit.mople.domain.user.dto.request.UserUpdateRequest;
@@ -14,6 +15,7 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -47,13 +49,19 @@ public class UserControllerTest {
   @Autowired
   private JwtProvider jwtProvider;
 
+  @Autowired
+  private SessionTokenRepository sessionTokenRepository;
+
   @AfterEach
   void tearDown() {
     userRepository.deleteAll();
   }
 
   private String tokenFor(User user) {
-    return jwtProvider.createAccessToken(user.getId(), user.getSessionVersion());
+    String jti = UUID.randomUUID().toString();
+    String token = jwtProvider.createAccessToken(user.getId(), jti);
+    sessionTokenRepository.save(user.getId(), jti, Duration.ofDays(7));
+    return token;
   }
 
   private MockMultipartFile requestPart(String name) throws Exception {

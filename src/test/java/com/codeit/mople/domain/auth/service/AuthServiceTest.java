@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -14,10 +16,12 @@ import com.codeit.mople.domain.auth.dto.request.SignInRequest;
 import com.codeit.mople.domain.auth.dto.response.AuthTokens;
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.entity.AuthProvider;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -26,6 +30,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -43,6 +48,9 @@ public class AuthServiceTest {
   @Mock
   private JwtProvider jwtProvider;
 
+  @Mock
+  private SessionTokenRepository sessionTokenRepository;
+
   @InjectMocks
   private AuthService authService;
 
@@ -59,7 +67,7 @@ public class AuthServiceTest {
     SignInRequest request = new SignInRequest("test@test.com", "rawPassword");
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
-    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("issued-token");
+    when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("issued-token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
 
     AuthTokens response = authService.signIn(request);
@@ -73,7 +81,7 @@ public class AuthServiceTest {
     SignInRequest request = new SignInRequest("TEST@TEST.COM", "rawPassword");
     when(userRepository.findByEmail("test@test.com")).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
-    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("issued-token");
+    when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("issued-token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
 
     AuthTokens response = authService.signIn(request);
@@ -82,36 +90,35 @@ public class AuthServiceTest {
   }
 
   @Test
-  @DisplayName("로그인 성공 시 sessionVersion 1 증가")
-  void signIn_success_increasesSessionVersion() {
+  @DisplayName("로그인 성공 시 세션 토큰이 Redis에 저장됨")
+  void signIn_success_savesSessionToken() {
     SignInRequest request = new SignInRequest("test@test.com", "rawPassword");
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
-    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("issued-token");
+    when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("issued-token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
 
     authService.signIn(request);
 
-    assertThat(user.getSessionVersion()).isEqualTo(1L);
+    verify(sessionTokenRepository).save(eq(user.getId()), anyString(), any(Duration.class));
   }
 
   @Test
-  @DisplayName("재로그인 시 sessionVersion이 증가하여 이전 토큰의 값과 달라짐")
-  void signIn_twice_changesSessionVersionEachTime() {
+  @DisplayName("재로그인 시 매번 새로운 세션 토큰(jti)이 발급되어 이전 토큰의 값과 달라짐")
+  void signIn_twice_generatesDifferentSessionTokenEachTime() {
     SignInRequest request = new SignInRequest("test@test.com", "rawPassword");
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
-    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("token");
+    when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
 
     authService.signIn(request);
-    long firstSessionVersion = user.getSessionVersion();
-
     authService.signIn(request);
-    long secondSessionVersion = user.getSessionVersion();
 
-    assertThat(secondSessionVersion).isNotEqualTo(firstSessionVersion);
-    assertThat(secondSessionVersion).isEqualTo(firstSessionVersion + 1);
+    ArgumentCaptor<String> jtiCaptor = ArgumentCaptor.forClass(String.class);
+    verify(sessionTokenRepository, times(2)).save(eq(user.getId()), jtiCaptor.capture(), any(
+        Duration.class));
+    assertThat(jtiCaptor.getAllValues().get(0)).isNotEqualTo(jtiCaptor.getAllValues().get(1));
   }
 
   @Test
@@ -212,7 +219,7 @@ public class AuthServiceTest {
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
     when(passwordEncoder.matches("temporary1!!", user.getPassword())).thenReturn(false);
     when(passwordEncoder.matches("temporary1!!", "encodedTempPw")).thenReturn(true);
-    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("token");
+    when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("refreshToken");
 
     AuthTokens response = authService.signIn(request);
@@ -249,18 +256,17 @@ public class AuthServiceTest {
   }
 
   @Test
-  @DisplayName("로그아웃 시 저장된 Refresh Token이 삭제되고 sessionVersion이 증가하여 기존 토큰이 모두 무효화됨")
+  @DisplayName("로그아웃 시 저장된 Refresh Token이 삭제되고 기존 토큰이 모두 무효화됨")
   void signOut_success() {
     UUID userId = UUID.randomUUID();
     user.updateRefreshToken("stored-refresh-token", Instant.now().plus(7, ChronoUnit.DAYS));
-    long beforeSessionVersion = user.getSessionVersion();
     when(jwtProvider.getUserId("stored-refresh-token")).thenReturn(userId);
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
     authService.signOut("stored-refresh-token");
 
     assertThat(user.isRefreshTokenValid("stored-refresh-token", Instant.now())).isFalse();
-    assertThat(user.getSessionVersion()).isEqualTo(beforeSessionVersion + 1);
+    verify(sessionTokenRepository).invalidate(user.getId());
   }
 
   @Test
@@ -288,7 +294,7 @@ public class AuthServiceTest {
     user.updateRefreshToken("valid-refresh-token", Instant.now().plus(7,ChronoUnit.DAYS));
     when(jwtProvider.getUserId("valid-refresh-token")).thenReturn(userId);
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("new-access-token");
+    when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("new-access-token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("new-refresh-token");
     when(jwtProvider.getRefreshTokenExpiration()).thenReturn(604800000L);
 
@@ -353,7 +359,7 @@ public class AuthServiceTest {
     user.updateRefreshToken("old-token", Instant.now().plus(7, ChronoUnit.DAYS));
     when(jwtProvider.getUserId("old-token")).thenReturn(userId);
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("new-access");
+    when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("new-access");
     when(jwtProvider.createRefreshToken(any())).thenReturn("new-refresh");
     when(jwtProvider.getRefreshTokenExpiration()).thenReturn(604800000L);
 

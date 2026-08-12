@@ -5,6 +5,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.follow.dto.FollowRequest;
 import com.codeit.mople.domain.follow.repository.FollowRepository;
@@ -34,6 +35,7 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.event.ForceLogoutReason;
 import com.codeit.mople.global.event.UserForceLogoutEvent;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -71,6 +73,7 @@ class NotificationEventListenerIntegrationTest {
     @Autowired private UserRepository userRepository;
     @Autowired private ApplicationEventPublisher eventPublisher;
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private SessionTokenRepository sessionTokenRepository;
 
     UUID targetUserId;
 
@@ -127,12 +130,14 @@ class NotificationEventListenerIntegrationTest {
     }
 
     @Test
-    @DisplayName("계정 잠금 해제 트랜잭션 커밋 후 ACCOUNT_UNLOCKED 알림이 저장되고 sessionVersion은 변경되지 않는다")
-    void 계정_잠금_해제_트랜잭션_커밋_후_ACCOUNT_UNLOCKED_알림이_저장되고_sessionVersion은_변경되지_않는다() {
+    @DisplayName("계정 잠금 해제 트랜잭션 커밋 후 ACCOUNT_UNLOCKED 알림이 저장되고 세션은 무효화되지 않는다")
+    void 계정_잠금_해제_트랜잭션_커밋_후_ACCOUNT_UNLOCKED_알림이_저장되고_세션은_무효화되지_않는다() {
         User target = userRepository.findById(targetUserId).orElseThrow();
         target.lock();
         userRepository.save(target);
 
+        String jti = UUID.randomUUID().toString();
+        sessionTokenRepository.save(targetUserId, jti, Duration.ofDays(1));
         adminService.changeUserLocked(targetUserId, false);
 
         await().atMost(3, SECONDS).untilAsserted(() -> {
@@ -141,7 +146,7 @@ class NotificationEventListenerIntegrationTest {
             assertThat(notifications.get(0).getNotificationType()).isEqualTo(NotificationType.ACCOUNT_UNLOCKED);
         });
 
-        assertThat(userRepository.findById(targetUserId).orElseThrow().getSessionVersion()).isEqualTo(0);
+        assertThat(sessionTokenRepository.isValid(targetUserId, jti)).isTrue();
     }
 
     @Test

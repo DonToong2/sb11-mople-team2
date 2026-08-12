@@ -7,11 +7,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
+import java.time.Duration;
+import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,7 +22,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,10 +44,19 @@ public class AuthControllerTest {
   private PasswordEncoder passwordEncoder;
   @Autowired
   private JwtProvider jwtProvider;
+  @Autowired
+  private SessionTokenRepository sessionTokenRepository;
 
   @AfterEach
   void tearDown() {
     userRepository.deleteAll();
+  }
+
+  private String issueAccessToken(User user) {
+    String jti = UUID.randomUUID().toString();
+    String token = jwtProvider.createAccessToken(user.getId(), jti);
+    sessionTokenRepository.save(user.getId(), jti, Duration.ofDays(7));
+    return token;
   }
 
   @Test
@@ -193,7 +204,7 @@ public class AuthControllerTest {
   @DisplayName("로그인 상태에서 계정이 잠기면 기존 토큰은 403(LOCKED_ACCOUNT)으로 거부됨")
   void existingToken_becomesLocked_whenAccountGetsLockedAfterward() throws Exception {
     User user = userRepository.save(User.createUser("lockAfter@test.com", passwordEncoder.encode("rawPw123"), "tester"));
-    String token = jwtProvider.createAccessToken(user.getId(), user.getSessionVersion());
+    String token = issueAccessToken(user);
 
     // 발급 직후엔 정상 인증됨을 먼저 확인
     mockMvc.perform(get("/api/users/{userId}", user.getId())
@@ -217,7 +228,7 @@ public class AuthControllerTest {
   @DisplayName("로그아웃 요청은 204를 반환")
   void signOut_success() throws Exception {
     User user = userRepository.save(User.createUser("signout@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
-    String accessToken = jwtProvider.createAccessToken(user.getId(), user.getSessionVersion());
+    String accessToken = issueAccessToken(user);
 
     mockMvc.perform(post("/api/auth/sign-out")
             .header("Authorization", "Bearer " + accessToken))
@@ -256,7 +267,7 @@ public class AuthControllerTest {
         .andDo(print())
         .andExpect(status().isNoContent());
 
-    // 기존 Access Token은 sessionVersion 불일치로 인증이 거부됨
+    // 기존 Access Token은 세션(jti) 불일치로 인증이 거부됨
     mockMvc.perform(get("/api/users/{userId}", user.getId())
             .header("Authorization", "Bearer " + accessToken))
         .andDo(print())
@@ -329,7 +340,7 @@ public class AuthControllerTest {
   @DisplayName("로그아웃 응답의 Refresh Token 쿠키는 즉시 만료되도록 Max-Age=0, 빈 값으로 내려감")
   void signOut_expiresRefreshTokenCookie() throws Exception {
     User user = userRepository.save(User.createUser("signoutcookie@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
-    String accessToken = jwtProvider.createAccessToken(user.getId(), user.getSessionVersion());
+    String accessToken = issueAccessToken(user);
 
     MvcResult result = mockMvc.perform(post("/api/auth/sign-out")
             .header("Authorization", "Bearer " + accessToken))
@@ -356,7 +367,7 @@ public class AuthControllerTest {
   void csrfCookie_allowsStateChangingRequest() throws Exception {
     User admin = userRepository.save(User.createAdmin("csrfAdmin@test.com", passwordEncoder.encode("rawPw123"), "csrfAdmin"));
     User target = userRepository.save(User.createUser("csrfTarget@test.com", passwordEncoder.encode("rawPw123"), "csrfTarget"));
-    String adminToken = jwtProvider.createAccessToken(admin.getId(), admin.getSessionVersion());
+    String adminToken = issueAccessToken(admin);
 
     Cookie xsrf = mockMvc.perform(get("/api/auth/csrf-token"))
         .andReturn().getResponse().getCookie("XSRF-TOKEN");
@@ -377,7 +388,7 @@ public class AuthControllerTest {
   void missingCsrfHeader_rejectsStateChangingRequest() throws Exception {
     User admin = userRepository.save(User.createAdmin("csrfAdmin2@test.com", passwordEncoder.encode("rawPw123"), "csrfAdmin2"));
     User target = userRepository.save(User.createUser("csrfTarget2@test.com", passwordEncoder.encode("rawPw123"), "csrfTarget2"));
-    String adminToken = jwtProvider.createAccessToken(admin.getId(), admin.getSessionVersion());
+    String adminToken = issueAccessToken(admin);
 
     Cookie xsrf = mockMvc.perform(get("/api/auth/csrf-token"))
         .andReturn().getResponse().getCookie("XSRF-TOKEN");
