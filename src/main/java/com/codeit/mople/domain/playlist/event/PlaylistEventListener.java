@@ -4,6 +4,7 @@ import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,7 +15,7 @@ public class PlaylistEventListener {
 
   private final PlaylistRepository playlistRepository;
 
-  @EventListener
+  @KafkaListener(topics = "playlist-subscribed")
   @Transactional
   public void handle(PlaylistSubscribedEvent event) {
 
@@ -24,7 +25,7 @@ public class PlaylistEventListener {
         event.playlistId());
   }
 
-  @EventListener
+  @KafkaListener(topics = "playlist-unsubscribed")
   @Transactional
   public void handle(PlaylistUnsubscribedEvent event) {
 

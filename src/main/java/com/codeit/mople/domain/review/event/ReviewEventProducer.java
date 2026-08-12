@@ -1,7 +1,6 @@
 package com.codeit.mople.domain.review.event;
 
 import com.codeit.mople.global.event.KafkaEventPublisher;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
