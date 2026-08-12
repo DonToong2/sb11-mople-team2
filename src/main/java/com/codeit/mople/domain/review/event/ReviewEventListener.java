@@ -8,7 +8,7 @@ import com.codeit.mople.domain.review.repository.ReviewRepository;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,11 +20,10 @@ public class ReviewEventListener {
   private final ReviewRepository reviewRepository;
   private final ContentRepository contentRepository;
 
-  // TODO 김명근: 추후 Kafka 도입하여 Topic 만들어서 비동기로 처리를 통해 동시성 문제 해결
-  // 현재로서는 데이터 정합성을 생각하여 @TransactionEventListener 미사용
+
   // 기본 전파레벨은 REQUIRED(트랜잭션 내에서 이 메서드가 호출되면 트랜잭션 새로 생성하지 않고 그 트랜잭션에 참여)
-  @EventListener
   @Transactional
+  @KafkaListener(topics = "review-created", groupId = "${spring.application.name}")
   public void handle(ReviewCreatedEvent event) {
 
     Content content = contentRepository.findById(event.contentId()).orElseThrow(() ->
@@ -43,8 +42,8 @@ public class ReviewEventListener {
         content.getId(), averageRating, reviewCount);
   }
 
-  @EventListener
   @Transactional
+  @KafkaListener(topics = "review-updated", groupId = "${spring.application.name}")
   public void handle(ReviewUpdatedEvent event) {
     Content content = contentRepository.findById(event.contentId()).orElseThrow(() ->
         new ContentException(
@@ -61,8 +60,8 @@ public class ReviewEventListener {
         content.getId(), averageRating);
   }
 
-  @EventListener
   @Transactional
+  @KafkaListener(topics = "review-deleted", groupId = "${spring.application.name}")
   public void handle(ReviewDeletedEvent event) {
     Content content = contentRepository.findById(event.contentId()).orElseThrow(() ->
         new ContentException(
