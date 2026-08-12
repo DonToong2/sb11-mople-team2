@@ -199,7 +199,8 @@ public class ContentService{
     Content content = contentRepository.findById(contentId)
         .orElseThrow(() -> {
           log.warn("콘텐츠 수정 실패(존재하지 않는 ID) - contentId: {}", contentId);
-          return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));        });
+          return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
+        });
 
     //썸네일 수정(새로운 파일이 들어온 경우에만 업데이트)
     String uploadedThumbnailUrl = content.getThumbnailUrl(); //기존 URL 유지
