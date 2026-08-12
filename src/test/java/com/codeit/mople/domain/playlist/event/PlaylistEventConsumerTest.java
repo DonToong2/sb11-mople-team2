@@ -1,9 +1,14 @@
 package com.codeit.mople.domain.playlist.event;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
+import com.codeit.mople.global.event.processed.ProcessedEvent;
+import com.codeit.mople.global.event.processed.ProcessedEventRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +24,9 @@ public class PlaylistEventConsumerTest {
 
   @Mock
   private PlaylistRepository playlistRepository;
+
+  @Mock
+  private ProcessedEventRepository processedEventRepository;
 
   @InjectMocks
   private PlaylistEventConsumer eventConsumer;
@@ -45,14 +53,59 @@ public class PlaylistEventConsumerTest {
 
       // BeforeEach에서 ownerId, playlistId, subscriberId 초기화
 
+      UUID eventId = UUID.randomUUID();
+
       PlaylistSubscribedEvent event =
-          new PlaylistSubscribedEvent(ownerId, playlistId, subscriberId, "subscriber", "playlist");
+          new PlaylistSubscribedEvent(
+              eventId,
+              ownerId,
+              playlistId,
+              subscriberId,
+              "subscriber",
+              "playlist"
+          );
+
+      given(processedEventRepository.existsByEventId(eventId))
+          .willReturn(false);
 
       // when
       eventConsumer.handle(event);
 
       // then
+      verify(processedEventRepository).existsByEventId(eventId);
+      verify(processedEventRepository).save(any(ProcessedEvent.class));
       verify(playlistRepository).increaseSubscriberCount(playlistId);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 구독 이벤트 성공 - 이미 처리된 구독 이벤트는 스킵")
+    void handle_success_already_processed_skip() {
+      // given
+
+      // BeforeEach에서 ownerId, playlistId, subscriberId 초기화
+
+      UUID eventId = UUID.randomUUID();
+
+      PlaylistSubscribedEvent event =
+          new PlaylistSubscribedEvent(
+              eventId,
+              ownerId,
+              playlistId,
+              subscriberId,
+              "subscriber",
+              "playlist"
+          );
+
+      given(processedEventRepository.existsByEventId(eventId))
+          .willReturn(true);
+
+      // when
+      eventConsumer.handle(event);
+
+      // then
+      verify(processedEventRepository).existsByEventId(eventId);
+      verify(processedEventRepository, never()).save(any(ProcessedEvent.class));
+      verifyNoInteractions(playlistRepository);
     }
 
   }
@@ -68,14 +121,46 @@ public class PlaylistEventConsumerTest {
 
       // BeforeEach에서 playlistId, subscriberId 초기화
 
+      UUID eventId = UUID.randomUUID();
+
       PlaylistUnsubscribedEvent event =
-          new PlaylistUnsubscribedEvent(playlistId, subscriberId);
+          new PlaylistUnsubscribedEvent(eventId, playlistId, subscriberId);
+
+      given(processedEventRepository.existsByEventId(eventId))
+          .willReturn(false);
 
       // when
       eventConsumer.handle(event);
 
       // then
+      verify(processedEventRepository).existsByEventId(eventId);
+      verify(processedEventRepository).save(any(ProcessedEvent.class));
       verify(playlistRepository).decreaseSubscriberCount(playlistId);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 구독 취소 이벤트 성공 - 이미 처리된 구독 이벤트는 스킵")
+    void handle_success_already_processed_skip() {
+      // given
+      UUID eventId = UUID.randomUUID();
+
+      PlaylistUnsubscribedEvent event =
+          new PlaylistUnsubscribedEvent(
+              eventId,
+              playlistId,
+              subscriberId
+          );
+
+      given(processedEventRepository.existsByEventId(eventId))
+          .willReturn(true);
+
+      // when
+      eventConsumer.handle(event);
+
+      // then
+      verify(processedEventRepository).existsByEventId(eventId);
+      verify(processedEventRepository, never()).save(any(ProcessedEvent.class));
+      verifyNoInteractions(playlistRepository);
     }
 
     @Test
@@ -85,8 +170,13 @@ public class PlaylistEventConsumerTest {
 
       // BeforeEach에서 playlistId, subscriberId 초기화
 
+      UUID eventId = UUID.randomUUID();
+
       PlaylistUnsubscribedEvent event =
-          new PlaylistUnsubscribedEvent(playlistId, subscriberId);
+          new PlaylistUnsubscribedEvent(eventId, playlistId, subscriberId);
+
+      given(processedEventRepository.existsByEventId(eventId))
+          .willReturn(false);
 
       given(playlistRepository.decreaseSubscriberCount(playlistId))
           .willReturn(0); // 구독자 수 감소 실패 시 0 반환
@@ -95,6 +185,11 @@ public class PlaylistEventConsumerTest {
       eventConsumer.handle(event);
 
       // then
+      verify(processedEventRepository).existsByEventId(eventId);
+
+      // 구독자 수가 이미 0일 경우로 인해 감소 실패할 경우 재시도 없이 커밋 처리되기 때문에 저장하게 됨
+      verify(processedEventRepository).save(any(ProcessedEvent.class));
+
       verify(playlistRepository).decreaseSubscriberCount(playlistId);
 
     }
