@@ -1,6 +1,9 @@
 package com.codeit.mople.domain.review.event;
 
 import com.codeit.mople.domain.content.repository.ContentRepository;
+import com.codeit.mople.global.event.processed.ProcessedEvent;
+import com.codeit.mople.global.event.processed.ProcessedEventRepository;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -14,11 +17,17 @@ public class ReviewEventConsumer {
 
   private final ContentRepository contentRepository;
 
+  private final ProcessedEventRepository processedEventRepository;
+
 
   // 기본 전파레벨은 REQUIRED(트랜잭션 내에서 이 메서드가 호출되면 트랜잭션 새로 생성하지 않고 그 트랜잭션에 참여)
   @Transactional
   @KafkaListener(topics = "review-created")
   public void handle(ReviewCreatedEvent event) {
+    if (checkAndRecordProcessedEvent(event.eventId())) {
+      return;
+    }
+    
     contentRepository.increaseRating(
         event.contentId(),
         event.rating()
@@ -31,6 +40,10 @@ public class ReviewEventConsumer {
   @Transactional
   @KafkaListener(topics = "review-updated")
   public void handle(ReviewUpdatedEvent event) {
+    if (checkAndRecordProcessedEvent(event.eventId())) {
+      return;
+    }
+
     contentRepository.updateRating(
         event.contentId(),
         event.oldRating(),
@@ -44,6 +57,10 @@ public class ReviewEventConsumer {
   @Transactional
   @KafkaListener(topics = "review-deleted")
   public void handle(ReviewDeletedEvent event) {
+    if (checkAndRecordProcessedEvent(event.eventId())) {
+      return;
+    }
+
     contentRepository.decreaseRating(
         event.contentId(),
         event.rating()
@@ -53,5 +70,16 @@ public class ReviewEventConsumer {
         event.contentId(), event.rating());
   }
 
+
+  private boolean checkAndRecordProcessedEvent(UUID eventId) {
+    // 이미 해당 eventId가 존재하면 스킵
+    if (processedEventRepository.existsByEventId(eventId)) {
+      log.info("이미 처리된 이벤트입니다: eventId={}", eventId);
+      return true;
+    }
+
+    processedEventRepository.save(ProcessedEvent.of(eventId));
+    return false;
+  }
 
 }

@@ -66,6 +66,9 @@ public class SseEventConsumer {
   @KafkaListener(topics = "notification-created")
   @Transactional(readOnly = true)
   public void handle(NotificationCreatedEvent event) {
+    log.debug("SSE 이벤트 전송 시도: receiverId={}, notificationId={}",
+        event.receiverId(), event.notificationId());
+
     Notification notification =
         notificationRepository.findById(event.notificationId()).orElseThrow(() ->
             new NotificationException(
