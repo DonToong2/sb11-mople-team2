@@ -46,8 +46,8 @@ public class Content extends BaseTimeEntity {
   @Column(name = "tags")
   private List<String> tags = new ArrayList<>();
 
-  @Column(name = "average_rating", nullable = false)
-  private double averageRating = 0.0; //리뷰 평균 별점
+  @Column(name = "rating_sum", nullable = false)
+  private double ratingSum = 0.0; //리뷰 평균 별점
 
   @Column(name = "review_count", nullable = false)
   private int reviewCount = 0; //리뷰 개수
@@ -80,8 +80,8 @@ public class Content extends BaseTimeEntity {
 
   //새로운 리뷰가 작성되거나 삭제 될 때,
   //서비스 계층에서 계산된 새로운 평점 평균과 리뷰 총 개수를 DB에 갱신하기 위한 메서드
-  public void updateRatingStats(Double averageRating, Integer reviewCount) {
-    this.averageRating = averageRating;
+  public void updateRatingStats(Double ratingSum, Integer reviewCount) {
+    this.ratingSum = ratingSum;
     this.reviewCount = reviewCount;
   }
 
