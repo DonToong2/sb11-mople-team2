@@ -5,6 +5,7 @@ import com.codeit.mople.domain.notification.dto.response.CursorResponseNotificat
 import com.codeit.mople.domain.notification.dto.response.NotificationResponse;
 import com.codeit.mople.domain.notification.entity.Notification;
 import com.codeit.mople.domain.notification.entity.NotificationType;
+import com.codeit.mople.domain.notification.event.NotificationCreatedEvent;
 import com.codeit.mople.domain.notification.exception.NotificationErrorCode;
 import com.codeit.mople.domain.notification.exception.NotificationException;
 import com.codeit.mople.domain.notification.repository.NotificationRepository;
@@ -13,6 +14,7 @@ import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import java.time.Instant;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessException;
 import java.util.List;
 import java.util.UUID;
@@ -32,6 +34,8 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+
+    private final ApplicationEventPublisher eventPublisher;
 
     public CursorResponseNotificationDto getNotifications(UUID receiverId,
         NotificationCursorRequest request) {
@@ -85,7 +89,11 @@ public class NotificationService {
         log.debug("알림 생성 요청 - receiverId: {}, type: {}", receiverId, type);
         User receiver = userRepository.findById(receiverId)
             .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
-        notificationRepository.save(Notification.create(receiver, title, content, type));
+
+        Notification notification =
+            notificationRepository.save(Notification.create(receiver, title, content, type));
+
+        eventPublisher.publishEvent(new NotificationCreatedEvent(receiverId, notification.getId()));
         log.info("알림 생성 완료 - receiverId: {}, type: {}", receiverId, type);
     }
 
