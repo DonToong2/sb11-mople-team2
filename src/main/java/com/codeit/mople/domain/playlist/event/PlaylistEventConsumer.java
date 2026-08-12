@@ -19,7 +19,7 @@ public class PlaylistEventConsumer {
 
   private final ProcessedEventRepository processedEventRepository;
 
-  @KafkaListener(topics = "playlist-subscribed")
+  @KafkaListener(topics = "playlist-events")
   @Transactional
   public void handle(PlaylistSubscribedEvent event) {
     if (checkAndRecordProcessedEvent(event.eventId())) {
@@ -32,7 +32,7 @@ public class PlaylistEventConsumer {
         event.playlistId());
   }
 
-  @KafkaListener(topics = "playlist-unsubscribed")
+  @KafkaListener(topics = "playlist-events")
   @Transactional
   public void handle(PlaylistUnsubscribedEvent event) {
     if (checkAndRecordProcessedEvent(event.eventId())) {
