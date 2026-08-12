@@ -70,11 +70,11 @@ public class TmdbCollectScheduler {
     }
   }
 
-
+  // 배치가 collectDate와 maxPages(true)를 식별자로 둠
   private JobParameters jobParameters() {
     return new JobParametersBuilder()
         .addString(COLLECT_DATE, LocalDate.now(ZONE).toString())
-        .addLong(MAX_PAGES, (long) maxPages, false)
+        .addLong(MAX_PAGES, (long) maxPages, true)
         .toJobParameters();
   }
 }
