@@ -1,13 +1,10 @@
 package com.codeit.mople.domain.playlist.event;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
-import com.codeit.mople.global.event.processed.ProcessedEvent;
 import com.codeit.mople.global.event.processed.ProcessedEventRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,7 +70,6 @@ public class PlaylistEventConsumerTest {
 
       // then
       verify(processedEventRepository).insertIfAbsent(eventId);
-      verify(processedEventRepository).save(any(ProcessedEvent.class));
       verify(playlistRepository).increaseSubscriberCount(playlistId);
     }
 

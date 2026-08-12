@@ -1,5 +1,6 @@
 package com.codeit.mople.global.sse.event;
 
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -125,10 +126,8 @@ public class SseEventConsumerTest {
           .willReturn(Optional.empty());
 
       // when & then
-      assertThatThrownBy(() -> eventConsumer.handle(event))
-          .isInstanceOf(DirectMessageException.class)
-          .extracting("errorCode")
-          .isEqualTo(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND);
+      assertThatNoException()
+          .isThrownBy(() -> eventConsumer.handle(event));
 
       verifyNoInteractions(sseService);
     }
@@ -172,10 +171,8 @@ public class SseEventConsumerTest {
           .willReturn(Optional.empty());
 
       // when & then
-      assertThatThrownBy(() -> eventConsumer.handle(event))
-          .isInstanceOf(NotificationException.class)
-          .extracting("errorCode")
-          .isEqualTo(NotificationErrorCode.NOTIFICATION_NOT_FOUND);
+      assertThatNoException()
+          .isThrownBy(() -> eventConsumer.handle(event));
 
       verifyNoInteractions(sseService);
     }

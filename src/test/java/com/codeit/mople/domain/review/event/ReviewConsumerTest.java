@@ -1,13 +1,9 @@
 package com.codeit.mople.domain.review.event;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import com.codeit.mople.domain.content.repository.ContentRepository;
-import com.codeit.mople.domain.review.entity.Review;
-import com.codeit.mople.global.event.processed.ProcessedEvent;
 import com.codeit.mople.global.event.processed.ProcessedEventRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
