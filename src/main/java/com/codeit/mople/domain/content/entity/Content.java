@@ -44,7 +44,7 @@ public class Content extends BaseTimeEntity {
   @ElementCollection(fetch = FetchType.LAZY)
   @CollectionTable(name = "content_tags", joinColumns = @JoinColumn(name = "content_id"))
   @Column(name = "tags")
-  private List<String> tags;
+  private List<String> tags = new ArrayList<>();
 
   @Column(name = "average_rating", nullable = false)
   private double averageRating = 0.0; //리뷰 평균 별점
