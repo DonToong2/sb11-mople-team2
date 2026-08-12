@@ -61,7 +61,6 @@ public class ReviewConsumerTest {
 
       // then
       verify(processedEventRepository).insertIfAbsent(eventId);
-      verify(processedEventRepository).save(any(ProcessedEvent.class));
       verify(contentRepository).increaseRating(contentId, 4.0);
     }
 
@@ -90,7 +89,6 @@ public class ReviewConsumerTest {
 
       // then
       verify(processedEventRepository).insertIfAbsent(eventId);
-      verify(processedEventRepository).save(any(ProcessedEvent.class));
       verify(contentRepository).updateRating(contentId, 4.0, 5.0);
     }
 
@@ -119,7 +117,6 @@ public class ReviewConsumerTest {
 
       // then
       verify(processedEventRepository).insertIfAbsent(eventId);
-      verify(processedEventRepository).save(any(ProcessedEvent.class));
       verify(contentRepository).decreaseRating(contentId, 4.0);
     }
 

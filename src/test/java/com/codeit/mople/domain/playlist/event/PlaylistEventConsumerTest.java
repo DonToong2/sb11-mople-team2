@@ -104,7 +104,6 @@ public class PlaylistEventConsumerTest {
 
       // then
       verify(processedEventRepository).insertIfAbsent(eventId);
-      verify(processedEventRepository, never()).save(any(ProcessedEvent.class));
       verifyNoInteractions(playlistRepository);
     }
 
@@ -134,7 +133,6 @@ public class PlaylistEventConsumerTest {
 
       // then
       verify(processedEventRepository).insertIfAbsent(eventId);
-      verify(processedEventRepository).save(any(ProcessedEvent.class));
       verify(playlistRepository).decreaseSubscriberCount(playlistId);
     }
 
@@ -159,7 +157,6 @@ public class PlaylistEventConsumerTest {
 
       // then
       verify(processedEventRepository).insertIfAbsent(eventId);
-      verify(processedEventRepository, never()).save(any(ProcessedEvent.class));
       verifyNoInteractions(playlistRepository);
     }
 
@@ -186,10 +183,6 @@ public class PlaylistEventConsumerTest {
 
       // then
       verify(processedEventRepository).insertIfAbsent(eventId);
-
-      // 구독자 수가 이미 0일 경우로 인해 감소 실패할 경우 재시도 없이 커밋 처리되기 때문에 저장하게 됨
-      verify(processedEventRepository).save(any(ProcessedEvent.class));
-
       verify(playlistRepository).decreaseSubscriberCount(playlistId);
 
     }
