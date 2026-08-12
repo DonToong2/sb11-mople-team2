@@ -27,7 +27,7 @@ public enum ContentType {
       return null;
     }
 
-    String normalizedInput = value.replace("_", "").replace("-", "").trim().toLowerCase();
+    String normalizedInput = value.replace("_", "").replace("-", "").replaceAll("\\s+", "").toLowerCase();
 
     return Arrays.stream(values())
         .filter(type -> type.value.replace("_", "").toLowerCase().equals(normalizedInput)

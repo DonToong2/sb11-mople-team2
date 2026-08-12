@@ -214,7 +214,7 @@ public class ContentControllerTest {
             .param("limit", "20")
             .param("idAfter", UUID.randomUUID().toString())
             .param("cursor", Instant.now().toString())
-            .param("keyword", "테스트")
+            .param("keywordLike", "테스트")
             .contentType(MediaType.APPLICATION_JSON)
             .with(mockAuth(UUID.randomUUID(),Role.USER))
     ).andExpect(status().isOk());

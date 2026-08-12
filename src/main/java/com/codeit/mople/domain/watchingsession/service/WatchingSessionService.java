@@ -407,7 +407,7 @@ public class WatchingSessionService {
     }
 
     //메시지 본문 방어
-    if (request.message() == null || request.message().isBlank()) {
+    if (request == null || request.message() == null || request.message().isBlank()) {
       log.warn("채팅 메시지가 비어있어 브로드캐스팅을 취소합니다. request: {}", request);
       return;
     }
