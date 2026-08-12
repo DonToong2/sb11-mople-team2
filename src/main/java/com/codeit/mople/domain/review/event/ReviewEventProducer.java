@@ -14,27 +14,18 @@ public class ReviewEventProducer {
   private final KafkaEventPublisher kafkaEventPublisher;
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  public void publishCreated(UUID contentId) {
-    kafkaEventPublisher.publish(
-        "review-created",
-        new ReviewCreatedEvent(contentId)
-    );
+  public void on(ReviewCreatedEvent event) {
+    kafkaEventPublisher.publish("review-created", event);
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  public void publishUpdated(UUID contentId) {
-    kafkaEventPublisher.publish(
-        "review-updated",
-        new ReviewUpdatedEvent(contentId)
-    );
+  public void on(ReviewUpdatedEvent event) {
+    kafkaEventPublisher.publish("review-updated", event);
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  public void publishDeleted(UUID contentId) {
-    kafkaEventPublisher.publish(
-        "review-deleted",
-        new ReviewDeletedEvent(contentId)
-    );
+  public void on(ReviewDeletedEvent event) {
+    kafkaEventPublisher.publish("review-deleted", event);
   }
 
 }

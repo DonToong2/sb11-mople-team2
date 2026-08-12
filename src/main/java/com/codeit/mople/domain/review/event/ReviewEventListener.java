@@ -23,7 +23,7 @@ public class ReviewEventListener {
 
   // 기본 전파레벨은 REQUIRED(트랜잭션 내에서 이 메서드가 호출되면 트랜잭션 새로 생성하지 않고 그 트랜잭션에 참여)
   @Transactional
-  @KafkaListener(topics = "review-created", groupId = "${spring.application.name}")
+  @KafkaListener(topics = "review-created")
   public void handle(ReviewCreatedEvent event) {
 
     Content content = contentRepository.findById(event.contentId()).orElseThrow(() ->
@@ -43,7 +43,7 @@ public class ReviewEventListener {
   }
 
   @Transactional
-  @KafkaListener(topics = "review-updated", groupId = "${spring.application.name}")
+  @KafkaListener(topics = "review-updated")
   public void handle(ReviewUpdatedEvent event) {
     Content content = contentRepository.findById(event.contentId()).orElseThrow(() ->
         new ContentException(
@@ -61,7 +61,7 @@ public class ReviewEventListener {
   }
 
   @Transactional
-  @KafkaListener(topics = "review-deleted", groupId = "${spring.application.name}")
+  @KafkaListener(topics = "review-deleted")
   public void handle(ReviewDeletedEvent event) {
     Content content = contentRepository.findById(event.contentId()).orElseThrow(() ->
         new ContentException(
