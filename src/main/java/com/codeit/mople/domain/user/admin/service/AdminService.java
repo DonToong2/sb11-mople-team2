@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.user.admin.service;
 
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
@@ -25,6 +26,7 @@ public class AdminService {
 
   private final UserRepository userRepository;
   private final ApplicationEventPublisher eventPublisher;
+  private final SessionTokenRepository sessionTokenRepository;
 
   @Transactional
   public void changeUserRole(UUID userId, String roleStr) {
@@ -36,7 +38,7 @@ public class AdminService {
     Role previousRole = user.getRole();
     if (previousRole != role) {
       user.changeRole(role);
-      user.increaseSessionVersion();
+      sessionTokenRepository.invalidate(userId);
       eventPublisher.publishEvent(new UserForceLogoutEvent(userId, ForceLogoutReason.ROLE_CHANGE));
     }
     log.info("권한 변경 완료 - userId: {}, role: {}", userId, role);
@@ -56,7 +58,7 @@ public class AdminService {
     }
     if (previousLocked != locked) {
       if (locked) {
-        user.increaseSessionVersion();
+        sessionTokenRepository.invalidate(userId);
       }
       ForceLogoutReason reason = locked ? ForceLogoutReason.ACCOUNT_LOCKED : ForceLogoutReason.ACCOUNT_UNLOCKED;
       eventPublisher.publishEvent(new UserForceLogoutEvent(userId, reason));
