@@ -1,13 +1,10 @@
 package com.codeit.mople.domain.review.event;
 
-import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.domain.review.entity.Review;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,13 +16,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-public class ReviewListenerTest {
+public class ReviewConsumerTest {
 
   @Mock
   private ContentRepository contentRepository;
 
   @InjectMocks
-  private ReviewEventListener eventListener;
+  private ReviewEventConsumer eventConsumer;
 
   private UUID contentId;
   private UUID reviewId;
@@ -49,7 +46,7 @@ public class ReviewListenerTest {
       ReviewCreatedEvent event = new ReviewCreatedEvent(contentId, 4.0);
 
       // when
-      eventListener.handle(event);
+      eventConsumer.handle(event);
 
       // then
       verify(contentRepository).increaseRating(contentId, 4.0);
@@ -68,7 +65,7 @@ public class ReviewListenerTest {
       ReviewUpdatedEvent event = new ReviewUpdatedEvent(contentId, 4.0, 5.0);
 
       // when
-      eventListener.handle(event);
+      eventConsumer.handle(event);
 
       // then
       verify(contentRepository).updateRating(contentId, 4.0, 5.0);
@@ -88,7 +85,7 @@ public class ReviewListenerTest {
       ReviewDeletedEvent event = new ReviewDeletedEvent(contentId, 4.0);
 
       // when
-      eventListener.handle(event);
+      eventConsumer.handle(event);
 
       // then
       verify(contentRepository).decreaseRating(contentId, 4.0);

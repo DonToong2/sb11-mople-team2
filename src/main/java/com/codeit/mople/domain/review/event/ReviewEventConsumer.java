@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ReviewEventListener {
+public class ReviewEventConsumer {
 
   private final ContentRepository contentRepository;
 

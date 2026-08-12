@@ -15,13 +15,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-public class PlaylistEventListenerTest {
+public class PlaylistEventConsumerTest {
 
   @Mock
   private PlaylistRepository playlistRepository;
 
   @InjectMocks
-  private PlaylistEventListener eventListener;
+  private PlaylistEventConsumer eventConsumer;
 
   private UUID ownerId;
   private UUID playlistId;
@@ -49,7 +49,7 @@ public class PlaylistEventListenerTest {
           new PlaylistSubscribedEvent(ownerId, playlistId, subscriberId, "subscriber", "playlist");
 
       // when
-      eventListener.handle(event);
+      eventConsumer.handle(event);
 
       // then
       verify(playlistRepository).increaseSubscriberCount(playlistId);
@@ -72,7 +72,7 @@ public class PlaylistEventListenerTest {
           new PlaylistUnsubscribedEvent(playlistId, subscriberId);
 
       // when
-      eventListener.handle(event);
+      eventConsumer.handle(event);
 
       // then
       verify(playlistRepository).decreaseSubscriberCount(playlistId);
@@ -92,7 +92,7 @@ public class PlaylistEventListenerTest {
           .willReturn(0); // 구독자 수 감소 실패 시 0 반환
 
       // when
-      eventListener.handle(event);
+      eventConsumer.handle(event);
 
       // then
       verify(playlistRepository).decreaseSubscriberCount(playlistId);
