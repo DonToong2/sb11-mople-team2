@@ -37,6 +37,9 @@ spring:
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
 
+  kafka:
+    bootstrap-servers: localhost:9093
+
 jwt:
   secret: test-secret-key-for-ci-pipeline-only-1234567890
 

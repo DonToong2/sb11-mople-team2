@@ -29,7 +29,7 @@ services:
       - "127.0.0.1:6380:6379"
 
   broker:
-    image: apache/kafka:3.6.0
+    image: apache/kafka:3.9.0
     hostname: broker
     container_name: mople-kafka
     ports:
@@ -56,11 +56,11 @@ services:
 
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT # Broker간 통신에 사용할 Listener
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER # Controller 통신에 사용할 Listener
-      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs # Kafka 데이터 저장 경로
+      KAFKA_LOG_DIRS: /var/lib/kafka/data # Kafka 데이터 저장 경로
       CLUSTER_ID: MkU30EVBNTcwNTJENDM2Qk # Kafka 클러스터 식별 ID
 
     volumes:
-      - kafka-data:/tmp/kraft-combined-logs
+      - kafka-data:/var/lib/kafka/data
 
 volumes:
   kafka-data:
