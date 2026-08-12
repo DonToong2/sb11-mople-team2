@@ -27,6 +27,10 @@ spring:
 
   kafka:
     producer:
+      properties:
+        retries: 3
+        retry.backoff.ms: 1000
+        retry.backoff.max.ms: 4000
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
