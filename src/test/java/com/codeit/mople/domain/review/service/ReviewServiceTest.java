@@ -22,6 +22,7 @@ import com.codeit.mople.domain.review.entity.Review;
 import com.codeit.mople.domain.review.event.ReviewCreatedEvent;
 import com.codeit.mople.domain.review.event.ReviewDeletedEvent;
 import com.codeit.mople.domain.review.event.ReviewUpdatedEvent;
+import com.codeit.mople.domain.review.event.ReviewWrittenEvent;
 import com.codeit.mople.domain.review.exception.ReviewErrorCode;
 import com.codeit.mople.domain.review.exception.ReviewException;
 import com.codeit.mople.domain.review.repository.ReviewRepository;
@@ -148,6 +149,7 @@ public class ReviewServiceTest {
       verify(contentRepository).findById(contentId);
       verify(reviewRepository).save(any(Review.class));
 
+      verify(eventPublisher).publishEvent(new ReviewWrittenEvent(authorId, "test"));
       verify(eventPublisher).publishEvent(new ReviewCreatedEvent(
           contentId,
           reviewRating

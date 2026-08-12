@@ -14,6 +14,7 @@ import com.codeit.mople.domain.review.entity.Review;
 import com.codeit.mople.domain.review.event.ReviewCreatedEvent;
 import com.codeit.mople.domain.review.event.ReviewDeletedEvent;
 import com.codeit.mople.domain.review.event.ReviewUpdatedEvent;
+import com.codeit.mople.domain.review.event.ReviewWrittenEvent;
 import com.codeit.mople.domain.review.exception.ReviewErrorCode;
 import com.codeit.mople.domain.review.exception.ReviewException;
 import com.codeit.mople.domain.review.repository.ReviewRepository;
@@ -41,7 +42,7 @@ public class ReviewService {
   private final UserRepository userRepository;
   private final ContentRepository contentRepository;
 
-  private final ApplicationEventPublisher publisher;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
   public ReviewResponse create(UUID authorId, ReviewCreateRequest request) {
@@ -67,7 +68,9 @@ public class ReviewService {
 
     Review savedReview = reviewRepository.save(review);
 
-    publisher.publishEvent(new ReviewCreatedEvent(
+    eventPublisher.publishEvent(new ReviewWrittenEvent(authorId, author.getName()));
+
+    eventPublisher.publishEvent(new ReviewCreatedEvent(
         content.getId(),
         savedReview.getRating()
     ));
@@ -172,7 +175,7 @@ public class ReviewService {
 
     // 리뷰 내용만 변경 된 경우 계산하지 않음
     if (request.rating() != null) {
-      publisher.publishEvent(new ReviewUpdatedEvent(
+      eventPublisher.publishEvent(new ReviewUpdatedEvent(
           content.getId(),
           oldRating,
           review.getRating()
@@ -207,7 +210,7 @@ public class ReviewService {
 
     reviewRepository.delete(review);
 
-    publisher.publishEvent(new ReviewDeletedEvent(
+    eventPublisher.publishEvent(new ReviewDeletedEvent(
         content.getId(),
         rating
     ));
