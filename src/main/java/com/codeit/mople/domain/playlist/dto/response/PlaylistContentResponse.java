@@ -26,7 +26,7 @@ public record PlaylistContentResponse(
         content.getDescription(),
         content.getThumbnailUrl(),
         content.getTags(),
-        content.getRatingSum(),
+        content.calculateAverageRating(),
         content.getReviewCount()
     );
   }

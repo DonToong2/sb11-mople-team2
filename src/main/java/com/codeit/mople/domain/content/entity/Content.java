@@ -46,8 +46,11 @@ public class Content extends BaseTimeEntity {
   @Column(name = "tags")
   private List<String> tags = new ArrayList<>();
 
+  // 동시성 문제를 개선하기 위해 총 별점 필드를 추가
+  // 기존 리뷰 평균 별점은 서비스 로직에서 계산하여 응답으로 보냄
+  // 단순 평균 별점으로 원자적 Update시 반올림으로 인한 정확한 계산이 어렵기 때문에 총 별점으로 필드 대체
   @Column(name = "rating_sum", nullable = false)
-  private double ratingSum = 0.0; //리뷰 평균 별점
+  private double ratingSum = 0.0;
 
   @Column(name = "review_count", nullable = false)
   private int reviewCount = 0; //리뷰 개수
@@ -78,11 +81,13 @@ public class Content extends BaseTimeEntity {
     this.externalId = externalId;
   }
 
-  //새로운 리뷰가 작성되거나 삭제 될 때,
-  //서비스 계층에서 계산된 새로운 평점 평균과 리뷰 총 개수를 DB에 갱신하기 위한 메서드
-  public void updateRatingStats(Double ratingSum, Integer reviewCount) {
-    this.ratingSum = ratingSum;
-    this.reviewCount = reviewCount;
+
+  // 평균 평점을 구하는 로직
+  public double calculateAverageRating() {
+    if (reviewCount == 0) {
+      return 0.0;
+    }
+    return ratingSum / reviewCount;
   }
 
   //관리자가 콘텐츠의 기본 정보를 수정할 때 사용하는 메서드
