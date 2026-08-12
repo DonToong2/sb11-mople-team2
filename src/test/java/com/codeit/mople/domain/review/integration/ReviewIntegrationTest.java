@@ -282,7 +282,7 @@ public class ReviewIntegrationTest {
       Content content = contentRepository.findById(savedContent.getId()).orElseThrow();
 
       assertThat(content.getReviewCount()).isEqualTo(1);
-      assertThat(content.getAverageRating()).isEqualTo(newRating);
+      assertThat(content.getRatingSum()).isEqualTo(newRating);
     }
 
     @Test
@@ -351,7 +351,7 @@ public class ReviewIntegrationTest {
       // 컨텐츠의 리뷰 개수와 평균 평점 검증
       Content content = contentRepository.findById(savedContent.getId()).orElseThrow();
       assertThat(content.getReviewCount()).isEqualTo(0); // == isZero()
-      assertThat(content.getAverageRating()).isEqualTo(0.0);
+      assertThat(content.getRatingSum()).isEqualTo(0.0);
     }
 
     @Test

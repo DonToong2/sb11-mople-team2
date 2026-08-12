@@ -232,7 +232,7 @@ public class PlaylistServiceTest {
           .willReturn(null);
       given(content.getTags())
           .willReturn(List.of("로맨스"));
-      given(content.getAverageRating())
+      given(content.getRatingSum())
           .willReturn(0.0);
       given(content.getReviewCount())
           .willReturn(0);

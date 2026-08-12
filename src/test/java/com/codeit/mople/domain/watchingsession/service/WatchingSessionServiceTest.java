@@ -12,14 +12,19 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.repository.ContentRepository;
+import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.domain.watchingsession.dto.ContentChatDto;
+import com.codeit.mople.domain.watchingsession.dto.ContentChatSendRequest;
 import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionChange;
+import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -36,6 +41,7 @@ import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 @ExtendWith(MockitoExtension.class)
 public class WatchingSessionServiceTest {
@@ -255,5 +261,59 @@ public class WatchingSessionServiceTest {
 
     //퇴장이 무시되고 현재 남은 인원(5명)이 그대로 반환되어야 함
     assertEquals(5L, result);
+  }
+
+  @Test
+  @DisplayName("유저 입장 성공 - 다른 방에서 이동해 온 경우 이전 방 퇴장(LEAVE) 이벤트 브로드캐스팅 확인")
+  void enterSession_Success_RoomSwitching() {
+    UUID userId = UUID.randomUUID();
+    UUID oldContentId = UUID.randomUUID();
+    UUID newContentId = UUID.randomUUID();
+    String userKey = "user:watching:" + userId;
+    String newContentKey = "content:watchers:" + newContentId;
+    String oldContentKey = "content:watchers:" + oldContentId;
+
+    Content mockOldContent = mock(Content.class);
+    Content mockNewContent = mock(Content.class);
+
+    //Redis 트랜잭션 실행 시 이전 방 ID("oldContentId")를 반환하도록 설정
+    given(redisTemplate.execute(any(SessionCallback.class))).willReturn(oldContentId.toString());
+
+    //lenient()를 적용하거나 실제 로직에서 타는 size()만 지정
+    lenient().when(setOperations.size(oldContentKey)).thenReturn(0L);
+    given(setOperations.size(newContentKey)).willReturn(1L);
+
+    given(contentRepository.findById(oldContentId)).willReturn(Optional.of(mockOldContent));
+    given(contentRepository.findById(newContentId)).willReturn(Optional.of(mockNewContent));
+
+    watchingSessionService.enterSession(userId, newContentId);
+
+    //이전 방에 대한 LEAVE 메시지가 브로드캐스팅 되었는지 검증
+    verify(messagingTemplate).convertAndSend(eq(
+        "/sub/contents/" + oldContentId + "/watch"), any(WatchingSessionChange.class));
+    //새 방에 대한 ENTER 메시지가 브로드캐스팅 되었는지 검증
+    verify(messagingTemplate).convertAndSend(eq(
+        "/sub/contents/" + newContentId + "/watch"), any(WatchingSessionChange.class));
+  }
+
+  @Test
+  @DisplayName("실시간 채팅 브로드캐스팅 성공 - 인증된 유저가 메시지 전송 시 올바른 경로로 발행")
+  void broadcastChatMessage_Success() {
+    String contentIdStr = UUID.randomUUID().toString();
+    ContentChatSendRequest request = new ContentChatSendRequest("안녕하세요!");
+
+    UUID userId = UUID.randomUUID();
+    CustomUserDetails userDetails = new CustomUserDetails(userId, Role.USER);
+    Principal principal = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+
+    User mockUser = mock(User.class);
+    given(userRepository.findById(userId)).willReturn(Optional.of(mockUser));
+    given(mockUser.getName()).willReturn("테스터");
+
+    watchingSessionService.broadcastChatMessage(contentIdStr, request, principal);
+
+    //올바른 채팅 구독 경로로 메시지가 전송되었는지 검증
+    verify(messagingTemplate).convertAndSend(
+        eq("/sub/contents/" + contentIdStr + "/chat"), any(ContentChatDto.class));
   }
 }

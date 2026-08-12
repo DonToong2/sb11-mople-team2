@@ -76,7 +76,7 @@ public class ContentService{
         savedContent.getDescription(),
         savedContent.getThumbnailUrl(),
         savedContent.getTags(),
-        savedContent.getAverageRating(),
+        savedContent.getRatingSum(),
         savedContent.getReviewCount(),
         savedContent.getWatcherCount()
     );
@@ -127,7 +127,7 @@ public class ContentService{
         "DESCENDING",
         content -> {
           if ("averageRating".equals(actualSortBy) || "rating".equals(actualSortBy) || "score".equals(actualSortBy) || "rate".equals(actualSortBy)) {
-            return String.valueOf(content.getAverageRating());
+            return String.valueOf(content.getRatingSum());
           } else if ("watcherCount".equals(actualSortBy)) {
             return String.valueOf(content.getWatcherCount());
           } else {
@@ -144,7 +144,7 @@ public class ContentService{
             content.getDescription(),
             content.getThumbnailUrl(),
             content.getTags(),
-            content.getAverageRating(),
+            content.getRatingSum(),
             content.getReviewCount(),
             content.getWatcherCount()
         )).toList();
@@ -184,7 +184,7 @@ public class ContentService{
         content.getDescription(),
         content.getThumbnailUrl(),
         content.getTags(),
-        content.getAverageRating(),
+        content.getRatingSum(),
         content.getReviewCount(),
         content.getWatcherCount()
     );
@@ -225,7 +225,7 @@ public class ContentService{
         content.getDescription(),
         content.getThumbnailUrl(),
         content.getTags(),
-        content.getAverageRating(),
+        content.getRatingSum(),
         content.getReviewCount(),
         content.getWatcherCount()
     );

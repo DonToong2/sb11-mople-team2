@@ -82,10 +82,10 @@ public class ContentQueryRepository {
       long count = Long.parseLong(cursorValue);
       return content.watcherCount.lt(count)
           .or(content.watcherCount.eq(count).and(content.id.gt(cursorId)));
-    } else if ("averageRating".equals(sortBy) || "rating".equals(sortBy) || "score".equals(sortBy) || "rate".equals(sortBy)) {
+    } else if ("ratingSum".equals(sortBy) || "rating".equals(sortBy) || "score".equals(sortBy) || "rate".equals(sortBy)) {
       double rating = Double.parseDouble(cursorValue);
-      return content.averageRating.lt(rating)
-          .or(content.averageRating.eq(rating).and(content.id.gt(cursorId)));
+      return content.ratingSum.lt(rating)
+          .or(content.ratingSum.eq(rating).and(content.id.gt(cursorId)));
     } else { // 기본값: 최신순 (createdAt)
       Instant time = Instant.parse(cursorValue);
       return content.createdAt.lt(time)
@@ -97,8 +97,8 @@ public class ContentQueryRepository {
   private OrderSpecifier<?>[] orderSpecifiers(String sortBy) {
     if ("watcherCount".equals(sortBy)) {
       return new OrderSpecifier<?>[]{content.watcherCount.desc().nullsLast(), content.id.asc()};
-    } else if ("averageRating".equals(sortBy) || "rating".equals(sortBy) || "score".equals(sortBy) || "rate".equals(sortBy)) {
-      return new OrderSpecifier<?>[]{content.averageRating.desc().nullsLast(), content.id.asc()};
+    } else if ("ratingSum".equals(sortBy) || "rating".equals(sortBy) || "score".equals(sortBy) || "rate".equals(sortBy)) {
+      return new OrderSpecifier<?>[]{content.ratingSum.desc().nullsLast(), content.id.asc()};
     }
     return new OrderSpecifier<?>[]{content.createdAt.desc().nullsLast(), content.id.asc()};
   }

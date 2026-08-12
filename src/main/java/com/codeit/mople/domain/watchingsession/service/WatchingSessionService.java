@@ -146,7 +146,7 @@ public class WatchingSessionService {
     WatchingSessionContentDto contentDto = new WatchingSessionContentDto(
         content.getId(), content.getType().name(), content.getTitle(),
         content.getDescription(), content.getThumbnailUrl(), content.getTags(),
-        content.getAverageRating(), content.getReviewCount()
+        content.getRatingSum(), content.getReviewCount()
     );
 
     //Redis 데이터 -> response dto 매핑
