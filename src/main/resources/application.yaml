@@ -13,7 +13,17 @@ spring:
           tmdb:
             connect-timeout: 3000
             read-timeout: 10000
+            # (주의)full로 올리면 Authorization 헤더에 tmdb api가 로그에 남아 유출됨
             logger-level: basic
+  security:
+    oauth2:
+      client:
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
 
   kafka:
     producer:
@@ -59,3 +69,4 @@ batch:
   tmdb:
     collect:
       max-pages: 5
+      skip-limit: 10
