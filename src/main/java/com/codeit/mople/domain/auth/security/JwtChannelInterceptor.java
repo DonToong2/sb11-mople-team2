@@ -134,6 +134,11 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
     // 개별 에러 채널을 수신할 수 있도록 구독 경로 오픈
     if (destination.startsWith("/user/queue/")) {
+
+      if (!(accessor.getUser() instanceof UsernamePasswordAuthenticationToken authentication) || !authentication.isAuthenticated()) {
+        log.warn("WebSocket 구독 거부: 인증되지 않은 유저의 에러 채널 구독 시도 - destination: {}", destination);
+        throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+      }
       log.info("WebSocket 에러 채널 구독 승인 - destination: {}", destination);
       return;
     }
