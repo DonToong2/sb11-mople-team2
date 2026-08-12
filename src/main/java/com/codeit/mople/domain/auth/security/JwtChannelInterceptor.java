@@ -2,6 +2,7 @@ package com.codeit.mople.domain.auth.security;
 
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
@@ -31,6 +32,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
   private final JwtProvider jwtProvider;
   private final UserRepository userRepository;
   private final ConversationRepository conversationRepository;
+  private final SessionTokenRepository sessionTokenRepository;
 
   @Override
   public @Nullable Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -49,12 +51,12 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
         try {
           UUID userId = jwtProvider.getUserId(token);
-          long tokenSessionVersion = jwtProvider.getSessionVersion(token);
+          String tokenJti = jwtProvider.getJti(token);
 
           userRepository.findById(userId).ifPresentOrElse(user -> {
             // 1. 중복 로그인으로 인한 이전 기기 세션 만료 검증
-            if (user.getSessionVersion() != tokenSessionVersion) {
-              log.warn("WebSocket 연결 거부: 타 기기 로그인으로 인해 만료된 토큰 세션 버전 사용 시도 - userId: {}", userId);
+            if (!sessionTokenRepository.isValid(userId, tokenJti)) {
+              log.warn("WebSocket 연결 거부: 타 기기 로그인으로 인해 만료된 토큰 세션 사용 시도 - userId: {}", userId);
               throw new AuthException(AuthErrorCode.EXPIRED_SESSION,
                   Map.of("reason", "세션이 만료되었습니다."));
             }

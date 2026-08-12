@@ -6,6 +6,7 @@ import com.codeit.mople.domain.auth.dto.response.AuthTokens;
 import com.codeit.mople.domain.auth.dto.response.RefreshToken;
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.dto.response.UserDto;
 import com.codeit.mople.domain.user.entity.AuthProvider;
 import com.codeit.mople.domain.user.entity.User;
@@ -13,6 +14,7 @@ import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
 import io.jsonwebtoken.JwtException;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Locale;
@@ -35,6 +37,7 @@ public class AuthService {
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
   private final JwtProvider jwtProvider;
+  private final SessionTokenRepository sessionTokenRepository;
 
   @Transactional
   public AuthTokens signIn(SignInRequest request) {
@@ -49,8 +52,9 @@ public class AuthService {
       throw new AuthException(AuthErrorCode.LOCKED_ACCOUNT);
     }
 
-    long newSessionVersion = user.increaseSessionVersion();
-    String accessToken = jwtProvider.createAccessToken(user.getId(), newSessionVersion);
+    String jti = UUID.randomUUID().toString();
+    String accessToken = jwtProvider.createAccessToken(user.getId(), jti);
+    sessionTokenRepository.save(user.getId(), jti, sessionTtl());
 
     return issueRefreshToken(user, accessToken);
   }
@@ -60,7 +64,6 @@ public class AuthService {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new IllegalStateException("OAuth 로그인 후 사용자를 찾을 수 없습니다."));
 
-    user.increaseSessionVersion();
     String refreshToken = jwtProvider.createRefreshToken(user.getId());
     Instant refreshExpiresAt = Instant.now().plusMillis(jwtProvider.getRefreshTokenExpiration());
     user.updateRefreshToken(refreshToken, refreshExpiresAt);
@@ -120,7 +123,7 @@ public class AuthService {
         return;
       }
       user.clearRefreshToken();
-      user.increaseSessionVersion();
+      sessionTokenRepository.invalidate(user.getId());
     });
   }
 
@@ -140,7 +143,9 @@ public class AuthService {
       throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
 
-    String newAccessToken = jwtProvider.createAccessToken(user.getId(), user.getSessionVersion());
+    String jti = UUID.randomUUID().toString();
+    String newAccessToken = jwtProvider.createAccessToken(user.getId(), jti);
+    sessionTokenRepository.save(user.getId(), jti, sessionTtl());
     return issueRefreshToken(user, newAccessToken);
   }
 
@@ -150,5 +155,9 @@ public class AuthService {
     user.updateRefreshToken(refreshToken, refreshExpiresAt);
 
     return new AuthTokens(accessToken, refreshToken, refreshExpiresAt, UserDto.from(user));
+  }
+
+  private Duration sessionTtl() {
+    return Duration.ofMillis(jwtProvider.getRefreshTokenExpiration());
   }
 }
