@@ -45,11 +45,21 @@ public class DirectMessageRepositoryTest {
     for (int i = 1; i <= 5; i++) {
       DirectMessage message = DirectMessage.createMessage(targetConversation, sender, receiver, "메시지 " + i);
       tem.persistAndFlush(message);
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt(); // 인터럽트 상태를 다시 켜줌
+      }
     }
 
     for (int i = 1; i <= 2; i++) {
       DirectMessage message = DirectMessage.createMessage(otherConversation, sender, thirdUser, "메시지 " + i);
       tem.persistAndFlush(message);
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
     }
 
     tem.clear();
