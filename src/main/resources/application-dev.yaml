@@ -71,3 +71,8 @@ oauth2:
   redirect:
     success-uri: http://localhost:8080/
     failure-uri: http://localhost:8080/
+
+app:
+  websocket:
+    allowed-origins:
+      - "http://localhost:8080"
