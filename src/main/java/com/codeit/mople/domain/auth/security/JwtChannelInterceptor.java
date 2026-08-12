@@ -132,6 +132,12 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
       throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
     }
 
+    // 개별 에러 채널을 수신할 수 있도록 구독 경로 오픈
+    if (destination.startsWith("/user/queue/")) {
+      log.info("WebSocket 에러 채널 구독 승인 - destination: {}", destination);
+      return;
+    }
+
     // DM 구독 경로인지 확인
     if (destination.startsWith("/sub/conversations/")) {
       validateConversationSubscription(accessor, destination);

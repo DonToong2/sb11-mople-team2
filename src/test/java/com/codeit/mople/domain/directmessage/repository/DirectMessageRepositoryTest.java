@@ -48,7 +48,7 @@ public class DirectMessageRepositoryTest {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
-        Thread.currentThread().interrupt(); // 인터럽트 상태를 다시 켜줌
+        throw new IllegalStateException("테스트 데이터 생성 중 인터럽트 발생으로 중단됨", e);
       }
     }
 
@@ -58,7 +58,7 @@ public class DirectMessageRepositoryTest {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
+        throw new IllegalStateException("테스트 데이터 생성 중 인터럽트 발생으로 중단됨", e);
       }
     }
 
