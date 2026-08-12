@@ -24,6 +24,16 @@ spring:
             token-uri: https://kauth.kakao.com/oauth/token
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        spring.json.add.type.headers: false
+        max.block.ms: 5000
+        delivery.timeout.ms: 30000
 
 server:
   port: 8080
@@ -58,3 +68,8 @@ batch:
     collect:
       max-pages: 5
       skip-limit: 10
+
+kafka:
+  enabled: false
+  topics:
+    follow-created: mople.follow.created.v1

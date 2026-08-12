@@ -4,6 +4,9 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:}
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -49,3 +52,6 @@ batch:
     collect:
       cron: "0 0 3 * * *"
       enabled: ${TMDB_COLLECT_ENABLED:false}
+
+kafka:
+  enabled: ${KAFKA_ENABLED:false}

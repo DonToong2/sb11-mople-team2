@@ -7,6 +7,8 @@ spring:
     redis:
       host: localhost
       port: 6379
+  kafka:
+    bootstrap-servers: localhost:9093
 
   jpa:
     hibernate:
@@ -73,3 +75,6 @@ app:
   websocket:
     allowed-origins:
       - "http://localhost:8080"
+
+kafka:
+  enabled: false
