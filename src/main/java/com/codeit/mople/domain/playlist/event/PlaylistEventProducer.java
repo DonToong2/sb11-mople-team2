@@ -14,12 +14,12 @@ public class PlaylistEventProducer {
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void on(PlaylistSubscribedEvent event) {
-    eventPublisher.publish("playlist-subscribed", event);
+    eventPublisher.publish("playlist-events", event.playlistId().toString(), event);
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void on(PlaylistUnsubscribedEvent event) {
-    eventPublisher.publish("playlist-unsubscribed", event);
+    eventPublisher.publish("playlist-events", event.playlistId().toString(), event);
   }
 
 }
