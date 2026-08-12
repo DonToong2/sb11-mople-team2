@@ -85,7 +85,7 @@ public class ContentService{
   //콘텐츠 목록 조회
   @Transactional(readOnly = true)
   public CursorResponseContentDto getContents(
-      UUID cursorId, String cursorValue, int limit, String type, String sortBy) {
+      UUID cursorId, String cursorValue, int limit, String type, String keywordLike, String sortBy) {
     log.debug("콘텐츠 목록 조회 시작 - cursorId: {}, cursorValue: {}, limit: {}, type: {}, sortBy: {}", cursorId, cursorValue, limit, type, sortBy);
 
     if (limit <= 0 || limit > 100) {
@@ -115,8 +115,8 @@ public class ContentService{
 
     //데이터 조회 및 카운트
     List<Content> contents = contentQueryRepository
-        .findContentByCursor(cursorId, cursorValue, limit, contentType, actualSortBy);
-    long totalCount = contentQueryRepository.countContentsByType(contentType);
+        .findContentByCursor(cursorId, cursorValue, limit, contentType, keywordLike, actualSortBy);
+    long totalCount = contentQueryRepository.countContentsByTypeAndKeyword(contentType, keywordLike);
 
     //정렬 기준에 맞는 커서 값 동적 추출
     CursorResponse<Content> cursorResponse = CursorResponse.of(

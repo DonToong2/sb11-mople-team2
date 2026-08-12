@@ -82,6 +82,7 @@ public interface ContentApi {
       @RequestParam(name = "type", required = false) String type,
       @RequestParam(name = "contentType", required = false) String contentTypeParam,
       @RequestParam(name = "typeEqual", required = false) String typeEqual,
+      @RequestParam(name = "keywordLike", required = false) String keywordLike,
       @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy
   );
 

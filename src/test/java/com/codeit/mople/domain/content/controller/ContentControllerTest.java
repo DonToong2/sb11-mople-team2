@@ -207,13 +207,14 @@ public class ContentControllerTest {
         List.of(content1, content2), "next-cursor-string", UUID.randomUUID(),
         false, 2L, "createdAt", "DESCENDING");
 
-    given(contentService.getContents(any(), any(), anyInt(), any(), any())).willReturn(mockPageResponse);
+    given(contentService.getContents(any(), any(), anyInt(), any(), any(), any())).willReturn(mockPageResponse);
 
     mockMvc.perform(
         get("/api/contents")
             .param("limit", "20")
             .param("idAfter", UUID.randomUUID().toString())
             .param("cursor", Instant.now().toString())
+            .param("keyword", "테스트")
             .contentType(MediaType.APPLICATION_JSON)
             .with(mockAuth(UUID.randomUUID(),Role.USER))
     ).andExpect(status().isOk());
@@ -230,7 +231,7 @@ public class ContentControllerTest {
     CursorResponseContentDto mockPageResponse = new CursorResponseContentDto(
         List.of(content1), null, null, false, 1L, "createdAt", "DESCENDING");
 
-    given(contentService.getContents(null, null, 20, null, "createdAt")).willReturn(mockPageResponse);
+    given(contentService.getContents(null, null, 20, null, null, "createdAt")).willReturn(mockPageResponse);
 
     mockMvc.perform(
         get("/api/contents")

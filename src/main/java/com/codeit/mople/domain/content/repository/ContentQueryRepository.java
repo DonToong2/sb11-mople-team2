@@ -20,10 +20,11 @@ public class ContentQueryRepository {
 
   //커서 기반 데이터 조회 (limit + 1개)
   public List<Content> findContentByCursor(UUID cursorId, String cursorValue,
-      int limit, ContentType type, String sortBy) {
+      int limit, ContentType type, String keyword, String sortBy) {
     return queryFactory.selectFrom(content)
         .where(
             typeCondition(type), //카테고리 동적 필터
+            titleLikeCondition(keyword), //검색어 동적 필터
             cursorCondition(cursorId, cursorValue, sortBy) //정렬 기준별 커서 동적 조건
         )
         .orderBy(orderSpecifiers(sortBy)) //동적 OrderBy
@@ -40,10 +41,13 @@ public class ContentQueryRepository {
   }
 
   //분류(type)별 데이터 개수 조회 메서드
-  public long countContentsByType(ContentType type) {
+  public long countContentsByTypeAndKeyword(ContentType type, String keyword) {
     Long count = queryFactory.select(content.count())
         .from(content)
-        .where(typeCondition(type))
+        .where(
+            typeCondition(type),
+            titleLikeCondition(keyword)
+        )
         .fetchOne();
     return count != null ? count : 0L;
   }
@@ -51,6 +55,21 @@ public class ContentQueryRepository {
   //카테고리 필터링 조건
   private BooleanExpression typeCondition(ContentType type) {
     return type != null ? content.type.eq(type) : null;
+  }
+
+  //검색어 필터링 조건
+  private BooleanExpression titleLikeCondition(String keywordLike) {
+    if (keywordLike == null || keywordLike.isBlank()) {
+      return null;
+    }
+
+    String escaped = keywordLike
+        .replace(".", "..")
+        .replace("%", ".%")
+        .replace("_", "._");
+
+    //대소문자 구분 없이 검색하기 위해 lower() 적용
+    return content.title.lower().like("%" + escaped.toLowerCase() + "%", '.');
   }
 
   // 커서 필터링 조건

@@ -114,12 +114,12 @@ public class ContentServiceTest {
     List<Content> mockContents = new ArrayList<>();
     mockContents.add(content1); //limit보다 적게 반환
 
-    given(contentQueryRepository.findContentByCursor(any(), any(), eq(limit), any(), any()))
+    given(contentQueryRepository.findContentByCursor(any(), any(), eq(limit), any(), any(), any()))
         .willReturn(mockContents);
-    given(contentQueryRepository.countContentsByType(any())).willReturn(1L);
+    given(contentQueryRepository.countContentsByTypeAndKeyword(any(), any())).willReturn(1L);
 
     CursorResponseContentDto response = contentService.getContents(
-        null, null, limit, null, "createdAt");
+        null, null, limit, null, null, "createdAt");
 
     assertThat(response).isNotNull();
     assertThat(response.data()).hasSize(1);
@@ -132,7 +132,7 @@ public class ContentServiceTest {
   @DisplayName("콘텐츠 목록 조회 실패 - limit 값이 0 이하일 경우 ContentException 발생")
   void getContents_Fail_NegativeLimit() {
     assertThatThrownBy(() -> contentService.getContents(
-        null, null, -1, null, null))
+        null, null, -1, null, null, null))
         .isInstanceOf(ContentException.class)
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);

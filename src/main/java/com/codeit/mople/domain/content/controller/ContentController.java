@@ -61,6 +61,7 @@ public class ContentController implements ContentApi {
       @RequestParam(name = "type", required = false) String type,
       @RequestParam(name = "contentType", required = false) String contentTypeParam,
       @RequestParam(name = "typeEqual", required = false) String typeEqual,
+      @RequestParam(name = "keywordLike", required = false) String keywordLike,
       @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy) {
 
     //type 파라미터가 비어있으면 contentTypeParam을 사용
@@ -68,7 +69,7 @@ public class ContentController implements ContentApi {
     if (actualType == null || actualType.isBlank()) actualType = contentTypeParam;
     if (actualType == null || actualType.isBlank()) actualType = typeEqual;
 
-    CursorResponseContentDto response = contentService.getContents(cursorId, cursorValue, limit, actualType, sortBy);
+    CursorResponseContentDto response = contentService.getContents(cursorId, cursorValue, limit, actualType, keywordLike, sortBy);
     return ResponseEntity.ok(response);
   }
 
