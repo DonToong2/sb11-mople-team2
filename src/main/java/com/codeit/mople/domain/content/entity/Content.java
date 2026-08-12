@@ -44,7 +44,7 @@ public class Content extends BaseTimeEntity {
   @ElementCollection(fetch = FetchType.LAZY)
   @CollectionTable(name = "content_tags", joinColumns = @JoinColumn(name = "content_id"))
   @Column(name = "tags")
-  private List<String> tags;
+  private List<String> tags = new ArrayList<>();
 
   // 동시성 문제를 개선하기 위해 총 별점 필드를 추가
   // 기존 리뷰 평균 별점은 서비스 로직에서 계산하여 응답으로 보냄
@@ -81,6 +81,15 @@ public class Content extends BaseTimeEntity {
     this.externalId = externalId;
   }
 
+
+  // 평균 평점을 구하는 로직
+  public double calculateAverageRating() {
+    if (reviewCount == 0) {
+      return 0.0;
+    }
+    return ratingSum / reviewCount;
+  }
+
   //관리자가 콘텐츠의 기본 정보를 수정할 때 사용하는 메서드
   public void updateContentInfo(String title, String description, String thumbnailUrl, List<String> tags) {
     if (title != null) {
@@ -107,12 +116,43 @@ public class Content extends BaseTimeEntity {
     this.watcherCount = watcherCount;
   }
 
-  // 평균 평점을 구하는 로직
-  public double calculateAverageRating() {
-    if (reviewCount == 0) {
-      return 0.0;
+  // 응답(title, description, thumbnailUrl, tags)데이터를 받아서 현재 콘텐츠가 비어있으면 채워 넣음
+  public boolean syncFromExternal(String title, String description, String thumbnailUrl, List<String> tags) {
+    boolean changed = false;
+
+    if (shouldFill(this.title, title)) {
+      this.title = title;
+      changed = true;
     }
-    return ratingSum / reviewCount;
+    if (shouldFill(this.description, description)) {
+      this.description = description;
+      changed = true;
+    }
+    if (shouldFill(this.thumbnailUrl, thumbnailUrl)) {
+      this.thumbnailUrl = thumbnailUrl;
+      changed = true;
+    }
+    if (shouldFillTags(this.tags, tags)) {
+      this.tags.clear();
+      this.tags.addAll(tags);
+      changed = true;
+    }
+    return changed;
   }
 
+  // 현재 내용과, 응답받은 내용을 받아서 응답내용이 없으면 false/현재내용이 비어있으면 true
+  private static boolean shouldFill(String current, String incoming) {
+    if (incoming == null || incoming.isBlank()) {
+      return false;
+    }
+    return current == null || current.isBlank();
+  }
+
+  // 현재 태그내용과, 응답받은 태그내용을 받아서 응답내용이 없으면 false/현재내용이 비어있으면 true
+  private static boolean shouldFillTags(List<String> current, List<String> incoming) {
+    if (incoming == null || incoming.isEmpty()) {
+      return false;
+    }
+    return current == null || current.isEmpty();
+  }
 }
