@@ -42,14 +42,22 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message,
         StompHeaderAccessor.class);
 
-    if (accessor != null) {
-      if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-        handleConnect(accessor);
-        // CONNECT 처리가 정상 완료되면, 변경된 가변 헤더를 적용한 새 메시지를 빌드해서 반환
-        return MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
-      } else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
-        handleSubscribe(accessor);
+    if (accessor == null) {
+      StompCommand command = StompHeaderAccessor.wrap(message).getCommand();
+      if (StompCommand.CONNECT.equals(command) || StompCommand.SUBSCRIBE.equals(command)) {
+        log.error("WebSocket 처리 거부: 가변 STOMP 헤더 접근 불가 - command: {}", command);
+        throw new AuthException(AuthErrorCode.INVALID_TOKEN,
+            Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
       }
+      return message;
+    }
+
+    if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+      handleConnect(accessor);
+      // CONNECT 처리가 정상 완료되면, 변경된 가변 헤더를 적용한 새 메시지를 빌드해서 반환
+      return MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
+    } else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+      handleSubscribe(accessor);
     }
     return message;
   }
