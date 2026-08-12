@@ -35,13 +35,14 @@ public class SseEventConsumer {
     log.debug("SSE 이벤트 전송 시도: receiverId={}, directMessageId={}",
         event.receiverId(), event.directMessageId());
 
-    DirectMessage directMessage =
-        directMessageRepository.findById(event.directMessageId()).orElseThrow(() ->
-            new DirectMessageException(
-                DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND,
-                Map.of("directMessageId", event.directMessageId())
-            )
-        );
+    DirectMessage directMessage = directMessageRepository.findById(event.directMessageId())
+        .orElse(null);
+
+    if (directMessage == null) {
+      log.warn("SSE 전송 대상 DM을 찾을 수 없습니다: directMessageId={}, receiverId={}",
+          event.directMessageId(), event.receiverId());
+      return;
+    }
 
     DirectMessageDto directMessageDto = DirectMessageDto.from(directMessage);
 
@@ -69,13 +70,14 @@ public class SseEventConsumer {
     log.debug("SSE 이벤트 전송 시도: receiverId={}, notificationId={}",
         event.receiverId(), event.notificationId());
 
-    Notification notification =
-        notificationRepository.findById(event.notificationId()).orElseThrow(() ->
-            new NotificationException(
-                NotificationErrorCode.NOTIFICATION_NOT_FOUND,
-                Map.of("notificationId", event.notificationId())
-            )
-        );
+    Notification notification = notificationRepository.findById(event.notificationId())
+        .orElse(null);
+
+    if (notification == null) {
+      log.warn("SSE 전송 대상 알림을 찾을 수 없습니다: notificationId={}, receiverId={}",
+          event.notificationId(), event.receiverId());
+      return;
+    }
 
     NotificationResponse response = NotificationResponse.from(notification);
 
