@@ -53,14 +53,14 @@ public class ReviewConsumerTest {
 
       ReviewCreatedEvent event = new ReviewCreatedEvent(eventId, contentId, 4.0);
 
-      given(processedEventRepository.existsByEventId(eventId))
-          .willReturn(false);
+      given(processedEventRepository.insertIfAbsent(eventId))
+          .willReturn(1);
 
       // when
       eventConsumer.handle(event);
 
       // then
-      verify(processedEventRepository).existsByEventId(eventId);
+      verify(processedEventRepository).insertIfAbsent(eventId);
       verify(processedEventRepository).save(any(ProcessedEvent.class));
       verify(contentRepository).increaseRating(contentId, 4.0);
     }
@@ -82,20 +82,19 @@ public class ReviewConsumerTest {
 
       ReviewUpdatedEvent event = new ReviewUpdatedEvent(eventId, contentId, 4.0, 5.0);
 
-      given(processedEventRepository.existsByEventId(eventId))
-          .willReturn(false);
+      given(processedEventRepository.insertIfAbsent(eventId))
+          .willReturn(1);
 
       // when
       eventConsumer.handle(event);
 
       // then
-      verify(processedEventRepository).existsByEventId(eventId);
+      verify(processedEventRepository).insertIfAbsent(eventId);
       verify(processedEventRepository).save(any(ProcessedEvent.class));
       verify(contentRepository).updateRating(contentId, 4.0, 5.0);
     }
 
   }
-
 
   @Nested
   @DisplayName("리뷰 삭제 이벤트(콘텐츠 개수, 평균 평점 업데이트)")
@@ -112,14 +111,14 @@ public class ReviewConsumerTest {
 
       ReviewDeletedEvent event = new ReviewDeletedEvent(eventId, contentId, 4.0);
 
-      given(processedEventRepository.existsByEventId(eventId))
-          .willReturn(false);
+      given(processedEventRepository.insertIfAbsent(eventId))
+          .willReturn(1);
 
       // when
       eventConsumer.handle(event);
 
       // then
-      verify(processedEventRepository).existsByEventId(eventId);
+      verify(processedEventRepository).insertIfAbsent(eventId);
       verify(processedEventRepository).save(any(ProcessedEvent.class));
       verify(contentRepository).decreaseRating(contentId, 4.0);
     }

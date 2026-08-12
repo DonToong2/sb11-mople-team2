@@ -65,14 +65,14 @@ public class PlaylistEventConsumerTest {
               "playlist"
           );
 
-      given(processedEventRepository.existsByEventId(eventId))
-          .willReturn(false);
+      given(processedEventRepository.insertIfAbsent(eventId))
+          .willReturn(1);
 
       // when
       eventConsumer.handle(event);
 
       // then
-      verify(processedEventRepository).existsByEventId(eventId);
+      verify(processedEventRepository).insertIfAbsent(eventId);
       verify(processedEventRepository).save(any(ProcessedEvent.class));
       verify(playlistRepository).increaseSubscriberCount(playlistId);
     }
@@ -96,14 +96,14 @@ public class PlaylistEventConsumerTest {
               "playlist"
           );
 
-      given(processedEventRepository.existsByEventId(eventId))
-          .willReturn(true);
+      given(processedEventRepository.insertIfAbsent(eventId))
+          .willReturn(0);
 
       // when
       eventConsumer.handle(event);
 
       // then
-      verify(processedEventRepository).existsByEventId(eventId);
+      verify(processedEventRepository).insertIfAbsent(eventId);
       verify(processedEventRepository, never()).save(any(ProcessedEvent.class));
       verifyNoInteractions(playlistRepository);
     }
@@ -126,14 +126,14 @@ public class PlaylistEventConsumerTest {
       PlaylistUnsubscribedEvent event =
           new PlaylistUnsubscribedEvent(eventId, playlistId, subscriberId);
 
-      given(processedEventRepository.existsByEventId(eventId))
-          .willReturn(false);
+      given(processedEventRepository.insertIfAbsent(eventId))
+          .willReturn(1);
 
       // when
       eventConsumer.handle(event);
 
       // then
-      verify(processedEventRepository).existsByEventId(eventId);
+      verify(processedEventRepository).insertIfAbsent(eventId);
       verify(processedEventRepository).save(any(ProcessedEvent.class));
       verify(playlistRepository).decreaseSubscriberCount(playlistId);
     }
@@ -151,14 +151,14 @@ public class PlaylistEventConsumerTest {
               subscriberId
           );
 
-      given(processedEventRepository.existsByEventId(eventId))
-          .willReturn(true);
+      given(processedEventRepository.insertIfAbsent(eventId))
+          .willReturn(0);
 
       // when
       eventConsumer.handle(event);
 
       // then
-      verify(processedEventRepository).existsByEventId(eventId);
+      verify(processedEventRepository).insertIfAbsent(eventId);
       verify(processedEventRepository, never()).save(any(ProcessedEvent.class));
       verifyNoInteractions(playlistRepository);
     }
@@ -175,8 +175,8 @@ public class PlaylistEventConsumerTest {
       PlaylistUnsubscribedEvent event =
           new PlaylistUnsubscribedEvent(eventId, playlistId, subscriberId);
 
-      given(processedEventRepository.existsByEventId(eventId))
-          .willReturn(false);
+      given(processedEventRepository.insertIfAbsent(eventId))
+          .willReturn(1);
 
       given(playlistRepository.decreaseSubscriberCount(playlistId))
           .willReturn(0); // 구독자 수 감소 실패 시 0 반환
@@ -185,7 +185,7 @@ public class PlaylistEventConsumerTest {
       eventConsumer.handle(event);
 
       // then
-      verify(processedEventRepository).existsByEventId(eventId);
+      verify(processedEventRepository).insertIfAbsent(eventId);
 
       // 구독자 수가 이미 0일 경우로 인해 감소 실패할 경우 재시도 없이 커밋 처리되기 때문에 저장하게 됨
       verify(processedEventRepository).save(any(ProcessedEvent.class));

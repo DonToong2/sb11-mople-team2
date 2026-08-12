@@ -73,12 +73,13 @@ public class ReviewEventConsumer {
 
   private boolean checkAndRecordProcessedEvent(UUID eventId) {
     // 이미 해당 eventId가 존재하면 스킵
-    if (processedEventRepository.existsByEventId(eventId)) {
+    int inserted = processedEventRepository.insertIfAbsent(eventId);
+
+    if (inserted == 0) {
       log.info("이미 처리된 이벤트입니다: eventId={}", eventId);
       return true;
     }
 
-    processedEventRepository.save(ProcessedEvent.of(eventId));
     return false;
   }
 
