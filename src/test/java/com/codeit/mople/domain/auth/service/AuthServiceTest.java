@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -60,9 +61,13 @@ public class AuthServiceTest {
 
   private User user;
 
+  private static final long REFRESH_TOKEN_EXPIRATION_MS = 604800000L;
+  private static final Duration EXPECTED_TTL = Duration.ofMillis(REFRESH_TOKEN_EXPIRATION_MS);
+
   @BeforeEach
   void setUp() {
     user = User.createUser("test@test.com", "encodedPassword", "testUser");
+    lenient().when(jwtProvider.getRefreshTokenExpiration()).thenReturn(REFRESH_TOKEN_EXPIRATION_MS);
   }
 
   @Test
@@ -104,7 +109,7 @@ public class AuthServiceTest {
 
     authService.signIn(request);
 
-    verify(sessionTokenRepository).save(eq(user.getId()), anyString(), any(Duration.class));
+    verify(sessionTokenRepository).save(eq(user.getId()), anyString(), eq(EXPECTED_TTL));
   }
 
   @Test
@@ -120,8 +125,7 @@ public class AuthServiceTest {
     authService.signIn(request);
 
     ArgumentCaptor<String> jtiCaptor = ArgumentCaptor.forClass(String.class);
-    verify(sessionTokenRepository, times(2)).save(eq(user.getId()), jtiCaptor.capture(), any(
-        Duration.class));
+    verify(sessionTokenRepository, times(2)).save(eq(user.getId()), jtiCaptor.capture(), eq(EXPECTED_TTL));
     assertThat(jtiCaptor.getAllValues().get(0)).isNotEqualTo(jtiCaptor.getAllValues().get(1));
   }
 
@@ -296,11 +300,9 @@ public class AuthServiceTest {
     UUID userId = UUID.randomUUID();
     when(jwtProvider.getUserId("valid-refresh-token")).thenReturn(userId);
     when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh-token");
-    when(refreshTokenRepository.rotate(eq(userId), eq("valid-refresh-token"), eq("new-refresh-token"), any(
-        Duration.class))).thenReturn(true);
+    when(refreshTokenRepository.rotate(eq(userId), eq("valid-refresh-token"), eq("new-refresh-token"), eq(EXPECTED_TTL))).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("new-access-token");
-    when(jwtProvider.getRefreshTokenExpiration()).thenReturn(604800000L);
 
     AuthTokens response = authService.refresh("valid-refresh-token");
 
@@ -324,8 +326,7 @@ public class AuthServiceTest {
     UUID userId = UUID.randomUUID();
     when(jwtProvider.getUserId("some-token")).thenReturn(userId);
     when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh-token");
-    when(refreshTokenRepository.rotate(eq(userId), eq("some-token"), eq("new-refresh-token"), any(
-        Duration.class))).thenReturn(true);
+    when(refreshTokenRepository.rotate(eq(userId), eq("some-token"), eq("new-refresh-token"), eq(EXPECTED_TTL))).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> authService.refresh("some-token"))
@@ -339,8 +340,7 @@ public class AuthServiceTest {
     UUID userId = UUID.randomUUID();
     when(jwtProvider.getUserId("wrong-token")).thenReturn(userId);
     when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh-token");
-    when(refreshTokenRepository.rotate(eq(userId), eq("wrong-token"), eq("new-refresh-token"), any(
-        Duration.class))).thenReturn(false);
+    when(refreshTokenRepository.rotate(eq(userId), eq("wrong-token"), eq("new-refresh-token"), eq(EXPECTED_TTL))).thenReturn(false);
 
     assertThatThrownBy(() -> authService.refresh("wrong-token"))
         .isInstanceOf(AuthException.class)
@@ -355,14 +355,13 @@ public class AuthServiceTest {
     UUID userId = UUID.randomUUID();
     when(jwtProvider.getUserId("old-token")).thenReturn(userId);
     when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh");
-    when(refreshTokenRepository.rotate(eq(userId), eq("old-token"), eq("new-refresh"), any(Duration.class))).thenReturn(true);
+    when(refreshTokenRepository.rotate(eq(userId), eq("old-token"), eq("new-refresh"), eq(EXPECTED_TTL))).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("new-access");
-    when(jwtProvider.getRefreshTokenExpiration()).thenReturn(604800000L);
 
     authService.refresh("old-token");
 
-    verify(refreshTokenRepository).rotate(eq(userId), eq("old-token"), eq("new-refresh"), any(Duration.class));
+    verify(refreshTokenRepository).rotate(eq(userId), eq("old-token"), eq("new-refresh"), eq(EXPECTED_TTL));
   }
 
   @Test
