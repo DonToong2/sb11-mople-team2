@@ -108,6 +108,35 @@ public class SseService {
     }
   }
 
+  public void sendFromStream(
+      UUID eventId,
+      UUID receiverId,
+      String eventName,
+      Object data
+  ) {
+    SseEmitter emitter = emitterRepository.find(receiverId);
+
+    if (emitter == null) {
+      return;
+    }
+
+    try {
+      emitter.send(
+          SseEmitter.event()
+              .id(eventId.toString())
+              .name(eventName)
+              .data(data)
+      );
+    } catch (IOException e) {
+      log.warn("Redis Stream SSE 전송 실패 - receiverId={}",
+          receiverId, e);
+
+      emitter.completeWithError(e);
+
+      throw new IllegalStateException("Redis Stream SSE 전송 실패", e);
+    }
+  }
+
   private void resendEvents(UUID receiverId, UUID lastEventId, SseEmitter emitter) {
     // lastEventId가 존재하지 않을 경우 스킵
     if (lastEventId == null) {
