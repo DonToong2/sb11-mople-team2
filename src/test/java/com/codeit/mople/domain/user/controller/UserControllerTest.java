@@ -16,6 +16,8 @@ import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -52,15 +54,20 @@ public class UserControllerTest {
   @Autowired
   private SessionTokenRepository sessionTokenRepository;
 
+  private final List<UUID> issuedSessionUserIds = new ArrayList<>();
+
   @AfterEach
   void tearDown() {
     userRepository.deleteAll();
+    issuedSessionUserIds.forEach(sessionTokenRepository::invalidate);
+    issuedSessionUserIds.clear();
   }
 
   private String tokenFor(User user) {
     String jti = UUID.randomUUID().toString();
     String token = jwtProvider.createAccessToken(user.getId(), jti);
     sessionTokenRepository.save(user.getId(), jti, Duration.ofDays(7));
+    issuedSessionUserIds.add(user.getId());
     return token;
   }
 

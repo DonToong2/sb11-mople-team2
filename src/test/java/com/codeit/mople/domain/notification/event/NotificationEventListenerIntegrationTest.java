@@ -102,6 +102,7 @@ class NotificationEventListenerIntegrationTest {
         reviewRepository.deleteAll();
         contentRepository.deleteAll();
         userRepository.deleteAll();
+        sessionTokenRepository.invalidate(targetUserId);
         SecurityContextHolder.clearContext();
     }
 
