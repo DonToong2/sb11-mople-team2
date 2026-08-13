@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.user.entity.Role;
@@ -49,6 +50,9 @@ class AdminServiceTest {
 
   @Mock
   private SessionTokenRepository sessionTokenRepository;
+
+  @Mock
+  private RefreshTokenRepository refreshTokenRepository;
 
   @Captor
   private ArgumentCaptor<UserAccountStatusChangedEvent> eventCaptor;
@@ -101,7 +105,6 @@ class AdminServiceTest {
     void ADMIN을_USER로_강등할_수_있고_강제_로그아웃_이벤트를_발행한다() {
       // given
       User admin = User.createAdmin("admin@test.com", "encoded", "어드민");
-      admin.updateRefreshToken("old-refresh-token", Instant.now().plusSeconds(3600));
       given(userRepository.findById(userId)).willReturn(Optional.of(admin));
 
       // when
@@ -109,7 +112,7 @@ class AdminServiceTest {
 
       // then
       assertThat(admin.getRole()).isEqualTo(Role.USER);
-      assertThat(admin.getRefreshToken()).isNull();
+      verify(refreshTokenRepository).invalidate(userId);
       verify(eventPublisher).publishEvent(eventCaptor.capture());
       assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
       verify(sessionTokenRepository).invalidate(userId);
@@ -238,7 +241,6 @@ class AdminServiceTest {
 
       // then
       assertThat(user.isLocked()).isFalse();
-      assertThat(user.getSessionVersion()).isEqualTo(0);
       verify(eventPublisher, never()).publishEvent(any());
     }
 

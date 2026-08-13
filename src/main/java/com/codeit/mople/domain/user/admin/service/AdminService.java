@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.user.admin.service;
 
+import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.user.entity.Role;
@@ -28,6 +29,7 @@ public class AdminService {
   private final UserRepository userRepository;
   private final ApplicationEventPublisher eventPublisher;
   private final SessionTokenRepository sessionTokenRepository;
+  private final RefreshTokenRepository refreshTokenRepository;
 
   @CacheEvict(value = "users", key = "#userId")
   @Transactional
@@ -41,6 +43,7 @@ public class AdminService {
     if (previousRole != role) {
       user.changeRole(role);
       sessionTokenRepository.invalidate(userId);
+      refreshTokenRepository.invalidate(userId);
       eventPublisher.publishEvent(new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ROLE_CHANGE, true));
     }
     log.info("권한 변경 완료 - userId: {}, role: {}", userId, role);
@@ -62,6 +65,7 @@ public class AdminService {
     if (previousLocked != locked) {
       if (locked) {
         sessionTokenRepository.invalidate(userId);
+        refreshTokenRepository.invalidate(userId);
       }
       ForceLogoutReason reason = locked ? ForceLogoutReason.ACCOUNT_LOCKED : ForceLogoutReason.ACCOUNT_UNLOCKED;
       // locked일 때만 위에서 increaseSessionVersion()을 호출했으므로 sessionInvalidated도 locked와 동일하다.
