@@ -66,12 +66,6 @@ public class ReviewControllerTest {
   private JwtProvider jwtProvider;
 
   @MockitoBean
-  private UserRepository userRepository;
-
-  @MockitoBean
-  private ReviewService reviewService;
-
-  @MockitoBean
   private CustomOAuth2UserService customOAuth2UserService;
 
   @MockitoBean
@@ -79,6 +73,13 @@ public class ReviewControllerTest {
 
   @MockitoBean
   private OAuth2FailureHandler oAuth2FailureHandler;
+
+
+  @MockitoBean
+  private UserRepository userRepository;
+
+  @MockitoBean
+  private ReviewService reviewService;
 
   @MockitoBean
   private SessionTokenRepository sessionTokenRepository;

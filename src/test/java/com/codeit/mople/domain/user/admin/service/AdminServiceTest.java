@@ -15,7 +15,8 @@ import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.error.CustomException;
 import com.codeit.mople.global.event.ForceLogoutReason;
-import com.codeit.mople.global.event.UserForceLogoutEvent;
+import com.codeit.mople.global.event.UserAccountStatusChangedEvent;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -50,7 +51,7 @@ class AdminServiceTest {
   private SessionTokenRepository sessionTokenRepository;
 
   @Captor
-  private ArgumentCaptor<UserForceLogoutEvent> eventCaptor;
+  private ArgumentCaptor<UserAccountStatusChangedEvent> eventCaptor;
 
   UUID userId;   // 대상 유저
   UUID adminId;  // 현재 로그인한 어드민 (요청자)
@@ -91,6 +92,8 @@ class AdminServiceTest {
       verify(eventPublisher).publishEvent(eventCaptor.capture());
       assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
       verify(sessionTokenRepository).invalidate(userId);
+      assertThat(eventCaptor.getValue().reason()).isEqualTo(ForceLogoutReason.ROLE_CHANGE);
+      assertThat(eventCaptor.getValue().sessionInvalidated()).isTrue();
     }
 
     @Test
@@ -98,6 +101,7 @@ class AdminServiceTest {
     void ADMIN을_USER로_강등할_수_있고_강제_로그아웃_이벤트를_발행한다() {
       // given
       User admin = User.createAdmin("admin@test.com", "encoded", "어드민");
+      admin.updateRefreshToken("old-refresh-token", Instant.now().plusSeconds(3600));
       given(userRepository.findById(userId)).willReturn(Optional.of(admin));
 
       // when
@@ -105,9 +109,12 @@ class AdminServiceTest {
 
       // then
       assertThat(admin.getRole()).isEqualTo(Role.USER);
+      assertThat(admin.getRefreshToken()).isNull();
       verify(eventPublisher).publishEvent(eventCaptor.capture());
       assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
       verify(sessionTokenRepository).invalidate(userId);
+      assertThat(eventCaptor.getValue().reason()).isEqualTo(ForceLogoutReason.ROLE_CHANGE);
+      assertThat(eventCaptor.getValue().sessionInvalidated()).isTrue();
     }
 
     @Test
@@ -181,6 +188,7 @@ class AdminServiceTest {
       verify(eventPublisher).publishEvent(eventCaptor.capture());
       assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
       assertThat(eventCaptor.getValue().reason()).isEqualTo(ForceLogoutReason.ACCOUNT_LOCKED);
+      assertThat(eventCaptor.getValue().sessionInvalidated()).isTrue();
     }
 
     @Test
@@ -200,6 +208,7 @@ class AdminServiceTest {
       verify(eventPublisher).publishEvent(eventCaptor.capture());
       assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
       assertThat(eventCaptor.getValue().reason()).isEqualTo(ForceLogoutReason.ACCOUNT_UNLOCKED);
+      assertThat(eventCaptor.getValue().sessionInvalidated()).isFalse();
     }
 
     @Test
@@ -215,6 +224,21 @@ class AdminServiceTest {
       // then
       assertThat(user.isLocked()).isTrue();
       verify(sessionTokenRepository, never()).invalidate(any());
+      verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("이미 잠금 해제 상태인 계정에 잠금 해제 요청 시 이벤트를 발행하지 않는다")
+    void 이미_잠금_해제_상태인_계정에_잠금_해제_요청_시_이벤트를_발행하지_않는다() {
+      // given - user는 기본적으로 잠금 해제(unlocked) 상태
+      given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+      // when
+      adminService.changeUserLocked(userId, false);
+
+      // then
+      assertThat(user.isLocked()).isFalse();
+      assertThat(user.getSessionVersion()).isEqualTo(0);
       verify(eventPublisher, never()).publishEvent(any());
     }
 
