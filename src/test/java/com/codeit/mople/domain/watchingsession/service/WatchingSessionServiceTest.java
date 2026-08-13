@@ -160,8 +160,12 @@ public class WatchingSessionServiceTest {
     UUID contentId = UUID.randomUUID();
     String userKey = "user:watching:" + userId;
     String contentKey = "content:watchers:" + contentId;
+    String sessionIdKey = "user:session:id:" + userId;
 
     Content mockContent = mock(Content.class);
+    lenient().when(mockContent.getType()).thenReturn(ContentType.MOVIE);
+
+    given(valueOperations.get(sessionIdKey)).willReturn(null);
 
     given(redisTemplate.execute(any(SessionCallback.class))).willAnswer(invocation -> {
       SessionCallback<?> action = invocation.getArgument(0);
@@ -188,8 +192,12 @@ public class WatchingSessionServiceTest {
     UUID contentId = UUID.randomUUID();
     String userKey = "user:watching:" + userId;
     String contentKey = "content:watchers:" + contentId;
+    String sessionIdKey = "user:session:id:" + userId;
 
-    Content mockContent = mock(Content.class); //DB 동기화 검증용 모의 객체
+    Content mockContent = mock(Content.class);
+    lenient().when(mockContent.getType()).thenReturn(ContentType.MOVIE);
+
+    given(valueOperations.get(sessionIdKey)).willReturn(UUID.randomUUID().toString());
 
     given(redisTemplate.execute(any(SessionCallback.class))).willAnswer(invocation -> {
       SessionCallback<?> action = invocation.getArgument(0);
@@ -247,6 +255,9 @@ public class WatchingSessionServiceTest {
     UUID contentId = UUID.randomUUID();
     String userKey = "user:watching:" + userId;
     String contentKey = "content:watchers:" + contentId;
+    String sessionIdKey = "user:session:id:" + userId;
+
+    lenient().when(valueOperations.get(sessionIdKey)).thenReturn(UUID.randomUUID().toString());
 
     given(redisTemplate.execute(any(SessionCallback.class))).willAnswer(invocation -> {
       SessionCallback<?> action = invocation.getArgument(0);
@@ -272,9 +283,14 @@ public class WatchingSessionServiceTest {
     String userKey = "user:watching:" + userId;
     String newContentKey = "content:watchers:" + newContentId;
     String oldContentKey = "content:watchers:" + oldContentId;
+    String sessionIdKey = "user:session:id:" + userId;
 
     Content mockOldContent = mock(Content.class);
     Content mockNewContent = mock(Content.class);
+    lenient().when(mockOldContent.getType()).thenReturn(ContentType.MOVIE);
+    lenient().when(mockNewContent.getType()).thenReturn(ContentType.MOVIE);
+
+    given(valueOperations.get(sessionIdKey)).willReturn(UUID.randomUUID().toString());
 
     //Redis 트랜잭션 실행 시 이전 방 ID("oldContentId")를 반환하도록 설정
     given(redisTemplate.execute(any(SessionCallback.class))).willReturn(oldContentId.toString());
