@@ -74,3 +74,6 @@ batch:
     collect:
       max-pages: 5
       skip-limit: 10
+
+sse:
+  server-id: ${SSE_SERVER_ID:local}
