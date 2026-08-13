@@ -24,17 +24,23 @@ public class DirectMessageReadRedisRepository {
   private static final Duration READ_DATA_TTL = Duration.ofDays(7);
 
   // 1. 유저가 DM 메시지를 읽었을 때 레디스에 최신 시각을 기록하고 Dirty Set에 등록
-  public void saveLastReadAt(UUID conversationId, UUID userId, Instant readAt) {
-    String valueKey = READ_KEY_PREFIX + conversationId + ":" + userId;
-    String dirtyMember = conversationId + ":" + userId;
+  public boolean saveLastReadAt(UUID conversationId, UUID userId, Instant readAt) {
+    try {
+      String valueKey = READ_KEY_PREFIX + conversationId + ":" + userId;
+      String dirtyMember = conversationId + ":" + userId;
 
-    // 레디스에 최신 읽음 시각 문자열 저장 (7일 뒤 자동 만료)
-    redisTemplate.opsForValue().set(valueKey, readAt.toString(), READ_DATA_TTL);
+      // 레디스에 최신 읽음 시각 문자열 저장 (7일 뒤 자동 만료)
+      redisTemplate.opsForValue().set(valueKey, readAt.toString(), READ_DATA_TTL);
 
-    // DB에 갱신할 유저를 Dirty Set에 등록
-    redisTemplate.opsForSet().add(DIRTY_SET_KEY, dirtyMember);
+      // DB에 갱신할 유저를 Dirty Set에 등록
+      redisTemplate.opsForSet().add(DIRTY_SET_KEY, dirtyMember);
 
-    log.info("Redis 읽음 시각 기록 및 대기열 추가 완료 - key: {}, readAt: {}", valueKey, readAt);
+      log.info("Redis 읽음 시각 기록 및 대기열 추가 완료 - key: {}, readAt: {}", valueKey, readAt);
+      return true;
+    } catch (Exception e) {
+      log.error("Redis 장애 감지: DB에 직접 읽음 시각 업데이트 (Fallback) 시도 - key: {}", conversationId, e);
+      return false;
+    }
   }
 
   // 2. [Cache-Aside] 레디스에서 최신 읽음 시각을 먼저 조회하고, 없으면 DB 값을 반환 후 레디스에 복구

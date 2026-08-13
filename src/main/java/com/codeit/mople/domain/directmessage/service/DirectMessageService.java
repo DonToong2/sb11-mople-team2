@@ -146,9 +146,13 @@ public class DirectMessageService {
       return;
     }
 
-    readRedisRepository.saveLastReadAt(conversationId, requesterId, message.getCreatedAt());
-
-    log.info("DM 읽음 처리 완료 (Redis 갱신) - messageId: {}", directMessageId);
+    boolean isRedisAlive = readRedisRepository.saveLastReadAt(conversationId, requesterId, message.getCreatedAt());
+    if (!isRedisAlive) {
+      conversation.updateLastReadAt(requesterId, message.getCreatedAt());
+      log.error("Redis 장애 감지: DB에 직접 읽음 시각 업데이트 (Fallback) 완료 - messageId: {}", directMessageId);
+    } else {
+      log.info("Redis 갱신: DM 읽음 처리 완료 - messageId: {}", directMessageId);
+    }
   }
 
   // 공통 인가 로직 분리
