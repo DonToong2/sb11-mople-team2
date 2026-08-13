@@ -4,6 +4,7 @@ import com.codeit.mople.domain.conversation.entity.Conversation;
 import com.codeit.mople.domain.conversation.exception.ConversationErrorCode;
 import com.codeit.mople.domain.conversation.exception.ConversationException;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
+import com.codeit.mople.domain.directmessage.repository.DirectMessageReadRedisRepository;
 import com.codeit.mople.domain.directmessage.dto.request.DirectMessageCursorRequest;
 import com.codeit.mople.domain.directmessage.dto.response.DirectMessageDto;
 import com.codeit.mople.domain.directmessage.entity.DirectMessage;
@@ -33,6 +34,7 @@ public class DirectMessageService {
   private final DirectMessageRepository directMessageRepository;
   private final ConversationRepository conversationRepository;
   private final ApplicationEventPublisher publisher;
+  private final DirectMessageReadRedisRepository readRedisRepository;
 
   // DM 발송 및 DB에 저장
   @Transactional
@@ -52,8 +54,8 @@ public class DirectMessageService {
     directMessage = directMessageRepository.save(directMessage);
 
     conversation.updateLastMessage(directMessage);
-    // 안 읽은 메시지가 생기는 동시성 혼선 방지 - 발신자 자신의 워터마크를 해당 메시지의 생성 시각으로 강제 전진
-    conversation.updateLastReadAt(senderId, directMessage.getCreatedAt());
+
+    readRedisRepository.saveLastReadAt(conversationId, senderId, directMessage.getCreatedAt());
 
     publisher.publishEvent(new DirectMessageReceivedEvent(receiver.getId(), sender.getName(), content));
 
@@ -83,10 +85,9 @@ public class DirectMessageService {
     List<DirectMessage> messages = directMessageRepository.findDirectMessageByCursor(conversationId,
         request, cursorTime);
 
-    // 스크롤 시마다 발생하는 UPDATE 오버헤드를 방지하기 위해 처음 채팅 방에 들어왔을 때 유저의 읽은 시각을 가장 최근 메시지의 생성 시각으로 업데이트
     if (cursorTime == null && !messages.isEmpty()) {
-      conversation.updateLastReadAt(requesterId, messages.get(0).getCreatedAt());
-      log.debug("대화방 최초 진입 감지, lastReadAt 워터마크 갱신 완료 - conversationId: {}", conversationId);
+      readRedisRepository.saveLastReadAt(conversationId, requesterId, messages.get(0).getCreatedAt());
+      log.debug("대화방 최초 진입 감지, 레디스 lastReadAt 워터마크 갱신 완료 - conversationId: {}", conversationId);
     }
 
     List<DirectMessageDto> directMessageDtos = messages.stream()
@@ -137,16 +138,17 @@ public class DirectMessageService {
     }
 
     Conversation conversation = message.getConversation();
-    Instant myLastReadAt = conversation.getMyLastReadAt(requesterId);
+    // 최신 읽음 시각 조회 시 레디스부터 확인
+    Instant myLastReadAt = readRedisRepository.getLastReadAt(conversation, requesterId);
 
     if (myLastReadAt != null && !message.getCreatedAt().isAfter(myLastReadAt)) {
       log.debug("이미 읽은 메시지이므로 추가 작업 생략 - messageId: {}", directMessageId);
       return;
     }
 
-    conversation.updateLastReadAt(requesterId, message.getCreatedAt());
+    readRedisRepository.saveLastReadAt(conversationId, requesterId, message.getCreatedAt());
 
-    log.info("DM 읽음 처리 완료 - messageId: {}", directMessageId);
+    log.info("DM 읽음 처리 완료 (Redis 갱신) - messageId: {}", directMessageId);
   }
 
   // 공통 인가 로직 분리
