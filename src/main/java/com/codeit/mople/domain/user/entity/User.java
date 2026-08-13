@@ -48,12 +48,6 @@ public class User extends BaseEntity {
   @Column
   private Instant temporaryPasswordExpiresAt;
 
-  @Column
-  private String refreshToken;
-
-  @Column
-  private Instant refreshTokenExpireAt;
-
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   @ColumnDefault("'LOCAL'")
@@ -131,22 +125,5 @@ public class User extends BaseEntity {
 
   public boolean hasValidTemporaryPassword(Instant now) {
     return temporaryPassword != null && temporaryPasswordExpiresAt != null && now.isBefore(temporaryPasswordExpiresAt);
-  }
-
-  public void updateRefreshToken(String refreshToken, Instant expiresAt) {
-    this.refreshToken = Objects.requireNonNull(refreshToken, "refreshToken");
-    this.refreshTokenExpireAt = Objects.requireNonNull(expiresAt, "expiresAt");
-  }
-
-  public boolean isRefreshTokenValid(String refreshToken, Instant now) {
-    return this.refreshToken != null
-        && this.refreshToken.equals(refreshToken)
-        && this.refreshTokenExpireAt != null
-        && now.isBefore(this.refreshTokenExpireAt);
-  }
-
-  public void clearRefreshToken() {
-    this.refreshToken = null;
-    this.refreshTokenExpireAt = null;
   }
 }
