@@ -12,6 +12,7 @@ import com.codeit.mople.global.event.UserForceLogoutEvent;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,6 +29,7 @@ public class AdminService {
   private final ApplicationEventPublisher eventPublisher;
   private final SessionTokenRepository sessionTokenRepository;
 
+  @CacheEvict(value = "users", key = "#userId")
   @Transactional
   public void changeUserRole(UUID userId, String roleStr) {
     validateNotSelf(userId);
@@ -44,6 +46,7 @@ public class AdminService {
     log.info("권한 변경 완료 - userId: {}, role: {}", userId, role);
   }
 
+  @CacheEvict(value = "users", key = "#userId")
   @Transactional
   public void changeUserLocked(UUID userId, boolean locked) {
     validateNotSelf(userId);

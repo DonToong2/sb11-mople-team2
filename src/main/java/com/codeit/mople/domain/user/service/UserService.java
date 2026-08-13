@@ -23,6 +23,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +53,7 @@ public class UserService {
     return UserDto.from(saved);
   }
 
+  @Cacheable(value = "users", key = "#userId")
   public UserDto getUser(UUID userId) {
     User user = findUserOrThrow(userId);
     return UserDto.from(user);
@@ -71,6 +74,7 @@ public class UserService {
     );
   }
 
+  @CacheEvict(value = "users", key = "#targetUserId")
   @Transactional
   public UserDto updateProfile(UUID targetUserId, UUID requesterId, UserUpdateRequest request, MultipartFile image) {
     validateOwner(targetUserId, requesterId);
