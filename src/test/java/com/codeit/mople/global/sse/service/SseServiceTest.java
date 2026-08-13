@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.codeit.mople.global.sse.model.SseEvent;
+import com.codeit.mople.global.sse.repository.SseConnectionRepository;
 import com.codeit.mople.global.sse.repository.SseEmitterRepository;
 import com.codeit.mople.global.sse.repository.SseEventRepository;
 import java.io.IOException;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,7 +33,10 @@ public class SseServiceTest {
   private SseEmitterRepository emitterRepository;
 
   @Mock
-  private SseEventRepository sseEventRepository;
+  private SseEventRepository eventRepository;
+
+  @Mock
+  private SseConnectionRepository connectionRepository;
 
   @InjectMocks
   private SseService sseService;
@@ -45,6 +50,14 @@ public class SseServiceTest {
 
   @BeforeEach
   void setUp() {
+
+    // @Value("${sse.server-id}")
+    ReflectionTestUtils.setField(
+        sseService,
+        "serverId",
+        "server-1"
+    );
+
     receiverId = UUID.randomUUID();
     sseEmitter = mock(SseEmitter.class);
 
@@ -85,7 +98,9 @@ public class SseServiceTest {
       verify(emitterRepository).save(receiverId, result);
 
       // resendEvents() 메서드 검증(내부에 sseEventRepository.findAfter 메서드 검증)
-      verify(sseEventRepository, never()).findAfter(any(), any());
+      verify(eventRepository, never()).findAfter(any(), any());
+
+      verify(connectionRepository).save(receiverId, "server-1");
     }
 
     @Test
@@ -95,7 +110,7 @@ public class SseServiceTest {
 
       // BeforeEach에서 receiverId, lastEventId, sseEvent1, sseEvent2를 초기화
 
-      when(sseEventRepository.findAfter(receiverId, lastEventId))
+      when(eventRepository.findAfter(receiverId, lastEventId))
           .thenReturn(List.of(sseEvent1, sseEvent2));
 
       // when
@@ -105,7 +120,8 @@ public class SseServiceTest {
       assertThat(result).isNotNull();
 
       verify(emitterRepository).save(receiverId, result);
-      verify(sseEventRepository).findAfter(receiverId, lastEventId);
+      verify(eventRepository).findAfter(receiverId, lastEventId);
+      verify(connectionRepository).save(receiverId, "server-1");
     }
 
   }
@@ -130,14 +146,14 @@ public class SseServiceTest {
       // then
       verify(sseEmitter).send(any(SseEmitter.SseEventBuilder.class));
 
-      verify(sseEventRepository).save(any(SseEvent.class));
+      verify(eventRepository).save(any(SseEvent.class));
     }
 
     @Test
     @DisplayName("SSE 이벤트 전송 무시 - 사용자의 연결이 없는 경우")
     void send_ignore_noEmitter() {
       // given
-      
+
       // BeforeEach에서 receiverId를 초기화
 
       when(emitterRepository.find(receiverId))
@@ -148,7 +164,7 @@ public class SseServiceTest {
 
       // then
       verify(emitterRepository).find(receiverId);
-      verify(sseEventRepository).save(any(SseEvent.class));
+      verify(eventRepository).save(any(SseEvent.class));
     }
 
     @Test
