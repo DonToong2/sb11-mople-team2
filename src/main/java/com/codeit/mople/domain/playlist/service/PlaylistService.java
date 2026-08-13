@@ -367,15 +367,16 @@ public class PlaylistService {
           Map.of("playlistId", playlistId, "contentId", contentId));
     }
 
-    PlaylistContent playlistContent = PlaylistContent.create(playlist, content);
-    playlistContentRepository.save(playlistContent);
+    PlaylistContent saved = playlistContentRepository.save(
+        PlaylistContent.create(playlist, content));
 
     log.info("플레이리스트에 콘텐츠 추가 성공: playlistContentId={}, playlistId={}, contentId={}, requesterId={}",
-        playlistContent.getId(), playlistId, contentId, requesterId);
+        saved.getId(), playlistId, contentId, requesterId);
 
     playlistSubscriptionRepository.findSubscriberIdsByPlaylistId(playlistId)
         .forEach(subscriberId ->
-            publisher.publishEvent(new PlaylistContentAddedEvent(subscriberId, playlistId, contentId, playlist.getTitle())));
+            publisher.publishEvent(new PlaylistContentAddedEvent(
+                saved.getId(), subscriberId, playlistId, contentId, playlist.getTitle())));
   }
 
   @Transactional
