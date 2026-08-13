@@ -36,10 +36,10 @@ public class WebSocketEventListener {
         if (headerAccessor.getUser() instanceof UsernamePasswordAuthenticationToken auth &&
             auth.getPrincipal() instanceof CustomUserDetails user) {
 
-          //웹소켓 세션 속성에 이 구독 ID는 시청자 채널용이다라고 꼬리표(Mark)를 남김
+          // 웹소켓 세션 속성에 "WATCH_CHANNEL"이라는 문자 대신, 실제 contentIdStr을 저장합니다.
           Map<String, Object> sessionAttributes = headerAccessor.getSessionAttributes();
           if (sessionAttributes != null && subscriptionId != null) {
-            sessionAttributes.put(subscriptionId, "WATCH_CHANNEL");
+            sessionAttributes.put(subscriptionId, contentIdStr);
           }
 
           log.info("유저 입장 userId = {}, contentId = {}", user.getUserId(), contentIdStr);
@@ -67,17 +67,18 @@ public class WebSocketEventListener {
         try {
           log.info("유저 퇴장(구독 해제): userId={}, contentId={}", user.getUserId(), contentIdStr);
           watchingSessionService.leaveSession(user.getUserId(), UUID.fromString(contentIdStr));
-        } catch (Exception e) {
-          log.error("구독 해제(퇴장) 처리 중 에러 발생 - userId: {}, contentId: {}", user.getUserId(), contentIdStr, e);
-        } finally {
-          // 메모리 누수를 방지하기 위해 세션 속성에서 해당 구독 ID 제거
+
+          //퇴장이 성공했을 때만 메모리에서 삭제합니다.
           headerAccessor.getSessionAttributes().remove(subscriptionId);
+        } catch (Exception e) {
+          //실패 시 지우지 않고 남겨두면, 추후 브라우저 종료 시 DisconnectEvent에서 재시도할 수 있습니다.
+          log.error("구독 해제(퇴장) 처리 중 에러 발생 - userId: {}, contentId: {}", user.getUserId(), contentIdStr, e);
         }
       }
     }
   }
 
-  //프론트엔드가 브라우저를 닫거나 방을 나갈 대 자동으로 퇴장 처리
+  //프론트엔드가 브라우저를 닫거나 STOMP 연결이 끊어질 때 자동으로 퇴장 처리
   @EventListener
   public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
     if (event.getUser() instanceof UsernamePasswordAuthenticationToken auth &&
