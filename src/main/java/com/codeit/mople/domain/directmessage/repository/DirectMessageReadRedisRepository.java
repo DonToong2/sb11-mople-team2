@@ -46,23 +46,29 @@ public class DirectMessageReadRedisRepository {
   // 2. [Cache-Aside] 레디스에서 최신 읽음 시각을 먼저 조회하고, 없으면 DB 값을 반환 후 레디스에 복구
   public Instant getLastReadAt(Conversation conversation, UUID userId) {
     String valueKey = READ_KEY_PREFIX + conversation.getId() + ":" + userId;
-    Object cachedValue = redisTemplate.opsForValue().get(valueKey);
 
-    // 레디스에 최신 값이 있으면 바로 반환
-    if (cachedValue != null) {
-      log.info("Redis Cache Hit, Redis에서 데이터 로드 - key: {}", valueKey);
-      return Instant.parse(cachedValue.toString());
+    try {
+      Object cachedValue = redisTemplate.opsForValue().get(valueKey);
+
+      // 레디스에 최신 값이 있으면 바로 반환
+      if (cachedValue != null) {
+        log.info("Redis Cache Hit, Redis에서 데이터 로드 - key: {}", valueKey);
+        return Instant.parse(cachedValue.toString());
+      }
+
+      log.debug("Redis Cache Miss, DB 데이터 로드 시작 - key: {}", valueKey);
+      Instant dbValue = conversation.getMyLastReadAt(userId);
+
+      if (dbValue != null) {
+        // 레디스에 값 캐싱 복구
+        redisTemplate.opsForValue().set(valueKey, dbValue.toString(), READ_DATA_TTL);
+      }
+      log.info("Redis Cache Miss 처리 완료, DB 값 반환 - key: {}", valueKey);
+      return dbValue;
+    } catch (Exception e) {
+      log.error("Redis 읽음 시각 조회 장애 감지: DB 값으로 Fallback 진행 - key: {}", valueKey);
+      return conversation.getMyLastReadAt(userId);
     }
-
-    log.debug("Redis Cache Miss, DB 데이터 로드 시작 - key: {}", valueKey);
-    Instant dbValue = conversation.getMyLastReadAt(userId);
-    if (dbValue != null) {
-      // 레디스에 값 캐싱 복구
-      redisTemplate.opsForValue().set(valueKey, dbValue.toString(), READ_DATA_TTL);
-    }
-
-    log.info("Redis Cache Miss 처리 완료, DB 값 반환 - key: {}", valueKey);
-    return dbValue;
   }
 
   public Set<Object> getDirtyMembers() {
