@@ -142,7 +142,7 @@ public class DirectMessageService {
     Instant myLastReadAt = readRedisRepository.getLastReadAt(conversation, requesterId);
 
     if (myLastReadAt != null && !message.getCreatedAt().isAfter(myLastReadAt)) {
-      log.debug("이미 읽은 메시지이므로 추가 작업 생략 - messageId: {}", directMessageId);
+      log.debug("조기 종료: 이미 읽은 메시지이므로 Redis 추가 갱신 생략 - messageId: {}", directMessageId);
       return;
     }
 
@@ -151,7 +151,7 @@ public class DirectMessageService {
       conversation.updateLastReadAt(requesterId, message.getCreatedAt());
       log.error("Redis 장애 감지: DB에 직접 읽음 시각 업데이트 (Fallback) 완료 - messageId: {}", directMessageId);
     } else {
-      log.info("Redis 갱신: DM 읽음 처리 완료 - messageId: {}", directMessageId);
+      log.info("Redis 갱신: DM 읽음 시각 갱신 완료 - messageId: {}", directMessageId);
     }
   }
 
