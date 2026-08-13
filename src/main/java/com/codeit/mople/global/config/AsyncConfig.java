@@ -1,7 +1,9 @@
 package com.codeit.mople.global.config;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.retry.annotation.EnableRetry;
@@ -54,11 +56,5 @@ public class AsyncConfig implements AsyncConfigurer {
     executor.setAwaitTerminationSeconds(30);               // 기다리다가 30초가 지나도 안끝나면 강제종료
     executor.initialize();                                 // 설정 마무
     return executor;
-  }
-
-  @Override
-  public org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
-    return (ex, method, params) ->
-        log.error("비동기 처리 최종 실패 - method: {}", method.getName(), ex);
   }
 }
