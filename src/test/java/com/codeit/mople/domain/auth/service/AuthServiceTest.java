@@ -295,10 +295,11 @@ public class AuthServiceTest {
   void refresh_success() {
     UUID userId = UUID.randomUUID();
     when(jwtProvider.getUserId("valid-refresh-token")).thenReturn(userId);
-    when(refreshTokenRepository.isValid(userId, "valid-refresh-token")).thenReturn(true);
+    when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh-token");
+    when(refreshTokenRepository.rotate(eq(userId), eq("valid-refresh-token"), eq("new-refresh-token"), any(
+        Duration.class))).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("new-access-token");
-    when(jwtProvider.createRefreshToken(any())).thenReturn("new-refresh-token");
     when(jwtProvider.getRefreshTokenExpiration()).thenReturn(604800000L);
 
     AuthTokens response = authService.refresh("valid-refresh-token");
@@ -322,7 +323,9 @@ public class AuthServiceTest {
   void refresh_throwsException_whenUserNotFound() {
     UUID userId = UUID.randomUUID();
     when(jwtProvider.getUserId("some-token")).thenReturn(userId);
-    when(refreshTokenRepository.isValid(userId, "some-token")).thenReturn(true);
+    when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh-token");
+    when(refreshTokenRepository.rotate(eq(userId), eq("some-token"), eq("new-refresh-token"), any(
+        Duration.class))).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> authService.refresh("some-token"))
@@ -331,31 +334,35 @@ public class AuthServiceTest {
   }
 
   @Test
-  @DisplayName("저장된 값과 다른 refreshToken이면 예외가 발생함")
-  void refresh_throwsException_whenRefreshTokenMismatch() {
+  @DisplayName("저장된 값과 다른 refreshToken이거나 동시 요청으로 이미 교체가 된 경우 예외가 발생함")
+  void refresh_throwsException_whenRotateFails() {
     UUID userId = UUID.randomUUID();
     when(jwtProvider.getUserId("wrong-token")).thenReturn(userId);
-    when(refreshTokenRepository.isValid(userId, "wrong-token")).thenReturn(false);
+    when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh-token");
+    when(refreshTokenRepository.rotate(eq(userId), eq("wrong-token"), eq("new-refresh-token"), any(
+        Duration.class))).thenReturn(false);
 
     assertThatThrownBy(() -> authService.refresh("wrong-token"))
         .isInstanceOf(AuthException.class)
         .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_TOKEN);
+
+    verify(userRepository, never()).findById(any());
   }
 
   @Test
-  @DisplayName("refresh 성공 시 Refresh Token Rotation이 적용되어 저장된 값이 새 값으로 갱신됨")
+  @DisplayName("refresh 성공 시 Refresh Token Rotation이 원자적으로 적용됨")
   void refresh_success_rotateRefreshToken() {
     UUID userId = UUID.randomUUID();
     when(jwtProvider.getUserId("old-token")).thenReturn(userId);
-    when(refreshTokenRepository.isValid(userId, "old-token")).thenReturn(true);
+    when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh");
+    when(refreshTokenRepository.rotate(eq(userId), eq("old-token"), eq("new-refresh"), any(Duration.class))).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("new-access");
-    when(jwtProvider.createRefreshToken(any())).thenReturn("new-refresh");
     when(jwtProvider.getRefreshTokenExpiration()).thenReturn(604800000L);
 
     authService.refresh("old-token");
 
-    verify(refreshTokenRepository).save(eq(user.getId()), eq("new-refresh"), any(Duration.class));
+    verify(refreshTokenRepository).rotate(eq(userId), eq("old-token"), eq("new-refresh"), any(Duration.class));
   }
 
   @Test

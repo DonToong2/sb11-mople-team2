@@ -136,7 +136,8 @@ public class AuthService {
       throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
 
-    if(!refreshTokenRepository.isValid(userId, refreshToken)) {
+    String newRefreshToken = jwtProvider.createRefreshToken(userId);
+    if(!refreshTokenRepository.rotate(userId, refreshToken, newRefreshToken, sessionTtl())) {
       throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
 
@@ -146,7 +147,9 @@ public class AuthService {
     String jti = UUID.randomUUID().toString();
     String newAccessToken = jwtProvider.createAccessToken(user.getId(), jti);
     sessionTokenRepository.save(user.getId(), jti, sessionTtl());
-    return issueRefreshToken(user, newAccessToken);
+
+    Instant refreshExpiresAt = Instant.now().plusMillis(jwtProvider.getRefreshTokenExpiration());
+    return new AuthTokens(newAccessToken, newRefreshToken, refreshExpiresAt, UserDto.from(user));
   }
 
   private AuthTokens issueRefreshToken(User user, String accessToken) {
