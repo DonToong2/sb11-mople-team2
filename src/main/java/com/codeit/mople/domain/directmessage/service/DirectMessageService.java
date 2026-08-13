@@ -55,7 +55,7 @@ public class DirectMessageService {
 
     conversation.updateLastMessage(directMessage);
 
-    readRedisRepository.saveLastReadAt(conversationId, senderId, directMessage.getCreatedAt());
+    updateLastReadAt(conversation, senderId, directMessage.getCreatedAt());
 
     publisher.publishEvent(new DirectMessageReceivedEvent(receiver.getId(), sender.getName(), content));
 
@@ -86,7 +86,7 @@ public class DirectMessageService {
         request, cursorTime);
 
     if (cursorTime == null && !messages.isEmpty()) {
-      readRedisRepository.saveLastReadAt(conversationId, requesterId, messages.get(0).getCreatedAt());
+      updateLastReadAt(conversation, requesterId, messages.get(0).getCreatedAt());
       log.debug("대화방 최초 진입 감지, 레디스 lastReadAt 워터마크 갱신 완료 - conversationId: {}", conversationId);
     }
 
@@ -146,12 +146,17 @@ public class DirectMessageService {
       return;
     }
 
-    boolean isRedisAlive = readRedisRepository.saveLastReadAt(conversationId, requesterId, message.getCreatedAt());
+    updateLastReadAt(conversation, requesterId, message.getCreatedAt());
+  }
+
+  private void updateLastReadAt(Conversation conversation, UUID userId, Instant readAt) {
+    boolean isRedisAlive = readRedisRepository.saveLastReadAt(conversation.getId(), userId, readAt);
+
     if (!isRedisAlive) {
-      conversation.updateLastReadAt(requesterId, message.getCreatedAt());
-      log.error("Redis 장애 감지: DB에 직접 읽음 시각 업데이트 (Fallback) 완료 - messageId: {}", directMessageId);
+      conversation.updateLastReadAt(userId, readAt);
+      log.error("Redis 장애 감지: DB에 직접 읽음 시각 업데이트 (Fallback) 완료 - conversationId: {}", conversation.getId());
     } else {
-      log.info("Redis 갱신: DM 읽음 시각 갱신 완료 - messageId: {}", directMessageId);
+      log.info("Redis 갱신: DM 읽음 시각 갱신 완료 - conversationId: {}", conversation.getId());
     }
   }
 

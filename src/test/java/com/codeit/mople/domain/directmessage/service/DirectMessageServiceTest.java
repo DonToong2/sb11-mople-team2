@@ -99,6 +99,7 @@ public class DirectMessageServiceTest {
       given(userA.getId()).willReturn(userAId);
       given(userA.getName()).willReturn("userA");
       given(userB.getId()).willReturn(userBId);
+      given(conversation.getId()).willReturn(conversationId);
       given(conversation.getUserA()).willReturn(userA);
       given(conversation.getPartnerOf(userAId)).willReturn(userB);
 
@@ -179,6 +180,7 @@ public class DirectMessageServiceTest {
     @DisplayName("성공: 대화방 참여자(UserA)가 메시지 목록을 조회한다.")
     void success_get_direct_messages() {
       //given
+      given(conversation.getId()).willReturn(conversationId);
       given(conversationRepository.findById(conversationId)).willReturn(Optional.of(conversation));
       given(conversation.getUserA()).willReturn(userA);
       given(userA.getId()).willReturn(userAId);
