@@ -996,6 +996,8 @@ public class PlaylistServiceTest {
       given(owner.getId()).willReturn(ownerId);
       given(playlistSubscriptionRepository.findSubscriberIdsByPlaylistId(playlistId))
           .willReturn(List.of(UUID.randomUUID()));
+      given(playlistContentRepository.save(any(PlaylistContent.class)))
+          .willReturn(PlaylistContent.create(playlist, content));
 
       // when
       playlistService.addContent(playlistId, contentId, ownerId);
@@ -1027,6 +1029,8 @@ public class PlaylistServiceTest {
       given(owner.getId()).willReturn(ownerId);
       given(playlistSubscriptionRepository.findSubscriberIdsByPlaylistId(playlistId))
           .willReturn(List.of(subscriber1, subscriber2));
+      given(playlistContentRepository.save(any(PlaylistContent.class)))
+          .willReturn(PlaylistContent.create(playlist, content));
 
       // when
       playlistService.addContent(playlistId, contentId, ownerId);
