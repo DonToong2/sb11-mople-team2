@@ -16,6 +16,7 @@ import com.codeit.mople.domain.auth.dto.request.SignInRequest;
 import com.codeit.mople.domain.auth.dto.response.AuthTokens;
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
+import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.entity.AuthProvider;
 import com.codeit.mople.domain.user.entity.User;
@@ -50,6 +51,9 @@ public class AuthServiceTest {
 
   @Mock
   private SessionTokenRepository sessionTokenRepository;
+
+  @Mock
+  private RefreshTokenRepository refreshTokenRepository;
 
   @InjectMocks
   private AuthService authService;
@@ -259,14 +263,13 @@ public class AuthServiceTest {
   @DisplayName("로그아웃 시 저장된 Refresh Token이 삭제되고 기존 토큰이 모두 무효화됨")
   void signOut_success() {
     UUID userId = UUID.randomUUID();
-    user.updateRefreshToken("stored-refresh-token", Instant.now().plus(7, ChronoUnit.DAYS));
     when(jwtProvider.getUserId("stored-refresh-token")).thenReturn(userId);
-    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(refreshTokenRepository.isValid(userId, "stored-refresh-token")).thenReturn(true);
 
     authService.signOut("stored-refresh-token");
 
-    assertThat(user.isRefreshTokenValid("stored-refresh-token", Instant.now())).isFalse();
-    verify(sessionTokenRepository).invalidate(user.getId());
+    verify(refreshTokenRepository).invalidate(userId);
+    verify(sessionTokenRepository).invalidate(userId);
   }
 
   @Test
@@ -291,8 +294,8 @@ public class AuthServiceTest {
   @DisplayName("유효한 refreshToken으로 재발급에 성공")
   void refresh_success() {
     UUID userId = UUID.randomUUID();
-    user.updateRefreshToken("valid-refresh-token", Instant.now().plus(7,ChronoUnit.DAYS));
     when(jwtProvider.getUserId("valid-refresh-token")).thenReturn(userId);
+    when(refreshTokenRepository.isValid(userId, "valid-refresh-token")).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("new-access-token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("new-refresh-token");
@@ -319,6 +322,7 @@ public class AuthServiceTest {
   void refresh_throwsException_whenUserNotFound() {
     UUID userId = UUID.randomUUID();
     when(jwtProvider.getUserId("some-token")).thenReturn(userId);
+    when(refreshTokenRepository.isValid(userId, "some-token")).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> authService.refresh("some-token"))
@@ -330,24 +334,10 @@ public class AuthServiceTest {
   @DisplayName("저장된 값과 다른 refreshToken이면 예외가 발생함")
   void refresh_throwsException_whenRefreshTokenMismatch() {
     UUID userId = UUID.randomUUID();
-    user.updateRefreshToken("stored-token", Instant.now().plus(7, ChronoUnit.DAYS));
     when(jwtProvider.getUserId("wrong-token")).thenReturn(userId);
-    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(refreshTokenRepository.isValid(userId, "wrong-token")).thenReturn(false);
 
     assertThatThrownBy(() -> authService.refresh("wrong-token"))
-        .isInstanceOf(AuthException.class)
-        .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_TOKEN);
-  }
-
-  @Test
-  @DisplayName("만료된 refreshToken이면 예외가 발생함")
-  void refresh_throwsException_whenRefreshTokenExpired() {
-    UUID userId = UUID.randomUUID();
-    user.updateRefreshToken("expired-token", Instant.now().minus(1, ChronoUnit.MINUTES));
-    when(jwtProvider.getUserId("expired-token")).thenReturn(userId);
-    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-
-    assertThatThrownBy(() -> authService.refresh("expired-token"))
         .isInstanceOf(AuthException.class)
         .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_TOKEN);
   }
@@ -356,8 +346,8 @@ public class AuthServiceTest {
   @DisplayName("refresh 성공 시 Refresh Token Rotation이 적용되어 저장된 값이 새 값으로 갱신됨")
   void refresh_success_rotateRefreshToken() {
     UUID userId = UUID.randomUUID();
-    user.updateRefreshToken("old-token", Instant.now().plus(7, ChronoUnit.DAYS));
     when(jwtProvider.getUserId("old-token")).thenReturn(userId);
+    when(refreshTokenRepository.isValid(userId, "old-token")).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("new-access");
     when(jwtProvider.createRefreshToken(any())).thenReturn("new-refresh");
@@ -365,8 +355,7 @@ public class AuthServiceTest {
 
     authService.refresh("old-token");
 
-    assertThat(user.isRefreshTokenValid("new-refresh", Instant.now())).isTrue();
-    assertThat(user.isRefreshTokenValid("old-token", Instant.now())).isFalse();
+    verify(refreshTokenRepository).save(eq(user.getId()), eq("new-refresh"), any(Duration.class));
   }
 
   @Test

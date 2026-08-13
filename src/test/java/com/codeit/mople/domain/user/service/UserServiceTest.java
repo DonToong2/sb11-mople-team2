@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.dto.request.ChangePasswordRequest;
 import com.codeit.mople.domain.user.dto.request.UserCreateRequest;
@@ -49,6 +50,9 @@ public class UserServiceTest {
 
   @Mock
   private SessionTokenRepository sessionTokenRepository;
+
+  @Mock
+  private RefreshTokenRepository refreshTokenRepository;
 
   @InjectMocks
   private UserService userService;
@@ -304,7 +308,6 @@ public class UserServiceTest {
   @DisplayName("비밀번호 변경 성공 시 기존 Refresh Token이 무효화됨")
   void changePassword_success() {
     UUID userId = UUID.randomUUID();
-    user.updateRefreshToken("old-refresh-token", Instant.now().plus(7, ChronoUnit.DAYS));
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(passwordEncoder.encode("newPw123")).thenReturn("encodedNewPw");
 
@@ -313,7 +316,7 @@ public class UserServiceTest {
     userService.changePassword(userId, userId, request);
 
     assertThat(user.getPassword()).isEqualTo("encodedNewPw");
-    assertThat(user.isRefreshTokenValid("old-refresh-token", Instant.now())).isFalse();
+    verify(refreshTokenRepository).invalidate(userId);
     verify(sessionTokenRepository).invalidate(userId);
   }
 
