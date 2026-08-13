@@ -6,12 +6,14 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.codeit.mople.global.sse.model.SseEvent;
 import com.codeit.mople.global.sse.repository.SseConnectionRepository;
 import com.codeit.mople.global.sse.repository.SseEmitterRepository;
 import com.codeit.mople.global.sse.repository.SseEventRepository;
+import com.codeit.mople.global.sse.repository.SseStreamRepository;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -37,6 +39,9 @@ public class SseServiceTest {
 
   @Mock
   private SseConnectionRepository connectionRepository;
+
+  @Mock
+  private SseStreamRepository streamRepository;
 
   @InjectMocks
   private SseService sseService;
@@ -137,6 +142,9 @@ public class SseServiceTest {
 
       // BeforeEach에서 receiverId, sseEmitter를 초기화
 
+      when(connectionRepository.findServerId(receiverId))
+          .thenReturn("server-1");
+
       when(emitterRepository.find(receiverId))
           .thenReturn(sseEmitter);
 
@@ -147,6 +155,10 @@ public class SseServiceTest {
       verify(sseEmitter).send(any(SseEmitter.SseEventBuilder.class));
 
       verify(eventRepository).save(any(SseEvent.class));
+      verify(connectionRepository).findServerId(receiverId);
+      verify(emitterRepository).find(receiverId);
+
+      verifyNoInteractions(streamRepository);
     }
 
     @Test
@@ -156,6 +168,9 @@ public class SseServiceTest {
 
       // BeforeEach에서 receiverId를 초기화
 
+      when(connectionRepository.findServerId(receiverId))
+          .thenReturn("server-1");
+
       when(emitterRepository.find(receiverId))
           .thenReturn(null);
 
@@ -163,8 +178,53 @@ public class SseServiceTest {
       sseService.send(receiverId, "eventName", "data");
 
       // then
-      verify(emitterRepository).find(receiverId);
       verify(eventRepository).save(any(SseEvent.class));
+      verify(connectionRepository).findServerId(receiverId);
+      verify(emitterRepository).find(receiverId);
+
+      verifyNoInteractions(streamRepository);
+    }
+
+    @Test
+    @DisplayName("SSE 이벤트 전송 성공 - 다른 서버에 연결")
+    void send_success_otherServer() {
+      // given
+
+      // BeforeEach에서 receiverId를 초기화
+
+      when(connectionRepository.findServerId(receiverId))
+          .thenReturn("server-2");
+
+      // when
+      sseService.send(receiverId, "eventName", "data");
+
+      // then
+      verify(eventRepository).save(any(SseEvent.class));
+      verify(connectionRepository).findServerId(receiverId);
+      verify(emitterRepository).find(receiverId);
+
+      // 다른 서버에 연결 될 경우 SSEEvent send가 스킵되고 Redis Stream에 저장되어야 함
+      verify(streamRepository).save(any(SseEvent.class));
+    }
+
+    @Test
+    @DisplayName("SSE 이벤트 전송 성공 - 연결 정보가 없는 경우")
+    void send_success_noConnection() {
+      // given
+
+      // BeforeEach에서 receiverId를 초기화
+
+      when(connectionRepository.findServerId(receiverId))
+          .thenReturn(null);
+
+      // when
+      sseService.send(receiverId, "eventName", "data");
+
+      // then
+      verify(eventRepository).save(any(SseEvent.class));
+      verify(connectionRepository).findServerId(receiverId);
+      verify(emitterRepository).find(receiverId);
+      verify(streamRepository).save(any(SseEvent.class));
     }
 
     @Test
@@ -173,6 +233,9 @@ public class SseServiceTest {
       // given
 
       // BeforeEach에서 receiverId, sseEmitter를 초기화
+
+      when(connectionRepository.findServerId(receiverId))
+          .thenReturn("server-1");
 
       when(emitterRepository.find(receiverId))
           .thenReturn(sseEmitter);
@@ -186,6 +249,12 @@ public class SseServiceTest {
 
       // then
       verify(sseEmitter).completeWithError(any(IOException.class));
+
+      verify(eventRepository).save(any(SseEvent.class));
+      verify(connectionRepository).findServerId(receiverId);
+      verify(emitterRepository).find(receiverId);
+
+      verifyNoInteractions(streamRepository);
     }
 
   }
