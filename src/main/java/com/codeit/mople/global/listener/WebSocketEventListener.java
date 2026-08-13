@@ -1,6 +1,7 @@
 package com.codeit.mople.global.listener;
 
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
+import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.watchingsession.service.WatchingSessionService;
 import java.util.Map;
 import java.util.UUID;
@@ -52,6 +53,30 @@ public class WebSocketEventListener {
     }
   }
 
+  //프론트엔드가 방을 나갈 때 자동으로 퇴장 처리
+  @EventListener
+  public void handleWebSocketUnsubscribeListener(SessionUnsubscribeEvent event) {
+    StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
+    String subscriptionId = headerAccessor.getSubscriptionId();
+
+    if (subscriptionId != null && headerAccessor.getSessionAttributes() != null) {
+      String contentIdStr = (String) headerAccessor.getSessionAttributes().get(subscriptionId);
+
+      if (contentIdStr != null && headerAccessor.getUser() instanceof UsernamePasswordAuthenticationToken auth &&
+          auth.getPrincipal() instanceof CustomUserDetails user) {
+        try {
+          log.info("유저 퇴장(구독 해제): userId={}, contentId={}", user.getUserId(), contentIdStr);
+          watchingSessionService.leaveSession(user.getUserId(), UUID.fromString(contentIdStr));
+        } catch (Exception e) {
+          log.error("구독 해제(퇴장) 처리 중 에러 발생 - userId: {}, contentId: {}", user.getUserId(), contentIdStr, e);
+        } finally {
+          // 메모리 누수를 방지하기 위해 세션 속성에서 해당 구독 ID 제거
+          headerAccessor.getSessionAttributes().remove(subscriptionId);
+        }
+      }
+    }
+  }
+
   //프론트엔드가 브라우저를 닫거나 방을 나갈 대 자동으로 퇴장 처리
   @EventListener
   public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
@@ -61,8 +86,12 @@ public class WebSocketEventListener {
         UUID contentId = watchingSessionService.getWatchingContentId(user.getUserId());
         log.info("유저 퇴장(연결 종료): userId={}, contentId={}", user.getUserId(), contentId);
         watchingSessionService.leaveSession(user.getUserId(), contentId);
+      } catch (ContentException e) {
+        //시청 중인 방이 없어서 발생하는 정상적인 예외이므로 무시
+        log.debug("연결 종료 시 퇴장 처리 무시(시청 중인 방 없음) - userId: {}", user.getUserId());
       } catch (Exception e) {
-        // 시청 중인 방이 없으면 무시
+        //Redis 장애 등 예상치 못한 시스템 에러는 구조화하여 로그로 남김
+        log.error("연결 종료(퇴장) 처리 중 시스템 에러 발생 - userId: {}", user.getUserId(), e);
       }
     }
   }
