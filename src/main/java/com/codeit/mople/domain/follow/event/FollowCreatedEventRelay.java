@@ -2,9 +2,16 @@ package com.codeit.mople.domain.follow.event;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @Slf4j
+@Component
+@ConditionalOnProperty(name = "kafka.enabled", havingValue = "true")
 public class FollowCreatedEventRelay {
 
   private final KafkaTemplate<String, Object> kafkaTemplate;
@@ -18,6 +25,8 @@ public class FollowCreatedEventRelay {
   }
 
   // 1. 기존에 있던 FollowCreatedEvent를 받아서 kafka용으로 만들어 놓은 FollowCreatedEventRelay에 넣음
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void relay(FollowCreatedEvent event) {
     FollowCreatedMessage message = FollowCreatedMessage.from(event);
     String key = message.followeeId().toString();
@@ -28,7 +37,7 @@ public class FollowCreatedEventRelay {
     kafkaTemplate.send(topic, key, message)
         .whenComplete((result, ex) -> {
           if (ex != null) {
-            log.error("팔로우 생성 이벤트 발행 실패: followId={}, ecentId={}",
+            log.error("팔로우 생성 이벤트 발행 실패: followId={}, eventId={}",
                 message.followId(), message.eventId(), ex);
             return;
           }
