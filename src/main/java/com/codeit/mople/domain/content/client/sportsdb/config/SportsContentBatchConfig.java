@@ -6,6 +6,8 @@ import com.codeit.mople.domain.content.client.sportsdb.batch.SportsDbItemWriter;
 import com.codeit.mople.domain.content.client.sportsdb.dto.SportsDbEventDto;
 import com.codeit.mople.domain.content.client.sportsdb.listener.SportsBatchJobListener;
 import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.entity.ContentType;
+import com.codeit.mople.domain.content.repository.ContentRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +16,7 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
@@ -28,13 +31,30 @@ public class SportsContentBatchConfig {
   private final SportsDbItemProcessor itemProcessor;
   private final SportsDbItemWriter itemWriter;
   private final SportsBatchJobListener jobListener;
+  private final ContentRepository contentRepository;
 
   //수집 작업을 총괄하는 Spring Batch Job 구성
   @Bean
-  public Job sportsContentJob(JobRepository jobRepository, Step sportsContentStep) {
+  public Job sportsContentJob(JobRepository jobRepository, Step deleteOldSportsDataStep, Step sportsContentStep) {
     return new JobBuilder("sportsContentJob", jobRepository)
-        .start(sportsContentStep)
+        .preventRestart() //실패 시 재시작 방지 (항상 처음부터 다시 실행되도록 강제)
+        .start(deleteOldSportsDataStep) //기존 데이터 삭제 스텝 먼저 실행
+        .next(sportsContentStep)        //이후 새로운 데이터 수집 스텝(Chunk) 실행
         .listener(jobListener)
+        .build();
+  }
+
+  // 기존 스포츠 데이터를 일괄 삭제하는 Tasklet Step 추가
+  @Bean
+  public Step deleteOldSportsDataStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
+    return new StepBuilder("deleteOldSportsDataStep", jobRepository)
+        .tasklet((contribution, chunkContext) -> {
+          log.info("당일 새로운 데이터 저장을 위해 기존 SPORT 타입 콘텐츠를 모두 삭제합니다.");
+
+          contentRepository.deleteAllByType(ContentType.SPORT); //기존 데이터 초기화
+
+          return RepeatStatus.FINISHED;
+        }, transactionManager)
         .build();
   }
 

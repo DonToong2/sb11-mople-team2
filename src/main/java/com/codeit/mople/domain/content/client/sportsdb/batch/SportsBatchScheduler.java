@@ -7,6 +7,8 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -18,8 +20,15 @@ public class SportsBatchScheduler {
   private final JobLauncher jobLauncher;
   private final Job sportsContentJob;
 
-  //매일 새벽 4시에 자동으로 배치 실행
-  @Scheduled(cron = "0 0 4 * * *")
+  //서버가 처음 구동 완료되었을 때 자동으로 1회 배치 실행
+  @EventListener(ApplicationReadyEvent.class)
+  public void runOnStartup() {
+    log.info("서버 구동 시: SportsDB 수집 배치를 시작합니다");
+    triggerManualBatch();
+  }
+
+  //매일 새벽 4시, 오후 4시에 자동으로 배치 실행
+  @Scheduled(cron = "0 0 4,16 * * *")
   public void runBatchJobAutomatically() {
     log.info("자동 스케줄러: SportsDB 수집 배치를 시작합니다");
     triggerManualBatch();

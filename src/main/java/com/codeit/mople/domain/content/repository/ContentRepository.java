@@ -52,4 +52,6 @@ public interface ContentRepository extends JpaRepository<Content, UUID> {
       where c.id = :contentId
       """)
   void decreaseRating(@Param("contentId") UUID contentId, @Param("rating") double rating);
+
+  void deleteAllByType(ContentType type);
 }
