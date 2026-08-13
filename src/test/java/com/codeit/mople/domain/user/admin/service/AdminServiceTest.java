@@ -96,6 +96,7 @@ class AdminServiceTest {
       verify(eventPublisher).publishEvent(eventCaptor.capture());
       assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
       verify(sessionTokenRepository).invalidate(userId);
+      verify(refreshTokenRepository).invalidate(userId);
       assertThat(eventCaptor.getValue().reason()).isEqualTo(ForceLogoutReason.ROLE_CHANGE);
       assertThat(eventCaptor.getValue().sessionInvalidated()).isTrue();
     }
