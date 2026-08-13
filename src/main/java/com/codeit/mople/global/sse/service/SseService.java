@@ -4,6 +4,7 @@ import com.codeit.mople.global.sse.model.SseEvent;
 import com.codeit.mople.global.sse.repository.SseConnectionRepository;
 import com.codeit.mople.global.sse.repository.SseEmitterRepository;
 import com.codeit.mople.global.sse.repository.SseEventRepository;
+import com.codeit.mople.global.sse.repository.SseStreamRepository;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -23,7 +24,7 @@ public class SseService {
   private final SseEmitterRepository emitterRepository;
   private final SseEventRepository eventRepository;
   private final SseConnectionRepository connectionRepository;
-
+  private final SseStreamRepository streamRepository;
 
   @Value("${sse.server-id}")
   private String serverId;
@@ -65,7 +66,6 @@ public class SseService {
   }
 
   public void send(UUID receiverId, String eventName, Object data) {
-
     SseEmitter emitter = emitterRepository.find(receiverId);
 
     UUID eventId = UUID.randomUUID();
@@ -78,6 +78,15 @@ public class SseService {
     );
 
     eventRepository.save(sseEvent);
+
+    // 어느 서버에 연결되있는지 조회
+    String connectedServerId = connectionRepository.findServerId(receiverId);
+
+    // 지금 서버와 다를 경우 스킵
+    if (!serverId.equals(connectedServerId)) {
+      streamRepository.save(sseEvent);
+      return;
+    }
 
     if (emitter == null) {
       return;
