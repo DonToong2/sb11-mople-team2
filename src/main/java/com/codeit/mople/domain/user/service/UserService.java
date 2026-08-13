@@ -2,6 +2,7 @@ package com.codeit.mople.domain.user.service;
 
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
+import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.dto.request.ChangePasswordRequest;
 import com.codeit.mople.domain.user.dto.request.UserCreateRequest;
@@ -36,6 +37,7 @@ public class UserService {
   private final PasswordEncoder passwordEncoder;
   private final FileStorageService fileStorageService;
   private final SessionTokenRepository sessionTokenRepository;
+  private final RefreshTokenRepository refreshTokenRepository;
 
   @Transactional
   public UserDto signUp(UserCreateRequest request) {
@@ -91,7 +93,7 @@ public class UserService {
     User user = findUserOrThrow(targetUserId);
     user.changePassword(passwordEncoder.encode(request.password()));
     user.destroyTemporaryPassword();
-    user.clearRefreshToken();
+    refreshTokenRepository.invalidate(targetUserId);
     sessionTokenRepository.invalidate(targetUserId);
   }
 
