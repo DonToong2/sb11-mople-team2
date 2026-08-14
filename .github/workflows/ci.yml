@@ -29,6 +29,12 @@ jobs:
         image: apache/kafka:3.9.0
         ports:
           - 9093:9092
+        options: >-
+          --health-cmd "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 20s
         env:
           KAFKA_BROKER_ID: 1
           KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
