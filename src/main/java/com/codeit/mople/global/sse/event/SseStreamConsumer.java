@@ -81,9 +81,6 @@ public class SseStreamConsumer {
   @Value("${sse.server-id}")
   private String serverId;
 
-  @Value("${sse.stream-consumer.enabled}")
-  private boolean enabled;
-
   // Consume 실행 관리
   private final AtomicBoolean running = new AtomicBoolean(true);
 
