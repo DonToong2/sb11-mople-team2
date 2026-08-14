@@ -48,6 +48,7 @@ public class KafkaEventPublisher {
       redisTemplate.opsForStream().add(
           FAILED_STREAM_KEY,
           Map.of(
+              "type", "PRODUCER",
               "topic", topic,
               "key", key == null ? "" : key,
               "data", data,
@@ -55,7 +56,8 @@ public class KafkaEventPublisher {
           )
       );
     } catch (JsonProcessingException e) {
-      log.error("Kafka 최종 실패 이벤트 직렬화 실패: topic={}, key={}", topic, key, e);
+      log.error("Kafka Producer 최종 실패 이벤트 직렬화 실패: topic={}, key={}"
+          , topic, key, e);
     }
   }
 
