@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.dto.request.ChangePasswordRequest;
 import com.codeit.mople.domain.user.dto.request.UserCreateRequest;
 import com.codeit.mople.domain.user.dto.request.UserSearchRequest;
@@ -18,7 +20,6 @@ import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.dto.SortDirection;
-import com.codeit.mople.global.error.CustomException;
 import com.codeit.mople.global.storage.FileStorageService;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -46,6 +47,12 @@ public class UserServiceTest {
 
   @Mock
   private FileStorageService fileStorageService;
+
+  @Mock
+  private SessionTokenRepository sessionTokenRepository;
+
+  @Mock
+  private RefreshTokenRepository refreshTokenRepository;
 
   @InjectMocks
   private UserService userService;
@@ -298,11 +305,9 @@ public class UserServiceTest {
   }
 
   @Test
-  @DisplayName("비밀번호 변경 성공 시 기존 Refresh Token이 무효화되고 sessionVersion이 증가함")
+  @DisplayName("비밀번호 변경 성공 시 기존 Refresh Token이 무효화됨")
   void changePassword_success() {
     UUID userId = UUID.randomUUID();
-    user.updateRefreshToken("old-refresh-token", Instant.now().plus(7, ChronoUnit.DAYS));
-    long beforeSessionVersion = user.getSessionVersion();
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(passwordEncoder.encode("newPw123")).thenReturn("encodedNewPw");
 
@@ -311,8 +316,8 @@ public class UserServiceTest {
     userService.changePassword(userId, userId, request);
 
     assertThat(user.getPassword()).isEqualTo("encodedNewPw");
-    assertThat(user.isRefreshTokenValid("old-refresh-token", Instant.now())).isFalse();
-    assertThat(user.getSessionVersion()).isEqualTo(beforeSessionVersion + 1);
+    verify(refreshTokenRepository).invalidate(userId);
+    verify(sessionTokenRepository).invalidate(userId);
   }
 
   @Test

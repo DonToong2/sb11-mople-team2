@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
@@ -40,6 +41,9 @@ public class JwtChannelInterceptorTest {
   private JwtProvider jwtProvider;
 
   @Mock
+  private SessionTokenRepository sessionTokenRepository;
+
+  @Mock
   private UserRepository userRepository;
 
   @Mock
@@ -66,10 +70,10 @@ public class JwtChannelInterceptorTest {
 
       User user = User.createUser("test@test.com", "password", "테스트유저");
       ReflectionTestUtils.setField(user, "id", userId);
-      ReflectionTestUtils.setField(user, "sessionVersion", 1L);
 
       given(jwtProvider.getUserId(validToken)).willReturn(userId);
-      given(jwtProvider.getSessionVersion(validToken)).willReturn(1L);
+      given(jwtProvider.getJti(validToken)).willReturn("valid-jti");
+      given(sessionTokenRepository.isValid(userId, "valid-jti")).willReturn(true);
       given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
       // when
@@ -123,10 +127,10 @@ public class JwtChannelInterceptorTest {
 
       User user = User.createUser("test@test.com", "password", "테스트유저");
       ReflectionTestUtils.setField(user, "id", userId);
-      ReflectionTestUtils.setField(user, "sessionVersion", 2L); // 세션 버전은 2, 토큰 버전은 1
 
       given(jwtProvider.getUserId(validToken)).willReturn(userId);
-      given(jwtProvider.getSessionVersion(validToken)).willReturn(1L);
+      given(jwtProvider.getJti(validToken)).willReturn("old-jti");
+      given(sessionTokenRepository.isValid(userId, "old-jti")).willReturn(false);
       given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
       // when & then
@@ -146,12 +150,12 @@ public class JwtChannelInterceptorTest {
 
       User user = User.createUser("locked@test.com", "password", "잠긴유저");
       ReflectionTestUtils.setField(user, "id", userId);
-      ReflectionTestUtils.setField(user, "sessionVersion", 1L);
 
       user.lock();
 
       given(jwtProvider.getUserId(validToken)).willReturn(userId);
-      given(jwtProvider.getSessionVersion(validToken)).willReturn(1L);
+      given(jwtProvider.getJti(validToken)).willReturn("valid-jti");
+      given(sessionTokenRepository.isValid(userId, "valid-jti")).willReturn(true);
       given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
       // when & then

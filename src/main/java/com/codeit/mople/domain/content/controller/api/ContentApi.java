@@ -13,9 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.time.Instant;
 import java.util.UUID;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -78,9 +76,14 @@ public interface ContentApi {
       )
   })
   ResponseEntity<CursorResponseContentDto> getContents(
-      @RequestParam(value = "cursorId", required = false) UUID cursorId,
-      @RequestParam(value = "cursorCreatedAt", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant cursorCreatedAt,
-      @RequestParam(value = "limit", defaultValue = "10") int limit
+      @RequestParam(name = "idAfter", required = false) UUID cursorId,
+      @RequestParam(name = "cursor", required = false) String cursorValue,
+      @RequestParam(name = "limit", defaultValue = "20") int limit,
+      @RequestParam(name = "type", required = false) String type,
+      @RequestParam(name = "contentType", required = false) String contentTypeParam,
+      @RequestParam(name = "typeEqual", required = false) String typeEqual,
+      @RequestParam(name = "keywordLike", required = false) String keywordLike,
+      @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy
   );
 
   @Operation(

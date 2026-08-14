@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.CustomOAuth2UserService;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.auth.security.handler.OAuth2FailureHandler;
@@ -67,6 +68,9 @@ class NotificationControllerTest {
 
     @MockitoBean
     OAuth2FailureHandler oAuth2FailureHandler;
+
+    @MockitoBean
+    private SessionTokenRepository sessionTokenRepository;
 
     CustomUserDetails principal;
 

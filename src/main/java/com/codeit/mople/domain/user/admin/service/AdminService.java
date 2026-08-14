@@ -1,5 +1,7 @@
 package com.codeit.mople.domain.user.admin.service;
 
+import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
@@ -7,10 +9,11 @@ import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.global.event.ForceLogoutReason;
-import com.codeit.mople.global.event.UserForceLogoutEvent;
+import com.codeit.mople.global.event.UserAccountStatusChangedEvent;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,7 +28,10 @@ public class AdminService {
 
   private final UserRepository userRepository;
   private final ApplicationEventPublisher eventPublisher;
+  private final SessionTokenRepository sessionTokenRepository;
+  private final RefreshTokenRepository refreshTokenRepository;
 
+  @CacheEvict(value = "users", key = "#userId")
   @Transactional
   public void changeUserRole(UUID userId, String roleStr) {
     validateNotSelf(userId);
@@ -36,12 +42,14 @@ public class AdminService {
     Role previousRole = user.getRole();
     if (previousRole != role) {
       user.changeRole(role);
-      user.increaseSessionVersion();
-      eventPublisher.publishEvent(new UserForceLogoutEvent(userId, ForceLogoutReason.ROLE_CHANGE));
+      sessionTokenRepository.invalidate(userId);
+      refreshTokenRepository.invalidate(userId);
+      eventPublisher.publishEvent(new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ROLE_CHANGE, true));
     }
     log.info("권한 변경 완료 - userId: {}, role: {}", userId, role);
   }
 
+  @CacheEvict(value = "users", key = "#userId")
   @Transactional
   public void changeUserLocked(UUID userId, boolean locked) {
     validateNotSelf(userId);
@@ -56,10 +64,12 @@ public class AdminService {
     }
     if (previousLocked != locked) {
       if (locked) {
-        user.increaseSessionVersion();
+        sessionTokenRepository.invalidate(userId);
+        refreshTokenRepository.invalidate(userId);
       }
       ForceLogoutReason reason = locked ? ForceLogoutReason.ACCOUNT_LOCKED : ForceLogoutReason.ACCOUNT_UNLOCKED;
-      eventPublisher.publishEvent(new UserForceLogoutEvent(userId, reason));
+      // locked일 때만 위에서 increaseSessionVersion()을 호출했으므로 sessionInvalidated도 locked와 동일하다.
+      eventPublisher.publishEvent(new UserAccountStatusChangedEvent(userId, reason, locked));
     }
     log.info("계정 잠금 변경 완료 - userId: {}, locked: {}", userId, locked);
   }
