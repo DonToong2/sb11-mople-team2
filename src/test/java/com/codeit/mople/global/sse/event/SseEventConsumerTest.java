@@ -1,6 +1,5 @@
 package com.codeit.mople.global.sse.event;
 
-import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -135,15 +134,14 @@ public class SseEventConsumerTest {
       DirectMessageCreatedEvent event =
           new DirectMessageCreatedEvent(eventId, receiverId, directMessageId);
 
-      given(processedEventRepository.insertIfAbsent(eventId))
-          .willReturn(1);
-
       given(directMessageRepository.findById(directMessageId))
           .willReturn(Optional.empty());
 
       // when & then
-      assertThatNoException()
-          .isThrownBy(() -> eventConsumer.handle(event));
+      assertThatThrownBy(() -> eventConsumer.handle(event))
+          .isInstanceOf(DirectMessageException.class)
+          .extracting("errorCode")
+          .isEqualTo(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND);
 
       verifyNoInteractions(sseService);
     }
@@ -160,7 +158,7 @@ public class SseEventConsumerTest {
       // given
 
       // BeforeEach에서 receiverId, notificationId, notification를 초기화
-      
+
       UUID eventId = UUID.randomUUID();
 
       NotificationCreatedEvent event =
@@ -186,23 +184,22 @@ public class SseEventConsumerTest {
     @DisplayName("알림 생성 이벤트 실패 - Notification이 존재하지 않을 경우")
     void handle_fail_notification_notFound() {
       // given
-      
+
       // BeforeEach에서 receiverId, notificationId, notification를 초기화
 
       UUID eventId = UUID.randomUUID();
-      
+
       NotificationCreatedEvent event =
           new NotificationCreatedEvent(eventId, receiverId, notificationId);
-
-      given(processedEventRepository.insertIfAbsent(eventId))
-          .willReturn(1);
 
       given(notificationRepository.findById(notificationId))
           .willReturn(Optional.empty());
 
       // when & then
-      assertThatNoException()
-          .isThrownBy(() -> eventConsumer.handle(event));
+      assertThatThrownBy(() -> eventConsumer.handle(event))
+          .isInstanceOf(NotificationException.class)
+          .extracting("errorCode")
+          .isEqualTo(NotificationErrorCode.NOTIFICATION_NOT_FOUND);
 
       verifyNoInteractions(sseService);
     }
