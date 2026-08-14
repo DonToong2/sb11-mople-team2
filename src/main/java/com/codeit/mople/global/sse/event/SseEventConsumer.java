@@ -47,10 +47,6 @@ public class SseEventConsumer {
             )
         );
 
-    if (checkAndRecordProcessedEvent(event.eventId())) {
-      return;
-    }
-
     DirectMessageDto directMessageDto = DirectMessageDto.from(directMessage);
 
     // SSE 이벤트 전송
@@ -59,6 +55,10 @@ public class SseEventConsumer {
         "direct-messages",
         directMessageDto
     );
+
+    if (checkAndRecordProcessedEvent(event.eventId())) {
+      return;
+    }
 
     log.info("SSE 전송 완료: receiverId={}, directMessageId={}",
         event.receiverId(), event.directMessageId());
@@ -78,10 +78,6 @@ public class SseEventConsumer {
                 Map.of("notificationId", event.notificationId()))
         );
 
-    if (checkAndRecordProcessedEvent(event.eventId())) {
-      return;
-    }
-
     NotificationResponse response = NotificationResponse.from(notification);
 
     sseService.send(
@@ -89,6 +85,10 @@ public class SseEventConsumer {
         "notifications",
         response
     );
+
+    if (checkAndRecordProcessedEvent(event.eventId())) {
+      return;
+    }
 
     log.info("알림 SSE 전송 완료: receiverId={}, notificationId={}",
         event.receiverId(), event.notificationId());
