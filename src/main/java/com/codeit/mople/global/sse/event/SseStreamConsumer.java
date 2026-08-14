@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -270,29 +271,28 @@ public class SseStreamConsumer {
   ) {
 
     try {
-      streamOperations.add(
-          FAILED_STREAM_KEY,
-          Map.of(
-              "recordId", record.getId().getValue(),
-              "eventId", eventId,
-              "receiverId", receiverId,
-              "eventName", eventName,
-              "data", data,
-              "serverId", serverId,
-              "error", exception == null
-                  ? "Unknown"
-                  : String.valueOf(exception.getMessage())
-          )
-      );
-
-      streamOperations.acknowledge(STREAM_KEY, GROUP_NAME, record.getId());
+      Map<String, String> failed = new HashMap<>();
+      failed.put("recordId", record.getId().getValue());
+      failed.put("eventId", eventId);
+      failed.put("receiverId", receiverId);
+      failed.put("eventName", eventName);
+      failed.put("data", data);
+      failed.put("serverId", serverId);
+      failed.put("error", exception == null
+              ? "Unknown"
+              : String.valueOf(exception.getMessage()));
+      streamOperations.add(FAILED_STREAM_KEY, failed);
 
       log.error("SSE Stream 이벤트 최종 실패: recordId={}, receiverId={}",
           record.getId(), receiverId, exception);
     } catch (Exception e) {
-
       log.error("SSE Stream 최종 실패 처리 중 오류 발생: recordId={}", record.getId(), e);
     }
+    finally {
+      // 저장 실패 여부와 무관하게 ACK하여 무한 재시도 방지
+      streamOperations.acknowledge(STREAM_KEY, GROUP_NAME, record.getId());
+    }
+
   }
 
 }
