@@ -65,6 +65,9 @@ public class PlaylistEventConsumerTest {
       given(processedEventRepository.insertIfAbsent(eventId))
           .willReturn(1);
 
+      given(playlistRepository.increaseSubscriberCount(playlistId))
+          .willReturn(1);
+
       // when
       eventConsumer.handle(event);
 
@@ -122,6 +125,9 @@ public class PlaylistEventConsumerTest {
           new PlaylistUnsubscribedEvent(eventId, playlistId, subscriberId);
 
       given(processedEventRepository.insertIfAbsent(eventId))
+          .willReturn(1);
+
+      given(playlistRepository.decreaseSubscriberCount(playlistId))
           .willReturn(1);
 
       // when
