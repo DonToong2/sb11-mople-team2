@@ -10,7 +10,6 @@ public record PlaylistContentAddedMessage(
     @JsonFormat(shape = Shape.STRING)
     Instant occurredAt,
     UUID playlistContentId,
-    UUID subscriberId,
     UUID playlistId,
     UUID contentId,
     String playlistTitle
@@ -21,7 +20,6 @@ public record PlaylistContentAddedMessage(
         UUID.randomUUID(),
         Instant.now(),
         event.playlistContentId(),
-        event.subscriberId(),
         event.playlistId(),
         event.contentId(),
         event.playlistTitle()

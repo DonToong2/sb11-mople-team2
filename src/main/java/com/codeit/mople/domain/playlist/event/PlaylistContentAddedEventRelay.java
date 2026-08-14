@@ -24,10 +24,10 @@ public class PlaylistContentAddedEventRelay {
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void relay(PlaylistContentAddedEvent event) {
     PlaylistContentAddedMessage message = PlaylistContentAddedMessage.from(event);
-    String key = message.subscriberId().toString();
+    String key = message.playlistId().toString();
 
-    log.debug("플레이리스트 콘텐츠 추가 이벤트 발행: playlistContentId={}, subscriberId={}, eventId={}",
-        message.playlistContentId(), message.subscriberId(), message.eventId());
+    log.debug("플레이리스트 콘텐츠 추가 이벤트 발행: playlistContentId={}, playlistId={}, eventId={}",
+        message.playlistContentId(), message.playlistId(), message.eventId());
     publisher.publish(topic, key, message);
   }
 }
