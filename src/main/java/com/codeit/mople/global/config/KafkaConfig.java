@@ -9,7 +9,7 @@ import org.springframework.util.StringUtils;
 
 @Slf4j
 @Configuration
-@ConditionalOnProperty(prefix = "kafka", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "spring.kafka", name = "enabled", havingValue = "true")
 public class KafkaConfig {
 
   public KafkaConfig(@Value("${spring.kafka.bootstrap-servers:}") String bootstrapServers) {

@@ -25,27 +25,16 @@ spring:
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
   kafka:
+    topics:
+      follow-created: mople.follow.created.v1
+      playlist-content-added: mople.playlist.content-added.v1
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      acks: all
-      properties:
-        enable.idempotence: true
-        spring.json.add.type.headers: false
-        max.block.ms: 1000
-        delivery.timeout.ms: 30000
-  lifecycle:
-    timeout-per-shutdown-phase: 30s
-
-  kafka:
-    producer:
       properties:
         retries: 3
         retry.backoff.ms: 1000
         retry.backoff.max.ms: 4000
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-
     consumer:
       group-id: mople
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -85,10 +74,5 @@ external-api:
 batch:
   tmdb:
     collect:
-      max-pages: 20
+      max-pages: 5
       skip-limit: 10
-
-kafka:
-  topics:
-    follow-created: mople.follow.created.v1
-    playlist-content-added: mople.playlist.content-added.v1

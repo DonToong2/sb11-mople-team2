@@ -3,6 +3,7 @@ package com.codeit.mople.domain.follow.event;
 import com.codeit.mople.global.config.KafkaProperties;
 import com.codeit.mople.global.event.KafkaEventPublisher;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -10,10 +11,11 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "kafka", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "spring.kafka", name = "enabled", havingValue = "true")
 public class FollowCreatedEventRelay {
 
   private final KafkaEventPublisher publisher;
+  @Value("${}")
   private final String topic;
 
   // 생성자, kafka템플릿과 topic이름을 받아서 넣음

@@ -6,6 +6,15 @@ spring:
 
   kafka:
     bootstrap-servers: localhost:9093
+    topics:
+      follow-created: mople.follow.created.v1
+      playlist-content-added: mople.playlist.content-added.v1
+    enabled: false
+
+  data:
+    redis:
+      host: localhost
+      port: 6380
 
   jpa:
     hibernate:
@@ -40,9 +49,6 @@ spring:
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
 
-  kafka:
-    bootstrap-servers: localhost:9093
-
 jwt:
   secret: test-secret-key-for-ci-pipeline-only-1234567890
 
@@ -67,6 +73,3 @@ oauth2:
   redirect:
     success-uri: http://localhost:3000/
     failure-uri: http://localhost:3000/login
-
-kafka:
-  enabled: false
