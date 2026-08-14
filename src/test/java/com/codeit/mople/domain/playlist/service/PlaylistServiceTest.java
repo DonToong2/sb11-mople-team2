@@ -995,8 +995,11 @@ public class PlaylistServiceTest {
       given(owner.getId()).willReturn(ownerId);
       given(playlistSubscriptionRepository.findSubscriberIdsByPlaylistId(playlistId))
           .willReturn(List.of(UUID.randomUUID()));
-      given(playlistContentRepository.save(any(PlaylistContent.class)))
-          .willReturn(PlaylistContent.create(playlist, content));
+      
+      UUID playlistContentId = UUID.randomUUID();
+      PlaylistContent saved = mock(PlaylistContent.class);
+      given(saved.getId()).willReturn(playlistContentId);
+      given(playlistContentRepository.save(any(PlaylistContent.class))).willReturn(saved);
 
       // when
       playlistService.addContent(playlistId, contentId, ownerId);
@@ -1007,6 +1010,7 @@ public class PlaylistServiceTest {
 
       PlaylistContentAddedEvent event = contentAddedEventCaptor.getValue();
 
+      assertThat(event.playlistContentId()).isEqualTo(playlistContentId);
       assertThat(event.playlistId()).isEqualTo(playlistId);
       assertThat(event.contentId()).isEqualTo(contentId);
       assertThat(event.playlistTitle()).isEqualTo(title);
@@ -1028,8 +1032,11 @@ public class PlaylistServiceTest {
       given(owner.getId()).willReturn(ownerId);
       given(playlistSubscriptionRepository.findSubscriberIdsByPlaylistId(playlistId))
           .willReturn(List.of(subscriber1, subscriber2));
-      given(playlistContentRepository.save(any(PlaylistContent.class)))
-          .willReturn(PlaylistContent.create(playlist, content));
+
+      UUID playlistContentId = UUID.randomUUID();
+      PlaylistContent saved = mock(PlaylistContent.class);
+      given(saved.getId()).willReturn(playlistContentId);
+      given(playlistContentRepository.save(any(PlaylistContent.class))).willReturn(saved);
 
       // when
       playlistService.addContent(playlistId, contentId, ownerId);
@@ -1041,6 +1048,7 @@ public class PlaylistServiceTest {
       assertThat(events).extracting(PlaylistContentAddedEvent::subscriberId)
           .containsExactlyInAnyOrder(subscriber1, subscriber2);
       assertThat(events).allSatisfy(event -> {
+        assertThat(event.playlistContentId()).isEqualTo(playlistContentId);
         assertThat(event.playlistId()).isEqualTo(playlistId);
         assertThat(event.contentId()).isEqualTo(contentId);
         assertThat(event.playlistTitle()).isEqualTo(title);
