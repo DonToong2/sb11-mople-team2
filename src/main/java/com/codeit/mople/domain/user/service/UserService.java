@@ -2,6 +2,8 @@ package com.codeit.mople.domain.user.service;
 
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
+import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.dto.request.ChangePasswordRequest;
 import com.codeit.mople.domain.user.dto.request.UserCreateRequest;
 import com.codeit.mople.domain.user.dto.request.UserSearchRequest;
@@ -21,6 +23,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +38,8 @@ public class UserService {
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
   private final FileStorageService fileStorageService;
+  private final SessionTokenRepository sessionTokenRepository;
+  private final RefreshTokenRepository refreshTokenRepository;
 
   @Transactional
   public UserDto signUp(UserCreateRequest request) {
@@ -47,6 +53,7 @@ public class UserService {
     return UserDto.from(saved);
   }
 
+  @Cacheable(value = "users", key = "#userId")
   public UserDto getUser(UUID userId) {
     User user = findUserOrThrow(userId);
     return UserDto.from(user);
@@ -67,6 +74,7 @@ public class UserService {
     );
   }
 
+  @CacheEvict(value = "users", key = "#targetUserId")
   @Transactional
   public UserDto updateProfile(UUID targetUserId, UUID requesterId, UserUpdateRequest request, MultipartFile image) {
     validateOwner(targetUserId, requesterId);
@@ -89,8 +97,8 @@ public class UserService {
     User user = findUserOrThrow(targetUserId);
     user.changePassword(passwordEncoder.encode(request.password()));
     user.destroyTemporaryPassword();
-    user.clearRefreshToken();
-    user.increaseSessionVersion();
+    refreshTokenRepository.invalidate(targetUserId);
+    sessionTokenRepository.invalidate(targetUserId);
   }
 
   private User findUserOrThrow(UUID userId) {

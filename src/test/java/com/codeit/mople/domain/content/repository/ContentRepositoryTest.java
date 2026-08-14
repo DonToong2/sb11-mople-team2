@@ -209,4 +209,40 @@ public class ContentRepositoryTest {
 
   }
 
+  @Nested
+  @DisplayName("특정 타입 콘텐츠 일괄 삭제")
+  class DeleteAllByType {
+
+    @Test
+    @DisplayName("특정 타입의 콘텐츠만 일괄 삭제 성공")
+    void deleteAllByType_success() {
+      Content sportContent1 = new Content(
+          ContentType.SPORT, "스포츠 1", "스포츠 설명 1", "1.png", new ArrayList<>(), "ext-001"
+      );
+      Content sportContent2 = new Content(
+          ContentType.SPORT, "스포츠 2", "스포츠 설명 2", "2.png", new ArrayList<>(), "ext-002"
+      );
+      Content movieContent = new Content(
+          ContentType.MOVIE, "영화 1", "영화 설명 1", "3.png", new ArrayList<>(), "ext-003"
+      );
+
+      contentRepository.saveAll(List.of(sportContent1, sportContent2, movieContent));
+      entityManager.flush();
+      entityManager.clear();
+
+      contentRepository.deleteAllByType(ContentType.SPORT);
+
+      entityManager.flush();
+      entityManager.clear();
+
+      List<Content> remainingContents = contentRepository.findAll();
+
+      //SPORT 타입 2개는 삭제되고, MOVIE 타입 1개만 남아있어야 함
+      assertThat(remainingContents).hasSize(1);
+      assertThat(remainingContents.get(0).getType()).isEqualTo(ContentType.MOVIE);
+      assertThat(remainingContents.get(0).getTitle()).isEqualTo("영화 1");
+    }
+
+  }
+
 }

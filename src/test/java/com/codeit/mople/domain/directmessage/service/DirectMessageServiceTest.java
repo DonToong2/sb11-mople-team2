@@ -21,6 +21,7 @@ import com.codeit.mople.domain.directmessage.entity.DirectMessage;
 import com.codeit.mople.domain.directmessage.event.DirectMessageCreatedEvent;
 import com.codeit.mople.domain.directmessage.exception.DirectMessageErrorCode;
 import com.codeit.mople.domain.directmessage.exception.DirectMessageException;
+import com.codeit.mople.domain.directmessage.repository.DirectMessageReadRedisRepository;
 import com.codeit.mople.domain.directmessage.repository.DirectMessageRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.dto.CursorResponse;
@@ -53,6 +54,9 @@ public class DirectMessageServiceTest {
 
   @Mock
   private ApplicationEventPublisher publisher;
+
+  @Mock
+  private DirectMessageReadRedisRepository readRedisRepository;
 
   private UUID userAId;
   private UUID userBId;
@@ -95,6 +99,7 @@ public class DirectMessageServiceTest {
       given(userA.getId()).willReturn(userAId);
       given(userA.getName()).willReturn("userA");
       given(userB.getId()).willReturn(userBId);
+      given(conversation.getId()).willReturn(conversationId);
       given(conversation.getUserA()).willReturn(userA);
       given(conversation.getPartnerOf(userAId)).willReturn(userB);
 
@@ -111,6 +116,9 @@ public class DirectMessageServiceTest {
       given(directMessageRepository.save(any(DirectMessage.class)))
           .willReturn(mockSavedMessage);
 
+      given(readRedisRepository.saveLastReadAt(conversationId, userAId, messageCreatedAt))
+          .willReturn(true);
+
       //when
       DirectMessageDto result = directMessageService.sendMessage(conversationId, userAId, content);
 
@@ -120,9 +128,11 @@ public class DirectMessageServiceTest {
 
       // 가장 최근(마지막) 메시지 및 발신자 워터마크 갱신 메서드가 호출되었는지 검증
       verify(conversation).updateLastMessage(mockSavedMessage);
-      verify(conversation).updateLastReadAt(userAId, messageCreatedAt);
-      verify(publisher).publishEvent(any(DirectMessageReceivedEvent.class));
 
+      verify(readRedisRepository).saveLastReadAt(conversationId, userAId, messageCreatedAt);
+      verify(conversation, never()).updateLastReadAt(eq(userAId), any());
+
+      verify(publisher).publishEvent(any(DirectMessageReceivedEvent.class));
       verify(publisher).publishEvent(new DirectMessageCreatedEvent(userBId, messageId));
     }
 
@@ -170,6 +180,7 @@ public class DirectMessageServiceTest {
     @DisplayName("성공: 대화방 참여자(UserA)가 메시지 목록을 조회한다.")
     void success_get_direct_messages() {
       //given
+      given(conversation.getId()).willReturn(conversationId);
       given(conversationRepository.findById(conversationId)).willReturn(Optional.of(conversation));
       given(conversation.getUserA()).willReturn(userA);
       given(userA.getId()).willReturn(userAId);
@@ -198,6 +209,9 @@ public class DirectMessageServiceTest {
 
       given(userB.getId()).willReturn(userBId);
 
+      given(readRedisRepository.saveLastReadAt(conversationId, userAId, messageTime))
+          .willReturn(true);
+
       //when
       CursorResponse<DirectMessageDto> result = directMessageService.getDirectMessages(conversationId, userAId, mockRequest);
 
@@ -205,7 +219,9 @@ public class DirectMessageServiceTest {
       assertThat(result.data()).hasSize(1);
       assertThat(result.data().get(0).content()).isEqualTo("안녕하세요!");
       assertThat(result.hasNext()).isFalse();
-      verify(conversation).updateLastReadAt(userAId, messageTime);
+
+      verify(readRedisRepository).saveLastReadAt(conversationId, userAId, messageTime);
+      verify(conversation, never()).updateLastReadAt(eq(userAId), any());
     }
 
     @Test
@@ -258,13 +274,15 @@ public class DirectMessageServiceTest {
       given(userB.getId()).willReturn(userBId);
       given(message.getCreatedAt()).willReturn(messageTime);
 
-      given(conversation.getMyLastReadAt(userBId)).willReturn(null);
+      given(readRedisRepository.getLastReadAt(conversation, userBId)).willReturn(null);
+      given(readRedisRepository.saveLastReadAt(conversationId, userBId, messageTime)).willReturn(true);
 
       //when
       directMessageService.readMessage(conversationId, messageId, userBId);
 
       //then
-      verify(conversation).updateLastReadAt(userBId, messageTime);
+      verify(readRedisRepository).saveLastReadAt(conversationId, userBId, messageTime);
+      verify(conversation, never()).updateLastReadAt(eq(userBId), any());
     }
 
     @Test
@@ -328,6 +346,36 @@ public class DirectMessageServiceTest {
       assertThatThrownBy(() -> directMessageService.readMessage(conversationId, messageId, strangerId))
           .isInstanceOf(DirectMessageException.class)
           .hasMessageContaining(DirectMessageErrorCode.UNAUTHORIZED_RECEIVER.getMessage());
+    }
+
+    @Test
+    @DisplayName("성공 (Fallback): Redis 저장 실패(장애) 시, DB(엔티티)에 직접 읽음 시각을 업데이트한다.")
+    void success_read_message_redis_fallback() {
+      //given
+      Instant messageTime = Instant.now().minusSeconds(10);
+      given(directMessageRepository.findById(messageId)).willReturn(Optional.of(message));
+      given(message.getConversation()).willReturn(conversation);
+      given(conversation.getId()).willReturn(conversationId);
+      given(message.getSender()).willReturn(userA);
+      given(userA.getId()).willReturn(userAId);
+      given(message.getReceiver()).willReturn(userB);
+      given(userB.getId()).willReturn(userBId);
+      given(message.getCreatedAt()).willReturn(messageTime);
+
+      given(readRedisRepository.getLastReadAt(conversation, userBId)).willReturn(null);
+
+      // 레디스 저장이 실패(false 리턴)했다고 가정
+      given(readRedisRepository.saveLastReadAt(conversationId, userBId, messageTime)).willReturn(false);
+
+      //when
+      directMessageService.readMessage(conversationId, messageId, userBId);
+
+      //then
+      // 1. 레디스 저장을 시도하긴 했는지 검증
+      verify(readRedisRepository).saveLastReadAt(conversationId, userBId, messageTime);
+
+      // 2. 레디스가 실패했으므로, Fallback을 타서 엔티티의 updateLastReadAt이 호출되었는지 검증
+      verify(conversation).updateLastReadAt(userBId, messageTime);
     }
   }
 }

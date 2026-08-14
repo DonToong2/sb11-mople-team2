@@ -117,14 +117,6 @@ public class UserTest {
   }
 
   @Test
-  @DisplayName("increaseSessionVersion 호출 시 버전이 1 증가한다.")
-  void increaseSessionVersion_success() {
-    User user = User.createUser("test@test.com", "encoded", "testUser");
-    assertThat(user.increaseSessionVersion()).isEqualTo(1L);
-    assertThat(user.increaseSessionVersion()).isEqualTo(2L);
-  }
-
-  @Test
   @DisplayName("createOAuthUser로 생성 시 비밀번호 없이 지정한 provider, providerId, 프로필 이미지로 생성됨")
   void createOAuthUser_success() {
     User user = User.createOAuthUser("oauth@test.com", "oauthUser", "https://profile.image", AuthProvider.GOOGLE, "google-sub-123");

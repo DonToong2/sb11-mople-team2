@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.auth.security;
 
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
 import io.jsonwebtoken.JwtException;
@@ -20,10 +21,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   private final JwtProvider jwtProvider;
   private final UserRepository userRepository;
+  private final SessionTokenRepository sessionTokenRepository;
 
-  public JwtAuthenticationFilter(JwtProvider jwtProvider, UserRepository userRepository) {
+  public JwtAuthenticationFilter(JwtProvider jwtProvider, UserRepository userRepository,
+      SessionTokenRepository sessionTokenRepository) {
     this.jwtProvider = jwtProvider;
     this.userRepository = userRepository;
+    this.sessionTokenRepository = sessionTokenRepository;
   }
 
   @Override
@@ -34,10 +38,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     if(token != null) {
       try {
         UUID userId = jwtProvider.getUserId(token);
-        long tokenSessionVersion = jwtProvider.getSessionVersion(token);
+        String tokenJti = jwtProvider.getJti(token);
 
         userRepository.findById(userId).ifPresent(user -> {
-          if(user.getSessionVersion() != tokenSessionVersion) {
+          if(!sessionTokenRepository.isValid(user.getId(), tokenJti)) {
             // 다른 기기에서 재로그인하여 세션이 만료됨 -> 인증 세팅 안 함, entry point에서 EXPIRED_SESSION으로 401 응답
             request.setAttribute(AUTH_ERROR_CODE_ATTRIBUTE, AuthErrorCode.EXPIRED_SESSION);
           } else if(user.isLocked()) {

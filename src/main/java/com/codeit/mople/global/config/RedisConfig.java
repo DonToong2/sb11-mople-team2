@@ -1,5 +1,6 @@
 package com.codeit.mople.global.config;
 
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.Duration;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -26,11 +27,11 @@ public class RedisConfig {
     template.setKeySerializer(new StringRedisSerializer());
 
     //Redis의 Value는 JSON 형태로 저장(객체 저장을 위함)
-    template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+    template.setValueSerializer(jsonSerializer());
 
     //Hash 자료구조를 사용할 경우를 대비한 직렬화 설정
     template.setHashKeySerializer(new StringRedisSerializer());
-    template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+    template.setHashValueSerializer(jsonSerializer());
 
     return template;
   }
@@ -42,11 +43,17 @@ public class RedisConfig {
         .serializeKeysWith(RedisSerializationContext.SerializationPair
             .fromSerializer(new StringRedisSerializer()))
         .serializeValuesWith(RedisSerializationContext.SerializationPair
-            .fromSerializer(new GenericJackson2JsonRedisSerializer()))
+            .fromSerializer(jsonSerializer()))
         .entryTtl(Duration.ofMinutes(10)); //기본 캐시 만료 시간 10분 설정(필요에 따라 변경)
 
     return RedisCacheManager.builder(connectionFactory)
         .cacheDefaults(cacheConfiguration)
         .build();
+  }
+
+  private GenericJackson2JsonRedisSerializer jsonSerializer() {
+    GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer();
+    serializer.configure(mapper -> mapper.registerModule(new JavaTimeModule()));
+    return serializer;
   }
 }
