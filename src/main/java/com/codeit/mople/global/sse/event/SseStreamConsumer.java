@@ -41,7 +41,7 @@ import org.springframework.stereotype.Component;
 public class SseStreamConsumer {
 
   // 서버 간 SSE 이벤트 전달을 위한 Redis Stream 키
-  private static final String STREAM_KEY = "sse:events";
+  private static final String STREAM_KEY = "sse:events:";
 
   // Redis Stream Consumer 그룹
   private static final String GROUP_NAME = "sse-servers";
@@ -106,18 +106,20 @@ public class SseStreamConsumer {
     // 서버 종료 전까지 계속 Stream을 소비함(block을 통해 처리할 이벤트 없으면 sleep 상태)
     while (running.get() && !Thread.currentThread().isInterrupted()) {
       try {
+        String streamKey = STREAM_KEY + serverId;
+
         // Consumer Group 없으면 생성
-        createGroupIfNotExists(streamOperations);
+        createGroupIfNotExists(streamOperations, streamKey);
 
         // ACK을 받지 못해 남아있는 Pending 이벤트 복구
-        recoverPending(streamOperations, consumer);
+        recoverPending(streamOperations, consumer, streamKey);
 
         List<MapRecord<String, String, String>> records = streamOperations.read(
             consumer,
             StreamReadOptions.empty()
                 .count(100)
                 .block(Duration.ofSeconds(1)), // 처리할 이벤트가 없으면 최대 1초 동안 새 이벤트를 기다림
-            StreamOffset.create(STREAM_KEY, ReadOffset.lastConsumed()
+            StreamOffset.create(streamKey, ReadOffset.lastConsumed()
             )
         );
 
@@ -128,7 +130,7 @@ public class SseStreamConsumer {
 
         // Redis Stream의 SSE 이벤트 처리
         for (MapRecord<String, String, String> record : records) {
-          handle(record, streamOperations);
+          handle(record, streamOperations, streamKey);
         }
 
         // 정상적으로 Redis 소비가 됐으면 backOffMs 1초로 초기화
@@ -158,26 +160,32 @@ public class SseStreamConsumer {
   }
 
   // 서버 시작 시 Consumer Group이 없으면 생성
-  private void createGroupIfNotExists(StreamOperations<String, String, String> streamOperations) {
+  private void createGroupIfNotExists(
+      StreamOperations<String, String, String> streamOperations,
+      String streamKey
+  ) {
     try {
-      streamOperations.createGroup(STREAM_KEY, ReadOffset.latest(), GROUP_NAME);
+      streamOperations.createGroup(streamKey, ReadOffset.latest(), GROUP_NAME);
     } catch (RedisSystemException e) {
       // 이미 생성된 Consumer Group일 경우 예외 발생
       if (e.getMessage() != null && e.getMessage().contains("BUSYGROUP")) {
-        log.debug("SSE Stream Consumer Group이 이미 존재: {}", GROUP_NAME);
+        log.debug("SSE Stream Consumer Group이 이미 존재: streamKey={}, group={}",
+            streamKey, GROUP_NAME);
         return;
       }
-      log.error("SSE Stream Consumer Group 생성 실패: {}", GROUP_NAME, e);
+      log.error("SSE Stream Consumer Group 생성 실패: streamKey={}, group={}",
+          streamKey, GROUP_NAME, e);
       throw e;
     }
   }
 
   private void recoverPending(
       StreamOperations<String, String, String> streamOperations,
-      Consumer consumer
+      Consumer consumer,
+      String streamKey
   ) {
     PendingMessages pendingMessages = streamOperations.pending(
-        STREAM_KEY, GROUP_NAME, Range.unbounded(), 100
+        streamKey, GROUP_NAME, Range.unbounded(), 100
     );
 
     for (PendingMessage pendingMessage : pendingMessages) {
@@ -188,7 +196,7 @@ public class SseStreamConsumer {
       }
 
       List<MapRecord<String, String, String>> records = streamOperations.claim(
-          STREAM_KEY,
+          streamKey,
           GROUP_NAME,
           consumer.getName(),
           PENDING_IDLE_TIME,
@@ -203,7 +211,7 @@ public class SseStreamConsumer {
         log.warn("Redis Stream Pending 이벤트 복구: recordId={}, consumer={}",
             record.getId(), consumer.getName());
 
-        handle(record, streamOperations);
+        handle(record, streamOperations, streamKey);
       }
     }
 
@@ -211,7 +219,8 @@ public class SseStreamConsumer {
 
   private void handle(
       MapRecord<String, String, String> record,
-      StreamOperations<String, String, String> streamOperations
+      StreamOperations<String, String, String> streamOperations,
+      String streamKey
   ) {
     Map<String, String> value = record.getValue();
 
@@ -234,7 +243,7 @@ public class SseStreamConsumer {
         );
 
         // Redis Stream에 이벤트 처리가 완료되었음을 알림
-        streamOperations.acknowledge(STREAM_KEY, GROUP_NAME, record.getId());
+        streamOperations.acknowledge(streamKey, GROUP_NAME, record.getId());
 
         // for문(재시도) 스킵
         return;
@@ -252,7 +261,7 @@ public class SseStreamConsumer {
     }
 
     handleFinalFailure
-        (record, eventId, receiverId, eventName, data, lastException, streamOperations);
+        (record, eventId, receiverId, eventName, data, lastException, streamOperations, streamKey);
   }
 
   private Object deserialize(String eventName, String data) throws JsonProcessingException {
@@ -286,7 +295,8 @@ public class SseStreamConsumer {
       String eventName,
       String data,
       Exception exception,
-      StreamOperations<String, String, String> streamOperations
+      StreamOperations<String, String, String> streamOperations,
+      String streamKey
   ) {
 
     try {
@@ -308,7 +318,7 @@ public class SseStreamConsumer {
       log.error("SSE Stream 최종 실패 처리 중 오류 발생: recordId={}", record.getId(), e);
     } finally {
       // 저장 실패 여부와 무관하게 ACK하여 무한 재시도 방지
-      streamOperations.acknowledge(STREAM_KEY, GROUP_NAME, record.getId());
+      streamOperations.acknowledge(streamKey, GROUP_NAME, record.getId());
     }
 
   }

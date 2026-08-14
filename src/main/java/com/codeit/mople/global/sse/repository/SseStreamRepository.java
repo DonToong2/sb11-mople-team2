@@ -12,18 +12,19 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class SseStreamRepository {
 
-  private static final String STREAM_KEY = "sse:events";
+  private static final String STREAM_KEY = "sse:events:";
 
   private final StringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper;
 
-  public void save(SseEvent event) {
+  public void save(SseEvent event, String serverId) {
 
     try {
       String data = objectMapper.writeValueAsString(event.data());
+      String streamKey = STREAM_KEY + serverId;
 
       redisTemplate.opsForStream().add(
-          STREAM_KEY,
+          streamKey,
           Map.of(
               "receiverId", event.receiverId().toString(),
               "eventId", event.id().toString(),
