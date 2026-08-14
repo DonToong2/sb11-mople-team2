@@ -374,8 +374,8 @@ public class WatchingSessionServiceTest {
     assertEquals(existingSessionUuid, event.watchingSession().id().toString());
 
     //SSE 전송 검증(본인 및 다른 유저 모두에게 전송되어야 함)
-    verify(sseService).send(eq(userId), eq("watch"), any(WatchingSessionChange.class));
-    verify(sseService).send(eq(otherUserId), eq("watch"), any(WatchingSessionChange.class));
+    verify(sseService).send(eq(userId), eq("watch"), org.mockito.ArgumentMatchers.same(event));
+    verify(sseService).send(eq(otherUserId), eq("watch"), org.mockito.ArgumentMatchers.same(event));
   }
 
   @Test
