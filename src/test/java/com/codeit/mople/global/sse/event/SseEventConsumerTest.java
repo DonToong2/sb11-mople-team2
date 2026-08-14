@@ -23,6 +23,7 @@ import com.codeit.mople.domain.notification.exception.NotificationErrorCode;
 import com.codeit.mople.domain.notification.exception.NotificationException;
 import com.codeit.mople.domain.notification.repository.NotificationRepository;
 import com.codeit.mople.domain.user.entity.User;
+import com.codeit.mople.global.event.processed.ProcessedEventRepository;
 import com.codeit.mople.global.sse.service.SseService;
 import java.util.Optional;
 import java.util.UUID;
@@ -46,6 +47,9 @@ public class SseEventConsumerTest {
 
   @Mock
   private NotificationRepository notificationRepository;
+
+  @Mock
+  private ProcessedEventRepository processedEventRepository;
 
   @InjectMocks
   private SseEventConsumer eventConsumer;
@@ -94,7 +98,13 @@ public class SseEventConsumerTest {
 
       // BeforeEach에서 receiverId, directMessageId, directMessage를 초기화
 
-      DirectMessageCreatedEvent event = new DirectMessageCreatedEvent(receiverId, directMessageId);
+      UUID eventId = UUID.randomUUID();
+
+      DirectMessageCreatedEvent event =
+          new DirectMessageCreatedEvent(eventId, receiverId, directMessageId);
+
+      given(processedEventRepository.insertIfAbsent(eventId))
+          .willReturn(1);
 
       given(directMessageRepository.findById(directMessageId))
           .willReturn(Optional.of(directMessage));
@@ -120,7 +130,13 @@ public class SseEventConsumerTest {
 
       // BeforeEach에서 receiverId, directMessageId를 초기화
 
-      DirectMessageCreatedEvent event = new DirectMessageCreatedEvent(receiverId, directMessageId);
+      UUID eventId = UUID.randomUUID();
+
+      DirectMessageCreatedEvent event =
+          new DirectMessageCreatedEvent(eventId, receiverId, directMessageId);
+
+      given(processedEventRepository.insertIfAbsent(eventId))
+          .willReturn(1);
 
       given(directMessageRepository.findById(directMessageId))
           .willReturn(Optional.empty());
@@ -144,15 +160,20 @@ public class SseEventConsumerTest {
       // given
 
       // BeforeEach에서 receiverId, notificationId, notification를 초기화
+      
+      UUID eventId = UUID.randomUUID();
 
-      NotificationCreatedEvent event = new NotificationCreatedEvent(receiverId, notificationId);
+      NotificationCreatedEvent event =
+          new NotificationCreatedEvent(eventId, receiverId, notificationId);
+
+      given(processedEventRepository.insertIfAbsent(eventId))
+          .willReturn(1);
 
       given(notificationRepository.findById(notificationId))
           .willReturn(Optional.of(notification));
 
       given(notification.getReceiver())
           .willReturn(receiver);
-
 
       // when
       eventConsumer.handle(event);
@@ -165,7 +186,16 @@ public class SseEventConsumerTest {
     @DisplayName("알림 생성 이벤트 실패 - Notification이 존재하지 않을 경우")
     void handle_fail_notification_notFound() {
       // given
-      NotificationCreatedEvent event = new NotificationCreatedEvent(receiverId, notificationId);
+      
+      // BeforeEach에서 receiverId, notificationId, notification를 초기화
+
+      UUID eventId = UUID.randomUUID();
+      
+      NotificationCreatedEvent event =
+          new NotificationCreatedEvent(eventId, receiverId, notificationId);
+
+      given(processedEventRepository.insertIfAbsent(eventId))
+          .willReturn(1);
 
       given(notificationRepository.findById(notificationId))
           .willReturn(Optional.empty());

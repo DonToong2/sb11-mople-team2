@@ -61,7 +61,7 @@ public class DirectMessageService {
 
     DirectMessageDto responseDto = DirectMessageDto.from(directMessage);
 
-    publisher.publishEvent(new DirectMessageCreatedEvent(receiver.getId(), directMessage.getId()));
+    publisher.publishEvent(new DirectMessageCreatedEvent(UUID.randomUUID(), receiver.getId(), directMessage.getId()));
 
     log.info("WebSocket DM 저장 및 워터마크/마지막 메시지 갱신 완료 - conversationId: {}, messageId: {}", conversationId, directMessage.getId());
 

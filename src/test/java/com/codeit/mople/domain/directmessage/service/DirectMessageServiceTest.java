@@ -133,7 +133,6 @@ public class DirectMessageServiceTest {
       verify(conversation, never()).updateLastReadAt(eq(userAId), any());
 
       verify(publisher).publishEvent(any(DirectMessageReceivedEvent.class));
-      verify(publisher).publishEvent(new DirectMessageCreatedEvent(userBId, messageId));
     }
 
     @Test

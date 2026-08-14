@@ -12,8 +12,10 @@ import com.codeit.mople.domain.notification.event.NotificationCreatedEvent;
 import com.codeit.mople.domain.notification.exception.NotificationErrorCode;
 import com.codeit.mople.domain.notification.exception.NotificationException;
 import com.codeit.mople.domain.notification.repository.NotificationRepository;
+import com.codeit.mople.global.event.processed.ProcessedEventRepository;
 import com.codeit.mople.global.sse.service.SseService;
 import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -28,10 +30,15 @@ public class SseEventConsumer {
   private final SseService sseService;
   private final DirectMessageRepository directMessageRepository;
   private final NotificationRepository notificationRepository;
+  private final ProcessedEventRepository processedEventRepository;
 
   @KafkaListener(topics = "direct-message-created")
-  @Transactional(readOnly = true)
+  @Transactional
   public void handle(DirectMessageCreatedEvent event) {
+    if (checkAndRecordProcessedEvent(event.eventId())) {
+      return;
+    }
+
     log.debug("SSE 이벤트 전송 시도: receiverId={}, directMessageId={}",
         event.receiverId(), event.directMessageId());
 
@@ -47,26 +54,23 @@ public class SseEventConsumer {
     DirectMessageDto directMessageDto = DirectMessageDto.from(directMessage);
 
     // SSE 이벤트 전송
-    // RuntimeException, CustomException, IOException 등 다양한 예외가 발생할 수 있기 때문에 Exception으로 설정
-    // 대신 로그 메시지에 stackTrace를 확인하여 어떤 예외가 발생했는지 알 수 있도록 설정
-    try {
-      sseService.send(
-          event.receiverId(),
-          "direct-messages",
-          directMessageDto
-      );
+    sseService.send(
+        event.receiverId(),
+        "direct-messages",
+        directMessageDto
+    );
 
-      log.info("SSE 전송 완료: receiverId={}, directMessageId={}",
-          event.receiverId(), event.directMessageId());
-    } catch (Exception e) {
-      log.error("SSE 전송 실패: receiverId={}, directMessageId={}",
-          event.receiverId(), event.directMessageId(), e);
-    }
+    log.info("SSE 전송 완료: receiverId={}, directMessageId={}",
+        event.receiverId(), event.directMessageId());
   }
 
   @KafkaListener(topics = "notification-created")
-  @Transactional(readOnly = true)
+  @Transactional
   public void handle(NotificationCreatedEvent event) {
+    if (checkAndRecordProcessedEvent(event.eventId())) {
+      return;
+    }
+
     log.debug("SSE 이벤트 전송 시도: receiverId={}, notificationId={}",
         event.receiverId(), event.notificationId());
 
@@ -81,19 +85,26 @@ public class SseEventConsumer {
 
     NotificationResponse response = NotificationResponse.from(notification);
 
-    try {
-      sseService.send(
-          event.receiverId(),
-          "notifications",
-          response
-      );
+    sseService.send(
+        event.receiverId(),
+        "notifications",
+        response
+    );
 
-      log.info("알림 SSE 전송 완료: receiverId={}, notificationId={}",
-          event.receiverId(), event.notificationId());
-    } catch (Exception e) {
-      log.error("알림 SSE 전송 실패: receiverId={}, notificationId={}",
-          event.receiverId(), event.notificationId(), e);
+    log.info("알림 SSE 전송 완료: receiverId={}, notificationId={}",
+        event.receiverId(), event.notificationId());
+  }
+
+  private boolean checkAndRecordProcessedEvent(UUID eventId) {
+    // 이미 해당 eventId가 존재하면 스킵
+    int inserted = processedEventRepository.insertIfAbsent(eventId);
+
+    if (inserted == 0) {
+      log.info("이미 처리된 이벤트입니다: eventId={}", eventId);
+      return true;
     }
+
+    return false;
   }
 
 }
