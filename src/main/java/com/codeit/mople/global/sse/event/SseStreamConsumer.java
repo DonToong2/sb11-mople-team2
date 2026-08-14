@@ -33,11 +33,7 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-@ConditionalOnProperty(
-    name = "sse.stream-consumer.enabled",
-    havingValue = "true",
-    matchIfMissing = true
-)
+@ConditionalOnProperty(name = "sse.stream-consumer.enabled", havingValue = "true", matchIfMissing = true)
 public class SseStreamConsumer {
 
   // 서버 간 SSE 이벤트 전달을 위한 Redis Stream 키

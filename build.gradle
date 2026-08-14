@@ -58,6 +58,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-batch'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
+    // Kafka
+    implementation 'org.springframework.kafka:spring-kafka'
+
     // External API (TMDB / SportsDB)
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 
@@ -80,6 +83,7 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
 }
 
 dependencyManagement {

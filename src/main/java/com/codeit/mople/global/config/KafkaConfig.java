@@ -3,25 +3,41 @@ package com.codeit.mople.global.config;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
+import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 @Configuration
-@RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "spring.kafka", name = "enabled", havingValue = "true")
 public class KafkaConfig {
 
   private static final String FAILED_STREAM_KEY = "kafka:events:failed";
 
   private final StringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper;
+
+  public KafkaConfig(
+      StringRedisTemplate redisTemplate,
+      ObjectMapper objectMapper,
+      @Value("${spring.kafka.bootstrap-servers:}") String bootstrapServers
+  ) {
+    Assert.state(StringUtils.hasText(bootstrapServers),
+        "kafka.enabled=true 이지만 spring.kafka.bootstrap-servers 가 비어있습니다. KAFKA_BOOTSTRAP_SERVERS 를 설정하세요.");
+    log.info("Kafka 이벤트 발행 활성화: bootstrapServers={}", bootstrapServers);
+
+    this.redisTemplate = redisTemplate;
+    this.objectMapper = objectMapper;
+  }
 
   @Bean
   public DefaultErrorHandler kafkaErrorHandler() {
@@ -63,7 +79,7 @@ public class KafkaConfig {
       log.error("Kafka Consumer 이벤트 최종 실패: topic={}, partition={}, offset={}, key{}",
           record.topic(), record.partition(), record.offset(), record.key(), ex);
     } catch (JsonProcessingException e) {
-      log.error("Kafka Consumer 최종 실패 이벤트 직렬화 실패: topic{}, key={}",
+      log.error("Kafka Consumer 최종 실패 이벤트 직렬화 실패: topic={}, key={}",
           record.topic(), record.key(), e);
     } catch (Exception e) {
       log.error("Kafka Consumer 최종 실패 이벤트 Redis 저장 실패: topic={}, partition={}, offset={}, key={}",

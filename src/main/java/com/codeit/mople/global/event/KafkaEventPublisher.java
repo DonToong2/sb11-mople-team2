@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "spring.kafka", name = "enabled", havingValue = "true")
 public class KafkaEventPublisher {
 
   private static final String FAILED_STREAM_KEY = "kafka:events:failed";
@@ -21,24 +23,33 @@ public class KafkaEventPublisher {
   private final StringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper;
 
+
   public void publish(String topic, Object event) {
-    kafkaTemplate.send(topic, event)
-        .whenComplete((result, ex) -> {
-          if (ex != null) {
-            saveFailedEvent(topic, null, event, ex);
-            log.error("Kafka 이벤트 발행 최종 실패: topic={}", topic, ex);
-          }
-        });
+    try {
+      kafkaTemplate.send(topic, event)
+          .whenComplete((result, ex) -> {
+            if (ex != null) {
+              saveFailedEvent(topic, null, event, ex);
+              log.error("Kafka 이벤트 발행 최종 실패: topic={}", topic, ex);
+            }
+          });
+    } catch (Exception e) {
+      log.error("Kafka 이벤트 발행 시도 실패: topic={}", topic, e);
+    }
   }
 
   public void publish(String topic, String key, Object event) {
-    kafkaTemplate.send(topic, key, event)
-        .whenComplete((result, ex) -> {
-          if (ex != null) {
-            saveFailedEvent(topic, key, event, ex);
-            log.error("Kafka 이벤트 발행 최종 실패: topic={}", topic, ex);
-          }
-        });
+    try {
+      kafkaTemplate.send(topic, key, event)
+          .whenComplete((result, ex) -> {
+            if (ex != null) {
+              saveFailedEvent(topic, key, event, ex);
+              log.error("Kafka 이벤트 발행 최종 실패: topic={}", topic, ex);
+            }
+          });
+    } catch (Exception e) {
+      log.error("Kafka 이벤트 발행 시도 실패: topic={}", topic, e);
+    }
   }
 
   private void saveFailedEvent(String topic, String key, Object event, Throwable ex) {
