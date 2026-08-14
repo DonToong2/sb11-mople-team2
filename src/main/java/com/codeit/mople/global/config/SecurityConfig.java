@@ -10,7 +10,12 @@ import com.codeit.mople.domain.auth.security.handler.OAuth2SuccessHandler;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.Getter;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -21,9 +26,13 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableMethodSecurity
+@EnableConfigurationProperties(SecurityConfig.CorsProperties.class)
 public class SecurityConfig {
 
   @Bean
@@ -32,11 +41,13 @@ public class SecurityConfig {
       ObjectMapper objectMapper,
       CustomOAuth2UserService customOAuth2UserService,
       OAuth2SuccessHandler oAuth2SuccessHandler,
-      OAuth2FailureHandler oAuth2FailureHandler) throws Exception {
+      OAuth2FailureHandler oAuth2FailureHandler,
+      CorsConfigurationSource corsConfigurationSource) throws Exception {
     CsrfTokenRequestAttributeHandler csrfTokenRequestHandler = new CsrfTokenRequestAttributeHandler();
     csrfTokenRequestHandler.setCsrfRequestAttributeName(null);
 
     http
+        .cors(cors -> cors.configurationSource(corsConfigurationSource))
         .csrf(csrf -> csrf
             .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()) // 쿠키명 기본값 XSRF-TOKEN, 헤더명 X-XSRF-TOKEN
             .csrfTokenRequestHandler(csrfTokenRequestHandler)
@@ -71,5 +82,24 @@ public class SecurityConfig {
             UsernamePasswordAuthenticationFilter.class
         );
     return http.build();
+  }
+
+  @Bean
+  public CorsConfigurationSource corsConfigurationSource(CorsProperties corsProperties) {
+    CorsConfiguration configuration = new CorsConfiguration();
+    configuration.setAllowedOrigins(corsProperties.getAllowedOrigins());
+    configuration.setAllowedMethods(List.of("POST", "GET", "PATCH", "DELETE", "PUT", "OPTIONS"));
+    configuration.setAllowedHeaders(List.of("*"));
+    configuration.setAllowCredentials(true);
+
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", configuration);
+    return source;
+  }
+
+  @Getter
+  @ConfigurationProperties(prefix = "app.cors")
+  public static class CorsProperties {
+    private List<String> allowedOrigins = new ArrayList<>(List.of("http://localhost:8080"));
   }
 }

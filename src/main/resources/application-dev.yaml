@@ -70,6 +70,9 @@ oauth2:
     failure-uri: http://localhost:8080/
 
 app:
+  cors:
+    allowed-origins:
+      - "http://localhost:5173"
   websocket:
     allowed-origins:
       - "http://localhost:8080"

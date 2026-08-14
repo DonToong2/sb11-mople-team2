@@ -55,3 +55,11 @@ batch:
     collect:
       cron: "0 0 3 * * *"
       enabled: ${TMDB_COLLECT_ENABLED:false}
+
+app:
+  cors:
+    allowed-origins:
+      - ${FRONTEND_ORIGIN:https://mople.com}
+  websocket:
+    allowed-origins:
+      - ${FRONTEND_ORIGIN:https://mople.com}
