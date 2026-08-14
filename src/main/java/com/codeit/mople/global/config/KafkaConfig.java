@@ -81,6 +81,8 @@ public class KafkaConfig {
     } catch (JsonProcessingException e) {
       log.error("Kafka Consumer 최종 실패 이벤트 직렬화 실패: topic={}, key={}",
           record.topic(), record.key(), e);
+
+      throw new IllegalStateException("Kafka 최종 실패 이벤트 직렬화 실패", e);
     } catch (Exception e) {
       log.error("Kafka Consumer 최종 실패 이벤트 Redis 저장 실패: topic={}, partition={}, offset={}, key={}",
           record.topic(), record.partition(), record.offset(), record.key(), e);
