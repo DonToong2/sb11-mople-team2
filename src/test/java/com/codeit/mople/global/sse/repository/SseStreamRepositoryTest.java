@@ -40,11 +40,13 @@ class SseStreamRepositoryTest {
   private SseStreamRepository streamRepository;
 
   private UUID receiverId;
+  private String serverId;
   private SseEvent event;
 
   @BeforeEach
   void setUp() {
     receiverId = UUID.randomUUID();
+    serverId = "server-1";
 
     event = new SseEvent(
         UUID.randomUUID(),
@@ -63,6 +65,8 @@ class SseStreamRepositoryTest {
     void save_success() throws JsonProcessingException {
       // given
 
+      // BeforeEach에서 receiverId, serverId, event를 추가
+
       when(redisTemplate.opsForStream())
           .thenReturn(streamOperations);
       
@@ -73,14 +77,14 @@ class SseStreamRepositoryTest {
           .thenReturn(jsonData);
 
       // when
-      streamRepository.save(event);
+      streamRepository.save(event, serverId);
 
       // then
       verify(objectMapper)
           .writeValueAsString(event.data());
 
       verify(streamOperations).add(
-          eq("sse:events"),
+          eq("sse:events:server-1"),
           eq(Map.of(
               "receiverId", receiverId.toString(),
               "eventId", event.id().toString(),
@@ -94,15 +98,18 @@ class SseStreamRepositoryTest {
     @DisplayName("이벤트 저장 실패 - 이벤트 데이터 직렬화 실패")
     void save_fail_serialization() throws JsonProcessingException {
       // given
+
+      // BeforeEach에서 serverId, event를 추가
+
       JsonProcessingException exception =
-          new JsonProcessingException("serialization failed") {
+          new JsonProcessingException("SSE 이벤트 직렬화 실패") {
           };
 
       when(objectMapper.writeValueAsString(event.data()))
           .thenThrow(exception);
 
       // when & then
-      assertThatThrownBy(() -> streamRepository.save(event))
+      assertThatThrownBy(() -> streamRepository.save(event, serverId))
           .isInstanceOf(IllegalStateException.class);
     }
     

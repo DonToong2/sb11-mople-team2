@@ -2,6 +2,7 @@ package com.codeit.mople.global.sse.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -204,7 +205,7 @@ public class SseServiceTest {
       verify(emitterRepository).find(receiverId);
 
       // 다른 서버에 연결 될 경우 SSEEvent send가 스킵되고 Redis Stream에 저장되어야 함
-      verify(streamRepository).save(any(SseEvent.class));
+      verify(streamRepository).save(any(SseEvent.class), eq("server-2"));
     }
 
     @Test
@@ -224,7 +225,8 @@ public class SseServiceTest {
       verify(eventRepository).save(any(SseEvent.class));
       verify(connectionRepository).findServerId(receiverId);
       verify(emitterRepository).find(receiverId);
-      verify(streamRepository).save(any(SseEvent.class));
+
+      verifyNoInteractions(streamRepository);
     }
 
     @Test

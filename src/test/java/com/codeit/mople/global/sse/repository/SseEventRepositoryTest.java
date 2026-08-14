@@ -100,16 +100,11 @@ public class SseEventRepositoryTest {
               "eventId", sseEvent1.id().toString(),
               "eventName", sseEvent1.eventName(),
               "data", "\"data\""
-          ))
-      );
-
-      // 사용자별 SSE 유실 이벤트를 최대 500개까지 유지
-      verify(streamOperations).trim(
-          STREAM_KEY + receiverId,
-          500L,
-          false
+          )),
+          any()
       );
     }
+
   }
 
   @Nested
@@ -203,8 +198,6 @@ public class SseEventRepositoryTest {
     @DisplayName("SSE 이벤트 이후 조회 성공 - 마지막 이벤트가 기준 이벤트이면 빈 리스트 반환")
     void findAfter_success_lastEvent() throws JsonProcessingException {
       // given
-      sseEventRepository.save(sseEvent1);
-      sseEventRepository.save(sseEvent2);
 
       given(streamOperations.range(
           eq(STREAM_KEY + receiverId),
@@ -213,18 +206,16 @@ public class SseEventRepositoryTest {
           StreamRecords.newRecord()
               .in(STREAM_KEY + receiverId)
               .ofMap(Map.of(
-                  "id", sseEvent1.id().toString(),
-                  "receiverId", sseEvent1.receiverId().toString(),
+                  "eventId", sseEvent1.id().toString(),
                   "eventName", sseEvent1.eventName(),
-                  "data", objectMapper.writeValueAsString(sseEvent1.data())
+                  "data", "\"data1\""
               )),
           StreamRecords.newRecord()
               .in(STREAM_KEY + receiverId)
               .ofMap(Map.of(
-                  "id", sseEvent2.id().toString(),
-                  "receiverId", sseEvent2.receiverId().toString(),
+                  "eventId", sseEvent2.id().toString(),
                   "eventName", sseEvent2.eventName(),
-                  "data", objectMapper.writeValueAsString(sseEvent2.data())
+                  "data", "\"data2\""
               ))
       ));
 

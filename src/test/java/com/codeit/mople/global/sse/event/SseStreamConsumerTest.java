@@ -51,7 +51,7 @@ public class SseStreamConsumerTest {
   @InjectMocks
   private SseStreamConsumer streamConsumer;
 
-  private static final String STREAM_KEY = "sse:events";
+  private static final String STREAM_KEY = "sse:events:";
   private static final String GROUP_NAME = "sse-servers";
   private static final String FAILED_STREAM_KEY = "sse:events:failed";
   private static final String SERVER_ID = "server-1";
@@ -100,7 +100,7 @@ public class SseStreamConsumerTest {
 
       // then
       verify(sseService).sendFromStream(eventId, receiverId, "direct-messages", eventData);
-      verify(streamOperations).acknowledge(STREAM_KEY, GROUP_NAME, record.getId());
+      verify(streamOperations).acknowledge(STREAM_KEY + SERVER_ID, GROUP_NAME, record.getId());
     }
 
     @Test
@@ -130,7 +130,7 @@ public class SseStreamConsumerTest {
       verify(sseService, times(2))
           .sendFromStream(eventId, receiverId, "direct-messages", eventData);
 
-      verify(streamOperations).acknowledge(STREAM_KEY, GROUP_NAME, record.getId());
+      verify(streamOperations).acknowledge(STREAM_KEY + SERVER_ID, GROUP_NAME, record.getId());
       verify(streamOperations, never()).add(eq(FAILED_STREAM_KEY), any());
     }
 
@@ -162,7 +162,7 @@ public class SseStreamConsumerTest {
           .sendFromStream(eventId, receiverId, "direct-messages", eventData);
 
       verify(streamOperations).add(eq(FAILED_STREAM_KEY), any());
-      verify(streamOperations).acknowledge(STREAM_KEY, GROUP_NAME, record.getId());
+      verify(streamOperations).acknowledge(STREAM_KEY + SERVER_ID, GROUP_NAME, record.getId());
     }
 
   }
@@ -179,7 +179,12 @@ public class SseStreamConsumerTest {
       when(pendingMessages.iterator())
           .thenReturn(List.of(pendingMessage).iterator());
 
-      when(streamOperations.pending(eq(STREAM_KEY), eq(GROUP_NAME), any(Range.class), eq(100L)))
+      when(streamOperations.pending(
+          eq(STREAM_KEY + SERVER_ID),
+          eq(GROUP_NAME),
+          any(Range.class),
+          eq(100L))
+      )
           .thenReturn(pendingMessages);
     }
 
@@ -200,25 +205,34 @@ public class SseStreamConsumerTest {
           .thenReturn(Duration.ofSeconds(30));
 
       when(streamOperations.claim(
-          eq(STREAM_KEY), eq(GROUP_NAME), any(), eq(Duration.ofSeconds(30)), eq(recordId)
+          eq(STREAM_KEY + SERVER_ID),
+          eq(GROUP_NAME),
+          any(),
+          eq(Duration.ofSeconds(30)),
+          eq(recordId)
       ))
           .thenReturn(List.of(record));
 
       when(objectMapper.readValue("{\"id\":\"test\"}", DirectMessageDto.class))
           .thenReturn(eventData);
 
+      Consumer consumer = Consumer.from(GROUP_NAME, SERVER_ID);
+
       // when
-      invokeRecoverPending(
-          streamOperations,
-          Consumer.from(GROUP_NAME, SERVER_ID)
-      );
+      invokeRecoverPending(streamOperations, consumer, STREAM_KEY + SERVER_ID);
 
       // then
       verify(streamOperations)
-          .claim(STREAM_KEY, GROUP_NAME, SERVER_ID, Duration.ofSeconds(30), record.getId());
+          .claim(
+              STREAM_KEY + SERVER_ID,
+              GROUP_NAME,
+              SERVER_ID,
+              Duration.ofSeconds(30),
+              record.getId()
+          );
 
       verify(sseService).sendFromStream(eventId, receiverId, "direct-messages", eventData);
-      verify(streamOperations).acknowledge(STREAM_KEY, GROUP_NAME, record.getId());
+      verify(streamOperations).acknowledge(STREAM_KEY + SERVER_ID, GROUP_NAME, record.getId());
     }
 
     @Test
@@ -234,11 +248,17 @@ public class SseStreamConsumerTest {
       Consumer consumer = Consumer.from(GROUP_NAME, SERVER_ID);
 
       // when
-      invokeRecoverPending(streamOperations, consumer);
+      invokeRecoverPending(streamOperations, consumer, STREAM_KEY + SERVER_ID);
 
       // then
       verify(streamOperations, never())
-          .claim(eq(STREAM_KEY), eq(GROUP_NAME), eq(SERVER_ID), eq(Duration.ofSeconds(30)), any());
+          .claim(
+              eq(STREAM_KEY + SERVER_ID),
+              eq(GROUP_NAME),
+              eq(SERVER_ID),
+              eq(Duration.ofSeconds(30)),
+              any()
+          );
 
       verify(sseService, never()).sendFromStream(any(), any(), any(), any());
     }
@@ -268,19 +288,22 @@ public class SseStreamConsumerTest {
         streamConsumer,
         "handle",
         record,
-        streamOperations
+        streamOperations,
+        STREAM_KEY + SERVER_ID
     );
   }
 
   private void invokeRecoverPending(
       StreamOperations<String, String, String> streamOperations,
-      Consumer consumer
+      Consumer consumer,
+      String streamKey
   ) {
     ReflectionTestUtils.invokeMethod(
         streamConsumer,
         "recoverPending",
         streamOperations,
-        consumer
+        consumer,
+        streamKey
     );
   }
 

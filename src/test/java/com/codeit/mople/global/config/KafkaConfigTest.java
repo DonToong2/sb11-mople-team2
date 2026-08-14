@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -31,8 +32,16 @@ public class KafkaConfigTest {
   @Mock
   private StreamOperations<String, Object, Object> streamOperations;
 
-  @InjectMocks
   private KafkaConfig kafkaConfig;
+
+  @BeforeEach
+  void setUp() {
+    kafkaConfig = new KafkaConfig(
+        redisTemplate,
+        objectMapper,
+        "test"
+    );
+  }
 
   @Nested
   @DisplayName("Kafka Consumer 최종 실패 이벤트 저장")
@@ -50,8 +59,7 @@ public class KafkaConfigTest {
           new Object()
       );
 
-      RuntimeException exception =
-          new RuntimeException("리뷰 통계 업데이트 실패");
+      RuntimeException exception = new RuntimeException("리뷰 통계 업데이트 실패");
 
       given(redisTemplate.opsForStream())
           .willReturn(streamOperations);

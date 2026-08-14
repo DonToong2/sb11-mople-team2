@@ -77,3 +77,4 @@ oauth2:
 sse:
   stream-consumer:
     enabled: false
+  server-id: test-server-id
