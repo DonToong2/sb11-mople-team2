@@ -322,7 +322,14 @@ public class PlaylistService {
     log.info("플레이리스트 구독 성공: playlistSubscriptionId={}, playlistId={}, subscriberId={}",
         saved.getId(), playlistId, subscriberId);
 
-    publisher.publishEvent(new PlaylistSubscribedEvent(ownerId, playlistId, subscriberId, subscriber.getName(), playlist.getTitle()));
+    publisher.publishEvent(new PlaylistSubscribedEvent(
+        UUID.randomUUID(),
+        ownerId,
+        playlistId,
+        subscriberId,
+        subscriber.getName(),
+        playlist.getTitle()
+    ));
   }
 
   @Transactional
@@ -338,7 +345,11 @@ public class PlaylistService {
           Map.of("playlistId", playlistId, "subscriberId", subscriberId));
     }
 
-    publisher.publishEvent(new PlaylistUnsubscribedEvent(playlistId, subscriberId));
+    publisher.publishEvent(new PlaylistUnsubscribedEvent(
+        UUID.randomUUID(),
+        playlistId,
+        subscriberId
+    ));
 
     log.info("플레이리스트 구독 취소 성공: playlist={}, subscriberId={}",
         playlistId, subscriberId);

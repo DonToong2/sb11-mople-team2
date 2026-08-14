@@ -7,8 +7,6 @@ spring:
     redis:
       host: localhost
       port: 6379
-  kafka:
-    bootstrap-servers: localhost:9093
 
   jpa:
     hibernate:
@@ -38,6 +36,9 @@ spring:
   batch:
     jdbc:
       initialize-schema: always
+
+  kafka:
+    bootstrap-servers: localhost:9093
 
 logging:
   level:
