@@ -3,6 +3,7 @@ package com.codeit.mople.domain.directmessage.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -43,14 +44,13 @@ public class DirectMessageControllerTest {
   @MockitoBean
   private SimpMessagingTemplate messagingTemplate;
 
-  private CustomUserDetails mockUser;
   private UsernamePasswordAuthenticationToken authToken;
   private UUID myUserId;
 
   @BeforeEach
   void setUp() {
     myUserId = UUID.randomUUID();
-    mockUser = new CustomUserDetails(myUserId, Role.USER);
+    CustomUserDetails mockUser = new CustomUserDetails(myUserId, Role.USER);
     authToken = new UsernamePasswordAuthenticationToken(mockUser, null, mockUser.getAuthorities());
   }
 
@@ -120,5 +120,6 @@ public class DirectMessageControllerTest {
                 .with(csrf()))
         .andDo(print())
         .andExpect(status().isNoContent());
+    then(directMessageService).should().readMessage(conversationId, messageId, myUserId);
   }
 }

@@ -46,7 +46,6 @@ public class ConversationControllerTest {
   @MockitoBean
   private ConversationService conversationService;
 
-  private CustomUserDetails mockUser;
   private UsernamePasswordAuthenticationToken authToken;
   private UUID myUserId;
 
@@ -54,7 +53,7 @@ public class ConversationControllerTest {
   void setUp() {
     // @AuthenticationPrincipal 파라미터에 들어갈 가짜 유저 세팅
     myUserId = UUID.randomUUID();
-    mockUser = new CustomUserDetails(myUserId, Role.USER);
+    CustomUserDetails mockUser = new CustomUserDetails(myUserId, Role.USER);
     authToken = new UsernamePasswordAuthenticationToken(mockUser, null, mockUser.getAuthorities());
   }
 
