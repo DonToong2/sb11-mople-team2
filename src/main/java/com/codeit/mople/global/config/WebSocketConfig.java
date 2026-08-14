@@ -2,6 +2,7 @@ package com.codeit.mople.global.config;
 
 import com.codeit.mople.domain.auth.security.JwtChannelInterceptor;
 import com.codeit.mople.global.error.CustomStompErrorHandler;
+import com.codeit.mople.global.websocket.WebSocketAuthenticationPrincipalResolver;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
@@ -10,6 +11,7 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
@@ -49,11 +51,19 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     registration.interceptors(jwtChannelInterceptor);
   }
 
+  @Override
+  public void addArgumentResolvers(
+      List<HandlerMethodArgumentResolver> resolvers
+  ) {
+    resolvers.add(new WebSocketAuthenticationPrincipalResolver());
+  }
+
   // yaml 파일에 값이 없을 때 사용할 디폴트 값 설정
   @Getter
   @Setter
   @ConfigurationProperties(prefix = "app.websocket")
   public static class WebSocketProperties {
+
     private List<String> allowedOrigins = new ArrayList<>(List.of("http://localhost:8080"));
   }
 }
