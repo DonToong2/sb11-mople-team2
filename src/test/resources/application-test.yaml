@@ -64,3 +64,6 @@ oauth2:
   redirect:
     success-uri: http://localhost:3000/
     failure-uri: http://localhost:3000/login
+
+kafka:
+  enabled: false

@@ -66,6 +66,9 @@ batch:
       cron: "-"
       enabled: false
 
+kafka:
+  enabled: true
+
 oauth2:
   redirect:
     success-uri: http://localhost:8080/

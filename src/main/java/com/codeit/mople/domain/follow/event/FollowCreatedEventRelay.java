@@ -3,6 +3,7 @@ package com.codeit.mople.domain.follow.event;
 import com.codeit.mople.global.config.KafkaProperties;
 import com.codeit.mople.global.event.KafkaEventPublisher;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -10,6 +11,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 @Slf4j
 @Component
+@ConditionalOnProperty(prefix = "kafka", name = "enabled", havingValue = "true")
 public class FollowCreatedEventRelay {
 
   private final KafkaEventPublisher publisher;
