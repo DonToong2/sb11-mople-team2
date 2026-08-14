@@ -76,6 +76,5 @@ batch:
       skip-limit: 10
 
 sse:
-  server-id: ${SSE_SERVER_ID:local}
   stream-consumer:
     enabled: true
