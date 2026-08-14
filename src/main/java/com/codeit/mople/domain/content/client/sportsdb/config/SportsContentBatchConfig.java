@@ -39,8 +39,8 @@ public class SportsContentBatchConfig {
   public Job sportsContentJob(JobRepository jobRepository, Step sportsContentStep, Step deleteOldSportsDataStep) {
     return new JobBuilder("sportsContentJob", jobRepository)
         .preventRestart() //실패 시 재시작 방지(항상 처음부터 다시 실행되도록 강제)
-        .start(sportsContentStep)        //먼저 새로운 데이터 수집 스텝(Chunk)을 먼저 실행하여 안전하게 적재
-        .next(deleteOldSportsDataStep) //수집 성공 후 기존 구버전 데이터 삭제 스텝 실행
+        .start(deleteOldSportsDataStep) //기존 데이터 사전 삭제
+        .next(sportsContentStep)        //삭제 완료 후 새로운 데이터 수집 및 저장
         .listener(jobListener)
         .build();
   }
