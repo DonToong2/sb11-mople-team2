@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 import com.codeit.mople.global.sse.model.SseEvent;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.connection.stream.StreamRecords;
 import org.springframework.data.redis.core.StreamOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
@@ -178,8 +180,8 @@ public class SseEventRepositoryTest {
     }
 
     @Test
-    @DisplayName("SSE 이벤트 이후 조회 성공 - 마지막 이벤트일 경우 빈 리스트 반환")
-    void findAfter_success_lastEvent() {
+    @DisplayName("SSE 이벤트 이후 조회 성공 - 스트림에 이벤트가 없으면 빈 리스트 반환")
+    void findAfter_success_lastEvent_emptyStream() {
       // given
 
       // BeforeEach에서 receiverId, sseEvent1을 초기화
@@ -192,6 +194,43 @@ public class SseEventRepositoryTest {
       // when
       List<SseEvent> result =
           sseEventRepository.findAfter(receiverId, sseEvent1.id());
+
+      // then
+      assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("SSE 이벤트 이후 조회 성공 - 마지막 이벤트가 기준 이벤트이면 빈 리스트 반환")
+    void findAfter_success_lastEvent() throws JsonProcessingException {
+      // given
+      sseEventRepository.save(sseEvent1);
+      sseEventRepository.save(sseEvent2);
+
+      given(streamOperations.range(
+          eq(STREAM_KEY + receiverId),
+          any()
+      )).willReturn(List.of(
+          StreamRecords.newRecord()
+              .in(STREAM_KEY + receiverId)
+              .ofMap(Map.of(
+                  "id", sseEvent1.id().toString(),
+                  "receiverId", sseEvent1.receiverId().toString(),
+                  "eventName", sseEvent1.eventName(),
+                  "data", objectMapper.writeValueAsString(sseEvent1.data())
+              )),
+          StreamRecords.newRecord()
+              .in(STREAM_KEY + receiverId)
+              .ofMap(Map.of(
+                  "id", sseEvent2.id().toString(),
+                  "receiverId", sseEvent2.receiverId().toString(),
+                  "eventName", sseEvent2.eventName(),
+                  "data", objectMapper.writeValueAsString(sseEvent2.data())
+              ))
+      ));
+
+      // when
+      List<SseEvent> result =
+          sseEventRepository.findAfter(receiverId, sseEvent2.id());
 
       // then
       assertThat(result).isEmpty();
