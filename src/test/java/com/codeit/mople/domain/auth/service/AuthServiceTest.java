@@ -4,8 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -14,10 +17,13 @@ import com.codeit.mople.domain.auth.dto.request.SignInRequest;
 import com.codeit.mople.domain.auth.dto.response.AuthTokens;
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
+import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.entity.AuthProvider;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -26,6 +32,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -43,14 +50,24 @@ public class AuthServiceTest {
   @Mock
   private JwtProvider jwtProvider;
 
+  @Mock
+  private SessionTokenRepository sessionTokenRepository;
+
+  @Mock
+  private RefreshTokenRepository refreshTokenRepository;
+
   @InjectMocks
   private AuthService authService;
 
   private User user;
 
+  private static final long REFRESH_TOKEN_EXPIRATION_MS = 604800000L;
+  private static final Duration EXPECTED_TTL = Duration.ofMillis(REFRESH_TOKEN_EXPIRATION_MS);
+
   @BeforeEach
   void setUp() {
     user = User.createUser("test@test.com", "encodedPassword", "testUser");
+    lenient().when(jwtProvider.getRefreshTokenExpiration()).thenReturn(REFRESH_TOKEN_EXPIRATION_MS);
   }
 
   @Test
@@ -59,7 +76,7 @@ public class AuthServiceTest {
     SignInRequest request = new SignInRequest("test@test.com", "rawPassword");
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
-    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("issued-token");
+    when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("issued-token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
 
     AuthTokens response = authService.signIn(request);
@@ -73,7 +90,7 @@ public class AuthServiceTest {
     SignInRequest request = new SignInRequest("TEST@TEST.COM", "rawPassword");
     when(userRepository.findByEmail("test@test.com")).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
-    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("issued-token");
+    when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("issued-token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
 
     AuthTokens response = authService.signIn(request);
@@ -82,36 +99,34 @@ public class AuthServiceTest {
   }
 
   @Test
-  @DisplayName("로그인 성공 시 sessionVersion 1 증가")
-  void signIn_success_increasesSessionVersion() {
+  @DisplayName("로그인 성공 시 세션 토큰이 Redis에 저장됨")
+  void signIn_success_savesSessionToken() {
     SignInRequest request = new SignInRequest("test@test.com", "rawPassword");
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
-    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("issued-token");
+    when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("issued-token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
 
     authService.signIn(request);
 
-    assertThat(user.getSessionVersion()).isEqualTo(1L);
+    verify(sessionTokenRepository).save(eq(user.getId()), anyString(), eq(EXPECTED_TTL));
   }
 
   @Test
-  @DisplayName("재로그인 시 sessionVersion이 증가하여 이전 토큰의 값과 달라짐")
-  void signIn_twice_changesSessionVersionEachTime() {
+  @DisplayName("재로그인 시 매번 새로운 세션 토큰(jti)이 발급되어 이전 토큰의 값과 달라짐")
+  void signIn_twice_generatesDifferentSessionTokenEachTime() {
     SignInRequest request = new SignInRequest("test@test.com", "rawPassword");
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
-    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("token");
+    when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
 
     authService.signIn(request);
-    long firstSessionVersion = user.getSessionVersion();
-
     authService.signIn(request);
-    long secondSessionVersion = user.getSessionVersion();
 
-    assertThat(secondSessionVersion).isNotEqualTo(firstSessionVersion);
-    assertThat(secondSessionVersion).isEqualTo(firstSessionVersion + 1);
+    ArgumentCaptor<String> jtiCaptor = ArgumentCaptor.forClass(String.class);
+    verify(sessionTokenRepository, times(2)).save(eq(user.getId()), jtiCaptor.capture(), eq(EXPECTED_TTL));
+    assertThat(jtiCaptor.getAllValues().get(0)).isNotEqualTo(jtiCaptor.getAllValues().get(1));
   }
 
   @Test
@@ -212,7 +227,7 @@ public class AuthServiceTest {
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
     when(passwordEncoder.matches("temporary1!!", user.getPassword())).thenReturn(false);
     when(passwordEncoder.matches("temporary1!!", "encodedTempPw")).thenReturn(true);
-    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("token");
+    when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("refreshToken");
 
     AuthTokens response = authService.signIn(request);
@@ -249,18 +264,16 @@ public class AuthServiceTest {
   }
 
   @Test
-  @DisplayName("로그아웃 시 저장된 Refresh Token이 삭제되고 sessionVersion이 증가하여 기존 토큰이 모두 무효화됨")
+  @DisplayName("로그아웃 시 저장된 Refresh Token이 삭제되고 기존 토큰이 모두 무효화됨")
   void signOut_success() {
     UUID userId = UUID.randomUUID();
-    user.updateRefreshToken("stored-refresh-token", Instant.now().plus(7, ChronoUnit.DAYS));
-    long beforeSessionVersion = user.getSessionVersion();
     when(jwtProvider.getUserId("stored-refresh-token")).thenReturn(userId);
-    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(refreshTokenRepository.isValid(userId, "stored-refresh-token")).thenReturn(true);
 
     authService.signOut("stored-refresh-token");
 
-    assertThat(user.isRefreshTokenValid("stored-refresh-token", Instant.now())).isFalse();
-    assertThat(user.getSessionVersion()).isEqualTo(beforeSessionVersion + 1);
+    verify(refreshTokenRepository).invalidate(userId);
+    verify(sessionTokenRepository).invalidate(userId);
   }
 
   @Test
@@ -285,12 +298,11 @@ public class AuthServiceTest {
   @DisplayName("유효한 refreshToken으로 재발급에 성공")
   void refresh_success() {
     UUID userId = UUID.randomUUID();
-    user.updateRefreshToken("valid-refresh-token", Instant.now().plus(7,ChronoUnit.DAYS));
     when(jwtProvider.getUserId("valid-refresh-token")).thenReturn(userId);
+    when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh-token");
+    when(refreshTokenRepository.rotate(eq(userId), eq("valid-refresh-token"), eq("new-refresh-token"), eq(EXPECTED_TTL))).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("new-access-token");
-    when(jwtProvider.createRefreshToken(any())).thenReturn("new-refresh-token");
-    when(jwtProvider.getRefreshTokenExpiration()).thenReturn(604800000L);
+    when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("new-access-token");
 
     AuthTokens response = authService.refresh("valid-refresh-token");
 
@@ -313,6 +325,8 @@ public class AuthServiceTest {
   void refresh_throwsException_whenUserNotFound() {
     UUID userId = UUID.randomUUID();
     when(jwtProvider.getUserId("some-token")).thenReturn(userId);
+    when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh-token");
+    when(refreshTokenRepository.rotate(eq(userId), eq("some-token"), eq("new-refresh-token"), eq(EXPECTED_TTL))).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> authService.refresh("some-token"))
@@ -321,46 +335,33 @@ public class AuthServiceTest {
   }
 
   @Test
-  @DisplayName("저장된 값과 다른 refreshToken이면 예외가 발생함")
-  void refresh_throwsException_whenRefreshTokenMismatch() {
+  @DisplayName("저장된 값과 다른 refreshToken이거나 동시 요청으로 이미 교체가 된 경우 예외가 발생함")
+  void refresh_throwsException_whenRotateFails() {
     UUID userId = UUID.randomUUID();
-    user.updateRefreshToken("stored-token", Instant.now().plus(7, ChronoUnit.DAYS));
     when(jwtProvider.getUserId("wrong-token")).thenReturn(userId);
-    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh-token");
+    when(refreshTokenRepository.rotate(eq(userId), eq("wrong-token"), eq("new-refresh-token"), eq(EXPECTED_TTL))).thenReturn(false);
 
     assertThatThrownBy(() -> authService.refresh("wrong-token"))
         .isInstanceOf(AuthException.class)
         .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_TOKEN);
+
+    verify(userRepository, never()).findById(any());
   }
 
   @Test
-  @DisplayName("만료된 refreshToken이면 예외가 발생함")
-  void refresh_throwsException_whenRefreshTokenExpired() {
-    UUID userId = UUID.randomUUID();
-    user.updateRefreshToken("expired-token", Instant.now().minus(1, ChronoUnit.MINUTES));
-    when(jwtProvider.getUserId("expired-token")).thenReturn(userId);
-    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-
-    assertThatThrownBy(() -> authService.refresh("expired-token"))
-        .isInstanceOf(AuthException.class)
-        .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_TOKEN);
-  }
-
-  @Test
-  @DisplayName("refresh 성공 시 Refresh Token Rotation이 적용되어 저장된 값이 새 값으로 갱신됨")
+  @DisplayName("refresh 성공 시 Refresh Token Rotation이 원자적으로 적용됨")
   void refresh_success_rotateRefreshToken() {
     UUID userId = UUID.randomUUID();
-    user.updateRefreshToken("old-token", Instant.now().plus(7, ChronoUnit.DAYS));
     when(jwtProvider.getUserId("old-token")).thenReturn(userId);
+    when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh");
+    when(refreshTokenRepository.rotate(eq(userId), eq("old-token"), eq("new-refresh"), eq(EXPECTED_TTL))).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-    when(jwtProvider.createAccessToken(any(), anyLong())).thenReturn("new-access");
-    when(jwtProvider.createRefreshToken(any())).thenReturn("new-refresh");
-    when(jwtProvider.getRefreshTokenExpiration()).thenReturn(604800000L);
+    when(jwtProvider.createAccessToken(any(), anyString())).thenReturn("new-access");
 
     authService.refresh("old-token");
 
-    assertThat(user.isRefreshTokenValid("new-refresh", Instant.now())).isTrue();
-    assertThat(user.isRefreshTokenValid("old-token", Instant.now())).isFalse();
+    verify(refreshTokenRepository).rotate(eq(userId), eq("old-token"), eq("new-refresh"), eq(EXPECTED_TTL));
   }
 
   @Test

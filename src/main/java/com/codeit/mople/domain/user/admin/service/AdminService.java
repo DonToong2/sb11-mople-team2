@@ -1,5 +1,7 @@
 package com.codeit.mople.domain.user.admin.service;
 
+import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
@@ -11,6 +13,7 @@ import com.codeit.mople.global.event.UserAccountStatusChangedEvent;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,7 +28,10 @@ public class AdminService {
 
   private final UserRepository userRepository;
   private final ApplicationEventPublisher eventPublisher;
+  private final SessionTokenRepository sessionTokenRepository;
+  private final RefreshTokenRepository refreshTokenRepository;
 
+  @CacheEvict(value = "users", key = "#userId")
   @Transactional
   public void changeUserRole(UUID userId, String roleStr) {
     validateNotSelf(userId);
@@ -36,16 +42,14 @@ public class AdminService {
     Role previousRole = user.getRole();
     if (previousRole != role) {
       user.changeRole(role);
-      user.increaseSessionVersion();
-      // sessionVersion만 올려도 저장된 refresh token은 그대로 유효해서, 유저가 /refresh를
-      // 먼저 호출하면 최신 sessionVersion이 박힌 새 access token을 받아 강제 로그아웃을
-      // 우회할 수 있다. refresh token 자체를 무효화해 재로그인을 강제한다.
-      user.clearRefreshToken();
+      sessionTokenRepository.invalidate(userId);
+      refreshTokenRepository.invalidate(userId);
       eventPublisher.publishEvent(new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ROLE_CHANGE, true));
     }
     log.info("권한 변경 완료 - userId: {}, role: {}", userId, role);
   }
 
+  @CacheEvict(value = "users", key = "#userId")
   @Transactional
   public void changeUserLocked(UUID userId, boolean locked) {
     validateNotSelf(userId);
@@ -60,9 +64,8 @@ public class AdminService {
     }
     if (previousLocked != locked) {
       if (locked) {
-        user.increaseSessionVersion();
-        // 위 changeUserRole과 동일한 이유로, 잠글 때는 refresh token도 같이 무효화한다.
-        user.clearRefreshToken();
+        sessionTokenRepository.invalidate(userId);
+        refreshTokenRepository.invalidate(userId);
       }
       ForceLogoutReason reason = locked ? ForceLogoutReason.ACCOUNT_LOCKED : ForceLogoutReason.ACCOUNT_UNLOCKED;
       // locked일 때만 위에서 increaseSessionVersion()을 호출했으므로 sessionInvalidated도 locked와 동일하다.

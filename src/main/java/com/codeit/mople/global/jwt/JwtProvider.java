@@ -37,13 +37,13 @@ public class JwtProvider {
     this.refreshTokenExpiration = refreshTokenExpiration;
   }
 
-  public String createAccessToken(UUID userId, long sessionVersion) {
+  public String createAccessToken(UUID userId, String jti) {
     Date now = new Date();
     Date expiry = new Date(now.getTime() + accessTokenExpiration);
 
     return Jwts.builder()
         .subject(userId.toString())
-        .claim("sessionVersion", sessionVersion)
+        .id(jti)
         .issuedAt(now)
         .expiration(expiry)
         .signWith(secretKey)
@@ -75,12 +75,13 @@ public class JwtProvider {
     return UUID.fromString(parseClaims(token).getSubject());
   }
 
-  public long getSessionVersion(String token) {
-    Long version = parseClaims(token).get("sessionVersion", Long.class);
-    if(version == null) {
-      throw new JwtException("sessionVersion claim이 없는 토큰입니다.");
+
+  public String getJti(String token) {
+    String jti = parseClaims(token).getId();
+    if(jti == null) {
+      throw new JwtException("jti claim이 없는 토큰입니다.");
     }
-    return version;
+    return jti;
   }
 
   public long getRefreshTokenExpiration() {

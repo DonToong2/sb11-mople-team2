@@ -48,12 +48,6 @@ public class User extends BaseEntity {
   @Column
   private Instant temporaryPasswordExpiresAt;
 
-  @Column
-  private String refreshToken;
-
-  @Column
-  private Instant refreshTokenExpireAt;
-
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   @ColumnDefault("'LOCAL'")
@@ -61,13 +55,6 @@ public class User extends BaseEntity {
 
   @Column(name = "provider_id")
   private String providerId;
-
-  /**
-   * TODO: Phase5 — Redis 기반 세션 관리로 전환 시 이 컬럼 제거 예정
-   * (Redis에 "현재 유효한 토큰"을 저장하는 방식으로 대체)
-   */
-  @Column(nullable = false)
-  private long sessionVersion = 0L;
 
   private User(String email, String password, String name, Role role, AuthProvider provider) {
     this.email = Objects.requireNonNull(email, "email").toLowerCase(Locale.ROOT);
@@ -118,16 +105,6 @@ public class User extends BaseEntity {
     this.role = Objects.requireNonNull(role, "role");
   }
 
-  /**
-   * 로그인 시 호출하여 세션 버전을 증가시킵니다.
-   * TODO: Phase5 — Redis 기반 세션 관리로 전환 시 이 필드/메서드 제거 예정
-   *
-   * @return 증가된 이후의 세션 버전 값
-   */
-  public long increaseSessionVersion() {
-    return ++this.sessionVersion;
-  }
-
   public void lock() {
     this.locked = true;
   }
@@ -148,22 +125,5 @@ public class User extends BaseEntity {
 
   public boolean hasValidTemporaryPassword(Instant now) {
     return temporaryPassword != null && temporaryPasswordExpiresAt != null && now.isBefore(temporaryPasswordExpiresAt);
-  }
-
-  public void updateRefreshToken(String refreshToken, Instant expiresAt) {
-    this.refreshToken = Objects.requireNonNull(refreshToken, "refreshToken");
-    this.refreshTokenExpireAt = Objects.requireNonNull(expiresAt, "expiresAt");
-  }
-
-  public boolean isRefreshTokenValid(String refreshToken, Instant now) {
-    return this.refreshToken != null
-        && this.refreshToken.equals(refreshToken)
-        && this.refreshTokenExpireAt != null
-        && now.isBefore(this.refreshTokenExpireAt);
-  }
-
-  public void clearRefreshToken() {
-    this.refreshToken = null;
-    this.refreshTokenExpireAt = null;
   }
 }

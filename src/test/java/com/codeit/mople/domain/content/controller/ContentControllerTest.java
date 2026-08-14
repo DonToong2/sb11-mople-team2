@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.codeit.mople.domain.auth.security.CustomOAuth2UserService;
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.auth.security.handler.OAuth2FailureHandler;
 import com.codeit.mople.domain.auth.security.handler.OAuth2SuccessHandler;
@@ -81,6 +82,9 @@ public class ContentControllerTest {
 
   @MockitoBean
   private OAuth2FailureHandler oAuth2FailureHandler;
+
+  @MockitoBean
+  private SessionTokenRepository sessionTokenRepository;
 
   private RequestPostProcessor mockAuth(UUID userId, Role role) {
     CustomUserDetails mockUser = new CustomUserDetails(userId, role);

@@ -1,5 +1,6 @@
 package com.codeit.mople.global.config;
 
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.CustomOAuth2UserService;
 import com.codeit.mople.domain.auth.security.handler.JsonAccessDeniedHandler;
 import com.codeit.mople.domain.auth.security.JsonAuthenticationEntryPoint;
@@ -27,7 +28,8 @@ public class SecurityConfig {
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http, JwtProvider jwtProvider,
-      UserRepository userRepository, ObjectMapper objectMapper,
+      UserRepository userRepository, SessionTokenRepository sessionTokenRepository,
+      ObjectMapper objectMapper,
       CustomOAuth2UserService customOAuth2UserService,
       OAuth2SuccessHandler oAuth2SuccessHandler,
       OAuth2FailureHandler oAuth2FailureHandler) throws Exception {
@@ -65,7 +67,7 @@ public class SecurityConfig {
             .successHandler(oAuth2SuccessHandler)
             .failureHandler(oAuth2FailureHandler))
         .addFilterBefore(
-            new JwtAuthenticationFilter(jwtProvider, userRepository),
+            new JwtAuthenticationFilter(jwtProvider, userRepository, sessionTokenRepository),
             UsernamePasswordAuthenticationFilter.class
         );
     return http.build();

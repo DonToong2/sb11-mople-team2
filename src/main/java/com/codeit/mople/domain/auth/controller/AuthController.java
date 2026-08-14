@@ -63,7 +63,6 @@ public class AuthController implements AuthApi {
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public ResponseEntity<Void> signOut(
       @CookieValue(value = REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {
-    // 저장된 Refresh Token을 삭제하고 sessionVersion을 올려 기존 Access/Refresh Token을 모두 무효화한다.
     authService.signOut(refreshToken);
     return ResponseEntity.noContent()
         .header(HttpHeaders.SET_COOKIE, expireRefreshTokenCookie().toString())
