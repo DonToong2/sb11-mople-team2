@@ -38,7 +38,6 @@ import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.UserSummary;
-import com.codeit.mople.global.error.CustomException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -872,7 +871,7 @@ public class PlaylistServiceTest {
           subscriberId)).willReturn(true);
 
       assertThatThrownBy(() -> playlistService.subscribe(playlistId, subscriberId))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(PlaylistException.class)
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_DUPLICATE);
 
       verify(playlistSubscriptionRepository, never()).save(any());
@@ -888,7 +887,7 @@ public class PlaylistServiceTest {
       given(playlistRepository.findById(playlistId)).willReturn(Optional.empty());
 
       assertThatThrownBy(() -> playlistService.subscribe(playlistId, subscriberId))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(PlaylistException.class)
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_NOT_FOUND);
 
       verify(playlistSubscriptionRepository, never()).save(any());
@@ -906,7 +905,7 @@ public class PlaylistServiceTest {
       given(userRepository.findById(subscriberId)).willReturn(Optional.empty());
 
       assertThatThrownBy(() -> playlistService.subscribe(playlistId, subscriberId))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(PlaylistException.class)
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_USER_NOT_FOUND);
 
       verify(playlistSubscriptionRepository, never()).save(any());
@@ -923,7 +922,7 @@ public class PlaylistServiceTest {
       given(playlistRepository.findById(playlistId)).willReturn(Optional.of(playlist));
 
       assertThatThrownBy(() -> playlistService.subscribe(playlistId, ownerId))
-          .isInstanceOf(CustomException.class)
+          .isInstanceOf(PlaylistException.class)
           .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.SUBSCRIBE_NOT_ALLOWED);
 
       verify(userRepository, never()).findById(any());
