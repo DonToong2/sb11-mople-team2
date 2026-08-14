@@ -82,6 +82,11 @@ public class SseService {
     // 어느 서버에 연결되있는지 조회
     String connectedServerId = connectionRepository.findServerId(receiverId);
 
+    // 연결이 어떤 서버에도 없을 경우 스킵(Stream 저장도 같이 스킵)
+    if (connectedServerId == null) {
+      return;
+    }
+
     // 지금 서버와 다를 경우 스킵
     if (!serverId.equals(connectedServerId)) {
       streamRepository.save(sseEvent);
