@@ -32,11 +32,14 @@ spring:
       properties:
         enable.idempotence: true
         spring.json.add.type.headers: false
-        max.block.ms: 5000
+        max.block.ms: 1000
         delivery.timeout.ms: 30000
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
 
 server:
   port: 8080
+  shutdown: graceful
 
 springdoc:
   swagger-ui:

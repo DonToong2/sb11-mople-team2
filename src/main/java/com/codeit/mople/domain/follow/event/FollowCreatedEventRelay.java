@@ -4,7 +4,6 @@ import com.codeit.mople.global.config.KafkaProperties;
 import com.codeit.mople.global.event.KafkaEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -24,7 +23,6 @@ public class FollowCreatedEventRelay {
   }
 
   // 1. 기존에 있던 FollowCreatedEvent를 받아서 kafka용으로 만들어 놓은 FollowCreatedEventRelay에 넣음
-  @Async("kafkaRelayExecutor")
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void relay(FollowCreatedEvent event) {
     FollowCreatedMessage message = FollowCreatedMessage.from(event);

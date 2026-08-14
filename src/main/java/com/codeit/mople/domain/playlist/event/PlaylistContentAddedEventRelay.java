@@ -4,7 +4,6 @@ import com.codeit.mople.global.config.KafkaProperties;
 import com.codeit.mople.global.event.KafkaEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -22,7 +21,6 @@ public class PlaylistContentAddedEventRelay {
     this.topic = kafkaProperties.topics().playlistContentAdded();
   }
 
-  @Async("kafkaRelayExecutor")
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void relay(PlaylistContentAddedEvent event) {
     PlaylistContentAddedMessage message = PlaylistContentAddedMessage.from(event);
