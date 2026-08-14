@@ -7,6 +7,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
@@ -14,7 +16,8 @@ import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.error.CustomException;
 import com.codeit.mople.global.event.ForceLogoutReason;
-import com.codeit.mople.global.event.UserForceLogoutEvent;
+import com.codeit.mople.global.event.UserAccountStatusChangedEvent;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -45,8 +48,14 @@ class AdminServiceTest {
   @Mock
   private ApplicationEventPublisher eventPublisher;
 
+  @Mock
+  private SessionTokenRepository sessionTokenRepository;
+
+  @Mock
+  private RefreshTokenRepository refreshTokenRepository;
+
   @Captor
-  private ArgumentCaptor<UserForceLogoutEvent> eventCaptor;
+  private ArgumentCaptor<UserAccountStatusChangedEvent> eventCaptor;
 
   UUID userId;   // 대상 유저
   UUID adminId;  // 현재 로그인한 어드민 (요청자)
@@ -86,6 +95,10 @@ class AdminServiceTest {
       assertThat(user.getRole()).isEqualTo(Role.ADMIN);
       verify(eventPublisher).publishEvent(eventCaptor.capture());
       assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
+      verify(sessionTokenRepository).invalidate(userId);
+      verify(refreshTokenRepository).invalidate(userId);
+      assertThat(eventCaptor.getValue().reason()).isEqualTo(ForceLogoutReason.ROLE_CHANGE);
+      assertThat(eventCaptor.getValue().sessionInvalidated()).isTrue();
     }
 
     @Test
@@ -100,8 +113,12 @@ class AdminServiceTest {
 
       // then
       assertThat(admin.getRole()).isEqualTo(Role.USER);
+      verify(refreshTokenRepository).invalidate(userId);
       verify(eventPublisher).publishEvent(eventCaptor.capture());
       assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
+      verify(sessionTokenRepository).invalidate(userId);
+      assertThat(eventCaptor.getValue().reason()).isEqualTo(ForceLogoutReason.ROLE_CHANGE);
+      assertThat(eventCaptor.getValue().sessionInvalidated()).isTrue();
     }
 
     @Test
@@ -116,6 +133,7 @@ class AdminServiceTest {
       // then
       assertThat(user.getRole()).isEqualTo(Role.USER);
       verify(eventPublisher, never()).publishEvent(any());
+      verify(sessionTokenRepository, never()).invalidate(any());
     }
 
     @Test
@@ -160,8 +178,8 @@ class AdminServiceTest {
   class ChangeUserLocked {
 
     @Test
-    @DisplayName("locked(true)이면 계정을 잠금하고 sessionVersion을 올리며 강제 로그아웃 이벤트를 발행한다")
-    void locked_true이면_계정을_잠금하고_sessionVersion을_올리며_강제_로그아웃_이벤트를_발행한다() {
+    @DisplayName("locked(true)이면 계정을 잠금하고 세션을 무효화하며 강제 로그아웃 이벤트를 발행한다")
+    void locked_true이면_계정을_잠금하고_세션을_무효화하며_강제_로그아웃_이벤트를_발행한다() {
       // given
       given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
@@ -170,15 +188,16 @@ class AdminServiceTest {
 
       // then
       assertThat(user.isLocked()).isTrue();
-      assertThat(user.getSessionVersion()).isEqualTo(1);
+      verify(sessionTokenRepository).invalidate(userId);
       verify(eventPublisher).publishEvent(eventCaptor.capture());
       assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
       assertThat(eventCaptor.getValue().reason()).isEqualTo(ForceLogoutReason.ACCOUNT_LOCKED);
+      assertThat(eventCaptor.getValue().sessionInvalidated()).isTrue();
     }
 
     @Test
-    @DisplayName("locked(false)이면 계정 잠금을 해제하고 알림 이벤트를 발행하지만 sessionVersion은 변경하지 않는다")
-    void locked_false이면_계정_잠금을_해제하고_알림_이벤트를_발행하지만_sessionVersion은_변경하지_않는다() {
+    @DisplayName("locked(false)이면 계정 잠금을 해제하고 알림 이벤트를 발행하지만 세션은 무효화하지 않는다")
+    void locked_false이면_계정_잠금을_해제하고_알림_이벤트를_발행하지만_세션은_무효화하지_않는다() {
       // given
       user.lock();
       given(userRepository.findById(userId)).willReturn(Optional.of(user));
@@ -188,15 +207,17 @@ class AdminServiceTest {
 
       // then
       assertThat(user.isLocked()).isFalse();
-      assertThat(user.getSessionVersion()).isEqualTo(0);
+
+      verify(sessionTokenRepository, never()).invalidate(any());
       verify(eventPublisher).publishEvent(eventCaptor.capture());
       assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
       assertThat(eventCaptor.getValue().reason()).isEqualTo(ForceLogoutReason.ACCOUNT_UNLOCKED);
+      assertThat(eventCaptor.getValue().sessionInvalidated()).isFalse();
     }
 
     @Test
-    @DisplayName("이미 잠금 상태인 계정에 잠금 요청 시 이벤트를 발행하지 않고 sessionVersion도 변경하지 않는다")
-    void 이미_잠금_상태인_계정에_잠금_요청_시_이벤트를_발행하지_않고_sessionVersion도_변경하지_않는다() {
+    @DisplayName("이미 잠금 상태인 계정에 잠금 요청 시 이벤트를 발행하지 않고 세션도 무효화하지 않는다")
+    void 이미_잠금_상태인_계정에_잠금_요청_시_이벤트를_발행하지_않고_세션도_무효화하지_않는다() {
       // given
       user.lock();
       given(userRepository.findById(userId)).willReturn(Optional.of(user));
@@ -206,7 +227,21 @@ class AdminServiceTest {
 
       // then
       assertThat(user.isLocked()).isTrue();
-      assertThat(user.getSessionVersion()).isEqualTo(0);
+      verify(sessionTokenRepository, never()).invalidate(any());
+      verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("이미 잠금 해제 상태인 계정에 잠금 해제 요청 시 이벤트를 발행하지 않는다")
+    void 이미_잠금_해제_상태인_계정에_잠금_해제_요청_시_이벤트를_발행하지_않는다() {
+      // given - user는 기본적으로 잠금 해제(unlocked) 상태
+      given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+      // when
+      adminService.changeUserLocked(userId, false);
+
+      // then
+      assertThat(user.isLocked()).isFalse();
       verify(eventPublisher, never()).publishEvent(any());
     }
 
