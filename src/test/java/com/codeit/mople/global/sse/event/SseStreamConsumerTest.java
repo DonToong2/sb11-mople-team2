@@ -59,6 +59,8 @@ public class SseStreamConsumerTest {
   private UUID eventId;
   private UUID receiverId;
 
+  private RecordId recordId;
+
   private DirectMessageDto eventData;
   private PendingMessage pendingMessage;
   private PendingMessages pendingMessages;
@@ -68,9 +70,6 @@ public class SseStreamConsumerTest {
     eventId = UUID.randomUUID();
     receiverId = UUID.randomUUID();
 
-    record = createRecord(
-    );
-
     eventData = mock(DirectMessageDto.class);
 
     ReflectionTestUtils.setField(streamConsumer, "serverId", SERVER_ID);
@@ -79,6 +78,12 @@ public class SseStreamConsumerTest {
   @Nested
   @DisplayName("이벤트 처리")
   class Handle {
+
+    @BeforeEach
+    void setUp() {
+      recordId = RecordId.of("1-0");
+      record = createRecord();
+    }
 
     @Test
     @DisplayName("이벤트 처리 성공 - SSE 전송 및 ACK 완료")
@@ -171,13 +176,10 @@ public class SseStreamConsumerTest {
       pendingMessage = mock(PendingMessage.class);
       pendingMessages = mock(PendingMessages.class);
 
-      when(pendingMessage.getId())
-          .thenReturn(record.getId());
-
       when(pendingMessages.iterator())
           .thenReturn(List.of(pendingMessage).iterator());
 
-      when(streamOperations.pending(eq(STREAM_KEY), eq(GROUP_NAME), any(Range.class), eq(100)))
+      when(streamOperations.pending(eq(STREAM_KEY), eq(GROUP_NAME), any(Range.class), eq(100L)))
           .thenReturn(pendingMessages);
     }
 
@@ -186,13 +188,19 @@ public class SseStreamConsumerTest {
     void recoverPending_success() throws Exception {
       // given
 
-      // BeforeEach에서 eventId, receiverId, record, eventData, pendingMessage, pendingMessages를 초기화
+      // BeforeEach에서 eventId, receiverId, eventData, pendingMessage, pendingMessages를 초기화
+
+      recordId = RecordId.of("1-0");
+      record = createRecord();
+
+      when(pendingMessage.getId())
+          .thenReturn(recordId);
 
       when(pendingMessage.getElapsedTimeSinceLastDelivery())
           .thenReturn(Duration.ofSeconds(30));
 
       when(streamOperations.claim(
-          eq(STREAM_KEY), eq(GROUP_NAME), any(), eq(Duration.ofSeconds(30)), eq(record.getId())
+          eq(STREAM_KEY), eq(GROUP_NAME), any(), eq(Duration.ofSeconds(30)), eq(recordId)
       ))
           .thenReturn(List.of(record));
 
@@ -218,7 +226,7 @@ public class SseStreamConsumerTest {
     void recoverPending_success_notReached() {
       // given
 
-      // BeforeEach에서 eventId, receiverId, record, eventData, pendingMessage, pendingMessages를 초기화
+      // BeforeEach에서 eventId, receiverId, eventData, pendingMessage, pendingMessages를 초기화
 
       when(pendingMessage.getElapsedTimeSinceLastDelivery())
           .thenReturn(Duration.ofSeconds(29));
@@ -238,8 +246,6 @@ public class SseStreamConsumerTest {
   }
 
   private MapRecord<String, String, String> createRecord() {
-
-    RecordId recordId = RecordId.of("1-0");
 
     when(record.getId()).thenReturn(recordId);
 

@@ -20,7 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 public class KafkaConfigTest {
 
-  private static final String FAILED_STREAM_KEY = "kafka-events:failed";
+  private static final String FAILED_STREAM_KEY = "kafka:events:failed";
 
   @Mock
   private StringRedisTemplate redisTemplate;
@@ -74,8 +74,8 @@ public class KafkaConfigTest {
               "type", "CONSUMER",
               "topic", "review-created",
               "key", "content-key",
-              "partition", 1,
-              "offset", 100L,
+              "partition", "1",
+              "offset", "100",
               "data", "{\"contentId\":\"test\"}",
               "error", "리뷰 통계 업데이트 실패"
           )
@@ -118,8 +118,8 @@ public class KafkaConfigTest {
               "type", "CONSUMER",
               "topic", "review-created",
               "key", "",
-              "partition", 0,
-              "offset", 10L,
+              "partition", "0",
+              "offset", "10",
               "data", "{\"test\":\"data\"}",
               "error", "처리 실패"
           )
