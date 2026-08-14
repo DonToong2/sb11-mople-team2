@@ -146,6 +146,8 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     // DM 구독 경로인지 확인
     if (destination.startsWith("/sub/conversations/")) {
       validateConversationSubscription(accessor, destination);
+    } else if (destination.startsWith("/sub/contents/")) { //콘텐츠 시청 세션 및 실시간 채팅 구독 경로 허용
+      log.info("WebSocket 콘텐츠 채널 구독 승인 - destination: {}", destination);
     } else {
       log.warn("WebSocket 구독 거부: 화이트리스트에 등록되지 않은 경로 구독 시도 - destination: {}", destination);
       throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
