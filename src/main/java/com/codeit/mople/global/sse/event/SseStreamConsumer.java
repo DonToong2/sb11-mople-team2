@@ -52,8 +52,12 @@ public class SseStreamConsumer {
   // 일정 시간 이상 ACK 되지 않은 Pending 이벤트를 복구(Redis Consumer 장애 시 발생)
   private static final Duration PENDING_IDLE_TIME = Duration.ofSeconds(30);
 
-  // 재시도 정책
+  // SSE 이벤트 처리 재시도 정책
   private static final int MAX_RETRY_COUNT = 3;
+
+  // Redis Consumer 장애시 재시도 정책(지수백오프 적용, 최대 30초)
+  private static final long INITIAL_BACKOFF_MS = 1_000L;
+  private static final long MAX_BACKOFF_MS = 30_000L;
 
   private final StringRedisTemplate redisTemplate;
   private final SseService sseService;
@@ -99,12 +103,15 @@ public class SseStreamConsumer {
     // Consumer Group에 Consumer 등록
     Consumer consumer = Consumer.from(GROUP_NAME, serverId);
 
+    // 1초
+    long backOffMs = INITIAL_BACKOFF_MS;
+
     // 서버 종료 전까지 계속 Stream을 소비함(block을 통해 처리할 이벤트 없으면 sleep 상태)
     while (running.get() && !Thread.currentThread().isInterrupted()) {
       try {
         // Consumer Group 없으면 생성
         createGroupIfNotExists(streamOperations);
-        
+
         // ACK을 받지 못해 남아있는 Pending 이벤트 복구
         recoverPending(streamOperations, consumer);
 
@@ -127,12 +134,26 @@ public class SseStreamConsumer {
           handle(record, streamOperations);
         }
 
+        // 정상적으로 Redis 소비가 됐으면 backOffMs 1초로 초기화
+        backOffMs = INITIAL_BACKOFF_MS;
+
       } catch (Exception e) {
         if (Thread.currentThread().isInterrupted() || !running.get()) {
           break;
         }
 
-        log.error("Redis Stream Consumer 처리 중 오류 발생:", e);
+        log.error("Redis Stream Consumer 처리 중 오류 발생, {}ms 후 재시도:",
+            backOffMs, e);
+
+        try {
+          Thread.sleep(backOffMs);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+
+        // 1, 2, 4, ..., 30초, ...마다 재시도
+        backOffMs = Math.min(backOffMs * 2, MAX_BACKOFF_MS);
       }
     }
 
@@ -280,16 +301,15 @@ public class SseStreamConsumer {
       failed.put("data", data);
       failed.put("serverId", serverId);
       failed.put("error", exception == null
-              ? "Unknown"
-              : String.valueOf(exception.getMessage()));
+          ? "Unknown"
+          : String.valueOf(exception.getMessage()));
       streamOperations.add(FAILED_STREAM_KEY, failed);
 
       log.error("SSE Stream 이벤트 최종 실패: recordId={}, receiverId={}",
           record.getId(), receiverId, exception);
     } catch (Exception e) {
       log.error("SSE Stream 최종 실패 처리 중 오류 발생: recordId={}", record.getId(), e);
-    }
-    finally {
+    } finally {
       // 저장 실패 여부와 무관하게 ACK하여 무한 재시도 방지
       streamOperations.acknowledge(STREAM_KEY, GROUP_NAME, record.getId());
     }
