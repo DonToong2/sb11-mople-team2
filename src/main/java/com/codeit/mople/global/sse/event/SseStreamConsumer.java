@@ -96,15 +96,15 @@ public class SseStreamConsumer {
   private void consume() {
     StreamOperations<String, String, String> streamOperations = redisTemplate.opsForStream();
 
-    // Consumer Group 없으면 생성
-    createGroupIfNotExists(streamOperations);
-
     // Consumer Group에 Consumer 등록
     Consumer consumer = Consumer.from(GROUP_NAME, serverId);
 
     // 서버 종료 전까지 계속 Stream을 소비함(block을 통해 처리할 이벤트 없으면 sleep 상태)
     while (running.get() && !Thread.currentThread().isInterrupted()) {
       try {
+        // Consumer Group 없으면 생성
+        createGroupIfNotExists(streamOperations);
+        
         // ACK을 받지 못해 남아있는 Pending 이벤트 복구
         recoverPending(streamOperations, consumer);
 
@@ -150,6 +150,7 @@ public class SseStreamConsumer {
         return;
       }
       log.error("SSE Stream Consumer Group 생성 실패: {}", GROUP_NAME, e);
+      throw e;
     }
   }
 
