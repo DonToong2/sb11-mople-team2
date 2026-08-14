@@ -3,6 +3,7 @@ package com.codeit.mople.global.sse.repository;
 import com.codeit.mople.global.sse.model.SseEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Range;
+import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
@@ -20,7 +22,10 @@ import org.springframework.stereotype.Repository;
 public class SseEventRepository {
 
   private static final String STREAM_KEY = "sse:undelivered:";
+  
+  // 사용자별 500개까지 유실 SSE 이벤트 보관(이후 큐처럼 밀림), 최대 하루까지 보관
   private static final long MAX_EVENT_COUNT = 500L;
+  private static final Duration EVENT_TTL = Duration.ofHours(24);
 
   private final StringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper;
@@ -32,16 +37,21 @@ public class SseEventRepository {
     try {
       String data = objectMapper.writeValueAsString(event.data());
 
+      XAddOptions options = XAddOptions
+          .maxlen(MAX_EVENT_COUNT)
+          .approximateTrimming(true);
+
       redisTemplate.opsForStream().add(
           streamKey,
           Map.of(
               "eventId", event.id().toString(),
               "eventName", event.eventName(),
               "data", data
-          )
+          ),
+          options
       );
 
-      redisTemplate.opsForStream().trim(streamKey, MAX_EVENT_COUNT, false);
+      redisTemplate.expire(streamKey, EVENT_TTL);
     } catch (JsonProcessingException e) {
       throw new IllegalStateException("SSE 이벤트 직렬화에 실패했습니다.", e);
     }
