@@ -75,6 +75,3 @@ app:
   websocket:
     allowed-origins:
       - "http://localhost:8080"
-
-kafka:
-  enabled: false

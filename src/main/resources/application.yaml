@@ -66,11 +66,10 @@ external-api:
 batch:
   tmdb:
     collect:
-      max-pages: 5
+      max-pages: 20
       skip-limit: 10
 
 kafka:
-  enabled: false
   topics:
     follow-created: mople.follow.created.v1
     playlist-content-added: mople.playlist.content-added.v1

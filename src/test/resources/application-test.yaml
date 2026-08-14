@@ -4,6 +4,9 @@ spring:
     username: sa
     password:
 
+  kafka:
+    bootstrap-servers: localhost:9093
+
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -61,6 +64,3 @@ oauth2:
   redirect:
     success-uri: http://localhost:3000/
     failure-uri: http://localhost:3000/login
-
-kafka:
-  enabled: false

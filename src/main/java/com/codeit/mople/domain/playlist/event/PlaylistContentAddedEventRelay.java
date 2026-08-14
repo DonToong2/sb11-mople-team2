@@ -1,9 +1,8 @@
 package com.codeit.mople.domain.playlist.event;
 
+import com.codeit.mople.global.config.KafkaProperties;
 import com.codeit.mople.global.event.KafkaEventPublisher;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -11,16 +10,14 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "kafka.enabled", havingValue = "true")
 public class PlaylistContentAddedEventRelay {
 
   private final KafkaEventPublisher publisher;
   private final String topic;
 
-  public PlaylistContentAddedEventRelay(KafkaEventPublisher publisher,
-      @Value("${kafka.topics.playlist-content-added}") String topic) {
+  public PlaylistContentAddedEventRelay(KafkaEventPublisher publisher, KafkaProperties kafkaProperties) {
     this.publisher = publisher;
-    this.topic = topic;
+    this.topic = kafkaProperties.topics().playlistContentAdded();
   }
 
   @Async("kafkaRelayExecutor")
