@@ -1,7 +1,5 @@
 package com.codeit.mople.domain.user.service;
 
-import com.codeit.mople.domain.auth.exception.AuthErrorCode;
-import com.codeit.mople.domain.auth.exception.AuthException;
 import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.dto.request.ChangePasswordRequest;
@@ -16,8 +14,6 @@ import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.storage.FileStorageService;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -25,6 +21,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,10 +71,10 @@ public class UserService {
     );
   }
 
+  @PreAuthorize("hasRole('ADMIN') or #targetUserId == #requesterId")
   @CacheEvict(value = "users", key = "#targetUserId")
   @Transactional
   public UserDto updateProfile(UUID targetUserId, UUID requesterId, UserUpdateRequest request, MultipartFile image) {
-    validateOwner(targetUserId, requesterId);
     User user = findUserOrThrow(targetUserId);
 
     String imageUrl = null;
@@ -91,9 +88,9 @@ public class UserService {
     return UserDto.from(user);
   }
 
+  @PreAuthorize("hasRole('ADMIN') or #targetUserId == #requesterId")
   @Transactional
   public void changePassword(UUID targetUserId, UUID requesterId, ChangePasswordRequest request) {
-    validateOwner(targetUserId, requesterId);
     User user = findUserOrThrow(targetUserId);
     user.changePassword(passwordEncoder.encode(request.password()));
     user.destroyTemporaryPassword();
@@ -104,12 +101,6 @@ public class UserService {
   private User findUserOrThrow(UUID userId) {
     return userRepository.findById(userId)
         .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
-  }
-
-  private void validateOwner(UUID targetUserId, UUID requesterId) {
-    if(!targetUserId.equals(requesterId)) {
-      throw new UserException(UserErrorCode.FORBIDDEN_ACCESS);
-    }
   }
 
   private String cursorValueOf(UserDto dto, UserSortBy sortBy) {
