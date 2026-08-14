@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Range;
 import org.springframework.data.redis.RedisSystemException;
 import org.springframework.data.redis.connection.stream.Consumer;
@@ -31,6 +32,11 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
+@ConditionalOnProperty(
+    name = "sse.stream-consumer.enabled",
+    havingValue = "true",
+    matchIfMissing = true
+)
 public class SseStreamConsumer {
 
   // 서버 간 SSE 이벤트 전달을 위한 Redis Stream 키
@@ -69,6 +75,9 @@ public class SseStreamConsumer {
 
   @Value("${sse.server-id}")
   private String serverId;
+
+  @Value("${sse.stream-consumer.enabled}")
+  private boolean enabled;
 
   // Consume 실행 관리
   private final AtomicBoolean running = new AtomicBoolean(true);
@@ -139,9 +148,7 @@ public class SseStreamConsumer {
         log.debug("SSE Stream Consumer Group이 이미 존재: {}", GROUP_NAME);
         return;
       }
-
-      log.error("SSE Stream Consumer Group 생성에 실패: {}", GROUP_NAME, e);
-      throw new IllegalStateException("SSE Stream Consumer Group 생성 실패", e);
+      log.error("SSE Stream Consumer Group 생성 실패: {}", GROUP_NAME, e);
     }
   }
 

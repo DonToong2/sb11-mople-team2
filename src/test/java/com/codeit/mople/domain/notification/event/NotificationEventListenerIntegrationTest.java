@@ -49,9 +49,11 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @SpringBootTest
+@ActiveProfiles("test")
 @DisplayName("NotificationEventListener 통합 테스트")
 class NotificationEventListenerIntegrationTest {
 

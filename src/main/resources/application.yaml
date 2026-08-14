@@ -77,3 +77,5 @@ batch:
 
 sse:
   server-id: ${SSE_SERVER_ID:local}
+  stream-consumer:
+    enabled: true
