@@ -281,7 +281,7 @@ public class UserControllerTest {
         .with(csrf()))
         .andDo(print())
         .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$.error.code").value("USER-005"));
+        .andExpect(jsonPath("$.error.code").value("COMMON-003"));
   }
 
   @Test

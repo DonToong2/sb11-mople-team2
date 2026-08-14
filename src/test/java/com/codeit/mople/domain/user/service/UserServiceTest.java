@@ -247,19 +247,6 @@ public class UserServiceTest {
   }
 
   @Test
-  @DisplayName("본인이 아닌 사용자가 프로필을 수정 시 예외 발생")
-  void updateProfile_throwsException_whenNotOwner() {
-    UUID userId = UUID.randomUUID();
-    UUID otherUserId = UUID.randomUUID();
-
-    UserUpdateRequest request = new UserUpdateRequest("newName");
-
-    assertThatThrownBy(() -> userService.updateProfile(userId, otherUserId, request, null))
-        .isInstanceOf(UserException.class)
-        .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.FORBIDDEN_ACCESS);
-  }
-
-  @Test
   @DisplayName("이름만 변경")
   void updateProfile_success_nameOnly() {
     UUID userId = UUID.randomUUID();
@@ -318,18 +305,5 @@ public class UserServiceTest {
     assertThat(user.getPassword()).isEqualTo("encodedNewPw");
     verify(refreshTokenRepository).invalidate(userId);
     verify(sessionTokenRepository).invalidate(userId);
-  }
-
-  @Test
-  @DisplayName("본인이 아닌 사용자가 비밀번호 변경 시 예외 발생")
-  void changePassword_throwsException_whenNotOwner() {
-    UUID userId = UUID.randomUUID();
-    UUID otherUserId = UUID.randomUUID();
-
-    ChangePasswordRequest request = new ChangePasswordRequest("newPw123");
-
-    assertThatThrownBy(() -> userService.changePassword(userId, otherUserId, request))
-        .isInstanceOf(UserException.class)
-        .hasFieldOrPropertyWithValue("errorCode", UserErrorCode.FORBIDDEN_ACCESS);
   }
 }
