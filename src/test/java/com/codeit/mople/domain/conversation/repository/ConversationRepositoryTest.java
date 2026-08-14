@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.hibernate.Hibernate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -87,6 +88,25 @@ public class ConversationRepositoryTest {
     assertThat(result.get().getLastMessage().getContent()).isEqualTo("메시지");
     // Fetch Join이 걸려있으므로 Lazy 관련 예외가 터지지 않아야 함
     assertThat(result.get().getLastMessage().getSender().getName()).isEqualTo("내이름");
+  }
+
+  @Test
+  @DisplayName("findByIdWithUsers: 대화방 조회 시 Fetch Join을 통해 UserA와 UserB가 프록시가 아닌 실제 엔티티로 한 번에 로딩된다.")
+  void findByIdWithUsers_FetchJoinTest() {
+    // given
+    UUID conversationId = myConvWithUser1.getId();
+
+    // when
+    Optional<Conversation> foundConversation = conversationRepository.findByIdWithUsers(conversationId);
+
+    // then
+    assertThat(foundConversation).isPresent();
+    Conversation result = foundConversation.get();
+
+    // 인자로 들어온 JPA 엔티티가 진짜 데이터가 채워진 상태면 true, 아직 데이터가 안 불려온 가짜 프록시 상태면 false를 반환
+    // Fetch Join이 정상 작동했다면 DB에서 실제 객체를 끌고 와서 true를 반환
+    assertThat(Hibernate.isInitialized(result.getUserA())).isTrue();
+    assertThat(result.getUserA().getName()).isNotNull();
   }
 
   @Test
