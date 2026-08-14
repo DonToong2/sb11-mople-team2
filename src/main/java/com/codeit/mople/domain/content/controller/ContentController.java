@@ -9,12 +9,10 @@ import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
 import com.codeit.mople.domain.content.service.ContentService;
 import com.codeit.mople.domain.watchingsession.service.WatchingSessionService;
 import jakarta.validation.Valid;
-import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.annotation.ScopedProxyMode;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -57,11 +55,21 @@ public class ContentController implements ContentApi {
   @Override
   @GetMapping
   public ResponseEntity<CursorResponseContentDto> getContents(
-      @RequestParam(value = "cursorId", required = false) UUID cursorId,
-      @RequestParam(value = "cursorCreatedAt", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant cursorCreatedAt,
-      @RequestParam(value = "limit", defaultValue = "10") int limit) {
+      @RequestParam(name = "idAfter", required = false) UUID cursorId,
+      @RequestParam(name = "cursor", required = false) String cursorValue,
+      @RequestParam(name = "limit", defaultValue = "20") int limit,
+      @RequestParam(name = "type", required = false) String type,
+      @RequestParam(name = "contentType", required = false) String contentTypeParam,
+      @RequestParam(name = "typeEqual", required = false) String typeEqual,
+      @RequestParam(name = "keywordLike", required = false) String keywordLike,
+      @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy) {
 
-    CursorResponseContentDto response = contentService.getContents(cursorId, cursorCreatedAt, limit);
+    //type 파라미터가 비어있으면 contentTypeParam을 사용
+    String actualType = type;
+    if (actualType == null || actualType.isBlank()) actualType = contentTypeParam;
+    if (actualType == null || actualType.isBlank()) actualType = typeEqual;
+
+    CursorResponseContentDto response = contentService.getContents(cursorId, cursorValue, limit, actualType, keywordLike, sortBy);
     return ResponseEntity.ok(response);
   }
 

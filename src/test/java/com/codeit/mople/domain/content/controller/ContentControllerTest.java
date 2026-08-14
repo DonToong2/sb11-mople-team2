@@ -14,22 +14,21 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.codeit.mople.domain.auth.security.CustomOAuth2UserService;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
+import com.codeit.mople.domain.auth.security.handler.OAuth2FailureHandler;
+import com.codeit.mople.domain.auth.security.handler.OAuth2SuccessHandler;
 import com.codeit.mople.domain.content.dto.ContentCreateRequest;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
-import com.codeit.mople.domain.auth.security.CustomOAuth2UserService;
-import com.codeit.mople.domain.auth.security.handler.OAuth2FailureHandler;
-import com.codeit.mople.domain.auth.security.handler.OAuth2SuccessHandler;
 import com.codeit.mople.domain.content.service.ContentService;
-import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
-import com.codeit.mople.domain.watchingsession.service.WatchingSessionService;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.domain.watchingsession.service.WatchingSessionService;
 import com.codeit.mople.global.config.SecurityConfig;
 import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -212,14 +211,14 @@ public class ContentControllerTest {
         List.of(content1, content2), "next-cursor-string", UUID.randomUUID(),
         false, 2L, "createdAt", "DESCENDING");
 
-    // 파라미터를 cursorId, cursorCreatedAt, limit 형태로 모킹
-    given(contentService.getContents(any(), any(), anyInt())).willReturn(mockPageResponse);
+    given(contentService.getContents(any(), any(), anyInt(), any(), any(), any())).willReturn(mockPageResponse);
 
     mockMvc.perform(
         get("/api/contents")
-            .param("limit", "10")
-            .param("cursorId", UUID.randomUUID().toString())
-            .param("cursorCreatedAt", Instant.now().toString())
+            .param("limit", "20")
+            .param("idAfter", UUID.randomUUID().toString())
+            .param("cursor", Instant.now().toString())
+            .param("keywordLike", "테스트")
             .contentType(MediaType.APPLICATION_JSON)
             .with(mockAuth(UUID.randomUUID(),Role.USER))
     ).andExpect(status().isOk());
@@ -236,7 +235,7 @@ public class ContentControllerTest {
     CursorResponseContentDto mockPageResponse = new CursorResponseContentDto(
         List.of(content1), null, null, false, 1L, "createdAt", "DESCENDING");
 
-    given(contentService.getContents(null, null, 10)).willReturn(mockPageResponse);
+    given(contentService.getContents(null, null, 20, null, null, "createdAt")).willReturn(mockPageResponse);
 
     mockMvc.perform(
         get("/api/contents")
