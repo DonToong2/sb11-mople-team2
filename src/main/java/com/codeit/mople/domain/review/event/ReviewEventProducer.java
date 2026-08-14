@@ -9,7 +9,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "kafka", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "spring.kafka", name = "enabled", havingValue = "true")
 public class ReviewEventProducer {
 
   private final KafkaEventPublisher kafkaEventPublisher;

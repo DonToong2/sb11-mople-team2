@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "kafka", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "spring.kafka", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
 public class KafkaEventPublisher {
 
