@@ -564,11 +564,15 @@ public class ReviewServiceTest {
       // then
       assertThat(result.text()).isEqualTo(updateRequest.text());
       assertThat(result.rating()).isEqualTo(updateRequest.rating());
-      verify(eventPublisher).publishEvent(new ReviewUpdatedEvent(
-          contentId,
-          reviewRating,
-          updateRequest.rating()
-      ));
+      verify(eventPublisher).publishEvent(
+          argThat((Object event) ->
+              event instanceof ReviewUpdatedEvent updatedEvent
+                  && updatedEvent.eventId() != null
+                  && updatedEvent.contentId().equals(contentId)
+                  && updatedEvent.oldRating() == reviewRating
+                  && updatedEvent.newRating() == updateRequest.rating()
+          )
+      );
     }
   }
 
@@ -675,10 +679,14 @@ public class ReviewServiceTest {
 
       // then
       verify(reviewRepository).delete(review1);
-      verify(eventPublisher).publishEvent(new ReviewDeletedEvent(
-          contentId,
-          reviewRating
-      ));
+      verify(eventPublisher).publishEvent(
+          argThat((Object event) ->
+              event instanceof ReviewDeletedEvent deletedEvent
+                  && deletedEvent.eventId() != null
+                  && deletedEvent.contentId().equals(contentId)
+                  && deletedEvent.rating() == reviewRating
+          )
+      );
     }
   }
 
