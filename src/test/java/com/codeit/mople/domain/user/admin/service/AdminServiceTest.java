@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.codeit.mople.domain.auth.repository.AccountLockRepository;
 import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
@@ -53,6 +54,9 @@ class AdminServiceTest {
 
   @Mock
   private RefreshTokenRepository refreshTokenRepository;
+
+  @Mock
+  private AccountLockRepository accountLockRepository;
 
   @Captor
   private ArgumentCaptor<UserAccountStatusChangedEvent> eventCaptor;
@@ -189,6 +193,7 @@ class AdminServiceTest {
       // then
       assertThat(user.isLocked()).isTrue();
       verify(sessionTokenRepository).invalidate(userId);
+      verify(accountLockRepository).lock(userId);
       verify(eventPublisher).publishEvent(eventCaptor.capture());
       assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
       assertThat(eventCaptor.getValue().reason()).isEqualTo(ForceLogoutReason.ACCOUNT_LOCKED);
@@ -209,6 +214,7 @@ class AdminServiceTest {
       assertThat(user.isLocked()).isFalse();
 
       verify(sessionTokenRepository, never()).invalidate(any());
+      verify(accountLockRepository).unlock(userId);
       verify(eventPublisher).publishEvent(eventCaptor.capture());
       assertThat(eventCaptor.getValue().userId()).isEqualTo(userId);
       assertThat(eventCaptor.getValue().reason()).isEqualTo(ForceLogoutReason.ACCOUNT_UNLOCKED);

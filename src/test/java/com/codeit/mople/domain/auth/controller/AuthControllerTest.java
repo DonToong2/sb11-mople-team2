@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.codeit.mople.domain.auth.repository.AccountLockRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
@@ -46,6 +47,8 @@ public class AuthControllerTest {
   private JwtProvider jwtProvider;
   @Autowired
   private SessionTokenRepository sessionTokenRepository;
+  @Autowired
+  private AccountLockRepository accountLockRepository;
 
   @AfterEach
   void tearDown() {
@@ -54,7 +57,7 @@ public class AuthControllerTest {
 
   private String issueAccessToken(User user) {
     String jti = UUID.randomUUID().toString();
-    String token = jwtProvider.createAccessToken(user.getId(), jti);
+    String token = jwtProvider.createAccessToken(user.getId(), jti, user.getRole());
     sessionTokenRepository.save(user.getId(), jti, Duration.ofDays(7));
     return token;
   }
@@ -212,9 +215,10 @@ public class AuthControllerTest {
         .andDo(print())
         .andExpect(status().isOk());
 
-    // 이후 계정이 잠김
+    // 이후 계정이 잠김 (AdminService.changeUserLocked와 동일하게 DB + Redis 둘 다 반영)
     user.lock();
     userRepository.save(user);
+    accountLockRepository.lock(user.getId());
 
     // 같은 토큰으로 재요청 -> 신원은 확인됐으나 접근이 막힌 상태이므로 401이 아닌 403
     mockMvc.perform(get("/api/users/{userId}", user.getId())

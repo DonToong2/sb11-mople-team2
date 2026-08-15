@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.codeit.mople.domain.auth.repository.AccountLockRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.CustomOAuth2UserService;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
@@ -34,7 +35,6 @@ import com.codeit.mople.domain.review.exception.ReviewErrorCode;
 import com.codeit.mople.domain.review.exception.ReviewException;
 import com.codeit.mople.domain.review.service.ReviewService;
 import com.codeit.mople.domain.user.entity.Role;
-import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.config.SecurityConfig;
 import com.codeit.mople.global.dto.UserSummary;
 import com.codeit.mople.global.jwt.JwtProvider;
@@ -76,7 +76,7 @@ public class ReviewControllerTest {
 
 
   @MockitoBean
-  private UserRepository userRepository;
+  AccountLockRepository accountLockRepository;
 
   @MockitoBean
   private ReviewService reviewService;
