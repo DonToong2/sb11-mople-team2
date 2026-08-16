@@ -39,6 +39,12 @@ spring:
               - profile_nickname
               - profile_image
 
+  mail:
+    host: smtp-relay.brevo.com
+    port: 587
+    username: ${BREVO_SMTP_USERNAME}
+    password: ${BREVO_SMTP_PASSWORD}
+
 logging:
   level:
     com.codeit.mople: INFO
