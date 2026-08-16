@@ -40,6 +40,7 @@ public class AuthService {
   private final JwtProvider jwtProvider;
   private final SessionTokenRepository sessionTokenRepository;
   private final RefreshTokenRepository refreshTokenRepository;
+  private final AuthMailService authMailService;
 
   @Transactional
   public AuthTokens signIn(SignInRequest request) {
@@ -93,7 +94,7 @@ public class AuthService {
           String temporaryPassword = generateTemporaryPassword();
           Instant expiresAt = Instant.now().plus(TEMPORARY_PASSWORD_EXPIRATION_MINUTES, ChronoUnit.MINUTES);
           user.issueTemporaryPassword(passwordEncoder.encode(temporaryPassword), expiresAt);
-          // TODO: 이메일 발송
+          authMailService.sendTemporaryPassword(user.getEmail(), temporaryPassword);
         });
     // 이메일이 있든 없든 항상 204 반환(가입 여부를 노출하지 않음)
   }

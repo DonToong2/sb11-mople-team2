@@ -56,6 +56,9 @@ public class AuthServiceTest {
   @Mock
   private RefreshTokenRepository refreshTokenRepository;
 
+  @Mock
+  private AuthMailService authMailService;
+
   @InjectMocks
   private AuthService authService;
 
@@ -206,6 +209,7 @@ public class AuthServiceTest {
     authService.resetPassword(request);
 
     assertThat(user.hasValidTemporaryPassword(Instant.now())).isTrue();
+    verify(authMailService).sendTemporaryPassword(eq("test@test.com"), anyString());
   }
 
   @Test
