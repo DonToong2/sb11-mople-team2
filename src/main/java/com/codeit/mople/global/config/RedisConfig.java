@@ -2,21 +2,36 @@ package com.codeit.mople.global.config;
 
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.Duration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.GenericToStringSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-@EnableCaching
+// order를 낮춰 캐시 어드바이스를 트랜잭션 바깥에 고정함
+@EnableCaching(order = Ordered.LOWEST_PRECEDENCE - 1)
 @Configuration
-public class RedisConfig {
+public class RedisConfig implements CachingConfigurer {
+
+  // 캐시별 설정이 없을 때의 기본 만료 시간
+  private static final Duration DEFAULT_TTL = Duration.ofMinutes(10);
+
+  // 무효화 지점이 팔로우/언팔로우 두 곳뿐이라 길게 잡음
+  private static final Duration FOLLOW_COUNT_TTL = Duration.ofHours(1);
+
+  // 고정 데이터라 짧게 잡으면 회차마다 TMDB를 다시 부르게 됨
+  private static final Duration TMDB_GENRES_TTL = Duration.ofDays(7);
 
   @Bean
   public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
@@ -38,17 +53,44 @@ public class RedisConfig {
 
   //Spring Cache를 Redis로 사용하기 위한 CacheManager 빈 등록
   @Bean
-  public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
-    RedisCacheConfiguration cacheConfiguration = RedisCacheConfiguration.defaultCacheConfig()
+  public CacheManager cacheManager(
+      RedisConnectionFactory connectionFactory,
+      @Value("${redis.namespace}") String namespace) {
+
+    // 세션,시청 세션 키와 섞이지 않게 함
+    RedisCacheConfiguration defaultConfiguration = RedisCacheConfiguration.defaultCacheConfig()
         .serializeKeysWith(RedisSerializationContext.SerializationPair
             .fromSerializer(new StringRedisSerializer()))
         .serializeValuesWith(RedisSerializationContext.SerializationPair
             .fromSerializer(jsonSerializer()))
-        .entryTtl(Duration.ofMinutes(10)); //기본 캐시 만료 시간 10분 설정(필요에 따라 변경)
+        .entryTtl(DEFAULT_TTL)
+        .prefixCacheNameWith(namespace + ":cache:");
+
+    // 값 타입을 고정하지 않으면 long이 Integer로 되돌아와 캐시 히트에서 터짐
+    RedisCacheConfiguration followCountConfiguration = defaultConfiguration
+        .entryTtl(FOLLOW_COUNT_TTL)
+        .disableCachingNullValues()
+        .serializeValuesWith(RedisSerializationContext.SerializationPair
+            .fromSerializer(new GenericToStringSerializer<>(Long.class)));
+
+    RedisCacheConfiguration tmdbGenresConfiguration = defaultConfiguration
+        .entryTtl(TMDB_GENRES_TTL)
+        .disableCachingNullValues();
 
     return RedisCacheManager.builder(connectionFactory)
-        .cacheDefaults(cacheConfiguration)
+        .cacheDefaults(defaultConfiguration)
+        .withCacheConfiguration(CacheNames.FOLLOW_COUNT, followCountConfiguration)
+        .withCacheConfiguration(CacheNames.TMDB_GENRES, tmdbGenresConfiguration)
+        // 바깥 트랜잭션이 있는 호출에서만 개입함, 캐시 쓰기/삭제를 그 커밋 이후로 미룸
+        .transactionAware()
+        // 히트/미스를 Actuator cache 메트릭으로 노출
+        .enableStatistics()
         .build();
+  }
+
+  @Override
+  public CacheErrorHandler errorHandler() {
+    return new RedisCacheErrorHandler();
   }
 
   private GenericJackson2JsonRedisSerializer jsonSerializer() {
