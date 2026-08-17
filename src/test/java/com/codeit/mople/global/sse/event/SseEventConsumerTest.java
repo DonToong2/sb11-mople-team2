@@ -1,6 +1,5 @@
 package com.codeit.mople.global.sse.event;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -8,23 +7,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
-import com.codeit.mople.domain.conversation.entity.Conversation;
 import com.codeit.mople.domain.directmessage.dto.response.DirectMessageDto;
-import com.codeit.mople.domain.directmessage.entity.DirectMessage;
 import com.codeit.mople.domain.directmessage.event.DirectMessageCreatedEvent;
-import com.codeit.mople.domain.directmessage.exception.DirectMessageErrorCode;
-import com.codeit.mople.domain.directmessage.exception.DirectMessageException;
-import com.codeit.mople.domain.directmessage.repository.DirectMessageRepository;
 import com.codeit.mople.domain.notification.dto.response.NotificationResponse;
-import com.codeit.mople.domain.notification.entity.Notification;
 import com.codeit.mople.domain.notification.event.NotificationCreatedEvent;
-import com.codeit.mople.domain.notification.exception.NotificationErrorCode;
-import com.codeit.mople.domain.notification.exception.NotificationException;
-import com.codeit.mople.domain.notification.repository.NotificationRepository;
-import com.codeit.mople.domain.user.entity.User;
-import com.codeit.mople.global.event.processed.ProcessedEventRepository;
+import com.codeit.mople.global.sse.service.SseEventService;
 import com.codeit.mople.global.sse.service.SseService;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,48 +30,21 @@ public class SseEventConsumerTest {
   private SseService sseService;
 
   @Mock
-  private DirectMessageRepository directMessageRepository;
-
-  @Mock
-  private NotificationRepository notificationRepository;
-
-  @Mock
-  private ProcessedEventRepository processedEventRepository;
+  private SseEventService sseEventService;
 
   @InjectMocks
   private SseEventConsumer eventConsumer;
 
-  // 공통
   private UUID receiverId;
-  private User receiver;
-
-  // DirectMessage
   private UUID directMessageId;
-  private DirectMessage directMessage;
-
-  private User sender;
-  private Conversation conversation;
-
-  // Notification
   private UUID notificationId;
-  private Notification notification;
 
   @BeforeEach
   void setUp() {
     // 공통
     receiverId = UUID.randomUUID();
-    receiver = mock(User.class);
-
-    // DirectMessage
     directMessageId = UUID.randomUUID();
-    directMessage = mock(DirectMessage.class);
-
-    sender = mock(User.class);
-    conversation = mock(Conversation.class);
-
-    // Notification
     notificationId = UUID.randomUUID();
-    notification = mock(Notification.class);
   }
 
   @Nested
@@ -102,46 +63,49 @@ public class SseEventConsumerTest {
       DirectMessageCreatedEvent event =
           new DirectMessageCreatedEvent(eventId, receiverId, directMessageId);
 
-      given(processedEventRepository.insertIfAbsent(eventId))
-          .willReturn(1);
+      DirectMessageDto directMessageDto = mock(DirectMessageDto.class);
 
-      given(directMessageRepository.findById(directMessageId))
-          .willReturn(Optional.of(directMessage));
+      given(sseEventService.getDirectMessageDto(directMessageId))
+          .willReturn(directMessageDto);
 
-      given(directMessage.getConversation())
-          .willReturn(conversation);
-      given(directMessage.getSender())
-          .willReturn(sender);
-      given(directMessage.getReceiver())
-          .willReturn(receiver);
+      given(sseEventService.checkAndRecordProcessedEvent(eventId))
+          .willReturn(false);
 
       // when
       eventConsumer.handle(event);
 
       // then
+      verify(sseEventService).getDirectMessageDto(directMessageId);
+      verify(sseEventService).checkAndRecordProcessedEvent(eventId);
       verify(sseService).send(eq(receiverId), eq("direct-messages"), any(DirectMessageDto.class));
     }
 
     @Test
-    @DisplayName("DM 생성 이벤트 실패 - DirectMessage가 존재하지 않을 경우")
-    void handle_fail_directMessage_notFound() {
+    @DisplayName("DM 생성 이벤트 실패 - 이미 처리된 이벤트일 경우 SSE를 전송하지 않음")
+    void handle_fail_duplicate() {
       // given
 
-      // BeforeEach에서 receiverId, directMessageId를 초기화
+      // BeforeEach에서 receiverId, directMessageId, directMessage를 초기화
 
       UUID eventId = UUID.randomUUID();
 
       DirectMessageCreatedEvent event =
           new DirectMessageCreatedEvent(eventId, receiverId, directMessageId);
 
-      given(directMessageRepository.findById(directMessageId))
-          .willReturn(Optional.empty());
+      DirectMessageDto directMessageDto = mock(DirectMessageDto.class);
 
-      // when & then
-      assertThatThrownBy(() -> eventConsumer.handle(event))
-          .isInstanceOf(DirectMessageException.class)
-          .extracting("errorCode")
-          .isEqualTo(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND);
+      given(sseEventService.getDirectMessageDto(directMessageId))
+          .willReturn(directMessageDto);
+
+      given(sseEventService.checkAndRecordProcessedEvent(eventId))
+          .willReturn(true);
+
+      // when
+      eventConsumer.handle(event);
+
+      // then
+      verify(sseEventService).getDirectMessageDto(directMessageId);
+      verify(sseEventService).checkAndRecordProcessedEvent(eventId);
 
       verifyNoInteractions(sseService);
     }
@@ -164,25 +128,26 @@ public class SseEventConsumerTest {
       NotificationCreatedEvent event =
           new NotificationCreatedEvent(eventId, receiverId, notificationId);
 
-      given(processedEventRepository.insertIfAbsent(eventId))
-          .willReturn(1);
+      NotificationResponse notificationResponse = mock(NotificationResponse.class);
 
-      given(notificationRepository.findById(notificationId))
-          .willReturn(Optional.of(notification));
+      given(sseEventService.getNotificationResponse(notificationId))
+          .willReturn(notificationResponse);
 
-      given(notification.getReceiver())
-          .willReturn(receiver);
+      given(sseEventService.checkAndRecordProcessedEvent(eventId))
+          .willReturn(false);
 
       // when
       eventConsumer.handle(event);
 
       // then
+      verify(sseEventService).getNotificationResponse(notificationId);
+      verify(sseEventService).checkAndRecordProcessedEvent(eventId);
       verify(sseService).send(eq(receiverId), eq("notifications"), any(NotificationResponse.class));
     }
 
     @Test
-    @DisplayName("알림 생성 이벤트 실패 - Notification이 존재하지 않을 경우")
-    void handle_fail_notification_notFound() {
+    @DisplayName("알림 생성 이벤트 실패 - 이미 처리된 이벤트일 경우 SSE를 전송하지 않음")
+    void handle_fail_duplicate() {
       // given
 
       // BeforeEach에서 receiverId, notificationId, notification를 초기화
@@ -192,14 +157,20 @@ public class SseEventConsumerTest {
       NotificationCreatedEvent event =
           new NotificationCreatedEvent(eventId, receiverId, notificationId);
 
-      given(notificationRepository.findById(notificationId))
-          .willReturn(Optional.empty());
+      NotificationResponse notificationResponse = mock(NotificationResponse.class);
 
-      // when & then
-      assertThatThrownBy(() -> eventConsumer.handle(event))
-          .isInstanceOf(NotificationException.class)
-          .extracting("errorCode")
-          .isEqualTo(NotificationErrorCode.NOTIFICATION_NOT_FOUND);
+      given(sseEventService.getNotificationResponse(notificationId))
+          .willReturn(notificationResponse);
+
+      given(sseEventService.checkAndRecordProcessedEvent(eventId))
+          .willReturn(true);
+
+      // when
+      eventConsumer.handle(event);
+
+      // then
+      verify(sseEventService).getNotificationResponse(notificationId);
+      verify(sseEventService).checkAndRecordProcessedEvent(eventId);
 
       verifyNoInteractions(sseService);
     }
