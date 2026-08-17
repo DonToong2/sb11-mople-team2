@@ -202,10 +202,11 @@ public class SseServiceTest {
       // then
       verify(eventRepository).save(any(SseEvent.class));
       verify(connectionRepository).findServerId(receiverId);
-      verify(emitterRepository).find(receiverId);
 
       // 다른 서버에 연결 될 경우 SSEEvent send가 스킵되고 Redis Stream에 저장되어야 함
       verify(streamRepository).save(any(SseEvent.class), eq("server-2"));
+
+      verifyNoInteractions(emitterRepository);
     }
 
     @Test
@@ -224,8 +225,8 @@ public class SseServiceTest {
       // then
       verify(eventRepository).save(any(SseEvent.class));
       verify(connectionRepository).findServerId(receiverId);
-      verify(emitterRepository).find(receiverId);
 
+      verifyNoInteractions(emitterRepository);
       verifyNoInteractions(streamRepository);
     }
 

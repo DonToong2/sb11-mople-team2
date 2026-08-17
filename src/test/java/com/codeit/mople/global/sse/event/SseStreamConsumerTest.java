@@ -53,7 +53,7 @@ public class SseStreamConsumerTest {
 
   private static final String STREAM_KEY = "sse:events:";
   private static final String GROUP_NAME = "sse-servers";
-  private static final String FAILED_STREAM_KEY = "sse:events:failed";
+  private static final String FAILED_STREAM_KEY = "sse:events:failed:";
   private static final String SERVER_ID = "server-1";
 
   private UUID eventId;
