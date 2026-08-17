@@ -8,6 +8,7 @@ import com.codeit.mople.domain.notification.dto.response.NotificationResponse;
 import com.codeit.mople.global.sse.service.SseService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.lettuce.core.RedisBusyException;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
@@ -171,7 +172,7 @@ public class SseStreamConsumer {
       streamOperations.createGroup(streamKey, ReadOffset.from("0"), GROUP_NAME);
     } catch (RedisSystemException e) {
       // 이미 생성된 Consumer Group일 경우 예외 발생
-      if (e.getMessage() != null && e.getMessage().contains("BUSYGROUP")) {
+      if (e.getCause() instanceof RedisBusyException) {
         log.debug("SSE Stream Consumer Group이 이미 존재: streamKey={}, group={}",
             streamKey, GROUP_NAME);
         return;

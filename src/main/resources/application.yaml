@@ -25,6 +25,7 @@ spring:
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
   kafka:
+    enabled: true
     topics:
       follow-created: mople.follow.created.v1
       playlist-content-added: mople.playlist.content-added.v1

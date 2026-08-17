@@ -66,8 +66,6 @@ public class SseService {
   }
 
   public void send(UUID receiverId, String eventName, Object data) {
-    SseEmitter emitter = emitterRepository.find(receiverId);
-
     UUID eventId = UUID.randomUUID();
 
     SseEvent sseEvent = new SseEvent(
@@ -92,6 +90,8 @@ public class SseService {
       streamRepository.save(sseEvent, connectedServerId);
       return;
     }
+
+    SseEmitter emitter = emitterRepository.find(receiverId);
 
     if (emitter == null) {
       return;
