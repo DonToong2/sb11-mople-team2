@@ -96,19 +96,29 @@ public class SseStreamConsumer {
     // Consumer Group에 Consumer 등록
     Consumer consumer = Consumer.from(GROUP_NAME, serverId);
 
+    String streamKey = STREAM_KEY + serverId;
+
+    // Consumer Group 없으면 생성
+    createGroupIfNotExists(streamOperations, streamKey);
+
     // 1초
     long backOffMs = INITIAL_BACKOFF_MS;
+
+    // 초기는 현재 시각, 이후 마지막으로 recoverPending(ACK 받지 못한 Pending 이벤트 복구) 호출 시각
+    long lastPendingRecoveryAt = System.currentTimeMillis();
 
     // 서버 종료 전까지 계속 Stream을 소비함(block을 통해 처리할 이벤트 없으면 sleep 상태)
     while (running.get() && !Thread.currentThread().isInterrupted()) {
       try {
-        String streamKey = STREAM_KEY + serverId;
+        long now = System.currentTimeMillis();
 
-        // Consumer Group 없으면 생성
-        createGroupIfNotExists(streamOperations, streamKey);
+        // ACK을 받지 못해 남아있는 Pending 이벤트 복구를 약 30초마다 실행함
+        if (now - lastPendingRecoveryAt >= PENDING_IDLE_TIME.toMillis()) {
+          recoverPending(streamOperations, consumer, streamKey);
 
-        // ACK을 받지 못해 남아있는 Pending 이벤트 복구
-        recoverPending(streamOperations, consumer, streamKey);
+          // lastPending 갱신
+          lastPendingRecoveryAt = now;
+        }
 
         List<MapRecord<String, String, String>> records = streamOperations.read(
             consumer,
