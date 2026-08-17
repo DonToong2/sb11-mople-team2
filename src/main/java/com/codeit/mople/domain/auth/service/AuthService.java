@@ -22,10 +22,13 @@ import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -43,6 +46,18 @@ public class AuthService {
   private final RefreshTokenRepository refreshTokenRepository;
   private final AuthMailService authMailService;
   private final PasswordResetRateLimiterRepository passwordResetRateLimiterRepository;
+
+  @Value("${password-reset.rate-limit.ip.max-requests:5}")
+  private int ipMaxRequests;
+
+  @Value("${password-reset.rate-limit.ip.window-minutes:60}")
+  private long ipWindowMinutes;
+
+  @Value("${password-reset.rate-limit.global.max-requests:200}")
+  private int globalMaxRequests;
+
+  @Value("${password-reset.rate-limit.global.window-minutes:1440}")
+  private long globalWindowMinutes;
 
   @Transactional
   public AuthTokens signIn(SignInRequest request) {
@@ -89,10 +104,22 @@ public class AuthService {
   }
 
   @Transactional
-  public void resetPassword(ResetPasswordRequest request) {
+  public void resetPassword(ResetPasswordRequest request, String clientIp) {
     String email = request.email().toLowerCase(Locale.ROOT);
 
-    if(!passwordResetRateLimiterRepository.tryAcquired(email, Duration.ofMinutes(TEMPORARY_PASSWORD_EXPIRATION_MINUTES))) {
+    if(!passwordResetRateLimiterRepository.tryAcquireGlobal(
+        globalMaxRequests, Duration.ofMinutes(globalWindowMinutes))) {
+      log.warn("비밀번호 재설정 전체 발송 한도 초과");
+      throw new AuthException(AuthErrorCode.TOO_MANY_RESET_PASSWORD_REQUEST);
+    }
+
+    if(!passwordResetRateLimiterRepository.tryAcquireByIp(
+        clientIp, ipMaxRequests, Duration.ofMinutes(ipWindowMinutes))) {
+      log.warn("비밀번호 재설정 IP 기준 요청 한도 초과 : {}", clientIp);
+      throw new AuthException(AuthErrorCode.TOO_MANY_RESET_PASSWORD_REQUEST);
+    }
+
+    if(!passwordResetRateLimiterRepository.tryAcquireByEmail(email, Duration.ofMinutes(TEMPORARY_PASSWORD_EXPIRATION_MINUTES))) {
       throw new AuthException(AuthErrorCode.TOO_MANY_RESET_PASSWORD_REQUEST);
     }
 

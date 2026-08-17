@@ -58,6 +58,10 @@ cookie:
 
 password-reset:
   enabled: true
+  rate-limit:
+    global:
+      max-requests: 200
+      window-minutes: 1440
 
 admin:
   password: "Admin1234!"
