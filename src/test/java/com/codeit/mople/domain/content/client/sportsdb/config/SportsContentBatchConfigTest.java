@@ -159,4 +159,47 @@ class SportsContentBatchConfigTest {
     given(mockDto.strThumb()).willReturn("thumb.png");
     return mockDto;
   }
+
+  @Nested
+  @DisplayName("실패 및 재시작 시나리오")
+  class FailureAndRestart {
+
+    @Test
+    @DisplayName("수집 실패 시 기존 데이터가 보존되고, 재시작 시 정상적으로 처리된다")
+    void launchJob_FailsThenRestartsSuccessfully() throws Exception {
+      //초기 상태: 기존 데이터 1건이 DB에 이미 존재하는 상황 가정
+      Content oldContent = new Content(ContentType.SPORT, "구버전 경기", "설명", "thumb.png", new java.util.ArrayList<>(), "OLD-1");
+      contentRepository.save(oldContent);
+
+      JobParameters parameters = jobParameters(RUN_DATE);
+
+      //외부 API 통신 실패 모킹(RuntimeException으로 즉시 실패 유도)
+      given(feignClient.getEventsByDate(anyString(), eq("Soccer")))
+          .willThrow(new RuntimeException("API 통신 장애 발생"));
+
+      //1차 실행 -> 실패 확인
+      JobExecution failedExecution = jobLauncherTestUtils.launchJob(parameters);
+      assertThat(failedExecution.getStatus()).isEqualTo(BatchStatus.FAILED);
+
+      //실패 후에도 기존 데이터(1건)가 삭제되지 않고 그대로 보존되었는지 검증
+      assertThat(contentRepository.count()).isEqualTo(1);
+      assertThat(contentRepository.findAll().get(0).getExternalId()).isEqualTo("OLD-1");
+
+      //외부 API 통신 정상화 모킹
+      SportsDbEventDto dto1 = createMockDto("EVENT-1", "Team A vs Team B");
+      SportsDbEventDto dto2 = createMockDto("EVENT-2", "Team C vs Team D");
+      given(feignClient.getEventsByDate(anyString(), eq("Soccer")))
+          .willReturn(new SportsDbEventResponse(List.of(dto1, dto2)));
+
+      //동일한 파라미터(RUN_DATE)로 재시작 -> 성공 확인
+      JobExecution restartedExecution = jobLauncherTestUtils.launchJob(parameters);
+      assertThat(restartedExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+
+      //재시작 후 새 데이터 2건 적재 및 기존 백업 데이터 1건 삭제 완료 검증
+      assertThat(contentRepository.count()).isEqualTo(2);
+      assertThat(contentRepository.findAll())
+          .extracting(Content::getExternalId)
+          .containsExactlyInAnyOrder("EVENT-1", "EVENT-2");
+    }
+  }
 }
