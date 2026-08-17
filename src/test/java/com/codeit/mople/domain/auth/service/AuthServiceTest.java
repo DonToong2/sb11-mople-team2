@@ -17,6 +17,7 @@ import com.codeit.mople.domain.auth.dto.request.SignInRequest;
 import com.codeit.mople.domain.auth.dto.response.AuthTokens;
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
+import com.codeit.mople.domain.auth.repository.PasswordResetRateLimiterRepository;
 import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.entity.AuthProvider;
@@ -59,6 +60,9 @@ public class AuthServiceTest {
   @Mock
   private AuthMailService authMailService;
 
+  @Mock
+  private PasswordResetRateLimiterRepository passwordResetRateLimiterRepository;
+
   @InjectMocks
   private AuthService authService;
 
@@ -71,6 +75,7 @@ public class AuthServiceTest {
   void setUp() {
     user = User.createUser("test@test.com", "encodedPassword", "testUser");
     lenient().when(jwtProvider.getRefreshTokenExpiration()).thenReturn(REFRESH_TOKEN_EXPIRATION_MS);
+    lenient().when(passwordResetRateLimiterRepository.tryAcquired(anyString(), any())).thenReturn(true);
   }
 
   @Test
@@ -221,6 +226,20 @@ public class AuthServiceTest {
     assertThatCode(() -> authService.resetPassword(request)).doesNotThrowAnyException();
 
     verify(passwordEncoder, never()).encode(any());
+  }
+
+  @Test
+  @DisplayName("동일 이메일로 유효시간 내 재요청 시 예외가 발생하고 메일이 발송되지 않음")
+  void resetPassword_throwsException_whenRateLimited() {
+    ResetPasswordRequest request = new ResetPasswordRequest("test@test.com");
+    when(passwordResetRateLimiterRepository.tryAcquired(eq("test@test.com"), any())).thenReturn(false);
+
+    assertThatThrownBy(() -> authService.resetPassword(request))
+        .isInstanceOf(AuthException.class)
+        .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.TOO_MANY_RESET_PASSWORD_REQUEST);
+
+    verify(userRepository, never()).findByEmail(any());
+    verify(authMailService, never()).sendTemporaryPassword(any(), any());
   }
 
   @Test

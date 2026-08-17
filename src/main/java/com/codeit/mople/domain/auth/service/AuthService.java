@@ -6,6 +6,7 @@ import com.codeit.mople.domain.auth.dto.response.AuthTokens;
 import com.codeit.mople.domain.auth.dto.response.RefreshToken;
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
+import com.codeit.mople.domain.auth.repository.PasswordResetRateLimiterRepository;
 import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.dto.response.UserDto;
@@ -41,6 +42,7 @@ public class AuthService {
   private final SessionTokenRepository sessionTokenRepository;
   private final RefreshTokenRepository refreshTokenRepository;
   private final AuthMailService authMailService;
+  private final PasswordResetRateLimiterRepository passwordResetRateLimiterRepository;
 
   @Transactional
   public AuthTokens signIn(SignInRequest request) {
@@ -88,7 +90,13 @@ public class AuthService {
 
   @Transactional
   public void resetPassword(ResetPasswordRequest request) {
-    userRepository.findByEmail(request.email().toLowerCase(Locale.ROOT))
+    String email = request.email().toLowerCase(Locale.ROOT);
+
+    if(!passwordResetRateLimiterRepository.tryAcquired(email, Duration.ofMinutes(TEMPORARY_PASSWORD_EXPIRATION_MINUTES))) {
+      throw new AuthException(AuthErrorCode.TOO_MANY_RESET_PASSWORD_REQUEST);
+    }
+
+    userRepository.findByEmail(email)
         .filter(user -> user.getProvider() == AuthProvider.LOCAL)
         .ifPresent(user -> {
           String temporaryPassword = generateTemporaryPassword();
