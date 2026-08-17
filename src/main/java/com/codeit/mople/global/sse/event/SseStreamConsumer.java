@@ -171,7 +171,7 @@ public class SseStreamConsumer {
       String streamKey
   ) {
     try {
-      streamOperations.createGroup(streamKey, ReadOffset.latest(), GROUP_NAME);
+      streamOperations.createGroup(streamKey, ReadOffset.from("0"), GROUP_NAME);
     } catch (RedisSystemException e) {
       // 이미 생성된 Consumer Group일 경우 예외 발생
       if (e.getMessage() != null && e.getMessage().contains("BUSYGROUP")) {
