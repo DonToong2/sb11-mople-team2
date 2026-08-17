@@ -69,13 +69,9 @@ public class KafkaEventPublisher {
     } catch (JsonProcessingException e) {
       log.error("Kafka Producer 최종 실패 이벤트 직렬화 실패: topic={}, key={}"
           , topic, key, e);
-
-      throw new IllegalStateException("Kafka 최종 실패 이벤트 직렬화 실패", e);
     } catch (Exception e) {
       log.error("Kafka Producer 최종 실패 이벤트 Redis 저장 실패: topic={}, key={}",
           topic, key, e);
-
-      throw new IllegalStateException("Kafka 최종 실패 이벤트 Redis 저장 실패", e);
     }
   }
 
