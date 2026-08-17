@@ -2,7 +2,6 @@ package com.codeit.mople.domain.content.client.sportsdb.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.BDDAssertions.tuple;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -11,8 +10,11 @@ import static org.mockito.Mockito.mock;
 import com.codeit.mople.domain.content.client.sportsdb.SportsDbFeignClient;
 import com.codeit.mople.domain.content.client.sportsdb.dto.SportsDbEventDto;
 import com.codeit.mople.domain.content.client.sportsdb.dto.SportsDbEventResponse;
+import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,7 +27,6 @@ import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.batch.test.JobLauncherTestUtils;
 import org.springframework.batch.test.JobRepositoryTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
@@ -82,24 +83,30 @@ class SportsContentBatchConfigTest {
   class Launch {
 
     @Test
-    @DisplayName("삭제 Step이 먼저 돌고 수집 Step이 실행되어 새로운 데이터가 저장된다")
+    @DisplayName("기존 데이터 백업 -> 수집 완료 후 -> 백업된 구버전 데이터만 정상 삭제된다")
     void launchJob_CompletesAndSaves() throws Exception {
+      //기존 데이터 1건이 DB에 이미 존재하는 상황 가정
+      Content oldContent = new Content(ContentType.SPORT, "구버전 경기", "설명", "thumb.png", new ArrayList<>(), "OLD-1");
+      contentRepository.save(oldContent);
+
       JobParameters parameters = jobParameters(RUN_DATE);
 
+      //배치 실행(신규 데이터 2건 수집)
       JobExecution execution = jobLauncherTestUtils.launchJob(parameters);
 
       assertThat(execution.getExitStatus()).isEqualTo(ExitStatus.COMPLETED);
       assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
-      //사전 삭제 후 2건을 새로 적재했으므로, 최종 데이터는 2건이어야 합니다.
+      //구버전 1건은 삭제되고, 신규 수집된 2건만 남아야 함
       assertThat(contentRepository.count()).isEqualTo(2);
 
-      //스텝 실행 순서와 처리량 검증(삭제 -> 수집 순서)
+      //스텝 실행 순서와 처리량 검증(백업 -> 수집 -> 구버전 삭제 순서)
       assertThat(execution.getStepExecutions())
-          .extracting(StepExecution::getStepName, StepExecution::getReadCount)
+          .extracting(StepExecution::getStepName)
           .containsExactly(
-              tuple("deleteOldSportsDataStep", 0L), //삭제 스텝 먼저
-              tuple("sportsContentStep", 2L)        //수집 스텝 나중
+              "backupOldSportsDataStep", //백업 스텝 먼저
+              "sportsContentStep",       //수집 스텝 나중
+              "deleteOldSportsDataStep"  //삭제 스텝 마지막
           );
     }
 
@@ -120,14 +127,14 @@ class SportsContentBatchConfigTest {
   class Idempotency {
 
     @Test
-    @DisplayName("같은 파라미터(날짜)로 재실행하면 JobRestartException 예외 발생 (preventRestart 옵션 적용)")
+    @DisplayName("성공적으로 완료된 파라미터(날짜)로 재실행하면 JobInstanceAlreadyCompleteException 예외가 발생한다")
     void launchJob_SameRunDate_AlreadyComplete() throws Exception {
       //1차 실행(성공)
       jobLauncherTestUtils.launchJob(jobParameters(RUN_DATE));
 
-      //2차 실행 시도 시 JobRestartException 발생 검증
+      //2차 실행 시도 시 이미 성공한 인스턴스에 대한 예외 발생 검증
       assertThatThrownBy(() -> jobLauncherTestUtils.launchJob(jobParameters(RUN_DATE)))
-          .isInstanceOf(JobRestartException.class);
+          .isInstanceOf(org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException.class);
     }
   }
 
