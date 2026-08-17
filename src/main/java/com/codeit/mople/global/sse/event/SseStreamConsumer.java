@@ -1,5 +1,8 @@
 package com.codeit.mople.global.sse.event;
 
+import static com.codeit.mople.global.sse.SseStreamKeys.STREAM_KEY;
+import static com.codeit.mople.global.sse.SseStreamKeys.FAILED_STREAM_KEY;
+
 import com.codeit.mople.domain.directmessage.dto.response.DirectMessageDto;
 import com.codeit.mople.domain.notification.dto.response.NotificationResponse;
 import com.codeit.mople.global.sse.service.SseService;
@@ -36,14 +39,8 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "sse.stream-consumer.enabled", havingValue = "true", matchIfMissing = true)
 public class SseStreamConsumer {
 
-  // 서버 간 SSE 이벤트 전달을 위한 Redis Stream 키
-  private static final String STREAM_KEY = "sse:events:";
-
   // Redis Stream Consumer 그룹
   private static final String GROUP_NAME = "sse-servers";
-
-  // 최종 실패 시 별도로 보관하는 Redis Stream 키
-  private static final String FAILED_STREAM_KEY = "sse:events:failed";
 
   // 일정 시간 이상 ACK 되지 않은 Pending 이벤트를 복구(Redis Consumer 장애 시 발생)
   private static final Duration PENDING_IDLE_TIME = Duration.ofSeconds(30);

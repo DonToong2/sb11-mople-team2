@@ -1,5 +1,7 @@
 package com.codeit.mople.global.sse.repository;
 
+import static com.codeit.mople.global.sse.SseStreamKeys.STREAM_KEY;
+
 import com.codeit.mople.global.sse.model.SseEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,7 +14,6 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class SseStreamRepository {
 
-  private static final String STREAM_KEY = "sse:events:";
 
   private final StringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper;
