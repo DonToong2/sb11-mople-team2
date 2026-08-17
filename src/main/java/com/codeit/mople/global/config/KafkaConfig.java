@@ -1,5 +1,7 @@
 package com.codeit.mople.global.config;
 
+import com.codeit.mople.domain.directmessage.exception.DirectMessageException;
+import com.codeit.mople.domain.notification.exception.NotificationException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
@@ -50,6 +52,14 @@ public class KafkaConfig {
     backOff.setInitialInterval(1000L); // 초기 재시도 대기 시간(1초)
     backOff.setMultiplier(2.0); // 다음 재시도에 곱해지는 시간(2배)
     backOff.setMaxInterval(4000L); // 최대 재시도 대기 시간(4초)
+
+    DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, backOff);
+
+    // SSE 관련 도메인 객체(DM, 알림) 예외 발생 시 재시도 하지 않음(not found 에러 등)
+    errorHandler.addNotRetryableExceptions(
+        DirectMessageException.class,
+        NotificationException.class
+    );
 
     return new DefaultErrorHandler(recoverer, backOff);
   }
