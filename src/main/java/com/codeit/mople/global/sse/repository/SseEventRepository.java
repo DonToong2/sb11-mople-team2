@@ -22,18 +22,15 @@ import org.springframework.stereotype.Repository;
 public class SseEventRepository {
 
   private static final String STREAM_KEY = "sse:undelivered:";
-  
-  // 사용자별 500개까지 유실 SSE 이벤트 보관(이후 큐처럼 밀림), 최대 하루까지 보관
-  private static final long MAX_EVENT_COUNT = 500L;
+
+  // 사용자별 100개까지 유실 SSE 이벤트 보관(이후 큐처럼 밀림), 최대 하루까지 보관
+  private static final long MAX_EVENT_COUNT = 100L;
   private static final Duration EVENT_TTL = Duration.ofHours(24);
-  
-  // Fallback 재전송 개수 상한
-  private static final int MAX_FALLBACK_RESEND_COUNT = 100;
 
   private final StringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper;
 
-  // 사용자별로 알림, DM 무관한 SSE 유실 이벤트를 최대 500개까지 보관
+  // 사용자별로 알림, DM 무관한 SSE 유실 이벤트를 최대 100개까지 보관
   public void save(SseEvent event) {
     String streamKey = STREAM_KEY + event.receiverId();
 
@@ -98,11 +95,11 @@ public class SseEventRepository {
 
     // Redis Stream 도입 후 상한선 추가로인한 lastEvent가 밀려서 못 찾을 경우 최근 최대 100개의 이벤트만을 반환
     if (!found) {
-      log.warn("lastEventId를 찾지 못해 최근 최대 100개의 이벤트를 재전송: 현재 lastEventId={}, receiverId={}, Resend SSE size={}",
-          lastEventId, receiverId, Math.min(records.size(), MAX_FALLBACK_RESEND_COUNT));
+      log.warn(
+          "lastEventId를 찾지 못해 최근 최대 100개의 이벤트를 재전송: 현재 lastEventId={}, receiverId={}, Resend SSE size={}",
+          lastEventId, receiverId, Math.min(records.size(), MAX_EVENT_COUNT));
 
       return records.stream()
-          .skip(Math.max(0, records.size() - MAX_FALLBACK_RESEND_COUNT))
           .map(record -> toSseEvent(record.getValue(), receiverId))
           .toList();
     }
