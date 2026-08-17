@@ -26,6 +26,9 @@ public class SseEventRepository {
   // 사용자별 500개까지 유실 SSE 이벤트 보관(이후 큐처럼 밀림), 최대 하루까지 보관
   private static final long MAX_EVENT_COUNT = 500L;
   private static final Duration EVENT_TTL = Duration.ofHours(24);
+  
+  // Fallback 재전송 개수 상한
+  private static final int MAX_FALLBACK_RESEND_COUNT = 100;
 
   private final StringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper;
@@ -93,12 +96,13 @@ public class SseEventRepository {
       }
     }
 
-    // Redis Stream 도입 후 상한선 추가로인한 lastEvent가 밀려서 못 찾을 경우 전체 이벤트를 반환
+    // Redis Stream 도입 후 상한선 추가로인한 lastEvent가 밀려서 못 찾을 경우 최근 최대 100개의 이벤트만을 반환
     if (!found) {
-      log.warn("lastEventId 유실 가능성 존재: 현재 lastEventId={}, receiverId={}, Resend SSE size={}",
-          lastEventId, receiverId, records.size());
+      log.warn("lastEventId를 찾지 못해 최근 최대 100개의 이벤트를 재전송: 현재 lastEventId={}, receiverId={}, Resend SSE size={}",
+          lastEventId, receiverId, Math.min(records.size(), MAX_FALLBACK_RESEND_COUNT));
 
       return records.stream()
+          .skip(Math.max(0, records.size() - MAX_FALLBACK_RESEND_COUNT))
           .map(record -> toSseEvent(record.getValue(), receiverId))
           .toList();
     }
