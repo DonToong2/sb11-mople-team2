@@ -40,6 +40,9 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
     testRuntimeOnly 'com.h2database:h2'
 
+    // mail
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+
     // QueryDSL (Spring Boot 3.x / Jakarta 기준)
     implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
     annotationProcessor 'com.querydsl:querydsl-apt:5.0.0:jakarta'
