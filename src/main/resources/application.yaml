@@ -41,6 +41,14 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "com.codeit.mople.domain.*"
+  mail:
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
 
 server:
   port: 8080
@@ -76,3 +84,6 @@ batch:
     collect:
       max-pages: 5
       skip-limit: 10
+
+mail:
+  from: ${MAIL_FROM:moplaylist0727@gmail.com}
