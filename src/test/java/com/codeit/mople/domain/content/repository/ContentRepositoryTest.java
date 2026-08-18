@@ -8,6 +8,7 @@ import com.codeit.mople.global.config.JpaAuditingConfig;
 import com.codeit.mople.global.config.QueryDslConfig;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -241,6 +242,37 @@ public class ContentRepositoryTest {
       assertThat(remainingContents).hasSize(1);
       assertThat(remainingContents.get(0).getType()).isEqualTo(ContentType.MOVIE);
       assertThat(remainingContents.get(0).getTitle()).isEqualTo("영화 1");
+    }
+
+  }
+
+  @Nested
+  @DisplayName("특정 타입 콘텐츠 ID 리스트 조회")
+  class FindIdsByType {
+
+    @Test
+    @DisplayName("특정 타입의 콘텐츠 ID만 추출하여 리스트로 반환한다")
+    void findIdsByType_success() {
+      Content sportContent1 = new Content(
+          ContentType.SPORT, "스포츠 1", "스포츠 설명 1", "1.png", new ArrayList<>(), "ext-001"
+      );
+      Content sportContent2 = new Content(
+          ContentType.SPORT, "스포츠 2", "스포츠 설명 2", "2.png", new ArrayList<>(), "ext-002"
+      );
+      Content movieContent = new Content(
+          ContentType.MOVIE, "영화 1", "영화 설명 1", "3.png", new ArrayList<>(), "ext-003"
+      );
+
+      contentRepository.saveAll(List.of(sportContent1, sportContent2, movieContent));
+      entityManager.flush();
+      entityManager.clear();
+
+      List<UUID> foundIds = contentRepository.findIdsByType(ContentType.SPORT);
+
+      assertThat(foundIds).isNotNull();
+      assertThat(foundIds).hasSize(2); //SPORT 타입인 2개만 조회되어야 함
+      assertThat(foundIds).containsExactlyInAnyOrder(sportContent1.getId(), sportContent2.getId());
+      assertThat(foundIds).doesNotContain(movieContent.getId()); //MOVIE 타입의 ID는 없어야 함
     }
 
   }

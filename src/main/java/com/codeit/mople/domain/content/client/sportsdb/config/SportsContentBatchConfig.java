@@ -57,10 +57,7 @@ public class SportsContentBatchConfig {
     return new StepBuilder("backupOldSportsDataStep", jobRepository)
         .tasklet((contribution, chunkContext) -> {
           //기존 데이터의 ID 리스트 조회
-          List<UUID> oldIds = contentRepository.findAll().stream()
-              .filter(c -> c.getType() == ContentType.SPORT)
-              .map(Content::getId)
-              .toList();
+          List<UUID> oldIds = contentRepository.findIdsByType(ContentType.SPORT);
 
           //Job Execution Context에 백업 ID 목록 저장
           chunkContext.getStepContext()
