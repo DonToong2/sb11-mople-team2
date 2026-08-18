@@ -1,7 +1,10 @@
 package com.codeit.mople.global.config;
 
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import jakarta.annotation.PreDestroy;
 import java.time.Duration;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachingConfigurer;
@@ -27,8 +30,8 @@ public class RedisConfig implements CachingConfigurer {
   // 캐시별 설정이 없을 때의 기본 만료 시간
   private static final Duration DEFAULT_TTL = Duration.ofMinutes(10);
 
-  // 무효화 지점이 팔로우/언팔로우 두 곳뿐이라 길게 잡음
-  private static final Duration FOLLOW_COUNT_TTL = Duration.ofHours(1);
+  // 재시도 모두 실패했을 때 옛 값이 남는 상한 시간
+  private static final Duration FOLLOW_COUNT_TTL = Duration.ofMinutes(10);
 
   // 고정 데이터라 짧게 잡으면 회차마다 TMDB를 다시 부르게 됨
   private static final Duration TMDB_GENRES_TTL = Duration.ofDays(7);
@@ -57,7 +60,7 @@ public class RedisConfig implements CachingConfigurer {
       RedisConnectionFactory connectionFactory,
       @Value("${redis.namespace}") String namespace) {
 
-    // 세션,시청 세션 키와 섞이지 않게 함
+    // 기존 로직에 namespace만 추가
     RedisCacheConfiguration defaultConfiguration = RedisCacheConfiguration.defaultCacheConfig()
         .serializeKeysWith(RedisSerializationContext.SerializationPair
             .fromSerializer(new StringRedisSerializer()))
@@ -66,13 +69,14 @@ public class RedisConfig implements CachingConfigurer {
         .entryTtl(DEFAULT_TTL)
         .prefixCacheNameWith(namespace + ":cache:");
 
-    // 값 타입을 고정하지 않으면 long이 Integer로 되돌아와 캐시 히트에서 터짐
+    // followCont 값 타입을 고정하지 않으면 long이 Integer로 되돌아와 캐시 히트에서 터짐 그래서 long으로 고정
     RedisCacheConfiguration followCountConfiguration = defaultConfiguration
         .entryTtl(FOLLOW_COUNT_TTL)
         .disableCachingNullValues()
         .serializeValuesWith(RedisSerializationContext.SerializationPair
             .fromSerializer(new GenericToStringSerializer<>(Long.class)));
 
+    // tmdb
     RedisCacheConfiguration tmdbGenresConfiguration = defaultConfiguration
         .entryTtl(TMDB_GENRES_TTL)
         .disableCachingNullValues();
@@ -88,9 +92,24 @@ public class RedisConfig implements CachingConfigurer {
         .build();
   }
 
+  // 비동기로 재시도 수행하기 위한 캐시 무효화 재시도 전용 스레드 풀
+  private final ScheduledExecutorService evictRetryScheduler =
+      // 싱글스레드 -> 이름"cache-evict-retry" 지정 -> 데몬스레드 지정 -> 스레드 리턴
+      Executors.newSingleThreadScheduledExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "cache-evict-retry");
+        thread.setDaemon(true);
+        return thread;
+      });
+
+  // 서버가 종료 될 때 evictRetryScheduler의 스레드 풀을 종료시켜주는 역할(스레드 누수방지)
+  @PreDestroy
+  void shutdownEvictRetryScheduler() {
+    evictRetryScheduler.shutdownNow();
+  }
+
   @Override
   public CacheErrorHandler errorHandler() {
-    return new RedisCacheErrorHandler();
+    return new RedisCacheErrorHandler(evictRetryScheduler);
   }
 
   private GenericJackson2JsonRedisSerializer jsonSerializer() {
