@@ -61,6 +61,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-batch'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
+    // 분산 락 (스케줄러 중복 실행 방지)
+    implementation 'net.javacrumbs.shedlock:shedlock-spring:6.10.0'
+    implementation 'net.javacrumbs.shedlock:shedlock-provider-redis-spring:6.10.0'
+
     // Kafka
     implementation 'org.springframework.kafka:spring-kafka'
 
