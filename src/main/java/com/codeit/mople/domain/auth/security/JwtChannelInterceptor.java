@@ -126,7 +126,8 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     // 개별 에러 채널을 수신할 수 있도록 구독 경로 오픈
     if (destination.startsWith("/user/queue/")) {
 
-      if (!(accessor.getUser() instanceof UsernamePasswordAuthenticationToken authentication) || !authentication.isAuthenticated()) {
+      if (!(accessor.getUser() instanceof UsernamePasswordAuthenticationToken authentication)
+          || !authentication.isAuthenticated()) {
         log.warn("WebSocket 구독 거부: 인증되지 않은 유저의 에러 채널 구독 시도 - destination: {}", destination);
         throw new AuthException(AuthErrorCode.INVALID_TOKEN);
       }
@@ -177,6 +178,8 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
       log.warn("WebSocket 구독 실패: 잘못된 구독 경로 형식 - destination: {}", destination);
       throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+    } catch (AuthException e) {
+      throw e;
     } catch (Exception e) {
       log.error("WebSocket 구독 검증 중 예외 발생 - destination: " + destination, e);
       throw new AuthException(AuthErrorCode.INVALID_TOKEN);
