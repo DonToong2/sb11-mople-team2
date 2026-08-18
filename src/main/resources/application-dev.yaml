@@ -89,3 +89,6 @@ app:
   websocket:
     allowed-origins:
       - "http://localhost:8080"
+
+sse:
+  server-id: "local"

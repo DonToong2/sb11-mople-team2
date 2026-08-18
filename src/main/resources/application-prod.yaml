@@ -72,3 +72,6 @@ batch:
     collect:
       cron: "0 0 3 * * *"
       enabled: ${TMDB_COLLECT_ENABLED:false}
+
+sse:
+  server-id: ${SSE_SERVER_ID}
