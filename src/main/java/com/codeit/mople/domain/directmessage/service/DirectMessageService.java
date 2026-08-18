@@ -41,8 +41,7 @@ public class DirectMessageService {
   public DirectMessageDto sendMessage(UUID conversationId, UUID senderId, String content) {
     log.debug("WebSocket DM 발송 및 영속화 시작 - conversationId: {}, senderId: {}", conversationId, senderId);
 
-    // 비관적 락이 걸린 전용 메서드로 조회하여 동시 덮어쓰기(Lost Update) 원천 차단
-    Conversation conversation = conversationRepository.findWithLockById(conversationId)
+    Conversation conversation = conversationRepository.findByIdWithUsers(conversationId)
         .orElseThrow(() -> new ConversationException(ConversationErrorCode.CONVERSATION_NOT_FOUND, Map.of("conversationId", conversationId)));
 
     validateConversationParticipant(conversation, senderId);
