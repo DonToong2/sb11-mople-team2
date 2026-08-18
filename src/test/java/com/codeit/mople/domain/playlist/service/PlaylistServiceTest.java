@@ -233,7 +233,7 @@ public class PlaylistServiceTest {
       given(content.calculateAverageRating())
           .willReturn(0.0);
       given(content.getReviewCount())
-          .willReturn(0);
+          .willReturn(0L);
 
       given(owner.getId())
           .willReturn(ownerId);
