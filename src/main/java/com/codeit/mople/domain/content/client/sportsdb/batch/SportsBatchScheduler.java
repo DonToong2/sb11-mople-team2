@@ -3,6 +3,7 @@ package com.codeit.mople.domain.content.client.sportsdb.batch;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
@@ -29,6 +30,7 @@ public class SportsBatchScheduler {
 
   //매일 새벽 4시, 오후 4시에 자동으로 배치 실행
   @Scheduled(cron = "0 0 4,16 * * *")
+  @SchedulerLock(name = "sportsdb-collect", lockAtMostFor = "PT10M", lockAtLeastFor = "PT10S")
   public void runBatchJobAutomatically() {
     log.info("자동 스케줄러: SportsDB 수집 배치를 시작합니다");
     triggerManualBatch();
