@@ -37,7 +37,7 @@ public class SportsBatchScheduler {
     //락 설정(이름, 최대 유지 10분, 최소 유지 10초)
     LockConfiguration config = new LockConfiguration(
         Instant.now(),
-        "sportsdb-collect-startup",
+        "sportsdb-collect",
         Duration.ofMinutes(10),
         Duration.ofSeconds(10)
     );

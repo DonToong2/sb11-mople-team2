@@ -9,13 +9,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.Optional;
+import net.javacrumbs.shedlock.core.LockConfiguration;
 import net.javacrumbs.shedlock.core.LockProvider;
 import net.javacrumbs.shedlock.core.SimpleLock;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -77,5 +80,22 @@ class SportsBatchSchedulerTest {
     assertThat(schedulerLock.name()).isEqualTo("sportsdb-collect");
     assertThat(schedulerLock.lockAtMostFor()).isEqualTo("PT10M");
     assertThat(schedulerLock.lockAtLeastFor()).isEqualTo("PT10S");
+  }
+
+  @Test
+  @DisplayName("서버 구동 시 수동 락 설정(이름, 유지 시간)이 올바르게 구성되어 실행된다")
+  void runOnStartup_LockConfiguration() {
+    SimpleLock dummyLock = mock(SimpleLock.class);
+    when(lockProvider.lock(any(LockConfiguration.class))).thenReturn(Optional.of(dummyLock));
+
+    scheduler.runOnStartup();
+
+    ArgumentCaptor<LockConfiguration> captor = ArgumentCaptor.forClass(LockConfiguration.class);
+    verify(lockProvider).lock(captor.capture()); //lockProvider.lock() 호출 시 전달된 파라미터 캡처
+
+    LockConfiguration config = captor.getValue();
+    assertThat(config.getName()).isEqualTo("sportsdb-collect");
+    assertThat(config.getLockAtMostFor()).isEqualTo(Duration.ofMinutes(10));
+    assertThat(config.getLockAtLeastFor()).isEqualTo(Duration.ofSeconds(10));
   }
 }
