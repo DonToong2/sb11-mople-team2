@@ -40,6 +40,9 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
     testRuntimeOnly 'com.h2database:h2'
 
+    // mail
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+
     // QueryDSL (Spring Boot 3.x / Jakarta 기준)
     implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
     annotationProcessor 'com.querydsl:querydsl-apt:5.0.0:jakarta'
@@ -55,9 +58,15 @@ dependencies {
     implementation 'net.javacrumbs.shedlock:shedlock-spring:5.13.0'
     implementation 'net.javacrumbs.shedlock:shedlock-provider-redis-spring:5.13.0'
 
+    // Kafka
+    implementation 'org.springframework.kafka:spring-kafka'
+
     // Batch & 모니터링
     implementation 'org.springframework.boot:spring-boot-starter-batch'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // Kafka
+    implementation 'org.springframework.kafka:spring-kafka'
 
     // External API (TMDB / SportsDB)
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
@@ -77,9 +86,11 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'org.springframework.batch:spring-batch-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
 }
 
 dependencyManagement {

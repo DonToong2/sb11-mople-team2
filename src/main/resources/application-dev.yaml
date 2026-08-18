@@ -6,7 +6,7 @@ spring:
   data:
     redis:
       host: localhost
-      port: 6379
+      port: 6380
 
   jpa:
     hibernate:
@@ -37,6 +37,15 @@ spring:
     jdbc:
       initialize-schema: always
 
+  kafka:
+    bootstrap-servers: localhost:9093
+
+  mail:
+    host: smtp-relay.brevo.com
+    port: 587
+    username: ${BREVO_SMTP_USERNAME:}
+    password: ${BREVO_SMTP_PASSWORD:}
+
 logging:
   level:
     com.codeit.mople: DEBUG
@@ -46,6 +55,13 @@ jwt:
 
 cookie:
   secure: false
+
+password-reset:
+  enabled: true
+  rate-limit:
+    global:
+      max-requests: 200
+      window-minutes: 1440
 
 admin:
   password: "Admin1234!"
@@ -73,3 +89,6 @@ app:
   websocket:
     allowed-origins:
       - "http://localhost:8080"
+
+sse:
+  server-id: "local"
