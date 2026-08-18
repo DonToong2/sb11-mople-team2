@@ -39,12 +39,25 @@ spring:
               - profile_nickname
               - profile_image
 
+  mail:
+    host: smtp-relay.brevo.com
+    port: 587
+    username: ${BREVO_SMTP_USERNAME}
+    password: ${BREVO_SMTP_PASSWORD}
+
 logging:
   level:
     com.codeit.mople: INFO
 
 jwt:
   secret: ${JWT_SECRET}
+
+password-reset:
+  enabled: true
+  rate-limit:
+    global:
+      max-requests: 200
+      window-minutes: 1440
 
 external-api:
   tmdb:
