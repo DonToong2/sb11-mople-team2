@@ -11,7 +11,6 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.security.SignatureException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.ExpiredJwtException;
-import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,9 +35,6 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
   private final ConversationRepository conversationRepository;
   private final SessionTokenRepository sessionTokenRepository;
 
-  private static final String ERROR_KEY = "reason";
-  private static final String AUTH_ERROR_MESSAGE = "유효하지 않은 토큰입니다.";
-
   @Override
   public @Nullable Message<?> preSend(Message<?> message, MessageChannel channel) {
     StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message,
@@ -48,8 +44,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
       StompCommand command = StompHeaderAccessor.wrap(message).getCommand();
       if (StompCommand.CONNECT.equals(command) || StompCommand.SUBSCRIBE.equals(command)) {
         log.error("WebSocket 처리 거부: 가변 STOMP 헤더 접근 불가 - command: {}", command);
-        throw new AuthException(AuthErrorCode.INVALID_TOKEN,
-            Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+        throw new AuthException(AuthErrorCode.INVALID_TOKEN);
       }
       return message;
     }
@@ -70,8 +65,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
     if (token == null) {
       log.warn("WebSocket 연결 실패: Authorization 헤더 누락 또는 Bearer 접두사 누락");
-      throw new AuthException(AuthErrorCode.INVALID_TOKEN,
-          Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+      throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
 
     try {
@@ -81,21 +75,18 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
       User user = userRepository.findById(userId)
           .orElseThrow(() -> {
             log.warn("WebSocket 연결 거부: DB에 존재하지 않는 유저 - userId: {}", userId);
-            return new AuthException(AuthErrorCode.INVALID_TOKEN,
-                Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+            return new AuthException(AuthErrorCode.INVALID_TOKEN);
           });
 
       // 1. 중복 로그인으로 인한 이전 기기 세션 만료 검증
       if (!sessionTokenRepository.isValid(userId, tokenJti)) {
         log.warn("WebSocket 연결 거부: 만료된 토큰 세션 버전 사용 시도 - userId: {}", userId);
-        throw new AuthException(AuthErrorCode.EXPIRED_SESSION,
-            Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+        throw new AuthException(AuthErrorCode.INVALID_TOKEN);
       }
       // 2. 관리자 등에 의해 잠금 처리된 계정인지 검증
       if (user.isLocked()) {
         log.warn("WebSocket 연결 거부: 비활성화(잠금) 상태의 계정 접근 - userId: {}", userId);
-        throw new AuthException(AuthErrorCode.LOCKED_ACCOUNT,
-            Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+        throw new AuthException(AuthErrorCode.INVALID_TOKEN);
       }
 
       // 위의 인가 통과 시 CustomUserDetails 생성 및 WebSocket 세션 컨텍스트 내 유저 등록
@@ -108,21 +99,19 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
     } catch (ExpiredJwtException e) {
       log.warn("WebSocket 연결 실패: 만료된 JWT 토큰 사용 시도 - error: {}", e.getMessage());
-      throw new AuthException(AuthErrorCode.INVALID_TOKEN,
-          Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+      throw new AuthException(AuthErrorCode.INVALID_TOKEN);
 
     } catch (MalformedJwtException | SignatureException e) {
       log.error("WebSocket 보안 경고: 변조되었거나 서명이 일치하지 않는 토큰 - error: {}", e.getMessage());
-      throw new AuthException(AuthErrorCode.INVALID_TOKEN,
-          Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+      throw new AuthException(AuthErrorCode.INVALID_TOKEN);
 
     } catch (IllegalArgumentException e) {
       log.error("WebSocket 연결 실패: 잘못된 인자 전달 (토큰 외 버그 가능성) - error: {}", e.getMessage());
-      throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+      throw new AuthException(AuthErrorCode.INVALID_TOKEN);
 
     } catch (JwtException e) {
       log.warn("WebSocket 연결 실패: 기타 JWT 예외 - error: {}", e.getMessage());
-      throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+      throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
   }
 
@@ -131,7 +120,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     String destination = accessor.getDestination();
 
     if (destination == null) {
-      throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+      throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
 
     // 개별 에러 채널을 수신할 수 있도록 구독 경로 오픈
@@ -139,7 +128,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
       if (!(accessor.getUser() instanceof UsernamePasswordAuthenticationToken authentication) || !authentication.isAuthenticated()) {
         log.warn("WebSocket 구독 거부: 인증되지 않은 유저의 에러 채널 구독 시도 - destination: {}", destination);
-        throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+        throw new AuthException(AuthErrorCode.INVALID_TOKEN);
       }
       log.info("WebSocket 에러 채널 구독 승인 - destination: {}", destination);
       return;
@@ -152,7 +141,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
       log.info("WebSocket 콘텐츠 채널 구독 승인 - destination: {}", destination);
     } else {
       log.warn("WebSocket 구독 거부: 화이트리스트에 등록되지 않은 경로 구독 시도 - destination: {}", destination);
-      throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+      throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
   }
 
@@ -166,7 +155,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
       // CONNECT 시점에 세팅해둔 principal에서 userId 추출
       UsernamePasswordAuthenticationToken authenticationToken = (UsernamePasswordAuthenticationToken) accessor.getUser();
       if (authenticationToken == null) {
-        throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+        throw new AuthException(AuthErrorCode.INVALID_TOKEN);
       }
 
       CustomUserDetails principal = (CustomUserDetails) authenticationToken.getPrincipal();
@@ -180,17 +169,17 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
         log.warn("WebSocket 구독 거부: 존재하지 않는 방이거나 참여자가 아닌 유저의 도청 시도 - userId: {}, conversationId: {}",
             userId,
             conversationId);
-        throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+        throw new AuthException(AuthErrorCode.INVALID_TOKEN);
       }
 
       log.info("WebSocket 구독 인가 성공 - userId: {}, conversationId: {}", userId, conversationId);
 
     } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
       log.warn("WebSocket 구독 실패: 잘못된 구독 경로 형식 - destination: {}", destination);
-      throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+      throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     } catch (Exception e) {
       log.error("WebSocket 구독 검증 중 예외 발생 - destination: " + destination, e);
-      throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+      throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
   }
 
