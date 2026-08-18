@@ -119,7 +119,6 @@ public class JwtAuthenticationFilterTest {
 
     given(jwtProvider.getUserId(validToken)).willReturn(userId);
     given(jwtProvider.getJti(validToken)).willReturn(jti);
-    given(sessionTokenRepository.isValid(userId, jti)).willReturn(true);
     given(accountLockRepository.isLocked(userId)).willReturn(true);
 
     jwtAuthenticationFilter.doFilter(request, response, filterChain);

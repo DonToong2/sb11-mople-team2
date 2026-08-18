@@ -215,9 +215,10 @@ public class AuthControllerTest {
         .andDo(print())
         .andExpect(status().isOk());
 
-    // 이후 계정이 잠김 (AdminService.changeUserLocked와 동일하게 DB + Redis 둘 다 반영)
+    // 이후 계정이 잠김 (AdminService.changeUserLocked와 동일하게 DB 락 + 세션 무효화 + Redis 락 모두 반영)
     user.lock();
     userRepository.save(user);
+    sessionTokenRepository.invalidate(user.getId());
     accountLockRepository.lock(user.getId());
 
     // 같은 토큰으로 재요청 -> 신원은 확인됐으나 접근이 막힌 상태이므로 401이 아닌 403
