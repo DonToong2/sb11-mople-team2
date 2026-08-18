@@ -106,16 +106,51 @@ jobs:
               sleep 2
             done
 
-            if [ "$READY" = true ]; then
-              echo "새 컨테이너 readiness 확인 완료, 기존 컨테이너 교체"
-              docker stop "$CONTAINER_NAME" 2>/dev/null || true
-              docker rm "$CONTAINER_NAME" 2>/dev/null || true
-              docker rm -f "$CANDIDATE_NAME"
-              docker run -d --name "$CONTAINER_NAME" --restart unless-stopped -p 8080:8080 --env-file /home/ubuntu/mople.env "$IMAGE"
-              docker image prune -f
-            else
+            if [ "$READY" != true ]; then
               echo "새 컨테이너 readiness 실패 — 배포 중단, 기존 컨테이너($PREV_IMAGE) 그대로 유지"
               docker logs "$CANDIDATE_NAME" --tail 100 || true
               docker rm -f "$CANDIDATE_NAME" || true
               exit 1
             fi
+
+            echo "새 컨테이너 readiness 확인 완료, 기존 컨테이너 교체 시작"
+            docker rm -f "$CANDIDATE_NAME"
+
+            ROLLBACK_NAME="${CONTAINER_NAME}_rollback"
+            docker rm -f "$ROLLBACK_NAME" 2>/dev/null || true
+            if docker inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
+              docker stop "$CONTAINER_NAME" 2>/dev/null || true
+              docker rename "$CONTAINER_NAME" "$ROLLBACK_NAME"
+            fi
+
+            rollback() {
+              echo "새 컨테이너 기동/readiness 실패 — 이전 컨테이너($PREV_IMAGE)로 즉시 롤백"
+              docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+              if docker inspect "$ROLLBACK_NAME" >/dev/null 2>&1; then
+                docker rename "$ROLLBACK_NAME" "$CONTAINER_NAME"
+                docker start "$CONTAINER_NAME"
+              fi
+              exit 1
+            }
+
+            if ! docker run -d --name "$CONTAINER_NAME" --restart unless-stopped -p 8080:8080 --env-file /home/ubuntu/mople.env "$IMAGE"; then
+              rollback
+            fi
+
+            READY=false
+            for i in $(seq 1 30); do
+              if curl -fs "http://localhost:8080/actuator/health" | grep -q '"status":"UP"'; then
+                READY=true
+                break
+              fi
+              sleep 2
+            done
+
+            if [ "$READY" != true ]; then
+              docker logs "$CONTAINER_NAME" --tail 100 || true
+              rollback
+            fi
+
+            echo "배포 완료 — 이전 컨테이너 정리"
+            docker rm -f "$ROLLBACK_NAME" 2>/dev/null || true
+            docker image prune -f
