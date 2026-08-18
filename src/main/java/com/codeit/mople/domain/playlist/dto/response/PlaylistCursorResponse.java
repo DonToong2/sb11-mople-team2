@@ -1,7 +1,7 @@
 package com.codeit.mople.domain.playlist.dto.response;
 
 import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition.PlaylistSortBy;
-import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition.SortDirection;
+import com.codeit.mople.global.dto.SortDirection;
 import java.util.List;
 import java.util.UUID;
 
