@@ -94,11 +94,31 @@ public class ContentService{
       throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("limit", limit));
     }
 
-    //커서 피라미터가 둘 중 하나만 드어온 경우 예외 처리
+    //커서 파라미터가 둘 중 하나만 들어온 경우 예외 처리
     if ((cursorId == null) != (cursorValue == null)) {
       log.warn("콘텐츠 목록 조회 실패(불완전한 커서 조건) - cursorId: {}, cursorValue: {}", cursorId, cursorValue);
       throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST,
           Map.of("cursorId", String.valueOf(cursorId), "cursorValue", String.valueOf(cursorValue)));
+    }
+
+    //정렬 기본값 설정
+    String actualSortBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
+
+    //커서 파싱 및 유효성 검증(400 에러 처리)
+    Object parsedCursorValue = null;
+    if (cursorValue != null && !cursorValue.isBlank()) {
+      try {
+        if ("watcherCount".equals(actualSortBy)) {
+          parsedCursorValue = Long.parseLong(cursorValue);
+        } else if ("ratingSum".equals(actualSortBy) || "rating".equals(actualSortBy) || "score".equals(actualSortBy) || "rate".equals(actualSortBy)) {
+          parsedCursorValue = Double.parseDouble(cursorValue);
+        } else {
+          parsedCursorValue = Instant.parse(cursorValue);
+        }
+      } catch (NumberFormatException | java.time.format.DateTimeParseException e) {
+        log.warn("콘텐츠 목록 조회 실패(커서 파싱 오류) - cursorValue: {}, sortBy: {}", cursorValue, actualSortBy);
+        throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("cursorValue", cursorValue));
+      }
     }
 
     //ContentType 필터 처리 (ALL 또는 빈 값일 경우 전체 조회)
@@ -111,12 +131,9 @@ public class ContentService{
       }
     }
 
-    //정렬 기본값 설정
-    String actualSortBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
-
     //데이터 조회 및 카운트
     List<Content> contents = contentQueryRepository
-        .findContentByCursor(cursorId, cursorValue, limit, contentType, keywordLike, actualSortBy);
+        .findContentByCursor(cursorId, parsedCursorValue, limit, contentType, keywordLike, actualSortBy);
     long totalCount = contentQueryRepository.countContentsByTypeAndKeyword(contentType, keywordLike);
 
     CursorResponse<Content> cursorResponse = CursorResponse.of(

@@ -19,13 +19,13 @@ public class ContentQueryRepository {
   private final JPAQueryFactory queryFactory;
 
   //커서 기반 데이터 조회 (limit + 1개)
-  public List<Content> findContentByCursor(UUID cursorId, String cursorValue,
+  public List<Content> findContentByCursor(UUID cursorId, Object parsedCursorValue,
       int limit, ContentType type, String keyword, String sortBy) {
     return queryFactory.selectFrom(content)
         .where(
             typeCondition(type), //카테고리 동적 필터
             titleLikeCondition(keyword), //검색어 동적 필터
-            cursorCondition(cursorId, cursorValue, sortBy) //정렬 기준별 커서 동적 조건
+            cursorCondition(cursorId, parsedCursorValue, sortBy) //정렬 기준별 커서 동적 조건 (수정됨)
         )
         .orderBy(orderSpecifiers(sortBy)) //동적 OrderBy
         .limit(limit + 1)
@@ -72,22 +72,22 @@ public class ContentQueryRepository {
     return content.title.lower().like("%" + escaped.toLowerCase() + "%", '.');
   }
 
-  // 커서 필터링 조건
-  private BooleanExpression cursorCondition(UUID cursorId, String cursorValue, String sortBy) {
-    if (cursorId == null || cursorValue == null || cursorValue.isBlank()) {
+  // 커서 필터링 조건(Service 계층에서 이미 타입 검증/파싱된 값을 받음)
+  private BooleanExpression cursorCondition(UUID cursorId, Object parsedCursorValue, String sortBy) {
+    if (cursorId == null || parsedCursorValue == null) {
       return null;
     }
 
     if ("watcherCount".equals(sortBy)) {
-      long count = Long.parseLong(cursorValue);
+      long count = (Long) parsedCursorValue; //Service에서 파싱된 Long 강제 형변환
       return content.watcherCount.lt(count)
           .or(content.watcherCount.eq(count).and(content.id.gt(cursorId)));
     } else if ("ratingSum".equals(sortBy) || "rating".equals(sortBy) || "score".equals(sortBy) || "rate".equals(sortBy)) {
-      double rating = Double.parseDouble(cursorValue);
+      double rating = (Double) parsedCursorValue; //Service에서 파싱된 Double 강제 형변환
       return content.ratingSum.lt(rating)
           .or(content.ratingSum.eq(rating).and(content.id.gt(cursorId)));
     } else { // 기본값: 최신순 (createdAt)
-      Instant time = Instant.parse(cursorValue);
+      Instant time = (Instant) parsedCursorValue; //Service에서 파싱된 Instant 강제 형변환
       return content.createdAt.lt(time)
           .or(content.createdAt.eq(time).and(content.id.gt(cursorId)));
     }

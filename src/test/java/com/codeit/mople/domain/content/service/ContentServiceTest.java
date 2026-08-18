@@ -157,6 +157,29 @@ public class ContentServiceTest {
         .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);
   }
 
+  @Test
+  @DisplayName("콘텐츠 목록 조회 실패 - 잘못된 형식의 커서 값(cursorValue) 전달 시 400 에러 발생")
+  void getContents_Fail_InvalidCursorValueParsing() {
+    UUID cursorId = UUID.randomUUID();
+    int limit = 10;
+
+    //createdAt 정렬일 때 문자열("잘못된날짜형식")을 전달하여 DateTimeParseException 유도
+    String invalidDateCursorValue = "잘못된날짜형식";
+    assertThatThrownBy(() -> contentService.getContents(
+        cursorId, invalidDateCursorValue, limit, null, null, "createdAt"))
+        .isInstanceOf(ContentException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);
+
+    //watcherCount 정렬일 때 문자열("abc")을 전달하여 NumberFormatException 유도
+    String invalidNumberCursorValue = "abc";
+    assertThatThrownBy(() -> contentService.getContents(
+        cursorId, invalidNumberCursorValue, limit, null, null, "watcherCount"))
+        .isInstanceOf(ContentException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);
+  }
+
   //=========================================================================================
   //콘텐츠 단건 조회 테스트
   //=========================================================================================
