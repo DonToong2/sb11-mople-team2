@@ -80,5 +80,9 @@ batch:
       cron: "0 0 3 * * *"
       enabled: ${TMDB_COLLECT_ENABLED:false}
 
+app:
+  websocket:
+    allowed-origins: ${CORS_ALLOWED_ORIGIN}
+
 sse:
   server-id: ${SSE_SERVER_ID}
