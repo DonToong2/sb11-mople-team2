@@ -12,6 +12,7 @@ import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
 import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.entity.ContentSortBy;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
@@ -114,8 +115,8 @@ public class ContentServiceTest {
     List<Content> mockContents = new ArrayList<>();
     mockContents.add(content1); //limit보다 적게 반환
 
-    given(contentQueryRepository.findContentByCursor(any(), any(), eq(limit), any(), any(), any()))
-        .willReturn(mockContents);
+    given(contentQueryRepository.findContentByCursor(any(), any(), eq(limit), any(), any(), any(
+        ContentSortBy.class))).willReturn(mockContents);
     given(contentQueryRepository.countContentsByTypeAndKeyword(any(), any())).willReturn(1L);
 
     CursorResponseContentDto response = contentService.getContents(
@@ -133,7 +134,7 @@ public class ContentServiceTest {
   void getContents_Success_InvalidTypeFallback() {
     int limit = 10;
 
-    given(contentQueryRepository.findContentByCursor(any(), any(), eq(limit), eq(null), any(), any()))
+    given(contentQueryRepository.findContentByCursor(any(), any(), eq(limit), any(), any(), any(ContentSortBy.class)))
         .willReturn(new ArrayList<>());
     given(contentQueryRepository.countContentsByTypeAndKeyword(eq(null), any())).willReturn(0L);
 
@@ -175,6 +176,16 @@ public class ContentServiceTest {
     String invalidNumberCursorValue = "abc";
     assertThatThrownBy(() -> contentService.getContents(
         cursorId, invalidNumberCursorValue, limit, null, null, "watcherCount"))
+        .isInstanceOf(ContentException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);
+  }
+
+  @Test
+  @DisplayName("콘텐츠 목록 조회 실패 - 지원하지 않는 정렬 키(sortBy) 전달 시 400 에러 발생")
+  void getContents_Fail_InvalidSortBy() {
+    assertThatThrownBy(() -> contentService.getContents(
+        null, null, 10, null, null, "INVALID_SORT"))
         .isInstanceOf(ContentException.class)
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);

@@ -5,6 +5,7 @@ import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
 import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.entity.ContentSortBy;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
@@ -16,7 +17,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -101,22 +101,16 @@ public class ContentService{
           Map.of("cursorId", String.valueOf(cursorId), "cursorValue", String.valueOf(cursorValue)));
     }
 
-    //정렬 기본값 설정
-    String actualSortBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
+    //정렬 기준 및 파싱 로직 획득
+    ContentSortBy contentSortBy = ContentSortBy.from(sortBy);
 
     //커서 파싱 및 유효성 검증(400 에러 처리)
     Object parsedCursorValue = null;
     if (cursorValue != null && !cursorValue.isBlank()) {
       try {
-        if ("watcherCount".equals(actualSortBy)) {
-          parsedCursorValue = Long.parseLong(cursorValue);
-        } else if ("ratingSum".equals(actualSortBy) || "rating".equals(actualSortBy) || "score".equals(actualSortBy) || "rate".equals(actualSortBy)) {
-          parsedCursorValue = Double.parseDouble(cursorValue);
-        } else {
-          parsedCursorValue = Instant.parse(cursorValue);
-        }
+        parsedCursorValue = contentSortBy.parseCursor(cursorValue);
       } catch (NumberFormatException | java.time.format.DateTimeParseException e) {
-        log.warn("콘텐츠 목록 조회 실패(커서 파싱 오류) - cursorValue: {}, sortBy: {}", cursorValue, actualSortBy);
+        log.warn("콘텐츠 목록 조회 실패(커서 파싱 오류) - cursorValue: {}, sortBy: {}", cursorValue, contentSortBy.getValue());
         throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("cursorValue", cursorValue));
       }
     }
@@ -133,24 +127,17 @@ public class ContentService{
 
     //데이터 조회 및 카운트
     List<Content> contents = contentQueryRepository
-        .findContentByCursor(cursorId, parsedCursorValue, limit, contentType, keywordLike, actualSortBy);
+        .findContentByCursor(cursorId, parsedCursorValue, limit, contentType, keywordLike, contentSortBy);
     long totalCount = contentQueryRepository.countContentsByTypeAndKeyword(contentType, keywordLike);
 
     CursorResponse<Content> cursorResponse = CursorResponse.of(
         contents,
         limit,
         totalCount,
-        actualSortBy,
+        contentSortBy.getValue(),
         "DESCENDING",
-        content -> {
-          if ("averageRating".equals(actualSortBy) || "rating".equals(actualSortBy) || "score".equals(actualSortBy) || "rate".equals(actualSortBy)) {
-            return String.valueOf(content.calculateAverageRating());
-          } else if ("watcherCount".equals(actualSortBy)) {
-            return String.valueOf(content.getWatcherCount());
-          } else {
-            return content.getCreatedAt() != null ? content.getCreatedAt().toString() : null;
-          }
-        }, Content::getId
+        contentSortBy::extractCursorValue,
+        Content::getId
     );
 
     List<ContentResponse> contentResponses = cursorResponse.data().stream()
