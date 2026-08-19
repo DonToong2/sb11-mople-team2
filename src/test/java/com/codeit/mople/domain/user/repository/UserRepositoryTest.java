@@ -386,4 +386,32 @@ public class UserRepositoryTest {
     assertThat(allIds).doesNotHaveDuplicates();
     assertThat(allIds).hasSize(3);
   }
+
+  @Test
+  @DisplayName("findAllByLockedTrue는 잠긴 계정만 반환함")
+  void findAllByLockedTrue_returnsOnlyLockedUsers() {
+    User locked1 = userRepository.save(User.createUser("locked1@test.com", "encoded", "locked1"));
+    locked1.lock();
+    userRepository.save(locked1);
+    User locked2 = userRepository.save(User.createUser("locked2@test.com", "encoded", "locked2"));
+    locked2.lock();
+    userRepository.save(locked2);
+    userRepository.save(User.createUser("normal@test.com", "encoded", "normal"));
+
+    List<User> result = userRepository.findAllByLockedTrue();
+
+    assertThat(result).hasSize(2);
+    assertThat(result).extracting(User::getId)
+        .containsExactlyInAnyOrder(locked1.getId(), locked2.getId());
+  }
+
+  @Test
+  @DisplayName("잠긴 계정이 없으면 빈 리스트를 반환함")
+  void findAllByLockedTrue_returnsEmptyList_whenNoLockedUsers() {
+    userRepository.save(User.createUser("normal@test.com", "encoded", "normal"));
+
+    List<User> result = userRepository.findAllByLockedTrue();
+
+    assertThat(result).isEmpty();
+  }
 }
