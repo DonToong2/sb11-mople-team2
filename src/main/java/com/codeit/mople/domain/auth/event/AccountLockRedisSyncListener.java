@@ -3,6 +3,7 @@ package com.codeit.mople.domain.auth.event;
 import com.codeit.mople.domain.auth.repository.AccountLockRepository;
 import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
+import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.event.ForceLogoutReason;
 import com.codeit.mople.global.event.UserAccountStatusChangedEvent;
 import jakarta.annotation.PreDestroy;
@@ -29,6 +30,7 @@ public class AccountLockRedisSyncListener {
   private final AccountLockRepository accountLockRepository;
   private final SessionTokenRepository sessionTokenRepository;
   private final RefreshTokenRepository refreshTokenRepository;
+  private final UserRepository userRepository;
 
   private final ScheduledExecutorService retryScheduler =
       Executors.newSingleThreadScheduledExecutor(r -> {
@@ -53,6 +55,10 @@ public class AccountLockRedisSyncListener {
   }
 
   private void syncRedis(UUID userId, boolean locked, int attempt, long delaySeconds) {
+    if(attempt > 1 && !isStillCurrent(userId, locked)) {
+      log.info("계정 잠금 상태가 재시도 대기 중 변경되어 재적용을 건너뜁니다 - userId: {}, 예정된 작업: locked={}", userId, locked);
+      return;
+    }
     try {
       if(locked) {
         sessionTokenRepository.invalidate(userId);
@@ -71,5 +77,11 @@ public class AccountLockRedisSyncListener {
         log.error("계정 잠금 Redis 동기화를 모두 실패했습니다 - userId: {}, locked: {} (DB와 불일치 상태로 남음)", userId, locked, e);
       }
     }
+  }
+
+  private boolean isStillCurrent(UUID userId, boolean locked) {
+    return userRepository.findById(userId)
+        .map(user -> user.isLocked() == locked)
+        .orElse(false);
   }
 }
