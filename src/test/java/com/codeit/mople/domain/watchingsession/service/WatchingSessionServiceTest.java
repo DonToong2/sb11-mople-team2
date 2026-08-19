@@ -23,7 +23,6 @@ import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.domain.watchingsession.dto.ContentChatDto;
 import com.codeit.mople.domain.watchingsession.dto.ContentChatSendRequest;
 import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
-import com.codeit.mople.domain.watchingsession.dto.WatchingSessionChange;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionEvent;
 import java.security.Principal;
 import java.util.List;
@@ -64,7 +63,7 @@ public class WatchingSessionServiceTest {
   private SimpMessagingTemplate messagingTemplate; //채팅 검증용
 
   @Mock
-  private ApplicationEventPublisher eventPublisher; // 이벤트 발행 검증용
+  private ApplicationEventPublisher eventPublisher; //이벤트 발행 검증용
 
   @Mock
   private ValueOperations<String, Object> valueOperations;
@@ -74,7 +73,7 @@ public class WatchingSessionServiceTest {
 
   @BeforeEach
   void setUp() {
-    // RedisTemplate 의 opsForValue, opsForSet 호출 시 Mock 객체 반환하도록 설정
+    //RedisTemplate 의 opsForValue, opsForSet 호출 시 Mock 객체 반환하도록 설정
     lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
     lenient().when(redisTemplate.opsForSet()).thenReturn(setOperations);
   }
@@ -154,7 +153,7 @@ public class WatchingSessionServiceTest {
         "DESCENDING", "id");
 
     assertNotNull(result);
-    assertEquals(1, result.totalCount()); // "홍길동" 1명만 필터링되어야 함
+    assertEquals(1, result.totalCount()); //"홍길동" 1명만 필터링되어야 함
     assertEquals("홍길동", result.data().get(0).watcher().name());
   }
 
@@ -233,16 +232,23 @@ public class WatchingSessionServiceTest {
     UUID contentId = UUID.randomUUID();
     String contentKey = "content:watchers:" + contentId;
     String sessionIdKey = "user:session:id:" + userId;
+    String userKey = "user:watching:" + userId; //SessionCallback 내부 조회를 위한 userKey
 
     Content mockContent = mock(Content.class);
     lenient().when(mockContent.getType()).thenReturn(ContentType.MOVIE);
 
     given(valueOperations.get(sessionIdKey)).willReturn(UUID.randomUUID().toString());
+
+    //익명 클래스 내부 로직을 끝까지 타게 만들기 위한 모킹 설정
+    given(valueOperations.get(userKey)).willReturn(contentId.toString());
+    given(redisTemplate.exec()).willReturn(List.of(new Object()));
+
+    //강제로 "SUCCESS"를 리턴하지 않고 실제 익명 클래스 내부 로직의 반환값을 사용하도록 변경
     given(redisTemplate.execute(any(SessionCallback.class))).willAnswer(invocation -> {
       SessionCallback<?> action = invocation.getArgument(0);
-      action.execute(redisTemplate);
-      return "SUCCESS";
+      return action.execute(redisTemplate);
     });
+
     given(setOperations.size(contentKey)).willReturn(0L); //퇴장 후 총 0명
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
 
