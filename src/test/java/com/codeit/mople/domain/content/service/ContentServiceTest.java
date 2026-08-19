@@ -119,14 +119,25 @@ public class ContentServiceTest {
         ContentSortBy.class))).willReturn(mockContents);
     given(contentQueryRepository.countContentsByTypeAndKeyword(any(), any())).willReturn(1L);
 
+    //null을 넘길 때 String 타입에 맞게 호출
     CursorResponseContentDto response = contentService.getContents(
-        null, null, limit, null, null, "createdAt");
+        null, null, limit, (String) null, null, "createdAt");
 
     assertThat(response).isNotNull();
     assertThat(response.data()).hasSize(1);
     assertThat(response.data().get(0).title()).isEqualTo("영화1");
     assertThat(response.totalCount()).isEqualTo(1L);
     assertThat(response.hasNext()).isFalse(); // limit보다 작으므로 false
+  }
+
+  @Test
+  @DisplayName("콘텐츠 목록 조회 실패 - 잘못된 typeEqual 값 전달 시 INVALID_PAGE_REQUEST(400) 예외 발생")
+  void getContents_Fail_InvalidTypeEqual() {
+    assertThatThrownBy(() -> contentService.getContents(
+        null, null, 10, "INVALID_TYPE", null, "createdAt"))
+        .isInstanceOf(ContentException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);
   }
 
   @Test

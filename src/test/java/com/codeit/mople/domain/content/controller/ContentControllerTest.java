@@ -245,6 +245,19 @@ public class ContentControllerTest {
     ).andExpect(status().isOk());
   }
 
+  @Test
+  @DisplayName("콘텐츠 목록 조회 실패 - 잘못된 typeEqual 값 요청 시 서비스에서 던진 400(INVALID_PAGE_REQUEST) 반환")
+  void getContents_Fail_InvalidTypeEqual() throws Exception {
+    //컨트롤러가 호출할 서비스 메서드에서 예외가 발생하도록 모킹
+    given(contentService.getContents(any(), any(), anyInt(), eq("INVALID_TYPE"), any(), any()))
+        .willThrow(new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("typeEqual", "INVALID_TYPE")));
+
+    mockMvc.perform(get("/api/contents")
+            .param("typeEqual", "INVALID_TYPE")
+            .with(mockAuth(UUID.randomUUID(), Role.USER)))
+        .andExpect(status().isBadRequest());
+  }
+
   //=========================================================================================
   //콘텐츠 단건 조회 테스트
   //=========================================================================================

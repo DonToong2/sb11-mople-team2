@@ -86,8 +86,8 @@ public class ContentService{
   //콘텐츠 목록 조회
   @Transactional(readOnly = true)
   public CursorResponseContentDto getContents(
-      UUID cursorId, String cursorValue, int limit, ContentType type, String keywordLike, String sortBy) {
-    log.debug("콘텐츠 목록 조회 시작 - cursorId: {}, cursorValue: {}, limit: {}, type: {}, sortBy: {}", cursorId, cursorValue, limit, type, sortBy);
+      UUID cursorId, String cursorValue, int limit, String typeEqual, String keywordLike, String sortBy) {
+    log.debug("콘텐츠 목록 조회 시작 - cursorId: {}, cursorValue: {}, limit: {}, typeEqual: {}, sortBy: {}", cursorId, cursorValue, limit, typeEqual, sortBy);
 
     if (limit <= 0 || limit > 100) {
       log.warn("콘텐츠 목록 조회 실패(잘못된 페이징 조건) - limit: {}", limit);
@@ -101,7 +101,7 @@ public class ContentService{
           Map.of("cursorId", String.valueOf(cursorId), "cursorValue", String.valueOf(cursorValue)));
     }
 
-    //정렬 기준 및 파싱 로직 획득
+    ContentType parsedType = parseContentType(typeEqual);
     ContentSortBy contentSortBy = ContentSortBy.from(sortBy);
 
     //커서 파싱 및 유효성 검증(400 에러 처리)
@@ -117,8 +117,8 @@ public class ContentService{
 
     //데이터 조회 및 카운트
     List<Content> contents = contentQueryRepository
-        .findContentByCursor(cursorId, parsedCursorValue, limit, type, keywordLike, contentSortBy);
-    long totalCount = contentQueryRepository.countContentsByTypeAndKeyword(type, keywordLike);
+        .findContentByCursor(cursorId, parsedCursorValue, limit, parsedType, keywordLike, contentSortBy);
+    long totalCount = contentQueryRepository.countContentsByTypeAndKeyword(parsedType, keywordLike);
 
     CursorResponse<Content> cursorResponse = CursorResponse.of(
         contents,
@@ -155,6 +155,19 @@ public class ContentService{
         cursorResponse.sortBy(),
         cursorResponse.sortDirection()
     );
+  }
+
+  //ContentType 파싱 및 예외 변환 (유효하지 않은 타입 요청 시 400 예외 발생)
+  private ContentType parseContentType(String typeEqual) {
+    if (typeEqual == null || typeEqual.isBlank()) {
+      return null;
+    }
+    try {
+      return ContentType.from(typeEqual);
+    } catch (IllegalArgumentException e) {
+      log.warn("콘텐츠 목록 조회 실패(잘못된 ContentType) - typeEqual: {}", typeEqual);
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("typeEqual", typeEqual));
+    }
   }
 
   //콘텐츠 단건 조회

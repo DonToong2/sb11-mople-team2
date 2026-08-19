@@ -63,9 +63,8 @@ public class ContentController implements ContentApi {
       @RequestParam(name = "keywordLike", required = false) String keywordLike,
       @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy) {
 
-    ContentType contentType = (typeEqual == null || typeEqual.isBlank()) ? null : ContentType.from(typeEqual);
-
-    CursorResponseContentDto response = contentService.getContents(cursorId, cursorValue, limit, contentType, keywordLike, sortBy);    return ResponseEntity.ok(response);
+    CursorResponseContentDto response = contentService.getContents(cursorId, cursorValue, limit, typeEqual, keywordLike, sortBy);
+    return ResponseEntity.ok(response);
   }
 
   //콘텐츠 단건 조회
