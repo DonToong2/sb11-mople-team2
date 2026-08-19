@@ -3,7 +3,6 @@ package com.codeit.mople.domain.user.repository;
 import com.codeit.mople.domain.user.entity.AuthProvider;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,5 +13,5 @@ public interface UserRepository extends JpaRepository<User, UUID>, UserRepositor
   boolean existsByEmail(String email);
   boolean existsByEmailAndRole(String email, Role role);
   boolean existsByRole(Role role);
-  List<User> findAllByLockedTrue();
+  boolean existsByIdAndLockedTrue(UUID id);
 }
