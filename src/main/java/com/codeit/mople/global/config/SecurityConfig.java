@@ -100,6 +100,6 @@ public class SecurityConfig {
   @Getter
   @ConfigurationProperties(prefix = "app.cors")
   public static class CorsProperties {
-    private List<String> allowedOrigins = new ArrayList<>(List.of("http://localhost:8080"));
+    private List<String> allowedOrigins = new ArrayList<>(List.of());
   }
 }

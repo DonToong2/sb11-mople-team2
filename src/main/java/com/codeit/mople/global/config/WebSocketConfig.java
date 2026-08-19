@@ -83,6 +83,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
   @Setter
   @ConfigurationProperties(prefix = "app.websocket")
   public static class WebSocketProperties {
-    private List<String> allowedOrigins = new ArrayList<>(List.of("http://localhost:8080"));
+    private List<String> allowedOrigins = new ArrayList<>(List.of());
   }
 }
