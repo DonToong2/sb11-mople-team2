@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.AccountLockRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.entity.User;
@@ -47,6 +48,8 @@ public class AuthControllerTest {
   private JwtProvider jwtProvider;
   @Autowired
   private SessionTokenRepository sessionTokenRepository;
+  @Autowired
+  private RefreshTokenRepository refreshTokenRepository;
   @Autowired
   private AccountLockRepository accountLockRepository;
 
@@ -215,7 +218,7 @@ public class AuthControllerTest {
         .andDo(print())
         .andExpect(status().isOk());
 
-    // 이후 계정이 잠김 (AdminService.changeUserLocked와 동일하게 DB 락 + 세션 무효화 + Redis 락 모두 반영)
+    // 이후 계정이 잠김
     user.lock();
     userRepository.save(user);
     sessionTokenRepository.invalidate(user.getId());
@@ -234,19 +237,100 @@ public class AuthControllerTest {
   void signOut_success() throws Exception {
     User user = userRepository.save(User.createUser("signout@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
     String accessToken = issueAccessToken(user);
+    Cookie xsrf = mockMvc.perform(get("/api/auth/csrf-token"))
+        .andReturn().getResponse().getCookie("XSRF-TOKEN");
+    assertThat(xsrf).isNotNull();
 
     mockMvc.perform(post("/api/auth/sign-out")
-            .header("Authorization", "Bearer " + accessToken))
+            .header("Authorization", "Bearer " + accessToken)
+            .cookie(xsrf)
+            .header("X-XSRF-TOKEN", xsrf.getValue()))
         .andDo(print())
         .andExpect(status().isNoContent());
   }
 
   @Test
-  @DisplayName("인증 없이 로그아웃을 요청하면 401을 반환")
-  void signOut_returnsUnauthorized_whenNotAuthenticated() throws Exception {
-    mockMvc.perform(post("/api/auth/sign-out"))
+  @DisplayName("인증 없이 로그아웃을 요청해도(CSRF 토큰만 있으면) 204를 반환한다")
+  void signOut_success_whenNotAuthenticated() throws Exception {
+    Cookie xsrf = mockMvc.perform(get("/api/auth/csrf-token"))
+        .andReturn().getResponse().getCookie("XSRF-TOKEN");
+    assertThat(xsrf).isNotNull();
+
+    mockMvc.perform(post("/api/auth/sign-out")
+            .cookie(xsrf)
+            .header("X-XSRF-TOKEN", xsrf.getValue()))
+        .andDo(print())
+        .andExpect(status().isNoContent());
+  }
+
+  @Test
+  @DisplayName("CSRF 토큰 없이 로그아웃을 요청하면 403을 반환한다")
+  void signOut_returnsForbidden_whenCsrfTokenMissing() throws Exception {
+    User user = userRepository.save(User.createUser("nocsrf@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
+    String accessToken = issueAccessToken(user);
+
+    mockMvc.perform(post("/api/auth/sign-out")
+            .header("Authorization", "Bearer " + accessToken))
+        .andDo(print())
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @DisplayName("쿠키와 일치하지 않는 CSRF 토큰으로 로그아웃을 요청하면 403을 반환한다")
+  void signOut_returnsForbidden_whenCsrfTokenInvalid() throws Exception {
+    User user = userRepository.save(User.createUser("invalidcsrf@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
+    String accessToken = issueAccessToken(user);
+    Cookie xsrf = mockMvc.perform(get("/api/auth/csrf-token"))
+        .andReturn().getResponse().getCookie("XSRF-TOKEN");
+    assertThat(xsrf).isNotNull();
+
+    mockMvc.perform(post("/api/auth/sign-out")
+            .header("Authorization", "Bearer " + accessToken)
+            .cookie(xsrf)
+            .header("X-XSRF-TOKEN", "invalid-token-value"))
+        .andDo(print())
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @DisplayName("계정 잠금 등으로 세션(JTI)이 무효화된 access token으로도 로그아웃 요청은 204를 반환한다")
+  void signOut_success_whenSessionAlreadyInvalidated() throws Exception {
+    User user = userRepository.save(User.createUser("expiredsession@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
+
+    MvcResult signInResult = mockMvc.perform(post("/api/auth/sign-in")
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+            .param("username", "expiredsession@test.com")
+            .param("password", "rawPw123"))
+        .andExpect(status().isOk())
+        .andReturn();
+
+    String accessToken = objectMapper.readTree(signInResult.getResponse().getContentAsString())
+        .get("accessToken").asText();
+    Cookie refreshTokenCookie = signInResult.getResponse().getCookie("refreshToken");
+    assertThat(refreshTokenCookie).isNotNull();
+
+    // AdminService.changeUserLocked()가 계정 잠금 시 호출하는 것과 동일하게 access/refresh 토큰을 모두 무효화
+    sessionTokenRepository.invalidate(user.getId());
+    refreshTokenRepository.invalidate(user.getId());
+
+    // 무효화된 access token으로는 이제 인증이 거부됨을 먼저 확인
+    mockMvc.perform(get("/api/users/{userId}", user.getId())
+            .header("Authorization", "Bearer " + accessToken))
         .andDo(print())
         .andExpect(status().isUnauthorized());
+
+    Cookie xsrf = mockMvc.perform(get("/api/auth/csrf-token"))
+        .andReturn().getResponse().getCookie("XSRF-TOKEN");
+    assertThat(xsrf).isNotNull();
+
+    // access/refresh 토큰이 이미 서버에서 무효화된 상태여도 로그아웃 요청 자체는 성공해야 함
+    mockMvc.perform(post("/api/auth/sign-out")
+            .header("Authorization", "Bearer " + accessToken)
+            .cookie(refreshTokenCookie)
+            .cookie(xsrf)
+            .header("X-XSRF-TOKEN", xsrf.getValue()))
+        .andDo(print())
+        .andExpect(status().isNoContent());
   }
 
   @Test
@@ -266,9 +350,15 @@ public class AuthControllerTest {
     Cookie refreshTokenCookie = signInResult.getResponse().getCookie("refreshToken");
     assertThat(refreshTokenCookie).isNotNull();
 
+    Cookie xsrf = mockMvc.perform(get("/api/auth/csrf-token"))
+        .andReturn().getResponse().getCookie("XSRF-TOKEN");
+    assertThat(xsrf).isNotNull();
+
     mockMvc.perform(post("/api/auth/sign-out")
             .header("Authorization", "Bearer " + accessToken)
-            .cookie(refreshTokenCookie))
+            .cookie(refreshTokenCookie)
+            .cookie(xsrf)
+            .header("X-XSRF-TOKEN", xsrf.getValue()))
         .andDo(print())
         .andExpect(status().isNoContent());
 
@@ -346,9 +436,14 @@ public class AuthControllerTest {
   void signOut_expiresRefreshTokenCookie() throws Exception {
     User user = userRepository.save(User.createUser("signoutcookie@test.com", passwordEncoder.encode("rawPw123"), "testUser"));
     String accessToken = issueAccessToken(user);
+    Cookie xsrf = mockMvc.perform(get("/api/auth/csrf-token"))
+        .andReturn().getResponse().getCookie("XSRF-TOKEN");
+    assertThat(xsrf).isNotNull();
 
     MvcResult result = mockMvc.perform(post("/api/auth/sign-out")
-            .header("Authorization", "Bearer " + accessToken))
+            .header("Authorization", "Bearer " + accessToken)
+            .cookie(xsrf)
+            .header("X-XSRF-TOKEN", xsrf.getValue()))
         .andExpect(status().isNoContent())
         .andReturn();
 
