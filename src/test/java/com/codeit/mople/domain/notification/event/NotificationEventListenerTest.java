@@ -2,6 +2,7 @@ package com.codeit.mople.domain.notification.event;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.codeit.mople.domain.directmessage.event.DirectMessageReceivedEvent;
@@ -69,6 +70,8 @@ class NotificationEventListenerTest {
             "관리자에 의해 권한이 변경되었습니다. 다시 로그인해주세요.",
             NotificationType.ROLE_CHANGE
         );
+
+        verifyNoMoreInteractions(notificationCreator);
     }
 
     @Test
@@ -91,6 +94,8 @@ class NotificationEventListenerTest {
             "관리자에 의해 계정이 잠금되었습니다.",
             NotificationType.ACCOUNT_LOCKED
         );
+
+        verifyNoMoreInteractions(notificationCreator);
     }
 
     @Test
@@ -113,6 +118,8 @@ class NotificationEventListenerTest {
             "관리자에 의해 계정 잠금이 해제되었습니다.",
             NotificationType.ACCOUNT_UNLOCKED
         );
+
+        verifyNoMoreInteractions(notificationCreator);
     }
 
     @Test
@@ -155,6 +162,8 @@ class NotificationEventListenerTest {
             "테스트 플레이리스트에 새 콘텐츠가 추가되었습니다.",
             NotificationType.PLAYLIST_CONTENT_ADDED
         );
+
+        verifyNoMoreInteractions(notificationCreator);
     }
 
     @Test
@@ -185,6 +194,8 @@ class NotificationEventListenerTest {
             "구독자유저님이 테스트 플레이리스트을(를) 구독했습니다.",
             NotificationType.PLAYLIST_SUBSCRIBE
         );
+
+        verifyNoMoreInteractions(notificationCreator);
     }
 
     @Test
@@ -209,6 +220,8 @@ class NotificationEventListenerTest {
             "발신자: 안녕하세요!",
             NotificationType.DIRECT_MESSAGE
         );
+
+        verifyNoMoreInteractions(notificationCreator);
     }
 
     @Test
@@ -236,6 +249,8 @@ class NotificationEventListenerTest {
             "팔로워유저님이 팔로우했습니다.",
             NotificationType.NEW_FOLLOWER
         );
+
+        verifyNoMoreInteractions(notificationCreator);
     }
 
     @Test
@@ -274,6 +289,8 @@ class NotificationEventListenerTest {
             "새 플레이리스트를 만들었습니다.",
             NotificationType.FOLLOWEE_ACTIVITY
         );
+
+        verifyNoMoreInteractions(notificationCreator);
     }
 
     @Test
@@ -311,6 +328,8 @@ class NotificationEventListenerTest {
             "리뷰를 작성했습니다.",
             NotificationType.FOLLOWEE_ACTIVITY
         );
+
+        verifyNoMoreInteractions(notificationCreator);
     }
 
     @Test
@@ -333,6 +352,7 @@ class NotificationEventListenerTest {
 
         // then
         verify(followService).getFollowerIds(ownerId);
+
         verifyNoInteractions(notificationCreator);
     }
 
@@ -359,6 +379,7 @@ class NotificationEventListenerTest {
 
         // then
         verify(playlistService).getSubscriberIds(playlistId);
+
         verifyNoInteractions(notificationCreator);
     }
 }
