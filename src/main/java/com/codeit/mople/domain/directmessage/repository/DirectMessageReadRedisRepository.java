@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
+import java.time.format.DateTimeParseException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -55,20 +56,26 @@ public class DirectMessageReadRedisRepository {
         log.info("Redis Cache Hit, Redis에서 데이터 로드 - key: {}", valueKey);
         return Instant.parse(cachedValue.toString());
       }
+    } catch (DateTimeParseException e) {
+      log.error("Redis 읽음 시각 파싱 실패, 해당 키 삭제 - key: {}", valueKey, e);
+      redisTemplate.delete(valueKey);
+    } catch (Exception e) {
+      log.error("Redis 읽음 시각 조회 장애 감지: DB 값으로 Fallback 진행 - key: {}", valueKey, e);
+    }
 
-      log.debug("Redis Cache Miss, DB 데이터 로드 시작 - key: {}", valueKey);
-      Instant dbValue = conversation.getMyLastReadAt(userId);
+    log.debug("Redis Cache Miss, DB 데이터 로드 시작 - key: {}", valueKey);
+    Instant dbValue = conversation.getMyLastReadAt(userId);
 
-      if (dbValue != null) {
+    if (dbValue != null) {
+      try {
         // 레디스에 값 캐싱 복구
         redisTemplate.opsForValue().set(valueKey, dbValue.toString(), READ_DATA_TTL);
+      } catch (Exception e) {
+        log.error("Redis 복구 중 예외 발생 (무시하고 진행) - key: {}", valueKey, e);
       }
-      log.info("Redis Cache Miss 처리 완료, DB 값 반환 - key: {}", valueKey);
-      return dbValue;
-    } catch (Exception e) {
-      log.error("Redis 읽음 시각 조회 장애 감지: DB 값으로 Fallback 진행 - key: {}", valueKey);
-      return conversation.getMyLastReadAt(userId);
     }
+    log.info("Redis Cache Miss 처리 및 DB 값 반환 완료 - key: {}", valueKey);
+    return dbValue;
   }
 
   public Set<Object> getDirtyMembers() {
