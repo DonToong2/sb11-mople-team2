@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -22,8 +23,12 @@ public class DirectMessageReadSyncScheduler {
   private final ConversationRepository conversationRepository;
   private final RedisTemplate<String, Object> redisTemplate;
 
-  // 10초마다 자동으로 실행
-  @Scheduled(fixedDelay = 10000)
+  @Scheduled(fixedDelayString = "${dm.read-sync.delay-ms}")
+  @SchedulerLock(
+      name = "DirectMessageReadSyncLock",
+      lockAtLeastFor = "5s", // 최소 5초간 락 유지
+      lockAtMostFor = "9s" // 최대 9초간 락 유지
+  )
   @Transactional
   public void syncLastReadAtToDb() {
     Set<Object> dirtyMembers = readRedisRepository.getDirtyMembers();
