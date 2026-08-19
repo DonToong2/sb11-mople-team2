@@ -1,6 +1,5 @@
 package com.codeit.mople.domain.user.admin.service;
 
-import com.codeit.mople.domain.auth.repository.AccountLockRepository;
 import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
@@ -31,7 +30,6 @@ public class AdminService {
   private final ApplicationEventPublisher eventPublisher;
   private final SessionTokenRepository sessionTokenRepository;
   private final RefreshTokenRepository refreshTokenRepository;
-  private final AccountLockRepository accountLockRepository;
 
   @CacheEvict(value = "users", key = "#userId")
   @Transactional
@@ -65,15 +63,7 @@ public class AdminService {
       user.unlock();
     }
     if (previousLocked != locked) {
-      if (locked) {
-        sessionTokenRepository.invalidate(userId);
-        refreshTokenRepository.invalidate(userId);
-        accountLockRepository.lock(userId);
-      } else {
-        accountLockRepository.unlock(userId);
-      }
       ForceLogoutReason reason = locked ? ForceLogoutReason.ACCOUNT_LOCKED : ForceLogoutReason.ACCOUNT_UNLOCKED;
-      // locked일 때만 위에서 increaseSessionVersion()을 호출했으므로 sessionInvalidated도 locked와 동일하다.
       eventPublisher.publishEvent(new UserAccountStatusChangedEvent(userId, reason, locked));
     }
     log.info("계정 잠금 변경 완료 - userId: {}, locked: {}", userId, locked);
