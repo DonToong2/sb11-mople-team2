@@ -69,13 +69,18 @@ public class WatchingSessionService {
       throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("limit", limit));
     }
 
-    if (sortBy == null || sortBy.isBlank() || !"id".equalsIgnoreCase(sortBy)) {
+    //정렬 기준 검증(null이거나 빈 값이면 기본값 id 부여, 지원하지 않는 값이면 400 예외 발생)
+    if (sortBy == null || sortBy.isBlank()) {
       sortBy = "id";
+    } else if (!"id".equalsIgnoreCase(sortBy)) {
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("sortBy", sortBy));
     }
 
-    if (sortDirection == null || sortDirection.isBlank() ||
-        (!"ASCENDING".equalsIgnoreCase(sortDirection) && !"DESCENDING".equalsIgnoreCase(sortDirection))) {
+    //정렬 방향 검증(null이거나 빈 값이면 기본값 ASCENDING 부여, 지원하지 않는 값이면 400 예외 발생)
+    if (sortDirection == null || sortDirection.isBlank()) {
       sortDirection = "ASCENDING";
+    } else if (!"ASCENDING".equalsIgnoreCase(sortDirection) && !"DESCENDING".equalsIgnoreCase(sortDirection)) {
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("sortDirection", sortDirection));
     }
 
     //커서 쌍 검증

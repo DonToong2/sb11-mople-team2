@@ -159,6 +159,34 @@ public class WatchingSessionServiceTest {
   }
 
   @Test
+  @DisplayName("시청 세션 목록 조회 실패 - 지원하지 않는 정렬 기준(sortBy) 검증")
+  void getWatchingSessions_Fail_InvalidSortBy() {
+    UUID contentId = UUID.randomUUID();
+    Content mockContent = mock(Content.class);
+    given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
+
+    //지원하지 않는 sortBy("name")로 요청 시 ContentException 발생 검증
+    assertThrows(ContentException.class, () ->
+        watchingSessionService.getWatchingSessions(contentId, null,
+            null, null, 10,
+            "ASCENDING", "name"));
+  }
+
+  @Test
+  @DisplayName("시청 세션 목록 조회 실패 - 지원하지 않는 정렬 방향(sortDirection) 검증")
+  void getWatchingSessions_Fail_InvalidSortDirection() {
+    UUID contentId = UUID.randomUUID();
+    Content mockContent = mock(Content.class);
+    given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
+
+    //지원하지 않는 sortDirection("INVALID")으로 요청 시 ContentException 발생 검증
+    assertThrows(ContentException.class, () ->
+        watchingSessionService.getWatchingSessions(contentId, null,
+            null, null, 10,
+            "INVALID", "id"));
+  }
+
+  @Test
   @DisplayName("유저 입장 성공 - DB 검증 선행, Redis 기록 후 Event 발행 확인")
   void enterSession_Success() {
     UUID userId = UUID.randomUUID();
