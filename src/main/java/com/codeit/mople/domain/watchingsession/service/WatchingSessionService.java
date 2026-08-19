@@ -14,9 +14,9 @@ import com.codeit.mople.domain.watchingsession.dto.WatcherUserDto;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionChange;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionContentDto;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionDetailDto;
+import com.codeit.mople.domain.watchingsession.dto.WatchingSessionEvent;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionResponse;
 import com.codeit.mople.global.dto.UserSummary;
-import com.codeit.mople.global.sse.service.SseService;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.Collections;
@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import lombok.Generated;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SessionCallback;
@@ -47,7 +48,7 @@ public class WatchingSessionService {
   private final UserRepository userRepository;
   private final RedisTemplate<String, Object> redisTemplate;
   private final SimpMessagingTemplate messagingTemplate;
-  private final SseService sseService;
+  private final ApplicationEventPublisher eventPublisher;
 
   private static final String USER_WATCHING_KEY_PREFIX = "user:watching:";
   private static final String CONTENT_WATCHERS_KEY_PREFIX = "content:watchers:";
@@ -197,6 +198,14 @@ public class WatchingSessionService {
   //유저가 콘텐츠 시청을 시작(입장)할 때 실시간 세션을 Redis에 기록하고 DB 갱신
   @Transactional
   public Long enterSession(UUID userId, UUID contentId) {
+    //DB 검증을 최상단 위치, 콘텐츠가 없으면 Redis 조작 전에 롤백(예외)시킴
+    Content currentContent = contentRepository.findById(contentId)
+        .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
+
+    UserSummary userSummary = userRepository.findById(userId)
+        .map(user -> new UserSummary(user.getId(), user.getName(), user.getProfileImageUrl()))
+        .orElseGet(() -> new UserSummary(userId, "알 수 없는 유저", null));
+
     String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
     String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentId.toString();
     String sessionIdKey = USER_SESSION_ID_KEY_PREFIX + userId.toString(); //유저별 세션 ID 관리 키
@@ -206,7 +215,7 @@ public class WatchingSessionService {
     boolean txSuccess = false;
     int maxRetries = 5;
 
-    // ⭐ 핵심 수정: 이미 발급된 세션 UUID가 존재하면 재사용하고, 없으면 새로 생성하여 입장/퇴장 시 ID 불일치 방지
+    //이미 발급된 세션 UUID가 존재하면 재사용하고, 없으면 새로 생성하여 입장/퇴장 시 ID 불일치 방지
     String existingSessionIdStr = (String) redisTemplate.opsForValue().get(sessionIdKey);
     final UUID sessionUuid = (existingSessionIdStr != null) ? UUID.fromString(existingSessionIdStr) : UUID.randomUUID();
 
@@ -245,19 +254,12 @@ public class WatchingSessionService {
       throw new RuntimeException("일시적인 오류가 발생했습니다. 다시 시도해주세요.");
     }
 
-    UserSummary userSummary = userRepository.findById(userId)
-        .map(user -> new UserSummary(user.getId(), user.getName(), user.getProfileImageUrl()))
-        .orElseGet(() -> new UserSummary(userId, "알 수 없는 유저", null));
-
     WatcherUserDto watcherUser = new WatcherUserDto(
         userSummary.userId(),
         userSummary.userId(),
         userSummary.name(),
         userSummary.profileImageUrl()
     );
-
-    Content currentContent = contentRepository.findById(contentId)
-        .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
 
     WatchingSessionContentDto contentDto = new WatchingSessionContentDto(
         currentContent.getId(), currentContent.getType().name(), currentContent.getTitle(),
@@ -291,19 +293,14 @@ public class WatchingSessionService {
           prevContentDto
       );
 
-      // 이전 방 퇴장 이벤트 생성 (프로토타입 규격: type="LEAVE")
+      //이전 방 퇴장 이벤트 생성
       WatchingSessionChange prevChangeEvent = new WatchingSessionChange(
           "LEAVE",
           prevDetail,
           prevWatcherCountInt
       );
-      messagingTemplate.convertAndSend("/sub/contents/" + previousContentId + "/watch", prevChangeEvent);
 
-      // SSE 발송
-      Set<UUID> prevWatcherIds = getWatcherIds(UUID.fromString(previousContentId));
-      for (UUID wId : prevWatcherIds) {
-        sseService.send(wId, "watch", prevChangeEvent);
-      }
+      eventPublisher.publishEvent(new WatchingSessionEvent(UUID.fromString(previousContentId), prevChangeEvent));
     }
 
     //현재 해당 콘텐츠를 보고 있는 총 시청자 수 반환
@@ -312,7 +309,7 @@ public class WatchingSessionService {
 
     currentContent.updateWatcherCount((long) currentWatcherCountInt);
 
-    // 현재 방 입장 이벤트 생성 (프로토타입 규격: type="JOIN", 동일한 sessionUuid 사용)
+    // 현재 방 입장 이벤트 생성
     WatchingSessionDetailDto sessionDetail = new WatchingSessionDetailDto(
         sessionUuid,
         Instant.now(),
@@ -326,14 +323,7 @@ public class WatchingSessionService {
         currentWatcherCountInt
     );
 
-    Set<UUID> watcherIds = getWatcherIds(contentId);
-    log.info("[DEBUG-WATCH] 이벤트 발송 시도 - contentId: {}, type: JOIN, 현재 시청자 IDs: {}, 이벤트 내용: {}",
-        contentId, watcherIds, changeEvent);
-    messagingTemplate.convertAndSend("/sub/contents/" + contentId.toString() + "/watch", changeEvent);
-
-    for (UUID watcherId : watcherIds) {
-      sseService.send(watcherId, "watch", changeEvent);
-    }
+    eventPublisher.publishEvent(new WatchingSessionEvent(contentId, changeEvent));
 
     return watcherCount;
   }
@@ -344,9 +334,6 @@ public class WatchingSessionService {
     String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
     String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentId.toString();
     String sessionIdKey = USER_SESSION_ID_KEY_PREFIX + userId.toString();
-
-    //삭제하기 직전의 시청자 목록 미리 확보(나간 당사자 본인도 퇴장 이벤트를 받아야 하므로 필수)
-    Set<UUID> watcherIds = getWatcherIds(contentId);
 
     //삭제하기 직전, 입장 시 발급되어 저장되었던 고유 세션 ID를 조회해 옴(프론트엔드 매칭용)
     String sessionIdStr = (String) redisTemplate.opsForValue().get(sessionIdKey);
@@ -375,7 +362,7 @@ public class WatchingSessionService {
 
           List<Object> execResult = operations.exec();
           if (execResult == null || execResult.isEmpty()) {
-            return null; // 충돌 발생, 재시도
+            return null; //충돌 발생, 재시도
           }
           return "SUCCESS";
         }
@@ -425,7 +412,7 @@ public class WatchingSessionService {
         content.calculateAverageRating(), content.getReviewCount()
     ) : null;
 
-    // 퇴장 이벤트 생성 (입장 시 사용했던 sessionUuid를 그대로 사용하여 프론트엔드가 목록에서 정상 제거하도록 함)
+    //퇴장 이벤트 생성
     WatchingSessionDetailDto sessionDetail = new WatchingSessionDetailDto(
         sessionUuid,
         Instant.now(),
@@ -439,13 +426,7 @@ public class WatchingSessionService {
         watcherCountInt
     );
 
-    // 웹소켓 브로드캐스팅
-    messagingTemplate.convertAndSend("/sub/contents/" + contentId.toString() + "/watch", changeEvent);
-
-    // 미리 확보해둔 watcherIds(나간 본인 포함)에게 SSE 발송
-    for (UUID watcherId : watcherIds) {
-      sseService.send(watcherId, "watch", changeEvent);
-    }
+    eventPublisher.publishEvent(new WatchingSessionEvent(contentId, changeEvent));
 
     return watcherCount;
   }
