@@ -1,10 +1,11 @@
 package com.codeit.mople.domain.content.client.sportsdb.batch;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.codeit.mople.domain.content.entity.Content;
@@ -39,7 +40,7 @@ class SportsDbItemWriterTest {
     Chunk<Content> chunk = new Chunk<>(List.of(content1, content2));
 
     //DB에 존재하는 외부 ID가 없다고 모킹
-    given(contentRepository.findExternalIdsByTypeAndExternalIdIn(eq(ContentType.SPORT), anyList()))
+    given(contentRepository.findByTypeAndExternalIdIn(eq(ContentType.SPORT), anyList()))
         .willReturn(List.of());
 
     writer.write(chunk);
@@ -57,19 +58,19 @@ class SportsDbItemWriterTest {
     Content newContent = mock(Content.class);
     given(newContent.getExternalId()).willReturn("EXT-NEW");
 
-    Chunk<Content> chunk = new Chunk<>(List.of(existingContent, newContent));
+    lenient().when(newContent.getTitle()).thenReturn("새 경기");
+
+    Chunk<Content> chunk = new Chunk<>(List.of(newContent, existingContent));
 
     //DB에 "EXT-OLD"가 이미 존재한다고 모킹
-    given(contentRepository.findExternalIdsByTypeAndExternalIdIn(eq(ContentType.SPORT), anyList()))
-        .willReturn(List.of("EXT-OLD"));
+    given(contentRepository.findByTypeAndExternalIdIn(eq(ContentType.SPORT), anyList()))
+        .willReturn(List.of(existingContent));
 
     writer.write(chunk);
 
-    //saveAll이 호출되었고, 그 안에는 "EXT-NEW"를 가진 newContent만 전달되어야 함
-    verify(contentRepository).saveAll(org.mockito.ArgumentMatchers.argThat(iterable -> {
-      List<Content> savedList = (List<Content>) iterable; //Iterable을 List로 캐스팅
-      return savedList.size() == 1 && savedList.contains(newContent);
-    }));
+    //기존 데이터는 갱신되고, 전체 리스트가 saveAll로 호출되었는지 검증
+    verify(existingContent).updateContentInfo(any(), any(), any(), any());
+    verify(contentRepository).saveAll(anyList());
   }
 
   @Test
@@ -80,11 +81,13 @@ class SportsDbItemWriterTest {
 
     Chunk<Content> chunk = new Chunk<>(List.of(existingContent));
 
-    given(contentRepository.findExternalIdsByTypeAndExternalIdIn(eq(ContentType.SPORT), anyList()))
-        .willReturn(List.of("EXT-OLD"));
+    given(contentRepository.findByTypeAndExternalIdIn(eq(ContentType.SPORT), anyList()))
+        .willReturn(List.of(existingContent));
 
     writer.write(chunk);
 
-    verify(contentRepository, never()).saveAll(anyList());
+    //모든 데이터가 중복이어도 최신 정보 갱신(updateContentInfo) 후 DB 저장이 호출되는지 검증
+    verify(existingContent).updateContentInfo(any(), any(), any(), any());
+    verify(contentRepository).saveAll(anyList());
   }
 }

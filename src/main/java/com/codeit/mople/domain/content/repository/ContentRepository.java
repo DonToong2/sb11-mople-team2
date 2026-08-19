@@ -1,9 +1,9 @@
 package com.codeit.mople.domain.content.repository;
 
 import com.codeit.mople.domain.content.entity.Content;
-import java.util.List;
 import com.codeit.mople.domain.content.entity.ContentType;
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -55,6 +55,7 @@ public interface ContentRepository extends JpaRepository<Content, UUID> {
 
   void deleteAllByType(ContentType type);
 
-  @Query("SELECT c.id FROM Content c WHERE c.type = :type")
+  //외부 연동 데이터(externalId)의 ID 목록만 조회하여 수동 생성 콘텐츠 삭제 방지
+  @Query("SELECT c.id FROM Content c WHERE c.type = :type AND c.externalId IS NOT NULL")
   List<UUID> findIdsByType(@Param("type") ContentType type);
 }

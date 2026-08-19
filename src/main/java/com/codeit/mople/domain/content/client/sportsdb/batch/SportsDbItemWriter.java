@@ -3,16 +3,17 @@ package com.codeit.mople.domain.content.client.sportsdb.batch;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.repository.ContentRepository;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.stereotype.Component;
 
-//변환된 엔티티를 DB에 일괄 저장
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -34,23 +35,39 @@ public class SportsDbItemWriter implements ItemWriter<Content> {
         .map(Content::getExternalId)
         .toList();
 
-    //DB에 이미 존재하는 식별자 조회
-    List<String> existingIds = contentRepository
-        .findExternalIdsByTypeAndExternalIdIn(ContentType.SPORT, externalIds);
+    //DB에 이미 존재하는 엔티티 목록 조회 및 Map 매핑
+    Map<String, Content> existingContentMap = contentRepository
+        .findByTypeAndExternalIdIn(ContentType.SPORT, externalIds).stream()
+        .collect(Collectors.toMap(Content::getExternalId, Function.identity()));
 
-    //기존 DB에 없는 새로운 데이터만 필터링
-    Set<String> knownExternalIds = new HashSet<>(existingIds);
-    List<Content> newContents = items.stream()
-        .filter(content -> knownExternalIds.add(content.getExternalId()))
-        .toList();
+    List<Content> toSave = new ArrayList<>();
+    int updatedCount = 0;
+    int insertedCount = 0;
 
-    //새로운 데이터만 저장
-    if (!newContents.isEmpty()) {
-      contentRepository.saveAll(newContents);
-      log.info("새로운 경기 데이터 {}건 저장 완료 (중복 {}건 스킵)",
-          newContents.size(), items.size() - newContents.size());
+    for (Content item : items) {
+      Content existing = existingContentMap.get(item.getExternalId());
+      if (existing != null) {
+        //기존 경기 정보가 있으면 최신 정보로 갱신
+        existing.updateContentInfo(
+            item.getTitle(),
+            item.getDescription(),
+            item.getThumbnailUrl(),
+            item.getTags()
+        );
+        toSave.add(existing);
+        updatedCount++;
+      } else {
+        //새로운 경기 데이터면 신규 등록
+        toSave.add(item);
+        insertedCount++;
+      }
+    }
+
+    if (!toSave.isEmpty()) {
+      contentRepository.saveAll(toSave);
+      log.info("스포츠 경기 데이터 처리 완료 - 신규 등록: {}건, 기존 갱신: {}건", insertedCount, updatedCount);
     } else {
-      log.info("저장할 새로운 경기 데이터가 없습니다. (모두 중복)");
+      log.info("저장할 새로운 경기 데이터가 없습니다");
     }
   }
 }

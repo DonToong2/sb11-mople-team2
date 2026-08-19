@@ -259,19 +259,24 @@ public class ContentRepositoryTest {
       Content sportContent2 = new Content(
           ContentType.SPORT, "스포츠 2", "스포츠 설명 2", "2.png", new ArrayList<>(), "ext-002"
       );
+      //수동으로 등록한 스포츠 콘텐츠 (externalId 없음)
+      Content manualSportContent = new Content(
+          ContentType.SPORT, "수동 스포츠", "수동 설명", "4.png", new ArrayList<>()
+      );
       Content movieContent = new Content(
           ContentType.MOVIE, "영화 1", "영화 설명 1", "3.png", new ArrayList<>(), "ext-003"
       );
 
-      contentRepository.saveAll(List.of(sportContent1, sportContent2, movieContent));
+      contentRepository.saveAll(List.of(sportContent1, sportContent2, manualSportContent, movieContent));
       entityManager.flush();
       entityManager.clear();
 
       List<UUID> foundIds = contentRepository.findIdsByType(ContentType.SPORT);
 
       assertThat(foundIds).isNotNull();
-      assertThat(foundIds).hasSize(2); //SPORT 타입인 2개만 조회되어야 함
+      assertThat(foundIds).hasSize(2); //SPORT 타입 중 externalId가 존재하는 2개만 조회되어야 함
       assertThat(foundIds).containsExactlyInAnyOrder(sportContent1.getId(), sportContent2.getId());
+      assertThat(foundIds).doesNotContain(manualSportContent.getId()); //수동 생성 콘텐츠는 제외
       assertThat(foundIds).doesNotContain(movieContent.getId()); //MOVIE 타입의 ID는 없어야 함
     }
 
