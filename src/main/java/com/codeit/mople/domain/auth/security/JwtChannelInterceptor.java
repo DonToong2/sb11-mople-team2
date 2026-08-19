@@ -3,6 +3,7 @@ package com.codeit.mople.domain.auth.security;
 import com.codeit.mople.domain.auth.exception.AuthErrorCode;
 import com.codeit.mople.domain.auth.exception.AuthException;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
+import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
@@ -35,6 +36,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
   private final UserRepository userRepository;
   private final ConversationRepository conversationRepository;
   private final SessionTokenRepository sessionTokenRepository;
+  private final ContentRepository contentRepository;
 
   private static final String ERROR_KEY = "reason";
   private static final String AUTH_ERROR_MESSAGE = "유효하지 않은 토큰입니다.";
@@ -149,7 +151,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     if (destination.startsWith("/sub/conversations/")) {
       validateConversationSubscription(accessor, destination);
     } else if (destination.startsWith("/sub/contents/")) { //콘텐츠 시청 세션 및 실시간 채팅 구독 경로 허용
-      log.info("WebSocket 콘텐츠 채널 구독 승인 - destination: {}", destination);
+      validateContentSubscription(destination);
     } else {
       log.warn("WebSocket 구독 거부: 화이트리스트에 등록되지 않은 경로 구독 시도 - destination: {}", destination);
       throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
@@ -190,6 +192,28 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
       throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
     } catch (Exception e) {
       log.error("WebSocket 구독 검증 중 예외 발생 - destination: " + destination, e);
+      throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+    }
+  }
+
+  //콘텐츠 구독 권한 검증 로직(형식 및 DB 존재 여부 확인)
+  private void validateContentSubscription(String destination) {
+    try {
+      String[] parts = destination.split("/");
+      UUID contentId = UUID.fromString(parts[3]); //UUID 파싱을 통해 올바른 형식인지 1차 검증
+
+      boolean exists = contentRepository.existsById(contentId); //DB를 통해 실제 존재하는 콘텐츠인지 2차 검증
+      if (!exists) {
+        log.warn("WebSocket 구독 거부: 존재하지 않는 콘텐츠 구독 시도 - contentId: {}", contentId);
+        throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+      }
+
+      log.info("WebSocket 콘텐츠 채널 구독 인가 성공 - contentId: {}", contentId);
+    } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
+      log.warn("WebSocket 구독 실패: 잘못된 콘텐츠 구독 경로 형식 - destination: {}", destination);
+      throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+    } catch (Exception e) {
+      log.error("WebSocket 콘텐츠 구독 검증 중 예외 발생 - destination: " + destination, e);
       throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
     }
   }
