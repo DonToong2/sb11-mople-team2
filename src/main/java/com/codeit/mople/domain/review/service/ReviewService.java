@@ -1,6 +1,6 @@
 package com.codeit.mople.domain.review.service;
 
-import com.codeit.mople.domain.auth.security.CustomUserDetails;
+import com.codeit.mople.domain.auth.security.SecurityUtils;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
@@ -19,7 +19,6 @@ import com.codeit.mople.domain.review.event.ReviewWrittenEvent;
 import com.codeit.mople.domain.review.exception.ReviewErrorCode;
 import com.codeit.mople.domain.review.exception.ReviewException;
 import com.codeit.mople.domain.review.repository.ReviewRepository;
-import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
@@ -31,8 +30,6 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -229,17 +226,11 @@ public class ReviewService {
 
   private void validateRequesterIsAuthor(Review review, UUID requesterId) {
     UUID authorId = review.getAuthor().getId();
-    if (!authorId.equals(requesterId) && !isAdmin()) {
+    if (!authorId.equals(requesterId) && !SecurityUtils.isAdmin()) {
       throw new ReviewException(
           ReviewErrorCode.REVIEW_FORBIDDEN,
           Map.of("authorId", authorId, "requesterId", requesterId)
       );
     }
-  }
-
-  private boolean isAdmin() {
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    CustomUserDetails principal = (CustomUserDetails) auth.getPrincipal();
-    return principal.getRole() == Role.ADMIN;
   }
 }

@@ -2,7 +2,7 @@ package com.codeit.mople.domain.user.admin.service;
 
 import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
-import com.codeit.mople.domain.auth.security.CustomUserDetails;
+import com.codeit.mople.domain.auth.security.SecurityUtils;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
@@ -15,8 +15,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,9 +68,7 @@ public class AdminService {
   }
 
   private void validateNotSelf(UUID targetUserId) {
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    CustomUserDetails principal = (CustomUserDetails) auth.getPrincipal();
-    if (targetUserId.equals(principal.getUserId())) {
+    if (targetUserId.equals(SecurityUtils.currentUserId())) {
       throw new UserException(UserErrorCode.CANNOT_MODIFY_SELF);
     }
   }
