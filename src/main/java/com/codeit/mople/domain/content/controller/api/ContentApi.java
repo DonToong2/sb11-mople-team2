@@ -80,7 +80,7 @@ public interface ContentApi {
       @RequestParam(name = "idAfter", required = false) UUID cursorId,
       @RequestParam(name = "cursor", required = false) String cursorValue,
       @RequestParam(name = "limit", defaultValue = "20") int limit,
-      @RequestParam(name = "type", required = false) ContentType type,
+      @RequestParam(name = "typeEqual", required = false) String typeEqual,
       @RequestParam(name = "keywordLike", required = false) String keywordLike,
       @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy
   );

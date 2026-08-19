@@ -59,12 +59,13 @@ public class ContentController implements ContentApi {
       @RequestParam(name = "idAfter", required = false) UUID cursorId,
       @RequestParam(name = "cursor", required = false) String cursorValue,
       @RequestParam(name = "limit", defaultValue = "20") int limit,
-      @RequestParam(name = "type", required = false) ContentType type,
+      @RequestParam(name = "typeEqual", required = false) String typeEqual,
       @RequestParam(name = "keywordLike", required = false) String keywordLike,
       @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy) {
 
-    CursorResponseContentDto response = contentService.getContents(cursorId, cursorValue, limit, type, keywordLike, sortBy);
-    return ResponseEntity.ok(response);
+    ContentType contentType = (typeEqual == null || typeEqual.isBlank()) ? null : ContentType.from(typeEqual);
+
+    CursorResponseContentDto response = contentService.getContents(cursorId, cursorValue, limit, contentType, keywordLike, sortBy);    return ResponseEntity.ok(response);
   }
 
   //콘텐츠 단건 조회

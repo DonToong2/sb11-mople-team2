@@ -25,9 +25,16 @@ public enum ContentType {
 
     String normalizedInput = value.replace("_", "").replace("-", "").replaceAll("\\s+", "").toLowerCase();
 
+    //프론트엔드가 sports로 보내도 sport로 인식하도록 처리
+    if ("sports".equals(normalizedInput)) {
+      normalizedInput = "sport";
+    }
+
+    String finalInput = normalizedInput;
+
     return Arrays.stream(values())
-        .filter(type -> type.value.replace("_", "").toLowerCase().equals(normalizedInput)
-            || type.name().replace("_", "").toLowerCase().equals(normalizedInput))
+        .filter(type -> type.value.toLowerCase().equals(finalInput)
+            || type.name().toLowerCase().equals(finalInput))
         .findFirst()
         .orElseThrow(() -> new IllegalArgumentException("지원하지 않는 ContentType: " + value));
   }
