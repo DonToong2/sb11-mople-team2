@@ -10,6 +10,7 @@ import com.codeit.mople.domain.auth.security.handler.OAuth2FailureHandler;
 import com.codeit.mople.domain.auth.security.handler.OAuth2SuccessHandler;
 import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.constraints.NotEmpty;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
@@ -26,6 +27,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -101,8 +103,10 @@ public class SecurityConfig {
   }
 
   @Getter
+  @Validated
   @ConfigurationProperties(prefix = "app.cors")
   public static class CorsProperties {
-    private List<String> allowedOrigins = new ArrayList<>(List.of());
+    @NotEmpty
+    private final List<String> allowedOrigins = new ArrayList<>(List.of());
   }
 }
