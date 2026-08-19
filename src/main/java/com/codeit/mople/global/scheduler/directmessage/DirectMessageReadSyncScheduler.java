@@ -9,7 +9,6 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +20,6 @@ public class DirectMessageReadSyncScheduler {
 
   private final DirectMessageReadRedisRepository readRedisRepository;
   private final ConversationRepository conversationRepository;
-  private final RedisTemplate<String, Object> redisTemplate;
 
   @Scheduled(fixedDelayString = "${dm.read-sync.delay-ms}")
   @SchedulerLock(
@@ -48,8 +46,7 @@ public class DirectMessageReadSyncScheduler {
         UUID conversationId = UUID.fromString(parts[0]);
         UUID userId = UUID.fromString(parts[1]);
 
-        String valueKey = "dm:read:" + conversationId + ":" + userId;
-        Object cachedValue = redisTemplate.opsForValue().get(valueKey);
+        Object cachedValue = readRedisRepository.getLastReadAtForScheduler(dirtyMember);
 
         if (cachedValue != null) {
           Instant lastReadAt = Instant.parse(cachedValue.toString());

@@ -18,6 +18,7 @@ import com.codeit.mople.global.dto.CursorResponse;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -137,8 +138,21 @@ public class DirectMessageService {
     }
 
     Conversation conversation = message.getConversation();
-    // 최신 읽음 시각 조회 시 레디스부터 확인
-    Instant myLastReadAt = readRedisRepository.getLastReadAt(conversation, requesterId);
+
+    // 최신 읽음 시각 조회 시 레디스부터 확인 후 DB 조회 후 레디스에 복구
+    Instant myLastReadAt;
+    Optional<Instant> cachedValue = readRedisRepository.getCachedLastReadAt(conversationId, requesterId);
+
+    if (cachedValue.isPresent()) {
+      myLastReadAt = cachedValue.get();
+    } else {
+      log.info("Redis Cache Miss: DB에서 직접 읽음 시각 조회 진행 - conversationId: {}, requesterId: {}", conversationId, requesterId);
+      myLastReadAt = conversation.getMyLastReadAt(requesterId);
+      if (myLastReadAt != null) {
+        readRedisRepository.setCachedLastReadAt(conversationId, requesterId, myLastReadAt);
+        log.debug("DB 조회 결과로 Redis 캐시 복구 완료 - conversationId: {}", conversationId);
+      }
+    }
 
     if (myLastReadAt != null && !message.getCreatedAt().isAfter(myLastReadAt)) {
       log.debug("조기 종료: 이미 읽은 메시지이므로 Redis 추가 갱신 생략 - messageId: {}", directMessageId);
