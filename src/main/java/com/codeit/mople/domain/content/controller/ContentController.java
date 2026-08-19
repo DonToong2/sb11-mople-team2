@@ -6,6 +6,7 @@ import com.codeit.mople.domain.content.dto.ContentCreateRequest;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
+import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.service.ContentService;
 import com.codeit.mople.domain.watchingsession.service.WatchingSessionService;
 import jakarta.validation.Valid;
@@ -58,18 +59,11 @@ public class ContentController implements ContentApi {
       @RequestParam(name = "idAfter", required = false) UUID cursorId,
       @RequestParam(name = "cursor", required = false) String cursorValue,
       @RequestParam(name = "limit", defaultValue = "20") int limit,
-      @RequestParam(name = "type", required = false) String type,
-      @RequestParam(name = "contentType", required = false) String contentTypeParam,
-      @RequestParam(name = "typeEqual", required = false) String typeEqual,
+      @RequestParam(name = "type", required = false) ContentType type,
       @RequestParam(name = "keywordLike", required = false) String keywordLike,
       @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy) {
 
-    //type 파라미터가 비어있으면 contentTypeParam을 사용
-    String actualType = type;
-    if (actualType == null || actualType.isBlank()) actualType = contentTypeParam;
-    if (actualType == null || actualType.isBlank()) actualType = typeEqual;
-
-    CursorResponseContentDto response = contentService.getContents(cursorId, cursorValue, limit, actualType, keywordLike, sortBy);
+    CursorResponseContentDto response = contentService.getContents(cursorId, cursorValue, limit, type, keywordLike, sortBy);
     return ResponseEntity.ok(response);
   }
 

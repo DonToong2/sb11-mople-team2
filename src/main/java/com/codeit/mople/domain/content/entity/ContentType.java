@@ -22,10 +22,6 @@ public enum ContentType {
 
   @JsonCreator
   public static ContentType from(String value) {
-    //null 또는 빈 값 방어 처리
-    if (value == null || value.isBlank()) {
-      return null;
-    }
 
     String normalizedInput = value.replace("_", "").replace("-", "").replaceAll("\\s+", "").toLowerCase();
 

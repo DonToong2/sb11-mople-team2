@@ -245,27 +245,6 @@ public class ContentControllerTest {
     ).andExpect(status().isOk());
   }
 
-  @Test
-  @DisplayName("콘텐츠 목록 조회 성공 - type 파라미터 누락 시 contentTypeParam 또는 typeEqual로 대체된다")
-  void getContents_Success_ParameterFallback() throws Exception {
-    CursorResponseContentDto mockPageResponse = new CursorResponseContentDto(
-        List.of(), null, null, false, 0L, "createdAt", "DESCENDING");
-
-    //서비스 단의 actualType(4번째 파라미터)이 "MOVIE"로 치환되어 전달되는지 모킹으로 검증
-    given(contentService.getContents(any(), any(), eq(20), eq("MOVIE"), any(), any()))
-        .willReturn(mockPageResponse);
-
-    mockMvc.perform(
-        get("/api/contents")
-            .param("contentType", "MOVIE") //type 파라미터 대신 contentType 파라미터 전달
-            .contentType(MediaType.APPLICATION_JSON)
-            .with(mockAuth(UUID.randomUUID(), Role.USER))
-    ).andExpect(status().isOk());
-
-    //컨트롤러 내부 로직에 의해 치환된 actualType("MOVIE")으로 서비스 메서드가 호출되었는지 확인
-    verify(contentService).getContents(any(), any(), eq(20), eq("MOVIE"), any(), any());
-  }
-
   //=========================================================================================
   //콘텐츠 단건 조회 테스트
   //=========================================================================================

@@ -5,6 +5,7 @@ import com.codeit.mople.domain.content.dto.ContentCreateRequest;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
+import com.codeit.mople.domain.content.entity.ContentType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -75,13 +76,11 @@ public interface ContentApi {
           content = @Content(schema = @Schema(implementation = com.codeit.mople.global.response.ApiResponse.class))
       )
   })
-  ResponseEntity<CursorResponseContentDto> getContents(
+  public ResponseEntity<CursorResponseContentDto> getContents(
       @RequestParam(name = "idAfter", required = false) UUID cursorId,
       @RequestParam(name = "cursor", required = false) String cursorValue,
       @RequestParam(name = "limit", defaultValue = "20") int limit,
-      @RequestParam(name = "type", required = false) String type,
-      @RequestParam(name = "contentType", required = false) String contentTypeParam,
-      @RequestParam(name = "typeEqual", required = false) String typeEqual,
+      @RequestParam(name = "type", required = false) ContentType type,
       @RequestParam(name = "keywordLike", required = false) String keywordLike,
       @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy
   );

@@ -86,7 +86,7 @@ public class ContentService{
   //콘텐츠 목록 조회
   @Transactional(readOnly = true)
   public CursorResponseContentDto getContents(
-      UUID cursorId, String cursorValue, int limit, String type, String keywordLike, String sortBy) {
+      UUID cursorId, String cursorValue, int limit, ContentType type, String keywordLike, String sortBy) {
     log.debug("콘텐츠 목록 조회 시작 - cursorId: {}, cursorValue: {}, limit: {}, type: {}, sortBy: {}", cursorId, cursorValue, limit, type, sortBy);
 
     if (limit <= 0 || limit > 100) {
@@ -115,20 +115,10 @@ public class ContentService{
       }
     }
 
-    //ContentType 필터 처리 (ALL 또는 빈 값일 경우 전체 조회)
-    ContentType contentType = null;
-    if (type != null && !type.isBlank() && !type.equalsIgnoreCase("ALL")) {
-      try {
-        contentType = ContentType.from(type);
-      } catch (IllegalArgumentException e) {
-        log.warn("지원하지 않는 분류 필터 무시: {}", type);
-      }
-    }
-
     //데이터 조회 및 카운트
     List<Content> contents = contentQueryRepository
-        .findContentByCursor(cursorId, parsedCursorValue, limit, contentType, keywordLike, contentSortBy);
-    long totalCount = contentQueryRepository.countContentsByTypeAndKeyword(contentType, keywordLike);
+        .findContentByCursor(cursorId, parsedCursorValue, limit, type, keywordLike, contentSortBy);
+    long totalCount = contentQueryRepository.countContentsByTypeAndKeyword(type, keywordLike);
 
     CursorResponse<Content> cursorResponse = CursorResponse.of(
         contents,

@@ -130,25 +130,6 @@ public class ContentServiceTest {
   }
 
   @Test
-  @DisplayName("콘텐츠 목록 조회 성공 - type 필터가 ALL이거나 유효하지 않으면 예외 없이 전체 조회를 수행한다")
-  void getContents_Success_InvalidTypeFallback() {
-    int limit = 10;
-
-    given(contentQueryRepository.findContentByCursor(any(), any(), eq(limit), any(), any(), any(ContentSortBy.class)))
-        .willReturn(new ArrayList<>());
-    given(contentQueryRepository.countContentsByTypeAndKeyword(eq(null), any())).willReturn(0L);
-
-    //type 파라미터에 유효하지 않은 "INVALID_TYPE" 전달
-    CursorResponseContentDto response = contentService.getContents(
-        null, null, limit, "INVALID_TYPE", null, "createdAt");
-
-    assertThat(response).isNotNull();
-
-    //예외가 터지지 않고 contentType이 null(전체 조회)로 치환되어 쿼리 메서드가 호출되었는지 검증
-    verify(contentQueryRepository).findContentByCursor(any(), any(), eq(limit), eq(null), any(), any());
-  }
-
-  @Test
   @DisplayName("콘텐츠 목록 조회 실패 - limit 값이 0 이하일 경우 ContentException 발생")
   void getContents_Fail_NegativeLimit() {
     assertThatThrownBy(() -> contentService.getContents(
