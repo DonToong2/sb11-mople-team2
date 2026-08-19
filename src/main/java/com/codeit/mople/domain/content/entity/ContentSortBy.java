@@ -30,7 +30,7 @@ public enum ContentSortBy {
     }
 
     //별칭 처리
-    if (List.of("averageRating", "score", "rate", "ratingSum").contains(sortBy)) {
+    if (List.of("ratingSum").contains(sortBy)) {
       return RATING;
     }
 
