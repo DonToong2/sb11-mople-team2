@@ -21,8 +21,6 @@ import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.dto.SortDirection;
 import com.codeit.mople.global.storage.FileStorageService;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -254,7 +252,7 @@ public class UserServiceTest {
 
     UserUpdateRequest request = new UserUpdateRequest("newName");
 
-    UserDto response = userService.updateProfile(userId, userId, request, null);
+    UserDto response = userService.updateProfile(userId, request, null);
 
     assertThat(response.name()).isEqualTo("newName");
   }
@@ -269,7 +267,7 @@ public class UserServiceTest {
     MockMultipartFile image = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
     UserUpdateRequest request = new UserUpdateRequest(null);
 
-    UserDto response = userService.updateProfile(userId, userId, request, image);
+    UserDto response = userService.updateProfile(userId, request, image);
 
     assertThat(response.profileImageUrl()).isEqualTo("https://placeholder.mople.com/test.jpg");
     assertThat(response.name()).isEqualTo(user.getName());
@@ -285,7 +283,7 @@ public class UserServiceTest {
     MockMultipartFile image = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
     UserUpdateRequest request = new UserUpdateRequest("newName");
 
-    UserDto response = userService.updateProfile(userId, userId, request, image);
+    UserDto response = userService.updateProfile(userId, request, image);
 
     assertThat(response.name()).isEqualTo("newName");
     assertThat(response.profileImageUrl()).isEqualTo("https://placeholder.mople.com/test.jpg");
@@ -300,7 +298,7 @@ public class UserServiceTest {
 
     ChangePasswordRequest request = new ChangePasswordRequest("newPw123");
 
-    userService.changePassword(userId, userId, request);
+    userService.changePassword(userId, request);
 
     assertThat(user.getPassword()).isEqualTo("encodedNewPw");
     verify(refreshTokenRepository).invalidate(userId);

@@ -66,7 +66,7 @@ public class UserServiceAuthorizationTest {
     setAuth(UUID.randomUUID(), Role.USER);
 
     assertThatThrownBy(() ->
-        userService.updateProfile(targetId, UUID.randomUUID(), null, null))
+        userService.updateProfile(targetId, null, null))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -80,7 +80,7 @@ public class UserServiceAuthorizationTest {
     setAuth(UUID.randomUUID(), Role.ADMIN);
     UserUpdateRequest request = new UserUpdateRequest("newName");
 
-    UserDto response = userService.updateProfile(targetId, UUID.randomUUID(), request, null);
+    UserDto response = userService.updateProfile(targetId, request, null);
 
     assertThat(response.name()).isEqualTo("newName");
   }
@@ -94,7 +94,7 @@ public class UserServiceAuthorizationTest {
     ChangePasswordRequest request = new ChangePasswordRequest("newPw123");
 
     assertThatThrownBy(() ->
-        userService.changePassword(targetId, UUID.randomUUID(), request))
+        userService.changePassword(targetId, request))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -109,7 +109,7 @@ public class UserServiceAuthorizationTest {
     setAuth(UUID.randomUUID(), Role.ADMIN);
     ChangePasswordRequest request = new ChangePasswordRequest("newPw123");
 
-    userService.changePassword(targetId, UUID.randomUUID(), request);
+    userService.changePassword(targetId, request);
 
     assertThat(user.getPassword()).isEqualTo("encodedNewPw");
   }
