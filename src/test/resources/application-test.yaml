@@ -9,6 +9,8 @@ spring:
     topics:
       follow-created: mople.follow.created.v1
       playlist-content-added: mople.playlist.content-added.v1
+      direct-message-created: mople.direct-message.created.v1
+      notification-created: mople.notification.created.v1
     enabled: false
 
   data:
