@@ -4,6 +4,7 @@ import com.codeit.mople.domain.conversation.entity.Conversation;
 import com.codeit.mople.domain.conversation.exception.ConversationErrorCode;
 import com.codeit.mople.domain.conversation.exception.ConversationException;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
+import com.codeit.mople.domain.directmessage.event.DirectMessageLastReadAtEvent;
 import com.codeit.mople.domain.directmessage.repository.DirectMessageReadRedisRepository;
 import com.codeit.mople.domain.directmessage.dto.request.DirectMessageCursorRequest;
 import com.codeit.mople.domain.directmessage.dto.response.DirectMessageDto;
@@ -55,7 +56,8 @@ public class DirectMessageService {
 
     conversation.updateLastMessage(directMessage);
 
-    updateLastReadAt(conversation, senderId, directMessage.getCreatedAt());
+    // 안 읽은 메시지가 생기는 동시성 혼선 방지 - 발신자 자신의 워터마크를 해당 메시지의 생성 시각으로 강제 전진
+    publisher.publishEvent(new DirectMessageLastReadAtEvent(conversationId, senderId, directMessage.getCreatedAt()));
 
     publisher.publishEvent(new DirectMessageReceivedEvent(receiver.getId(), sender.getName(), content));
 
