@@ -70,7 +70,7 @@ public class ContentQueryRepository {
         .replace("_", "._");
 
     //대소문자 구분 없이 검색하기 위해 lower() 적용
-    return content.title.lower().like("%" + escaped.toLowerCase() + "%", '.');
+    return content.title.lower().like(escaped.toLowerCase() + "%", '.');
   }
 
   // 커서 필터링 조건(Service 계층에서 이미 타입 검증/파싱된 값을 받음)
