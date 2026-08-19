@@ -71,10 +71,10 @@ public class UserService {
     );
   }
 
-  @PreAuthorize("hasRole('ADMIN') or #targetUserId == #requesterId")
+  @PreAuthorize("hasRole('ADMIN') or #targetUserId == authentication.principal.userId")
   @CacheEvict(value = "users", key = "#targetUserId")
   @Transactional
-  public UserDto updateProfile(UUID targetUserId, UUID requesterId, UserUpdateRequest request, MultipartFile image) {
+  public UserDto updateProfile(UUID targetUserId, UserUpdateRequest request, MultipartFile image) {
     User user = findUserOrThrow(targetUserId);
 
     String imageUrl = null;
@@ -88,9 +88,9 @@ public class UserService {
     return UserDto.from(user);
   }
 
-  @PreAuthorize("hasRole('ADMIN') or #targetUserId == #requesterId")
+  @PreAuthorize("hasRole('ADMIN') or #targetUserId == authentication.principal.userId")
   @Transactional
-  public void changePassword(UUID targetUserId, UUID requesterId, ChangePasswordRequest request) {
+  public void changePassword(UUID targetUserId, ChangePasswordRequest request) {
     User user = findUserOrThrow(targetUserId);
     user.changePassword(passwordEncoder.encode(request.password()));
     user.destroyTemporaryPassword();
