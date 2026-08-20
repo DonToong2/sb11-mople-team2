@@ -55,13 +55,14 @@ public class SseConnectionRepositoryTest {
       given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
       String serverId = "server-1";
+      UUID connectionId = UUID.randomUUID();
 
       // when
-      connectionRepository.save(receiverId, serverId);
+      connectionRepository.save(receiverId, serverId, connectionId);
 
       // then
       verify(valueOperations).set(
-          "sse:connection:" + receiverId, serverId, Duration.ofHours(2)
+          "sse:connection:" + receiverId, serverId + ":" + connectionId, Duration.ofHours(2)
       );
     }
 
@@ -81,9 +82,10 @@ public class SseConnectionRepositoryTest {
       given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
       String serverId = "server-1";
+      UUID connectionId = UUID.randomUUID();
 
       given(valueOperations.get("sse:connection:" + receiverId))
-          .willReturn(serverId);
+          .willReturn(serverId + ":" + connectionId);
 
       // when
       String result = connectionRepository.findServerId(receiverId);
@@ -125,15 +127,16 @@ public class SseConnectionRepositoryTest {
       // BeforeEach에서 receiverId를 초기화
 
       String serverId = "server-1";
+      UUID connectionId = UUID.randomUUID();
 
       // when
-      connectionRepository.removeIfOwner(receiverId, serverId);
+      connectionRepository.removeIfOwner(receiverId, serverId, connectionId);
 
       // then
       verify(redisTemplate).execute(
           ArgumentMatchers.<RedisScript<Long>>any(),
           eq(List.of("sse:connection:" + receiverId)),
-          eq(serverId)
+          eq(serverId+ ":" + connectionId)
       );
     }
 
