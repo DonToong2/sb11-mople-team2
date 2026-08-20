@@ -64,9 +64,9 @@ public class SseService {
     emitterRepository.save(receiverId, emitter);
     connectionRepository.save(receiverId, serverId, connectionId);
 
-    log.info(
-        "SSE 연결 Redis 저장 확인: receiverId={}, serverId={}",
-        receiverId, connectionRepository.findServerId(receiverId)
+    log.debug(
+        "SSE 연결 Redis 저장: receiverId={}, serverId={}, connectionId={}",
+        receiverId, serverId, connectionId
     );
 
     resendEvents(receiverId, lastEventId, emitter);
