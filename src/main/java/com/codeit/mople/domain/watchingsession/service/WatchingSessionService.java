@@ -71,8 +71,8 @@ public class WatchingSessionService {
 
     //정렬 기준 검증(null이거나 빈 값이면 기본값 id 부여, 지원하지 않는 값이면 400 예외 발생)
     if (sortBy == null || sortBy.isBlank()) {
-      sortBy = "id";
-    } else if (!"id".equalsIgnoreCase(sortBy)) {
+      sortBy = "createdAt";
+    } else if (!"createdAt".equalsIgnoreCase(sortBy)) {
       throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("sortBy", sortBy));
     }
 

@@ -88,7 +88,7 @@ public class WatchingSessionServiceTest {
     assertThrows(ContentException.class, () ->
         watchingSessionService.getWatchingSessions(contentId, null,
             null, null, 10,
-            "ASCENDING", "id"));
+            "ASCENDING", "createdAt"));
   }
 
   @Test
@@ -115,7 +115,7 @@ public class WatchingSessionServiceTest {
 
     CursorResponseWatchingSessionDto result = watchingSessionService.getWatchingSessions(
         contentId, null, null, null, 10,
-        "DESCENDING", "id");
+        "DESCENDING", "createdAt");
 
     assertNotNull(result);
     assertEquals(1, result.totalCount());
@@ -150,7 +150,7 @@ public class WatchingSessionServiceTest {
 
     CursorResponseWatchingSessionDto result = watchingSessionService.getWatchingSessions(
         contentId, "홍길", null, null, 10,
-        "DESCENDING", "id");
+        "DESCENDING", "createdAt");
 
     assertNotNull(result);
     assertEquals(1, result.totalCount()); //"홍길동" 1명만 필터링되어야 함
@@ -164,11 +164,11 @@ public class WatchingSessionServiceTest {
     Content mockContent = mock(Content.class);
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
 
-    //지원하지 않는 sortBy("name")로 요청 시 ContentException 발생 검증
+    //지원하지 않는 sortBy("id")로 요청 시 ContentException 발생 검증
     assertThrows(ContentException.class, () ->
         watchingSessionService.getWatchingSessions(contentId, null,
             null, null, 10,
-            "ASCENDING", "name"));
+            "ASCENDING", "id"));
   }
 
   @Test
@@ -182,7 +182,7 @@ public class WatchingSessionServiceTest {
     assertThrows(ContentException.class, () ->
         watchingSessionService.getWatchingSessions(contentId, null,
             null, null, 10,
-            "INVALID", "id"));
+            "INVALID", "createdAt"));
   }
 
   @Test
