@@ -12,6 +12,7 @@ import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.repository.ContentQueryRepository;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.global.dto.CursorResponse;
+import com.codeit.mople.global.storage.FileStorageService;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,6 +34,7 @@ public class ContentService{
 
   private final ContentRepository contentRepository;
   private final ContentQueryRepository contentQueryRepository;
+  private final FileStorageService fileStorageService;
 
   //허용할 이미지 MIME 타입 및 확장자 정의
   private static final List<String> ALLOWED_MIME_TYPES = List.of(
@@ -214,7 +216,14 @@ public class ContentService{
 
     //썸네일 수정(새로운 파일이 들어온 경우에만 업데이트)
     String uploadedThumbnailUrl = content.getThumbnailUrl(); //기존 URL 유지
+
+    //새로운 썸네일 파일이 들어온 경우
     if (thumbnail != null && !thumbnail.isEmpty()) {
+      //S3에 기존 이미지가 존재했다면 삭제
+      if (uploadedThumbnailUrl != null) {
+        fileStorageService.delete(uploadedThumbnailUrl);
+      }
+      //새 이미지 업로드
       uploadedThumbnailUrl = saveThumbnail(thumbnail);
     }
 
@@ -253,6 +262,11 @@ public class ContentService{
           return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
         });
 
+    //엔티티를 지우기 전에 S3 이미지도 함께 삭제
+    if (content.getThumbnailUrl() != null) {
+      fileStorageService.delete(content.getThumbnailUrl());
+    }
+
     //조회된 엔티티 삭제
     contentRepository.delete(content);
 
@@ -261,31 +275,11 @@ public class ContentService{
 
   //썸네일 검증 및 파일 시스템 저장 메서드
   private String saveThumbnail(MultipartFile thumbnail) {
-    String extension = validateAndGetExtension(thumbnail);
-    String safeFilename = UUID.randomUUID() + "." + extension;
+    //파일 검증(MIME 타입, 확장자)
+    validateAndGetExtension(thumbnail);
 
-    // 로컬 저장 경로 설정 (프로젝트 루트의 uploads 폴더)
-    String uploadDir = "uploads/";
-    File dir = new File(uploadDir);
-    if (!dir.exists()) {
-      dir.mkdirs(); // 폴더가 없으면 생성
-    }
-
-    try {
-      // 실제 파일 저장
-      Path filePath = Paths.get(uploadDir, safeFilename);
-      Files.write(filePath, thumbnail.getBytes());
-
-      //TODO: 추후 AWS S3 등에 업로드하고 반환된 URL 사용 예정
-      String uploadedThumbnailUrl = "/uploads/" + safeFilename;
-      log.debug("썸네일 임시 저장 완료 - url: {}", uploadedThumbnailUrl);
-
-      return uploadedThumbnailUrl;
-    } catch (IOException e) {
-      log.error("썸네일 파일 업로드 중 예상치 못한 오류 발생", e);
-      throw new ContentException(ContentErrorCode.IMAGE_UPLOAD_FAILED,
-          Map.of("filename", thumbnail.getOriginalFilename() != null ? thumbnail.getOriginalFilename() : "null"));
-    }
+    //S3 업로드 후 URL 반환
+    return fileStorageService.upload(thumbnail);
   }
 
   //썸네일 파일 MIME 타입 및 확장자 유효성 검사 검증 메서드

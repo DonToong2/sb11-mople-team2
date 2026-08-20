@@ -18,6 +18,7 @@ import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.repository.ContentQueryRepository;
 import com.codeit.mople.domain.content.repository.ContentRepository;
+import com.codeit.mople.global.storage.FileStorageService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +42,9 @@ public class ContentServiceTest {
   @Mock
   private ContentQueryRepository contentQueryRepository;
 
+  @Mock
+  private FileStorageService fileStorageService;
+
   @InjectMocks
   private ContentService contentService;
 
@@ -60,12 +64,14 @@ public class ContentServiceTest {
         "/uploads/test.png", List.of("액션"));
     ReflectionTestUtils.setField(savedContent, "id", UUID.randomUUID());
 
+    given(fileStorageService.upload(any())).willReturn("/uploads/test.png");
     given(contentRepository.save(any(Content.class))).willReturn(savedContent);
 
     ContentResponse response = contentService.createContent(request, thumbnail);
 
     assertThat(response).isNotNull();
     assertThat(response.title()).isEqualTo("테스트 영화");
+    verify(fileStorageService).upload(any()); //업로드 호출 검증
     verify(contentRepository).save(any(Content.class));
   }
 
@@ -250,11 +256,16 @@ public class ContentServiceTest {
     ReflectionTestUtils.setField(content, "id", contentId);
 
     given(contentRepository.findById(any(UUID.class))).willReturn(Optional.of(content));
+    given(fileStorageService.upload(any())).willReturn("/uploads/update.png");
 
     ContentResponse response = contentService.updateContent(contentId, request, thumbnail);
 
     assertThat(response).isNotNull();
     assertThat(response.title()).isEqualTo("수정된 제목");
+
+    //S3 삭제 및 업로드 메서드가 호출되었는지 검증
+    verify(fileStorageService).delete("/uploads/old.png");
+    verify(fileStorageService).upload(thumbnail);
   }
 
   @Test
@@ -297,17 +308,20 @@ public class ContentServiceTest {
   //=========================================================================================
 
   @Test
-  @DisplayName("콘텐츠 삭제 성공 - 존재하는 ID로 요청 시 정상 삭제 수행")
+  @DisplayName("콘텐츠 삭제 성공 - 존재하는 ID로 요청 시 정상 삭제 수행 (동반 S3 이미지 삭제 검증)")
   void deleteContent_Success() {
     UUID contentId = UUID.randomUUID();
     UUID adminId = UUID.randomUUID();
 
-    Content content = new Content(ContentType.MOVIE, "삭제할 영화", "설명", null, List.of());
+    //S3 이미지 삭제 로직을 테스트하기 위해 기존 URL을 부여함
+    Content content = new Content(ContentType.MOVIE, "삭제할 영화", "설명", "/uploads/delete.png", List.of());
 
     given(contentRepository.findById(any(UUID.class))).willReturn(Optional.of(content));
 
     contentService.deleteContent(contentId);
 
+    //S3 삭제 및 엔티티 삭제 메서드가 호출되었는지 검증
+    verify(fileStorageService).delete("/uploads/delete.png");
     verify(contentRepository).delete(content);
   }
 

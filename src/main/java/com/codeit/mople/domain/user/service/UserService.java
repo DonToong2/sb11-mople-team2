@@ -77,9 +77,15 @@ public class UserService {
   public UserDto updateProfile(UUID targetUserId, UserUpdateRequest request, MultipartFile image) {
     User user = findUserOrThrow(targetUserId);
 
-    String imageUrl = null;
+    //유저 엔티티에서 기존 프로필 URL을 가져옵니다.
+    String imageUrl = user.getProfileImageUrl();
 
     if(image != null && !image.isEmpty()) {
+      //기존 이미지가 있다면 S3에서 먼저 삭제
+      if (imageUrl != null) {
+        fileStorageService.delete(imageUrl);
+      }
+      //새로운 이미지 업로드
       imageUrl = fileStorageService.upload(image);
     }
 
