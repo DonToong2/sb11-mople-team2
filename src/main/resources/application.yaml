@@ -34,9 +34,13 @@ spring:
       notification-created: mople.notification.created.v1
 
     producer:
+      acks: all
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
+        enable.idempotence: true
+        max.block.ms: 1000
+        delivery.timeout.ms: 30000
         retries: 3
         retry.backoff.ms: 1000
         retry.backoff.max.ms: 4000
