@@ -82,6 +82,9 @@ dependencies {
     implementation 'org.springframework.retry:spring-retry'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
 
+    // AWS S3 스타터 의존성
+    implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
+
     // Utility
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
