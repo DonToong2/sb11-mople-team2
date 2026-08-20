@@ -2,6 +2,7 @@ package com.codeit.mople.domain.directmessage.repository;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -9,6 +10,7 @@ import java.time.format.DateTimeParseException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Repository;
 
 @Slf4j
@@ -24,19 +26,42 @@ public class DirectMessageReadRedisRepository {
   // 7일 동안 조회/수정이 없는 유저의 읽음 키는 레디스에서 자동 삭제
   private static final Duration READ_DATA_TTL = Duration.ofDays(7);
 
+  private static final DefaultRedisScript<Long> SAVE_LAST_READ_SCRIPT;
+
+  // 레디스에 있는 기존 시간을 확인(GET) -> 기존 시간보다 미래면 덮어쓰기(SET) -> 대기열 추가(SADD)
+  static {
+    SAVE_LAST_READ_SCRIPT = new DefaultRedisScript<>();
+    SAVE_LAST_READ_SCRIPT.setScriptText(
+        "local cur = redis.call('GET', KEYS[1]) " +
+            "if cur and cur >= ARGV[1] then return 0 end " +
+            "redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2]) " +
+            "redis.call('SADD', KEYS[2], ARGV[3]) " +
+            "return 1"
+    );
+    SAVE_LAST_READ_SCRIPT.setResultType(Long.class);
+  }
+
   // 유저가 DM 메시지를 읽었을 때 레디스에 최신 시각을 기록하고 Dirty Set에 등록
   public boolean saveLastReadAt(UUID conversationId, UUID userId, Instant readAt) {
     try {
       String valueKey = READ_KEY_PREFIX + conversationId + ":" + userId;
       String dirtyMember = conversationId + ":" + userId;
 
-      // 레디스에 최신 읽음 시각 문자열 저장 (7일 뒤 자동 만료)
-      redisTemplate.opsForValue().set(valueKey, readAt.toString(), READ_DATA_TTL);
+      String readAtStr = readAt.toString();
+      Long ttlSeconds = READ_DATA_TTL.toSeconds();
 
-      // DB에 갱신할 유저를 Dirty Set에 등록
-      redisTemplate.opsForSet().add(DIRTY_SET_KEY, dirtyMember);
+      Long result = redisTemplate.execute(
+          SAVE_LAST_READ_SCRIPT,
+          List.of(valueKey, DIRTY_SET_KEY), // KEYS[1], KEYS[2]
+          readAtStr, ttlSeconds, dirtyMember // ARGV[1], ARGV[2], ARGV[3]
+      );
 
-      log.info("Redis 읽음 시각 기록 및 대기열 추가 완료 - key: {}, readAt: {}", valueKey, readAt);
+      if (result != null && result == 0L) {
+        log.debug("Redis 읽음 워터마크 역행 방지: 기존 최신 시각이 존재하여 갱신 무시 - key: {}, requestTime: {}", valueKey, readAtStr);
+      } else {
+        log.info("Redis 읽음 시각 기록 및 대기열 추가 완료(Lua) - key: {}, readAt: {}", valueKey, readAtStr);
+      }
+
       return true;
     } catch (Exception e) {
       log.error("Redis 장애 감지: DB에 직접 읽음 시각 업데이트 (Fallback) 시도 - key: {}", conversationId, e);
