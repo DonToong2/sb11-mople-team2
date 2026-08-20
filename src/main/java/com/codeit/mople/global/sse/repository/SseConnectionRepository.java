@@ -39,6 +39,13 @@ public class SseConnectionRepository {
     if (value == null) {
       return null;
     }
+    
+    int separatorIndex = value.indexOf(':');
+
+    // value에 ":"이 포함되어 있지 않으면 전체 value를 반환
+    if (separatorIndex == -1) {
+      return value;
+    }
 
     return value.substring(0, value.indexOf(':'));
   }
