@@ -3,12 +3,15 @@ package com.codeit.mople.global.event;
 import com.codeit.mople.global.config.KafkaProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.errors.SerializationException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions;
+import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
@@ -20,6 +23,7 @@ import org.springframework.stereotype.Component;
 public class KafkaEventPublisher {
 
   private static final String FAILED_STREAM_KEY = "kafka:events:failed";
+  private static final Duration FAILED_STREAM_RETENTION = Duration.ofDays(7);
 
   private final KafkaTemplate<String, Object> kafkaTemplate;
 
@@ -73,6 +77,9 @@ public class KafkaEventPublisher {
     try {
       String data = objectMapper.writeValueAsString(event);
 
+      RecordId retainFrom =
+          RecordId.of(System.currentTimeMillis() - FAILED_STREAM_RETENTION.toMillis(), 0);
+
       redisTemplate.opsForStream().add(
           FAILED_STREAM_KEY,
           Map.of(
@@ -81,7 +88,8 @@ public class KafkaEventPublisher {
               "key", key == null ? "" : key,
               "data", data,
               "error", ex == null ? "Unknown" : String.valueOf(ex.getMessage())
-          )
+          ),
+          XAddOptions.none().minId(retainFrom)
       );
     } catch (JsonProcessingException e) {
       log.error("Kafka Producer 최종 실패 이벤트 직렬화 실패: topic={}, key={}"
