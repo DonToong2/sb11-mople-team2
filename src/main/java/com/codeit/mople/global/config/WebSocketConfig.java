@@ -5,6 +5,7 @@ import com.codeit.mople.global.error.CustomStompErrorHandler;
 import com.codeit.mople.global.websocket.WebSocketAuthenticationPrincipalResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.constraints.NotEmpty;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -87,6 +88,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
   public static class WebSocketProperties {
 
     @NotEmpty(message = "WebSocket allowed-origins 설정이 누락되었습니다.")
-    private List<String> allowedOrigins;
+    private final List<String> allowedOrigins = new ArrayList<>(List.of());
   }
 }
