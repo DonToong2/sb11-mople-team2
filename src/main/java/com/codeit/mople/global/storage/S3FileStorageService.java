@@ -22,7 +22,7 @@ public class S3FileStorageService implements FileStorageService{
 
   private final S3Template s3Template;
 
-  @Value("${cloud.aws.s3.bucket}")
+  @Value("${spring.cloud.aws.s3.bucket}")
   private String bucket;
 
   @Override
