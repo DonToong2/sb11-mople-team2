@@ -9,7 +9,7 @@ import java.util.Map;
 public enum ContentSortBy {
   CREATED_AT("createdAt"),
   WATCHER_COUNT("watcherCount"),
-  RATING("rating");
+  RATING("ratingSum");
 
   private final String value;
 
@@ -29,11 +29,6 @@ public enum ContentSortBy {
       if (type.value.equalsIgnoreCase(sortBy)) return type;
     }
 
-    //별칭 처리
-    if (List.of("ratingSum").contains(sortBy)) {
-      return RATING;
-    }
-
     throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("sortBy", sortBy));
   }
 
@@ -41,7 +36,12 @@ public enum ContentSortBy {
     if (this == WATCHER_COUNT) {
       return Long.parseLong(cursorValue);
     } else if (this == RATING) {
-      return Double.parseDouble(cursorValue);
+      //Double 파싱 시 NaN이나 Infinity가 들어오면 NumberFormatException을 던져 400 에러 유도
+      double parsed = Double.parseDouble(cursorValue);
+      if (!Double.isFinite(parsed)) {
+        throw new NumberFormatException("Invalid cursor double value: " + cursorValue);
+      }
+      return parsed;
     } else {
       return Instant.parse(cursorValue);
     }
