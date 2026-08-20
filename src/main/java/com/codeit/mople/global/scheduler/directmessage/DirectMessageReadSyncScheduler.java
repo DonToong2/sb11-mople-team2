@@ -24,7 +24,7 @@ public class DirectMessageReadSyncScheduler {
   @SchedulerLock(
       name = "DirectMessageReadSyncLock",
       lockAtLeastFor = "5s", // 최소 5초간 락 유지
-      lockAtMostFor = "9s" // 최대 9초간 락 유지
+      lockAtMostFor = "30s" // 최대 30초간 락 유지
   )
   public void syncLastReadAtToDb() {
     Set<Object> dirtyMembers = readRedisRepository.getDirtyMembers();
