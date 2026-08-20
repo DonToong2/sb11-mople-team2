@@ -85,6 +85,11 @@ oauth2:
     success-uri: http://localhost:3000/
     failure-uri: http://localhost:3000/login
 
+app:
+  websocket:
+    allowed-origins:
+      - "*"
+
 sse:
   stream-consumer:
     enabled: false
