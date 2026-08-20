@@ -1,5 +1,6 @@
 package com.codeit.mople.global.event;
 
+import com.codeit.mople.global.config.KafkaProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "spring.kafka", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = KafkaProperties.PREFIX, name = "enabled", havingValue = "true")
 public class KafkaEventPublisher {
 
   private static final String FAILED_STREAM_KEY = "kafka:events:failed";
