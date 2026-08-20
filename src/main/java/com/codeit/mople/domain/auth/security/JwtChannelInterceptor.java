@@ -7,6 +7,7 @@ import com.codeit.mople.domain.conversation.repository.ConversationRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
+import com.codeit.mople.realtime.session.WebSocketSessionRegistryService;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.security.SignatureException;
 import io.jsonwebtoken.MalformedJwtException;
@@ -34,6 +35,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
   private final UserRepository userRepository;
   private final ConversationRepository conversationRepository;
   private final SessionTokenRepository sessionTokenRepository;
+  private final WebSocketSessionRegistryService sessionRegistryService;
 
   @Override
   public @Nullable Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -95,6 +97,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
           principal, null, principal.getAuthorities());
 
       accessor.setUser(authentication);
+      sessionRegistryService.registerSession(userId, accessor.getSessionId());
       log.info("WebSocket 보안 인증 및 세션 연동 성공 - userId: {}", userId);
 
     } catch (ExpiredJwtException e) {

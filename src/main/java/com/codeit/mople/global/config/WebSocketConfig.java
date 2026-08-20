@@ -10,6 +10,7 @@ import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +25,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
+import org.springframework.web.socket.handler.WebSocketHandlerDecoratorFactory;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -35,6 +38,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
   private final ObjectMapper objectMapper;
   private final CustomStompErrorHandler customStompErrorHandler;
   private final WebSocketProperties webSocketProperties;
+
+  @Qualifier("webSocketSessionTrackingDecoratorFactory")
+  private final WebSocketHandlerDecoratorFactory webSocketSessionTrackingDecoratorFactory;
 
   @Override
   public void registerStompEndpoints(StompEndpointRegistry registry) {
@@ -57,6 +63,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
   @Override
   public void configureClientInboundChannel(ChannelRegistration registration) {
     registration.interceptors(jwtChannelInterceptor);
+  }
+
+  @Override
+  public void configureWebSocketTransport(WebSocketTransportRegistration registry) {
+    registry.addDecoratorFactory(webSocketSessionTrackingDecoratorFactory);
   }
 
   @Override
