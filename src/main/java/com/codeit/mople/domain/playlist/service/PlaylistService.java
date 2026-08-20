@@ -394,6 +394,7 @@ public class PlaylistService {
     playlistContentRepository.delete(playlistContent);
   }
 
+  @Transactional(readOnly = true)
   public List<UUID> getSubscriberIds(UUID playlistId) {
     log.debug("구독자 id 목록 조회: playlistId={}", playlistId);
     return playlistSubscriptionRepository.findSubscriberIdsByPlaylistId(playlistId);
