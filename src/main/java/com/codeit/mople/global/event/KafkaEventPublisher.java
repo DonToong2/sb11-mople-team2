@@ -4,6 +4,7 @@ import com.codeit.mople.global.config.KafkaProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.errors.SerializationException;
@@ -26,35 +27,45 @@ public class KafkaEventPublisher {
   private final ObjectMapper objectMapper;
 
 
-  public void publish(String topic, Object event) {
+  public void publish(String topic, PublishableEvent event) {
+    UUID eventId = event.eventId();
+    String eventType = event.getClass().getSimpleName();
     try {
       kafkaTemplate.send(topic, event)
           .whenComplete((result, ex) -> {
             if (ex != null) {
               saveFailedEvent(topic, null, event, ex);
-              log.error("Kafka 이벤트 발행 최종 실패: topic={}, event={}", topic, event, ex);
+              log.error("Kafka 이벤트 발행 최종 실패: topic={}, eventId={}, eventType={}",
+                  topic, eventId, eventType, ex);
             }
           });
     } catch (SerializationException e) {
-      log.error("Kafka 이벤트 직렬화 실패(재시도 불가): topic={}, event={}", topic, event, e);
+      log.error("Kafka 이벤트 직렬화 실패(재시도 불가): topic={}, eventId={}, eventType={}",
+          topic, eventId, eventType, e);
     } catch (Exception e) {
-      log.error("Kafka 이벤트 발행 시도 실패: topic={}, event={}", topic, event, e);
+      log.error("Kafka 이벤트 발행 시도 실패: topic={}, eventId={}, eventType={}",
+          topic, eventId, eventType, e);
     }
   }
 
-  public void publish(String topic, String key, Object event) {
+  public void publish(String topic, String key, PublishableEvent event) {
+    UUID eventId = event.eventId();
+    String eventType = event.getClass().getSimpleName();
     try {
       kafkaTemplate.send(topic, key, event)
           .whenComplete((result, ex) -> {
             if (ex != null) {
               saveFailedEvent(topic, key, event, ex);
-              log.error("Kafka 이벤트 발행 최종 실패: topic={}, key={}, event={}", topic, key, event, ex);
+              log.error("Kafka 이벤트 발행 최종 실패: topic={}, key={}, eventId={}, eventType={}",
+                  topic, key, eventId, eventType, ex);
             }
           });
     } catch (SerializationException e) {
-      log.error("Kafka 이벤트 직렬화 실패(재시도 불가): topic={}, key={}, event={}", topic, key, event, e);
+      log.error("Kafka 이벤트 직렬화 실패(재시도 불가): topic={}, key={}, eventId={}, eventType={}",
+          topic, key, eventId, eventType, e);
     } catch (Exception e) {
-      log.error("Kafka 이벤트 발행 시도 실패: topic={}, key={}, event={}", topic, key, event, e);
+      log.error("Kafka 이벤트 발행 시도 실패: topic={}, key={}, eventId={}, eventType={}",
+          topic, key, eventId, eventType, e);
     }
   }
 
