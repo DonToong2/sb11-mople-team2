@@ -172,13 +172,17 @@ public class AuthService {
       throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
 
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_TOKEN));
+
+    if(user.isLocked()) {
+      throw new AuthException(AuthErrorCode.LOCKED_ACCOUNT);
+    }
+
     String newRefreshToken = jwtProvider.createRefreshToken(userId);
     if(!refreshTokenRepository.rotate(userId, refreshToken, newRefreshToken, sessionTtl())) {
       throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
-
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_TOKEN));
 
     String jti = UUID.randomUUID().toString();
     String newAccessToken = jwtProvider.createAccessToken(user.getId(), jti, user.getRole());

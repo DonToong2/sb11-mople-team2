@@ -380,8 +380,6 @@ public class AuthServiceTest {
   void refresh_throwsException_whenUserNotFound() {
     UUID userId = UUID.randomUUID();
     when(jwtProvider.getUserId("some-token")).thenReturn(userId);
-    when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh-token");
-    when(refreshTokenRepository.rotate(eq(userId), eq("some-token"), eq("new-refresh-token"), eq(EXPECTED_TTL))).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> authService.refresh("some-token"))
@@ -394,6 +392,7 @@ public class AuthServiceTest {
   void refresh_throwsException_whenRotateFails() {
     UUID userId = UUID.randomUUID();
     when(jwtProvider.getUserId("wrong-token")).thenReturn(userId);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh-token");
     when(refreshTokenRepository.rotate(eq(userId), eq("wrong-token"), eq("new-refresh-token"), eq(EXPECTED_TTL))).thenReturn(false);
 
@@ -401,7 +400,7 @@ public class AuthServiceTest {
         .isInstanceOf(AuthException.class)
         .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_TOKEN);
 
-    verify(userRepository, never()).findById(any());
+    verify(sessionTokenRepository, never()).save(any(), any(), any());
   }
 
   @Test
