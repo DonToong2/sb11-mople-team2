@@ -78,7 +78,6 @@ class FollowIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    // @Transactional 롤백은 @Async 알림 생성(AFTER_COMMIT)까지는 되돌리지 못해서 명시적으로 지움
     // FK로 인하여 자식(notification, follows)를 먼저 지움
     notificationRepository.deleteAll();
     followRepository.deleteAll();
