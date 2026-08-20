@@ -130,6 +130,20 @@ public class ContentServiceTest {
     assertThat(response.hasNext()).isFalse(); // limit보다 작으므로 false
   }
 
+  //cursorValue(공백 문자열 등) 전달 시 불완전한 커서 조건으로 판단하여 400 에러 발생 검증
+  @Test
+  @DisplayName("콘텐츠 목록 조회 실패 - cursorId는 있고 cursorValue가 빈 문자열일 경우 INVALID_PAGE_REQUEST(400) 예외 발생")
+  void getContents_Fail_IncompleteCursorWithBlankValue() {
+    UUID cursorId = UUID.randomUUID();
+    String blankCursorValue = "   "; //공백 문자열
+
+    assertThatThrownBy(() -> contentService.getContents(
+        cursorId, blankCursorValue, 10, null, null, "createdAt"))
+        .isInstanceOf(ContentException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);
+  }
+
   @Test
   @DisplayName("콘텐츠 목록 조회 실패 - 잘못된 typeEqual 값 전달 시 INVALID_PAGE_REQUEST(400) 예외 발생")
   void getContents_Fail_InvalidTypeEqual() {

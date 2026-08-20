@@ -94,8 +94,11 @@ public class ContentService{
       throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("limit", limit));
     }
 
-    //커서 파라미터가 둘 중 하나만 들어온 경우 예외 처리
-    if ((cursorId == null) != (cursorValue == null)) {
+    //커서 파라미터가 둘 중 하나만 들어오거나, cursorValue가 빈 문자열("")인 경우 모두 예외 처리 방어
+    boolean hasCursorId = cursorId != null;
+    boolean hasCursorValue = cursorValue != null && !cursorValue.isBlank();
+
+    if (hasCursorId != hasCursorValue) {
       log.warn("콘텐츠 목록 조회 실패(불완전한 커서 조건) - cursorId: {}, cursorValue: {}", cursorId, cursorValue);
       throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST,
           Map.of("cursorId", String.valueOf(cursorId), "cursorValue", String.valueOf(cursorValue)));
@@ -106,7 +109,7 @@ public class ContentService{
 
     //커서 파싱 및 유효성 검증(400 에러 처리)
     Object parsedCursorValue = null;
-    if (cursorValue != null && !cursorValue.isBlank()) {
+    if (hasCursorValue) {
       try {
         parsedCursorValue = contentSortBy.parseCursor(cursorValue);
       } catch (NumberFormatException | java.time.format.DateTimeParseException e) {
