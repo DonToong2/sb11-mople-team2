@@ -84,6 +84,8 @@ public class AuthService {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new IllegalStateException("OAuth 로그인 후 사용자를 찾을 수 없습니다."));
 
+    sessionTokenRepository.invalidate(user.getId());
+
     String refreshToken = jwtProvider.createRefreshToken(user.getId());
     Instant refreshExpiresAt = Instant.now().plusMillis(jwtProvider.getRefreshTokenExpiration());
     refreshTokenRepository.save(user.getId(), refreshToken, sessionTtl());

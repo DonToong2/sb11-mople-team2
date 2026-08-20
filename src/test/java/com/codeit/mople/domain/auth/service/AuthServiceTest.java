@@ -419,6 +419,17 @@ public class AuthServiceTest {
   }
 
   @Test
+  @DisplayName("OAuth 로그인 시 기존에 발급돼 있던 세션이 즉시 무효화됨")
+  void issueOAuthRefreshToken_invalidatesExistingSession() {
+    when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+    when(jwtProvider.createRefreshToken(user.getId())).thenReturn("oauth-refresh-token");
+
+    authService.issueOAuthRefreshToken(user.getId());
+
+    verify(sessionTokenRepository).invalidate(user.getId());
+  }
+
+  @Test
   @DisplayName("소셜 로그인 계정으로 이메일/비밀번호 로그인 시도 시 비밀번호 검증 없이 예외가 발생함")
   void signIn_throwsException_whenAccountIsOAuthUser() {
     User googleUser = User.createOAuthUser("oauth@test.com", "oauthUser", null, AuthProvider.GOOGLE, "google-sub");
