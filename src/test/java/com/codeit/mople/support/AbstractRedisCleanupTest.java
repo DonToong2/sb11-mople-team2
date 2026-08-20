@@ -2,6 +2,7 @@ package com.codeit.mople.support;
 
 import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
+import com.codeit.mople.domain.notification.repository.NotificationRepository;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.config.CacheNames;
 import org.junit.jupiter.api.AfterEach;
@@ -10,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
@@ -28,6 +30,8 @@ public abstract class AbstractRedisCleanupTest {
 
   @Autowired
   protected CacheManager cacheManager;
+  @Autowired
+  private NotificationRepository notificationRepository;
 
   @AfterEach
   protected void cleanUpRedis() {
@@ -35,7 +39,14 @@ public abstract class AbstractRedisCleanupTest {
       sessionTokenRepository.invalidate(user.getId());
       refreshTokenRepository.invalidate(user.getId());
     });
-    userRepository.deleteAll();
+
+    notificationRepository.deleteAll();
+    try {
+      userRepository.deleteAll();
+    } catch (DataIntegrityViolationException e) {
+      notificationRepository.deleteAll();
+      userRepository.deleteAll();
+    }
 
     Cache usersCache= cacheManager.getCache(CacheNames.USERS);
     if(usersCache != null) {
