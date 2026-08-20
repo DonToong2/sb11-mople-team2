@@ -1,5 +1,6 @@
 package com.codeit.mople.global.storage;
 
+import io.awspring.cloud.s3.ObjectMetadata;
 import io.awspring.cloud.s3.S3Resource;
 import io.awspring.cloud.s3.S3Template;
 import java.io.IOException;
@@ -37,8 +38,14 @@ public class S3FileStorageService implements FileStorageService{
     String savedFilename = UUID.randomUUID() + "." + extension;
 
     try (InputStream inputStream = file.getInputStream()) {
-      //S3 업로드 실행
-      S3Resource resource = s3Template.upload(bucket, savedFilename, inputStream);
+      //AWS S3에 올릴 때 파일의 메타데이터(캐시 정책, MIME 타입) 설정
+      ObjectMetadata metadata = ObjectMetadata.builder()
+          .contentType(file.getContentType())
+          .cacheControl("max-age=31536000") //브라우저가 1년(31536000초) 동안 캐시하도록 설정
+          .build();
+
+      //S3 업로드 실행(metadata 파라미터 추가)
+      S3Resource resource = s3Template.upload(bucket, savedFilename, inputStream, metadata);
 
       //업로드된 파일의 최종 S3 URL 반환
       String fileUrl = resource.getURL().toString();
