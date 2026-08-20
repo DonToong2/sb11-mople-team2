@@ -27,16 +27,26 @@ public class SseConnectionRepository {
       Long.class
   );
 
-  public void save(UUID receiverId, String serverId) {
-    redisTemplate.opsForValue().set(getKey(receiverId), serverId, TTL);
+  public void save(UUID receiverId, String serverId, UUID connectionId) {
+    String value = serverId + ":" + connectionId;
+
+    redisTemplate.opsForValue().set(getKey(receiverId), value, TTL);
   }
 
   public String findServerId(UUID receiverId) {
-    return redisTemplate.opsForValue().get(getKey(receiverId));
+    String value = redisTemplate.opsForValue().get(getKey(receiverId));
+
+    if (value == null) {
+      return null;
+    }
+
+    return value.substring(0, value.indexOf(':'));
   }
 
-  public void removeIfOwner(UUID receiverId, String serverId) {
-    redisTemplate.execute(removeIfMatch, List.of(getKey(receiverId)), serverId);
+  public void removeIfOwner(UUID receiverId, String serverId, UUID connectionId) {
+    String value = serverId + ":" + connectionId;
+
+    redisTemplate.execute(removeIfMatch, List.of(getKey(receiverId)), value);
   }
 
   private String getKey(UUID receiverId) {
