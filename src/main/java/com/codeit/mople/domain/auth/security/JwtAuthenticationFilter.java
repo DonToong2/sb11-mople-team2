@@ -12,10 +12,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   public static final String AUTH_ERROR_CODE_ATTRIBUTE = "authErrorCode";
@@ -56,6 +59,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       } catch (JwtException | IllegalArgumentException e) {
         // 토큰이 만료/변조 등으로 유효하지 않으면 인증 세팅 안 함, entry point에서 INVALID_TOKEN으로 401 응답
         request.setAttribute(AUTH_ERROR_CODE_ATTRIBUTE, AuthErrorCode.INVALID_TOKEN);
+      } catch (DataAccessException e) {
+        log.error("Redis 장애로 인증 검증 실패 - userId 확인 불가", e);
+        request.setAttribute(AUTH_ERROR_CODE_ATTRIBUTE, AuthErrorCode.AUTH_SERVICE_UNAVAILABLE);
       }
     }
     filterChain.doFilter(request, response);
