@@ -29,7 +29,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @SpringBootTest(properties = {
     "spring.kafka.enabled=true",
-    "spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}"
+    "spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
+    "spring.kafka.producer.properties.max.block.ms=10000"
 })
 @ActiveProfiles("test")
 @EmbeddedKafka(partitions = 1, topics = {
