@@ -60,7 +60,7 @@ public class KafkaConfig {
         NotificationException.class
     );
 
-    return new DefaultErrorHandler(recoverer, backOff);
+    return errorHandler;
   }
 
   private void saveFailedEvent(
