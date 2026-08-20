@@ -59,7 +59,7 @@ public class AuthService {
   @Value("${password-reset.rate-limit.global.window-minutes:1440}")
   private long globalWindowMinutes;
 
-  @Transactional
+  @Transactional(readOnly = true)
   public AuthTokens signIn(SignInRequest request) {
     User user = userRepository.findByEmail(request.username().toLowerCase(Locale.ROOT))
         .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
@@ -79,7 +79,7 @@ public class AuthService {
     return issueRefreshToken(user, accessToken);
   }
 
-  @Transactional
+  @Transactional(readOnly = true)
   public RefreshToken issueOAuthRefreshToken(UUID userId) {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new IllegalStateException("OAuth 로그인 후 사용자를 찾을 수 없습니다."));
@@ -145,7 +145,6 @@ public class AuthService {
     return password.toString();
   }
 
-  @Transactional
   public void signOut(String refreshToken) {
     if(refreshToken == null) {
       return;
@@ -165,7 +164,7 @@ public class AuthService {
     sessionTokenRepository.invalidate(userId);
   }
 
-  @Transactional
+  @Transactional(readOnly = true)
   public AuthTokens refresh(String refreshToken) {
     UUID userId;
     try {
