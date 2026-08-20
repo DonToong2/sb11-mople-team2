@@ -16,8 +16,8 @@ public record FollowCreatedMessage(
 
   public static FollowCreatedMessage from(FollowCreatedEvent event) {
     return new FollowCreatedMessage(
-        UUID.randomUUID(),
-        Instant.now(),
+        event.eventId(),
+        event.occurredAt(),
         event.followId(),
         event.followeeId(),
         event.followerId(),

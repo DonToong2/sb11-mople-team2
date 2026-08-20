@@ -17,8 +17,8 @@ public record PlaylistContentAddedMessage(
 
   public static PlaylistContentAddedMessage from(PlaylistContentAddedEvent event) {
     return new PlaylistContentAddedMessage(
-        UUID.randomUUID(),
-        Instant.now(),
+        event.eventId(),
+        event.occurredAt(),
         event.playlistContentId(),
         event.playlistId(),
         event.contentId(),

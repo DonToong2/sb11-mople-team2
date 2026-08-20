@@ -8,6 +8,7 @@ import com.codeit.mople.domain.playlist.event.PlaylistContentAddedEvent;
 import com.codeit.mople.domain.playlist.event.PlaylistContentAddedEventRelay;
 import com.codeit.mople.global.config.KafkaConfig;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -96,7 +97,8 @@ class KafkaRelaySmokeTest {
         // when
         transactionTemplate.executeWithoutResult(status ->
             eventPublisher.publishEvent(
-                new FollowCreatedEvent(followId, followeeId, followerId, "아메리카노좋아")));
+                new FollowCreatedEvent(
+                    UUID.randomUUID(), Instant.now(), followId, followeeId, followerId, "아메리카노좋아")));
 
         // then
         ConsumerRecord<String, String> record =
@@ -120,7 +122,8 @@ class KafkaRelaySmokeTest {
         // when
         transactionTemplate.executeWithoutResult(status ->
             eventPublisher.publishEvent(
-                new PlaylistContentAddedEvent(playlistContentId, playlistId, contentId, "테스트 플레이리스트")));
+                new PlaylistContentAddedEvent(
+                    UUID.randomUUID(), Instant.now(), playlistContentId, playlistId, contentId, "테스트 플레이리스트")));
 
         // then
         ConsumerRecord<String, String> record =
