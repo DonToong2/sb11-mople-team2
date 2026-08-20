@@ -42,6 +42,7 @@ class FollowCreatedEventRelayTest {
   void setUp() {
     KafkaProperties properties = new KafkaProperties(
         true,
+        "localhost:9092",
         new KafkaProperties.Topics(
             TOPIC,
             "mople.playlist.content-added.v1",

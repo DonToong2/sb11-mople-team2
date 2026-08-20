@@ -39,7 +39,7 @@ public class KafkaConfigTest {
     kafkaConfig = new KafkaConfig(
         redisTemplate,
         objectMapper,
-        "test"
+        new KafkaProperties(true, "test", null)
     );
   }
 
