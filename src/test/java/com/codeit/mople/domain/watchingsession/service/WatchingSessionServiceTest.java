@@ -223,6 +223,9 @@ public class WatchingSessionServiceTest {
 
     //Redis 진입 전 터지는지 검증
     assertThrows(ContentException.class, () -> watchingSessionService.enterSession(userId, contentId));
+
+    //예외 발생 시 Redis 트랜잭션 로직이 단 한 번도 호출되지 않았음을 명시적으로 검증
+    verify(redisTemplate, org.mockito.Mockito.never()).execute(any(SessionCallback.class));
   }
 
   @Test
