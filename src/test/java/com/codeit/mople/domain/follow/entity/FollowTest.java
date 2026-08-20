@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.follow.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import com.codeit.mople.domain.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +35,24 @@ public class FollowTest {
       // then
       assertThat(follow.getFollowee()).isEqualTo(followee);
       assertThat(follow.getFollower()).isEqualTo(follower);
+    }
+
+    @Test
+    @DisplayName("followee가 null이면 NPE가 발생하는지")
+    void createThrowsExceptionWhenFolloweeIsNull() {
+      // when, then
+      assertThatNullPointerException()
+          .isThrownBy(() -> Follow.create(null, follower))
+          .withMessage("followee");
+    }
+
+    @Test
+    @DisplayName("follower가 null이면 NPE가 발생하는지")
+    void createThrowsExceptionWhenFollowerIsNull() {
+      // when, then
+      assertThatNullPointerException()
+          .isThrownBy(() -> Follow.create(followee, null))
+          .withMessage("follower");
     }
   }
 }

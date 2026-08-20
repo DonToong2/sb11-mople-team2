@@ -52,5 +52,21 @@ class FollowRepositoryTest {
     assertThat(followerIds).containsExactlyInAnyOrder(follower.getId(), other.getId());
   }
 
+  @Test
+  @DisplayName("followee가 follower 자리에 있으면 조회결과에서 제외되는지")
+  void excludeReverseFollow() {
+    // given
+    entityManager.persist(Follow.create(followee, follower));
+    entityManager.persist(Follow.create(other, followee));
+    entityManager.flush();
+    entityManager.clear();
 
+    // when
+    List<UUID> followerIds = followRepository.findFollowerIdsByFolloweeId(followee.getId());
+
+    // followee 를 팔로우한 follower 나오면 정상
+    assertThat(followerIds).containsExactly(follower.getId());
+    // followee가 나오면 비정상
+    assertThat(followerIds).doesNotContain(followee.getId());
+  }
 }
