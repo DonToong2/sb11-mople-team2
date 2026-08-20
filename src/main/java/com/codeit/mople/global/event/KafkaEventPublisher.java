@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.common.errors.SerializationException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -30,11 +31,13 @@ public class KafkaEventPublisher {
           .whenComplete((result, ex) -> {
             if (ex != null) {
               saveFailedEvent(topic, null, event, ex);
-              log.error("Kafka 이벤트 발행 최종 실패: topic={}", topic, ex);
+              log.error("Kafka 이벤트 발행 최종 실패: topic={}, event={}", topic, event, ex);
             }
           });
+    } catch (SerializationException e) {
+      log.error("Kafka 이벤트 직렬화 실패(재시도 불가): topic={}, event={}", topic, event, e);
     } catch (Exception e) {
-      log.error("Kafka 이벤트 발행 시도 실패: topic={}", topic, e);
+      log.error("Kafka 이벤트 발행 시도 실패: topic={}, event={}", topic, event, e);
     }
   }
 
@@ -44,11 +47,13 @@ public class KafkaEventPublisher {
           .whenComplete((result, ex) -> {
             if (ex != null) {
               saveFailedEvent(topic, key, event, ex);
-              log.error("Kafka 이벤트 발행 최종 실패: topic={}", topic, ex);
+              log.error("Kafka 이벤트 발행 최종 실패: topic={}, key={}, event={}", topic, key, event, ex);
             }
           });
+    } catch (SerializationException e) {
+      log.error("Kafka 이벤트 직렬화 실패(재시도 불가): topic={}, key={}, event={}", topic, key, event, e);
     } catch (Exception e) {
-      log.error("Kafka 이벤트 발행 시도 실패: topic={}", topic, e);
+      log.error("Kafka 이벤트 발행 시도 실패: topic={}, key={}, event={}", topic, key, event, e);
     }
   }
 
