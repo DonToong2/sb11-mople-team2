@@ -1,5 +1,7 @@
 package com.codeit.mople.domain.follow.integration;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -12,12 +14,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.follow.dto.FollowRequest;
 import com.codeit.mople.domain.follow.dto.FollowResponse;
+import com.codeit.mople.domain.follow.repository.FollowRepository;
+import com.codeit.mople.domain.notification.repository.NotificationRepository;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.config.SecurityConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -49,6 +55,12 @@ class FollowIntegrationTest {
   @Autowired
   UserRepository userRepository;
 
+  @Autowired
+  FollowRepository followRepository;
+
+  @Autowired
+  NotificationRepository notificationRepository;
+
   User followee;
   User follower;
   User other;
@@ -62,6 +74,15 @@ class FollowIntegrationTest {
     other = userRepository.save(User.createUser("other@mople.com", "password", "제3자"));
 
     principal = new CustomUserDetails(follower.getId(), Role.USER);
+  }
+
+  @AfterEach
+  void tearDown() {
+    // @Transactional 롤백은 @Async 알림 생성(AFTER_COMMIT)까지는 되돌리지 못해서 명시적으로 지움
+    // FK로 인하여 자식(notification, follows)를 먼저 지움
+    notificationRepository.deleteAll();
+    followRepository.deleteAll();
+    userRepository.deleteAll();
   }
 
   private FollowResponse createFollow(CustomUserDetails requester, User target) throws Exception {
