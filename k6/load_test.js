@@ -794,10 +794,14 @@ function restoreLoadTestUser(adminAccessToken, csrfToken) {
     console.log(
         `[USER RESTORE FAIL] status=${updateRes.status}, body=${updateRes.body}`
     );
+
+    throw new Error(
+        `사용자 원복 실패: userId=${loadTestUserId}, status=${updateRes.status}`
+    );
   }
 
+// 복원 성공한 경우에만 상태 초기화
   loadTestUserId = null;
-}
 
 // 목록 응답에서 실제 데이터 배열 추출
 function extractItems(response) {
