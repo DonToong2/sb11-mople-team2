@@ -87,5 +87,4 @@ app:
     allowed-origins:
       - ${FRONTEND_ORIGIN:https://mople.com}
   websocket:
-    allowed-origins:
-      - ${FRONTEND_ORIGIN:https://mople.com}
+    allowed-origins: ${CORS_ALLOWED_ORIGIN}
