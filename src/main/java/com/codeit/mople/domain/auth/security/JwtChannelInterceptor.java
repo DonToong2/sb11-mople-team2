@@ -44,9 +44,6 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
   private static final String AUTH_ERROR_MESSAGE = "유효하지 않은 토큰입니다.";
   private final WebSocketSessionRegistryService sessionRegistryService;
 
-  private static final String ERROR_KEY = "reason";
-  private static final String AUTH_ERROR_MESSAGE = "유효하지 않은 토큰입니다.";
-
   @Override
   public @Nullable Message<?> preSend(Message<?> message, MessageChannel channel) {
     StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message,
