@@ -37,11 +37,11 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
   private final UserRepository userRepository;
   private final ConversationRepository conversationRepository;
   private final SessionTokenRepository sessionTokenRepository;
-  private final WebSocketSessionRegistryService sessionRegistryService;
   private final ContentRepository contentRepository;
 
   private static final String ERROR_KEY = "reason";
   private static final String AUTH_ERROR_MESSAGE = "유효하지 않은 토큰입니다.";
+  private final WebSocketSessionRegistryService sessionRegistryService;
 
   @Override
   public @Nullable Message<?> preSend(Message<?> message, MessageChannel channel) {
