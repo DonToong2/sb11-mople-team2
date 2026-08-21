@@ -1,5 +1,6 @@
 package com.codeit.mople.support;
 
+import com.codeit.mople.domain.auth.repository.AccountLockRepository;
 import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.notification.repository.NotificationRepository;
@@ -29,6 +30,9 @@ public abstract class AbstractRedisCleanupTest {
   protected RefreshTokenRepository refreshTokenRepository;
 
   @Autowired
+  protected AccountLockRepository accountLockRepository;
+
+  @Autowired
   protected CacheManager cacheManager;
   @Autowired
   private NotificationRepository notificationRepository;
@@ -38,6 +42,7 @@ public abstract class AbstractRedisCleanupTest {
     userRepository.findAll().forEach(user -> {
       sessionTokenRepository.invalidate(user.getId());
       refreshTokenRepository.invalidate(user.getId());
+      accountLockRepository.unlock(user.getId());
     });
 
     notificationRepository.deleteAll();
