@@ -15,6 +15,14 @@ spring:
             read-timeout: 10000
             # (주의)full로 올리면 Authorization 헤더에 tmdb api가 로그에 남아 유출됨
             logger-level: basic
+    aws:
+      credentials:
+        access-key: ${AWS_S3_ACCESS_KEY_ID}
+        secret-key: ${AWS_S3_SECRET_ACCESS_KEY}
+      s3:
+        bucket: mople-team2-content-bucket
+      region:
+        static: ap-northeast-2
   security:
     oauth2:
       client:
@@ -34,9 +42,13 @@ spring:
       notification-created: mople.notification.created.v1
 
     producer:
+      acks: all
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
+        enable.idempotence: true
+        max.block.ms: 1000
+        delivery.timeout.ms: 30000
         retries: 3
         retry.backoff.ms: 1000
         retry.backoff.max.ms: 4000
@@ -93,6 +105,10 @@ batch:
     collect:
       max-pages: 5
       skip-limit: 10
+
+dm:
+  read-sync:
+    delay-ms: 10000 # 10초마다 Redis DM 워터마크 DB 반영 스케줄러 자동 실행
 
 sse:
   stream-consumer:

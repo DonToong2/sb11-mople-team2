@@ -11,7 +11,7 @@ public record ContentResponse(
     String thumbnailUrl,
     List<String> tags,
     double averageRating,
-    int reviewCount,
+    long reviewCount,
     long watcherCount
 ) {
 

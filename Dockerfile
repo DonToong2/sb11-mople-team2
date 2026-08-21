@@ -20,8 +20,7 @@ WORKDIR /app
 RUN useradd -r -u 1001 appuser
 
 # Logback 로그 디렉터리 생성 및 appuser 권한 설정
-RUN mkdir -p /app/.logs \
-    && chown -R appuser:appuser /app
+RUN mkdir -p /app/.logs \ && chown -R appuser:appuser /app
 
 USER appuser
 

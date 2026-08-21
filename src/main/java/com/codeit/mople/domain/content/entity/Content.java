@@ -53,7 +53,7 @@ public class Content extends BaseTimeEntity {
   private double ratingSum = 0.0;
 
   @Column(name = "review_count", nullable = false)
-  private int reviewCount = 0; //리뷰 개수
+  private long reviewCount = 0; //리뷰 개수
 
   @Column(name = "watcher_count", nullable = false)
   private long watcherCount = 0L; //실시간 사용자 수

@@ -10,6 +10,7 @@ import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import feign.FeignException;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,10 +44,11 @@ public class SportsContentBatchConfig {
       Step sportsContentStep,
       Step deleteOldSportsDataStep) {
 
+    //선삭제 흐름 제거, ItemWriter에서 Upsert(갱신)로 처리하여 실패 시 기존 데이터 보존
     return new JobBuilder("sportsContentJob", jobRepository)
-        .start(backupOldSportsDataStep) //기존 데이터 사전 백업
-        .next(sportsContentStep)        //신규 데이터 수집 및 저장(실패 시 여기서 중단되어 기존 데이터 보존)
-        .next(deleteOldSportsDataStep)  //삭제 완료 후 이전 만료 데이터를 정리
+        .start(backupOldSportsDataStep)   //기존 데이터 ID 백업 수행
+        .next(sportsContentStep)          //신규 데이터 수집 및 Upsert 수행
+        .next(deleteOldSportsDataStep)    //신규 수집이 성공한 경우에만 구버전 데이터 삭제 정리
         .listener(jobListener)
         .build();
   }
@@ -56,11 +58,8 @@ public class SportsContentBatchConfig {
   public Step backupOldSportsDataStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
     return new StepBuilder("backupOldSportsDataStep", jobRepository)
         .tasklet((contribution, chunkContext) -> {
-          //기존 데이터의 ID 리스트 조회
-          List<UUID> oldIds = contentRepository.findAll().stream()
-              .filter(c -> c.getType() == ContentType.SPORT)
-              .map(Content::getId)
-              .toList();
+          //externalId가 있는 외부 배치 수집 데이터만 백업 대상으로 지정
+          List<UUID> oldIds = contentRepository.findIdsByType(ContentType.SPORT);
 
           //Job Execution Context에 백업 ID 목록 저장
           chunkContext.getStepContext()
@@ -99,14 +98,12 @@ public class SportsContentBatchConfig {
         .build();
   }
 
-  // 기존 스포츠 데이터를 일괄 삭제하는 Tasklet Step 추가
+  //기존 스포츠 데이터를 일괄 삭제하는 Tasklet Step 추가
   @Bean
   @SuppressWarnings("unchecked")
   public Step deleteOldSportsDataStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
     return new StepBuilder("deleteOldSportsDataStep", jobRepository)
         .tasklet((contribution, chunkContext) -> {
-          log.info("새로운 스포츠 데이터 수집 완료 후, 이전 만료 데이터를 정리합니다.");
-
           // 안전하게 신규 데이터를 먼저 적재한 뒤 구버전 데이터를 정리하도록 순서 변경
           List<UUID> oldIds = (List<UUID>) chunkContext.getStepContext()
               .getStepExecution()
@@ -114,9 +111,26 @@ public class SportsContentBatchConfig {
               .getExecutionContext()
               .get("oldSportsIds");
 
+          Set<UUID> processedIds = (Set<UUID>) chunkContext.getStepContext()
+              .getStepExecution()
+              .getJobExecution()
+              .getExecutionContext()
+              .get("processedIds");
+
           if (oldIds != null && !oldIds.isEmpty()) {
-            contentRepository.deleteAllById(oldIds); //기존 데이터 초기화
-            log.info("신규 수집 완료 후 이전 구버전 데이터 {}건을 삭제 정리했습니다.", oldIds.size());
+            //오늘 수집된 데이터가 있다면 차집합 연산 수행 (processedIds가 비어있다면 오늘 경기가 없는 날이므로 oldIds 전체가 정리 대상이 됨)
+            if (processedIds != null && !processedIds.isEmpty()) {
+              oldIds.removeAll(processedIds);
+            }
+
+            if (!oldIds.isEmpty()) {
+              contentRepository.deleteAllById(oldIds);
+              log.info("오늘 수집된 데이터를 제외한 구버전 데이터 {}건을 차집합 방식으로 삭제 정리했습니다", oldIds.size());
+            } else {
+              log.info("삭제할 구버전 데이터가 없습니다 (모든 데이터가 정상 갱신됨)");
+            }
+          } else {
+            log.info("삭제 대상 데이터가 없습니다");
           }
 
           return RepeatStatus.FINISHED;

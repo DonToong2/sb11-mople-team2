@@ -54,10 +54,6 @@ dependencies {
     // SSE는 starter-web의 SseEmitter로 처리 — 별도 의존성 불필요
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
-    // ShedLock (분산 락)
-    implementation 'net.javacrumbs.shedlock:shedlock-spring:5.13.0'
-    implementation 'net.javacrumbs.shedlock:shedlock-provider-redis-spring:5.13.0'
-
     // Kafka
     implementation 'org.springframework.kafka:spring-kafka'
 
@@ -69,9 +65,6 @@ dependencies {
     implementation 'net.javacrumbs.shedlock:shedlock-spring:6.10.0'
     implementation 'net.javacrumbs.shedlock:shedlock-provider-redis-spring:6.10.0'
 
-    // Kafka
-    implementation 'org.springframework.kafka:spring-kafka'
-
     // External API (TMDB / SportsDB)
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 
@@ -81,6 +74,9 @@ dependencies {
     // Retry
     implementation 'org.springframework.retry:spring-retry'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
+
+    // AWS S3 스타터 의존성
+    implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3:3.4.2'
 
     // Utility
     compileOnly 'org.projectlombok:lombok'
@@ -97,7 +93,6 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    testImplementation 'org.springframework.kafka:spring-kafka-test'
 }
 
 dependencyManagement {

@@ -91,13 +91,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     resolvers.add(new WebSocketAuthenticationPrincipalResolver());
   }
 
-  // yaml 파일에 값이 없을 때 사용할 디폴트 값 설정
+  // yaml 파일에 값이 없을 때 애플리케이션이 켜지지 않도록 검증
   @Getter
   @Setter
   @Validated
   @ConfigurationProperties(prefix = "app.websocket")
   public static class WebSocketProperties {
-    @NotEmpty
+
+    @NotEmpty(message = "WebSocket allowed-origins 설정이 누락되었습니다.")
     private final List<String> allowedOrigins = new ArrayList<>(List.of());
   }
 }

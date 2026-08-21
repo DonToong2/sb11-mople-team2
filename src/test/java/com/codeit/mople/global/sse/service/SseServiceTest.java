@@ -106,7 +106,7 @@ public class SseServiceTest {
       // resendEvents() 메서드 검증(내부에 sseEventRepository.findAfter 메서드 검증)
       verify(eventRepository, never()).findAfter(any(), any());
 
-      verify(connectionRepository).save(receiverId, "server-1");
+      verify(connectionRepository).save(eq(receiverId), eq("server-1"), any(UUID.class));
     }
 
     @Test
@@ -127,7 +127,7 @@ public class SseServiceTest {
 
       verify(emitterRepository).save(receiverId, result);
       verify(eventRepository).findAfter(receiverId, lastEventId);
-      verify(connectionRepository).save(receiverId, "server-1");
+      verify(connectionRepository).save(eq(receiverId), eq("server-1"), any(UUID.class));
     }
 
   }

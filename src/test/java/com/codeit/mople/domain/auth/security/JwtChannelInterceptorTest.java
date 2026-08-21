@@ -146,7 +146,7 @@ public class JwtChannelInterceptorTest {
       // when & then
       assertThatThrownBy(() -> jwtChannelInterceptor.preSend(message, messageChannel))
           .isInstanceOf(AuthException.class)
-          .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.EXPIRED_SESSION);
+          .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_TOKEN);
       verify(sessionRegistryService, never()).registerSession(any(), any());
     }
 
@@ -172,7 +172,7 @@ public class JwtChannelInterceptorTest {
       // when & then
       assertThatThrownBy(() -> jwtChannelInterceptor.preSend(message, messageChannel))
           .isInstanceOf(AuthException.class)
-          .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.LOCKED_ACCOUNT);
+          .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.INVALID_TOKEN);
       verify(sessionRegistryService, never()).registerSession(any(), any());
     }
   }

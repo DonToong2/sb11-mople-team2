@@ -11,6 +11,6 @@ public record WatchingSessionContentDto(
     String thumbnailUrl,
     List<String> tags,
     double averageRating,
-    int reviewCount
+    long reviewCount
 ) {
 }
