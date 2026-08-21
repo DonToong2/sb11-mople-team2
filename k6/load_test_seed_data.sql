@@ -57,7 +57,7 @@ END,
     0, -- ratingSum
     0, -- reviewCount
     (random() * 1000)::bigint, -- 시청자 수: 0 ~ 1,000명
-   (1000000 + floor(random() * 9000000))::bigint -- 1,000,000 ~ 9,999,999 범위의 7자리 숫자
+    (1000000 + gs)::bigint -- 1,000,000 ~ 1,010,000 범위의 7자리 숫자
 FROM (
     SELECT
         gs,

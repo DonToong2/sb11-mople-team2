@@ -42,8 +42,8 @@ const BASE_URL = 'http://localhost:8080/api';
 
 const PASSWORD = '12345678';
 
-const ADMIN_EMAIL = 'admin@test.com';
-const ADMIN_PASSWORD = 'admin1234';
+const ADMIN_EMAIL = 'admin@mople.com';
+const ADMIN_PASSWORD = 'Admin1234!';
 
 
 // 시드 데이터의 실제 Content UUID
