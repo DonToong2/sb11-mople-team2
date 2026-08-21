@@ -3,9 +3,73 @@ spring:
     name: mople
   profiles:
     active: dev
+  batch:
+    job:
+      enabled: false
+  cloud:
+    openfeign:
+      client:
+        config:
+          tmdb:
+            connect-timeout: 3000
+            read-timeout: 10000
+            # (주의)full로 올리면 Authorization 헤더에 tmdb api가 로그에 남아 유출됨
+            logger-level: basic
+    aws:
+      credentials:
+        access-key: ${AWS_S3_ACCESS_KEY_ID}
+        secret-key: ${AWS_S3_SECRET_ACCESS_KEY}
+      s3:
+        bucket: mople-team2-content-bucket
+      region:
+        static: ap-northeast-2
+  security:
+    oauth2:
+      client:
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+  kafka:
+    enabled: true
+
+    topics:
+      follow-created: mople.follow.created.v1
+      playlist-content-added: mople.playlist.content-added.v1
+      direct-message-created: mople.direct-message.created.v1
+      notification-created: mople.notification.created.v1
+
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        enable.idempotence: true
+        max.block.ms: 1000
+        delivery.timeout.ms: 30000
+        retries: 3
+        retry.backoff.ms: 1000
+        retry.backoff.max.ms: 4000
+    consumer:
+      group-id: mople
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.codeit.mople.domain.*"
+  mail:
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
 
 server:
   port: 8080
+  shutdown: graceful
 
 springdoc:
   swagger-ui:
@@ -16,5 +80,39 @@ jwt:
   refresh-token-expiration: 604800000  # 7일 (ms)
 
 password-reset:
-  temporary-password: "temporary1!!"
   expiration-minutes: 3
+
+ws:
+  session:
+    heartbeat-interval-ms: 30000  # 세션 생존 TTL = 이 값의 3배 (WebSocketSessionRegistryService 참고)
+
+admin:
+  email: "admin@mople.com"
+  password: ${ADMIN_PASSWORD}
+  name: "관리자"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+external-api:
+  tmdb:
+    image-base-url: https://image.tmdb.org/t/p/w500
+
+batch:
+  tmdb:
+    collect:
+      max-pages: 5
+      skip-limit: 10
+
+dm:
+  read-sync:
+    delay-ms: 10000 # 10초마다 Redis DM 워터마크 DB 반영 스케줄러 자동 실행
+
+sse:
+  stream-consumer:
+    enabled: true
+
+mail:
+  from: ${MAIL_FROM:moplaylist0727@gmail.com}

@@ -1,13 +1,55 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/mople
+    url: jdbc:postgresql://localhost:5432/mople_db
     username: mople
     password: mople1234
+  data:
+    redis:
+      host: localhost
+      port: 6380
+      # 커맨드 타임아웃, 이게 없으면 응답 없는 Redis에 요청 스레드가 묶임
+      timeout: 2s
+      connect-timeout: 1s
 
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - email
+              - profile
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            authorization-grant-type: authorization_code
+            client-authentication-method: client_secret_post
+            client-name: Kakao
+            scope:
+              - profile_nickname
+              - profile_image
+
+  batch:
+    jdbc:
+      initialize-schema: always
+
+  kafka:
+    bootstrap-servers: localhost:9093
+
+  mail:
+    host: smtp-relay.brevo.com
+    port: 587
+    username: ${BREVO_SMTP_USERNAME:}
+    password: ${BREVO_SMTP_PASSWORD:}
 
 logging:
   level:
@@ -16,10 +58,51 @@ logging:
 jwt:
   secret: ${JWT_SECRET:local-dev-secret-key-change-this-1234567890}
 
+cookie:
+  secure: false
+
+password-reset:
+  enabled: true
+  rate-limit:
+    global:
+      max-requests: 200
+      window-minutes: 1440
+
+admin:
+  password: "Admin1234!"
+
 external-api:
   tmdb:
     base-url: https://api.themoviedb.org/3
-    api-key: ${TMDB_API_KEY:}
+    api-key: ${TMDB_API_KEY}
   sportsdb:
     base-url: https://www.thesportsdb.com/api/v1/json
-    api-key: ${SPORTSDB_API_KEY:}
+    api-key: ${SPORTSDB_API_KEY:3}
+
+redis:
+  # 캐시 키와 락 키, 환경이 섞이지 않게 프로파일마다 문자열로 박아둠
+  namespace: mople:dev
+
+batch:
+  tmdb:
+    collect:
+      cron: "-"
+      enabled: false
+
+oauth2:
+  redirect:
+    success-uri: http://localhost:8080/
+    failure-uri: http://localhost:8080/
+
+app:
+  cors:
+    allowed-origins:
+      - "http://localhost:5173"
+      - "http://localhost:8080"
+  websocket:
+    allowed-origins:
+      - "http://localhost:5173"
+      - "http://localhost:8080"
+
+sse:
+  server-id: "local"

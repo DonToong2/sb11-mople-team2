@@ -1,0 +1,80 @@
+package com.codeit.mople.domain.notification.service;
+
+import com.codeit.mople.domain.notification.dto.request.NotificationCursorRequest;
+import com.codeit.mople.domain.notification.dto.response.CursorResponseNotificationDto;
+import com.codeit.mople.domain.notification.dto.response.NotificationResponse;
+import com.codeit.mople.domain.notification.entity.Notification;
+import com.codeit.mople.domain.notification.exception.NotificationErrorCode;
+import com.codeit.mople.domain.notification.exception.NotificationException;
+import com.codeit.mople.domain.notification.repository.NotificationRepository;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class NotificationService {
+
+    private final NotificationRepository notificationRepository;
+
+    public CursorResponseNotificationDto getNotifications(UUID receiverId,
+        NotificationCursorRequest request) {
+        log.debug("알림 목록 조회 요청 - receiverId: {}, limit: {}, cursor: {}", receiverId,
+            request.limit(), request.cursor());
+
+        request.validateCursorPair();
+        Instant cursorTime = request.parseCursorToInstant();
+        List<Notification> notifications = notificationRepository.findNotificationByCursor(
+            receiverId, cursorTime, request.idAfter(), request.limit());
+
+        boolean hasNext = notifications.size() > request.limit();
+        List<Notification> sliced = hasNext ? notifications.subList(0, request.limit()) : notifications;
+
+        List<NotificationResponse> data = sliced.stream()
+            .map(NotificationResponse::from)
+            .toList();
+
+        String nextCursor = null;
+        UUID nextIdAfter = null;
+
+        if (hasNext && !sliced.isEmpty()) {
+            Notification lastItem = sliced.get(sliced.size() - 1);
+            nextCursor = lastItem.getCreatedAt().toString();
+            nextIdAfter = lastItem.getId();
+        }
+
+        // 알림은 삭제가 곧 읽음 처리이므로, 남아있는 개수가 곧 안 읽은 개수임 (API 응답 필드명은 totalCount로 유지)
+        long unreadCount = notificationRepository.countByReceiver_Id(receiverId);
+        log.info("알림 목록 조회 완료 - receiverId: {}", receiverId);
+
+        return new CursorResponseNotificationDto(
+            data,
+            nextCursor,
+            nextIdAfter,
+            hasNext,
+            unreadCount,
+            "createdAt",
+            "DESCENDING"
+        );
+    }
+
+    @Transactional
+    public void deleteNotification(UUID notificationId, UUID receiverId) {
+        log.debug("알림 삭제 요청 - notificationId: {}, receiverId: {}", notificationId, receiverId);
+        // 존재하지 않음(404)과 권한 없음(403)을 의도적으로 구분함 — id가 UUID라 열거(enumeration) 위험이 낮고,
+        // 디버깅 편의성과 클라이언트 UX(에러 메시지 구분)를 우선한 선택. 리소스 id가 노출/추측 가능해지면 재검토 필요.
+        Notification notification = notificationRepository.findById(notificationId)
+            .orElseThrow(() -> new NotificationException(NotificationErrorCode.NOTIFICATION_NOT_FOUND));
+        if (!notification.getReceiver().getId().equals(receiverId)) {
+            throw new NotificationException(NotificationErrorCode.NOTIFICATION_FORBIDDEN);
+        }
+        notificationRepository.delete(notification);
+        log.info("알림 삭제 완료 - notificationId: {}, receiverId: {}", notificationId, receiverId);
+    }
+}

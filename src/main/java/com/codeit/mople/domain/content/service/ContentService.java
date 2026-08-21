@@ -1,0 +1,322 @@
+package com.codeit.mople.domain.content.service;
+
+import com.codeit.mople.domain.content.dto.ContentCreateRequest;
+import com.codeit.mople.domain.content.dto.ContentResponse;
+import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
+import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
+import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.entity.ContentSortBy;
+import com.codeit.mople.domain.content.entity.ContentType;
+import com.codeit.mople.domain.content.exception.ContentErrorCode;
+import com.codeit.mople.domain.content.exception.ContentException;
+import com.codeit.mople.domain.content.repository.ContentQueryRepository;
+import com.codeit.mople.domain.content.repository.ContentRepository;
+import com.codeit.mople.global.dto.CursorResponse;
+import com.codeit.mople.global.storage.FileStorageService;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ContentService{
+
+  private final ContentRepository contentRepository;
+  private final ContentQueryRepository contentQueryRepository;
+  private final FileStorageService fileStorageService;
+
+  //허용할 이미지 MIME 타입 및 확장자 정의
+  private static final List<String> ALLOWED_MIME_TYPES = List.of(
+      "image/jpeg", "image/png", "image/webp", "image/gif"
+  );
+  private static final List<String> ALLOWED_EXTENSIONS = List.of(
+      "jpg", "jpeg", "png", "webp", "gif"
+  );
+
+  //콘텐츠 생성
+  @Transactional
+  public ContentResponse createContent(ContentCreateRequest request, MultipartFile thumbnail) {
+    log.debug("콘텐트 생성 시작 - type: {}, title: {}", request.type(), request.title());
+
+    //ContentType 변환 방어 로직
+    ContentType contentType;
+    try {
+      contentType = ContentType.from(request.type());
+    } catch (IllegalArgumentException e) {
+      log.warn("콘텐츠 생성 실패(잘못된 ContentType) - type: {}", request.type());
+      throw new ContentException(ContentErrorCode.INVALID_CONTENT_TYPE, Map.of("type", String.valueOf(request.type())));
+    }
+
+    //썸네일 이미지 업로드 처리(현재는 임시 URL 처리)
+    String uploadedThumbnailUrl = null;
+    if (thumbnail != null && !thumbnail.isEmpty()) {
+      uploadedThumbnailUrl = saveThumbnail(thumbnail);
+    }
+
+    //Request DTO 데이터를 바탕으로 매퍼를 통해 Content 엔티티 생성
+    Content content = new Content(contentType, request.title(), request.description(), uploadedThumbnailUrl, request.tags());
+
+    //DB에 엔티티 저장
+    Content savedContent = contentRepository.save(content);
+
+    log.info("콘텐츠 생성 완료 - contentId: {}, title: {}", savedContent.getId(), savedContent.getTitle());
+
+    return new ContentResponse(
+        savedContent.getId(),
+        savedContent.getType().getValue(),
+        savedContent.getTitle(),
+        savedContent.getDescription(),
+        savedContent.getThumbnailUrl(),
+        savedContent.getTags(),
+        savedContent.calculateAverageRating(),
+        savedContent.getReviewCount(),
+        savedContent.getWatcherCount()
+    );
+  }
+
+  //콘텐츠 목록 조회
+  @Transactional(readOnly = true)
+  public CursorResponseContentDto getContents(
+      UUID cursorId, String cursorValue, int limit, String typeEqual, String keywordLike, String sortBy) {
+    log.debug("콘텐츠 목록 조회 시작 - cursorId: {}, cursorValue: {}, limit: {}, typeEqual: {}, sortBy: {}", cursorId, cursorValue, limit, typeEqual, sortBy);
+
+    if (limit <= 0 || limit > 100) {
+      log.warn("콘텐츠 목록 조회 실패(잘못된 페이징 조건) - limit: {}", limit);
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("limit", limit));
+    }
+
+    //커서 파라미터가 둘 중 하나만 들어오거나, cursorValue가 빈 문자열("")인 경우 모두 예외 처리 방어
+    boolean hasCursorId = cursorId != null;
+    boolean hasCursorValue = cursorValue != null && !cursorValue.isBlank();
+
+    if (hasCursorId != hasCursorValue) {
+      log.warn("콘텐츠 목록 조회 실패(불완전한 커서 조건) - cursorId: {}, cursorValue: {}", cursorId, cursorValue);
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST,
+          Map.of("cursorId", String.valueOf(cursorId), "cursorValue", String.valueOf(cursorValue)));
+    }
+
+    ContentType parsedType = parseContentType(typeEqual);
+    ContentSortBy contentSortBy = ContentSortBy.from(sortBy);
+
+    //커서 파싱 및 유효성 검증(400 에러 처리)
+    Object parsedCursorValue = null;
+    if (hasCursorValue) {
+      try {
+        parsedCursorValue = contentSortBy.parseCursor(cursorValue);
+      } catch (NumberFormatException | java.time.format.DateTimeParseException e) {
+        log.warn("콘텐츠 목록 조회 실패(커서 파싱 오류) - cursorValue: {}, sortBy: {}", cursorValue, contentSortBy.getValue());
+        throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("cursorValue", cursorValue));
+      }
+    }
+
+    //데이터 조회 및 카운트
+    List<Content> contents = contentQueryRepository
+        .findContentByCursor(cursorId, parsedCursorValue, limit, parsedType, keywordLike, contentSortBy);
+    long totalCount = contentQueryRepository.countContentsByTypeAndKeyword(parsedType, keywordLike);
+
+    CursorResponse<Content> cursorResponse = CursorResponse.of(
+        contents,
+        limit,
+        totalCount,
+        contentSortBy.getValue(),
+        "DESCENDING",
+        contentSortBy::extractCursorValue,
+        Content::getId
+    );
+
+    List<ContentResponse> contentResponses = cursorResponse.data().stream()
+        .map(content -> new ContentResponse(
+            content.getId(),
+            content.getType().getValue(),
+            content.getTitle(),
+            content.getDescription(),
+            content.getThumbnailUrl(),
+            content.getTags(),
+            content.calculateAverageRating(),
+            content.getReviewCount(),
+            content.getWatcherCount()
+        )).toList();
+
+    log.debug("콘텐츠 목록 조회 완료 - 조회된 데이터 개수: {}", contentResponses.size());
+
+    //응답 조립 후 반환
+    return new CursorResponseContentDto(
+        contentResponses,
+        cursorResponse.nextCursor(),
+        cursorResponse.nextIdAfter(),
+        cursorResponse.hasNext(),
+        cursorResponse.totalCount(),
+        cursorResponse.sortBy(),
+        cursorResponse.sortDirection()
+    );
+  }
+
+  //ContentType 파싱 및 예외 변환 (유효하지 않은 타입 요청 시 400 예외 발생)
+  private ContentType parseContentType(String typeEqual) {
+    if (typeEqual == null || typeEqual.isBlank()) {
+      return null;
+    }
+    try {
+      return ContentType.from(typeEqual);
+    } catch (IllegalArgumentException e) {
+      log.warn("콘텐츠 목록 조회 실패(잘못된 ContentType) - typeEqual: {}", typeEqual);
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("typeEqual", typeEqual));
+    }
+  }
+
+  //콘텐츠 단건 조회
+  @Transactional(readOnly = true)
+  public ContentResponse getContent(UUID contentId) {
+    log.debug("콘텐츠 단건 조회 시작 - contentId: {}", contentId);
+
+    //ID로 DB에서 콘텐츠 조회
+    Content content = contentRepository.findById(contentId)
+        .orElseThrow(() -> {
+          log.warn("콘텐츠 단건 조회 실패(존재하지 않는 ID) - contentId: {}", contentId);
+          return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
+        });
+
+    log.debug("콘텐츠 단건 조회 완료 - contentId: {}", content.getId());
+
+    return new ContentResponse(
+        content.getId(),
+        content.getType().getValue(),
+        content.getTitle(),
+        content.getDescription(),
+        content.getThumbnailUrl(),
+        content.getTags(),
+        content.calculateAverageRating(),
+        content.getReviewCount(),
+        content.getWatcherCount()
+    );
+  }
+
+  //콘텐츠 수정
+  @Transactional
+  public ContentResponse updateContent(UUID contentId, ContentUpdateRequest request, MultipartFile thumbnail) {
+    log.debug("콘텐츠 수정 시작 - contentId: {}, updateTitle: {}", contentId, request.title());
+
+    //수정할 콘텐츠 조회(없으면 404 예외 발생)
+    Content content = contentRepository.findById(contentId)
+        .orElseThrow(() -> {
+          log.warn("콘텐츠 수정 실패(존재하지 않는 ID) - contentId: {}", contentId);
+          return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
+        });
+
+    //썸네일 수정(새로운 파일이 들어온 경우에만 업데이트)
+    String uploadedThumbnailUrl = content.getThumbnailUrl(); //새롭게 저장될 URL
+    final String oldThumbnailUrl = content.getThumbnailUrl(); //삭제 예약을 위한 기존 URL 백업
+
+    //새로운 썸네일 파일이 들어온 경우
+    if (thumbnail != null && !thumbnail.isEmpty()) {
+      //새 이미지 업로드를 먼저 수행
+      uploadedThumbnailUrl = saveThumbnail(thumbnail);
+
+      //기존 이미지가 존재했다면, 트랜잭션 커밋이 성공한 후에 삭제하도록 예약
+      if (oldThumbnailUrl != null) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            fileStorageService.delete(oldThumbnailUrl);
+          }
+        });
+      }
+    }
+
+    //엔티티 상태 변경(JPA 변경 감지 활용)
+    content.updateContentInfo(
+        request.title(),
+        request.description(),
+        uploadedThumbnailUrl,
+        request.tags()
+    );
+
+    log.info("콘텐츠 수정 완료 - contentId: {}", content.getId());
+
+    return new ContentResponse(
+        content.getId(),
+        content.getType().getValue(),
+        content.getTitle(),
+        content.getDescription(),
+        content.getThumbnailUrl(),
+        content.getTags(),
+        content.calculateAverageRating(),
+        content.getReviewCount(),
+        content.getWatcherCount()
+    );
+  }
+
+  //콘텐츠 삭제
+  @Transactional
+  public void deleteContent(UUID contentId) {
+    log.debug("콘텐츠 삭제 시작 - contentId: {}", contentId);
+
+    Content content = contentRepository.findById(contentId)
+        .orElseThrow(() -> {
+          log.warn("콘텐츠 삭제 실패(존재하지 않는 ID) - contentId: {}", contentId);
+          return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
+        });
+
+    final String oldThumbnailUrl = content.getThumbnailUrl();
+
+    //DB 엔티티 삭제
+    contentRepository.delete(content);
+
+    //삭제 트랜잭션 커밋이 성공한 후에 S3 이미지도 동반 삭제하도록 예약
+    if (oldThumbnailUrl != null) {
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+          fileStorageService.delete(oldThumbnailUrl);
+        }
+      });
+    }
+
+    log.info("콘텐츠 삭제 완료 - contentId: {}", contentId);
+  }
+
+  //썸네일 검증 및 파일 시스템 저장 메서드
+  private String saveThumbnail(MultipartFile thumbnail) {
+    //파일 검증(MIME 타입, 확장자)
+    validateAndGetExtension(thumbnail);
+
+    //S3 업로드 후 URL 반환
+    return fileStorageService.upload(thumbnail);
+  }
+
+  //썸네일 파일 MIME 타입 및 확장자 유효성 검사 검증 메서드
+  private String validateAndGetExtension(MultipartFile file) {
+    String contentType = file.getContentType();
+    if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
+      log.warn("이미지 업로드 실패 - 허용되지 않은 Content-Type: {}", contentType);
+      throw new ContentException(ContentErrorCode.INVALID_IMAGE_FILE, Map.of("contentType", contentType != null ? contentType : "null"));
+    }
+
+    String originalFilename = file.getOriginalFilename();
+    if (originalFilename == null || !originalFilename.contains(".")) {
+      log.warn("이미지 업로드 실패 - 확장자가 없는 파일명: {}", originalFilename);
+      throw new ContentException(ContentErrorCode.INVALID_IMAGE_FILE, Map.of("originalFilename", originalFilename != null ? originalFilename : "null"));
+    }
+
+    String extension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.contains(extension)) {
+      log.warn("이미지 업로드 실패 - 허용되지 않은 확장자: {}", extension);
+      throw new ContentException(ContentErrorCode.INVALID_IMAGE_FILE, Map.of("extension", extension));
+    }
+
+    return extension;
+  }
+}
