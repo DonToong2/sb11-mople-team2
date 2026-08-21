@@ -25,6 +25,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -77,16 +79,22 @@ public class UserService {
   public UserDto updateProfile(UUID targetUserId, UserUpdateRequest request, MultipartFile image) {
     User user = findUserOrThrow(targetUserId);
 
-    //유저 엔티티에서 기존 프로필 URL을 가져옵니다.
-    String imageUrl = user.getProfileImageUrl();
+    String imageUrl = user.getProfileImageUrl(); //새롭게 반영될 URL
+    final String oldImageUrl = user.getProfileImageUrl(); //삭제 예약을 위한 기존 URL 백업
 
     if(image != null && !image.isEmpty()) {
-      //기존 이미지가 있다면 S3에서 먼저 삭제
-      if (imageUrl != null) {
-        fileStorageService.delete(imageUrl);
-      }
-      //새로운 이미지 업로드
+      //새로운 이미지 업로드 먼저 수행
       imageUrl = fileStorageService.upload(image);
+
+      //트랜잭션 커밋 완료 후 기존 이미지 삭제 예약
+      if (oldImageUrl != null) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            fileStorageService.delete(oldImageUrl);
+          }
+        });
+      }
     }
 
     user.updateProfile(request.name(), imageUrl);

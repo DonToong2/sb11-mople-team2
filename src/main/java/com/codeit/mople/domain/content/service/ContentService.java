@@ -25,6 +25,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
@@ -215,16 +217,23 @@ public class ContentService{
         });
 
     //썸네일 수정(새로운 파일이 들어온 경우에만 업데이트)
-    String uploadedThumbnailUrl = content.getThumbnailUrl(); //기존 URL 유지
+    String uploadedThumbnailUrl = content.getThumbnailUrl(); //새롭게 저장될 URL
+    final String oldThumbnailUrl = content.getThumbnailUrl(); //삭제 예약을 위한 기존 URL 백업
 
     //새로운 썸네일 파일이 들어온 경우
     if (thumbnail != null && !thumbnail.isEmpty()) {
-      //S3에 기존 이미지가 존재했다면 삭제
-      if (uploadedThumbnailUrl != null) {
-        fileStorageService.delete(uploadedThumbnailUrl);
-      }
-      //새 이미지 업로드
+      //새 이미지 업로드를 먼저 수행
       uploadedThumbnailUrl = saveThumbnail(thumbnail);
+
+      //기존 이미지가 존재했다면, 트랜잭션 커밋이 성공한 후에 삭제하도록 예약
+      if (oldThumbnailUrl != null) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            fileStorageService.delete(oldThumbnailUrl);
+          }
+        });
+      }
     }
 
     //엔티티 상태 변경(JPA 변경 감지 활용)
@@ -255,20 +264,26 @@ public class ContentService{
   public void deleteContent(UUID contentId) {
     log.debug("콘텐츠 삭제 시작 - contentId: {}", contentId);
 
-    //삭제할 콘텐츠 조회
     Content content = contentRepository.findById(contentId)
         .orElseThrow(() -> {
           log.warn("콘텐츠 삭제 실패(존재하지 않는 ID) - contentId: {}", contentId);
           return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
         });
 
-    //엔티티를 지우기 전에 S3 이미지도 함께 삭제
-    if (content.getThumbnailUrl() != null) {
-      fileStorageService.delete(content.getThumbnailUrl());
-    }
+    final String oldThumbnailUrl = content.getThumbnailUrl();
 
-    //조회된 엔티티 삭제
+    //DB 엔티티 삭제
     contentRepository.delete(content);
+
+    //삭제 트랜잭션 커밋이 성공한 후에 S3 이미지도 동반 삭제하도록 예약
+    if (oldThumbnailUrl != null) {
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+          fileStorageService.delete(oldThumbnailUrl);
+        }
+      });
+    }
 
     log.info("콘텐츠 삭제 완료 - contentId: {}", contentId);
   }
