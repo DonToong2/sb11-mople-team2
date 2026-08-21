@@ -59,7 +59,7 @@ public class AuthService {
   @Value("${password-reset.rate-limit.global.window-minutes:1440}")
   private long globalWindowMinutes;
 
-  @Transactional
+  @Transactional(readOnly = true)
   public AuthTokens signIn(SignInRequest request) {
     User user = userRepository.findByEmail(request.username().toLowerCase(Locale.ROOT))
         .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
@@ -73,16 +73,18 @@ public class AuthService {
     }
 
     String jti = UUID.randomUUID().toString();
-    String accessToken = jwtProvider.createAccessToken(user.getId(), jti);
+    String accessToken = jwtProvider.createAccessToken(user.getId(), jti, user.getRole());
     sessionTokenRepository.save(user.getId(), jti, sessionTtl());
 
     return issueRefreshToken(user, accessToken);
   }
 
-  @Transactional
+  @Transactional(readOnly = true)
   public RefreshToken issueOAuthRefreshToken(UUID userId) {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new IllegalStateException("OAuth 로그인 후 사용자를 찾을 수 없습니다."));
+
+    sessionTokenRepository.invalidate(user.getId());
 
     String refreshToken = jwtProvider.createRefreshToken(user.getId());
     Instant refreshExpiresAt = Instant.now().plusMillis(jwtProvider.getRefreshTokenExpiration());
@@ -143,7 +145,6 @@ public class AuthService {
     return password.toString();
   }
 
-  @Transactional
   public void signOut(String refreshToken) {
     if(refreshToken == null) {
       return;
@@ -163,7 +164,7 @@ public class AuthService {
     sessionTokenRepository.invalidate(userId);
   }
 
-  @Transactional
+  @Transactional(readOnly = true)
   public AuthTokens refresh(String refreshToken) {
     UUID userId;
     try {
@@ -172,16 +173,20 @@ public class AuthService {
       throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
 
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_TOKEN));
+
+    if(user.isLocked()) {
+      throw new AuthException(AuthErrorCode.LOCKED_ACCOUNT);
+    }
+
     String newRefreshToken = jwtProvider.createRefreshToken(userId);
     if(!refreshTokenRepository.rotate(userId, refreshToken, newRefreshToken, sessionTtl())) {
       throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
 
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_TOKEN));
-
     String jti = UUID.randomUUID().toString();
-    String newAccessToken = jwtProvider.createAccessToken(user.getId(), jti);
+    String newAccessToken = jwtProvider.createAccessToken(user.getId(), jti, user.getRole());
     sessionTokenRepository.save(user.getId(), jti, sessionTtl());
 
     Instant refreshExpiresAt = Instant.now().plusMillis(jwtProvider.getRefreshTokenExpiration());
