@@ -48,10 +48,9 @@ const ADMIN_PASSWORD = 'Admin1234!';
 
 // 시드 데이터의 실제 Content UUID
 const SAMPLE_CONTENT_IDS = [
-    // 테스트 콘텐츠 데이터 생성 후 실제 UUID 입력
-  'CONTENT_UUID_1',
-  'CONTENT_UUID_2',
-  'CONTENT_UUID_3',
+  'd360a281-4620-46d9-a8d3-8d898318edff',
+  'b7e48912-3eb3-49cd-b674-dc9c20e45db5',
+  'd0ffcfb6-5c1a-4e94-a22c-68262ad20fba',
 ];
 
 
