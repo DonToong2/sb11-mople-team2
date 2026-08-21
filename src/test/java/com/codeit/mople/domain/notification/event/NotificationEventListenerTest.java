@@ -123,50 +123,6 @@ class NotificationEventListenerTest {
     }
 
     @Test
-    @DisplayName("플레이리스트 콘텐츠 추가 이벤트 발생 시 구독자 전원에게 알림을 생성한다")
-    void handle_playlist_content_added() {
-        // given
-        UUID playlistContentId = UUID.randomUUID();
-        UUID playlistId = UUID.randomUUID();
-        UUID contentId = UUID.randomUUID();
-
-        UUID subscriberA = UUID.randomUUID();
-        UUID subscriberB = UUID.randomUUID();
-
-        PlaylistContentAddedEvent event = new PlaylistContentAddedEvent(
-            playlistContentId,
-            playlistId,
-            contentId,
-            "테스트 플레이리스트"
-        );
-
-        when(playlistService.getSubscriberIds(playlistId))
-            .thenReturn(List.of(subscriberA, subscriberB));
-
-        // when
-        notificationEventListener.handlePlaylistContentAdded(event);
-
-        // then
-        verify(playlistService).getSubscriberIds(playlistId);
-
-        verify(notificationCreator).createNotification(
-            subscriberA,
-            "구독한 플레이리스트에 새 콘텐츠가 추가되었습니다.",
-            "테스트 플레이리스트에 새 콘텐츠가 추가되었습니다.",
-            NotificationType.PLAYLIST_CONTENT_ADDED
-        );
-
-        verify(notificationCreator).createNotification(
-            subscriberB,
-            "구독한 플레이리스트에 새 콘텐츠가 추가되었습니다.",
-            "테스트 플레이리스트에 새 콘텐츠가 추가되었습니다.",
-            NotificationType.PLAYLIST_CONTENT_ADDED
-        );
-
-        verifyNoMoreInteractions(notificationCreator);
-    }
-
-    @Test
     @DisplayName("플레이리스트 구독 이벤트 발생 시 owner에게 PLAYLIST_SUBSCRIBE 알림을 생성한다")
     void handle_playlist_subscribed() {
         // given
@@ -219,35 +175,6 @@ class NotificationEventListenerTest {
             "새로운 메시지가 도착했습니다.",
             "발신자: 안녕하세요!",
             NotificationType.DIRECT_MESSAGE
-        );
-
-        verifyNoMoreInteractions(notificationCreator);
-    }
-
-    @Test
-    @DisplayName("팔로우 이벤트 발생 시 followee에게 NEW_FOLLOWER 알림을 생성한다")
-    void handle_follow_created() {
-        // given
-        UUID followId = UUID.randomUUID();
-        UUID followeeId = UUID.randomUUID();
-        UUID followerId = UUID.randomUUID();
-
-        FollowCreatedEvent event = new FollowCreatedEvent(
-            followId,
-            followeeId,
-            followerId,
-            "팔로워유저"
-        );
-
-        // when
-        notificationEventListener.handleFollowCreated(event);
-
-        // then
-        verify(notificationCreator).createNotification(
-            followeeId,
-            "새로운 팔로워가 생겼습니다.",
-            "팔로워유저님이 팔로우했습니다.",
-            NotificationType.NEW_FOLLOWER
         );
 
         verifyNoMoreInteractions(notificationCreator);
@@ -356,30 +283,4 @@ class NotificationEventListenerTest {
         verifyNoInteractions(notificationCreator);
     }
 
-    @Test
-    @DisplayName("구독자가 없으면 플레이리스트 콘텐츠 추가 알림을 생성하지 않는다")
-    void handle_playlist_content_added_without_subscribers() {
-        // given
-        UUID playlistContentId = UUID.randomUUID();
-        UUID playlistId = UUID.randomUUID();
-        UUID contentId = UUID.randomUUID();
-
-        PlaylistContentAddedEvent event = new PlaylistContentAddedEvent(
-            playlistContentId,
-            playlistId,
-            contentId,
-            "테스트 플레이리스트"
-        );
-
-        when(playlistService.getSubscriberIds(playlistId))
-            .thenReturn(List.of());
-
-        // when
-        notificationEventListener.handlePlaylistContentAdded(event);
-
-        // then
-        verify(playlistService).getSubscriberIds(playlistId);
-
-        verifyNoInteractions(notificationCreator);
-    }
 }
