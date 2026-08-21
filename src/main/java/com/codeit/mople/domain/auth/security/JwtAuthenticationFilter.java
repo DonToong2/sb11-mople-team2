@@ -45,7 +45,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String tokenJti = jwtProvider.getJti(token);
 
         if(accountLockRepository.isLocked(userId)) {
-          // 신원은 확인됐으나 접근이 막힌 상태 -> 인증 세팅 안 함, entry point에서 LOCKED_ACCOUNT로 403 응답
+          // 신원은 확인됐으나 접근이 막힌 상태 -> 인증 세팅 안 함, entry point에서 LOCKED_ACCOUNT로 401 응답
           request.setAttribute(AUTH_ERROR_CODE_ATTRIBUTE, AuthErrorCode.LOCKED_ACCOUNT);
         } else if(!sessionTokenRepository.isValid(userId, tokenJti)) {
           // 다른 기기에서 재로그인하여 세션이 만료됨 -> 인증 세팅 안 함, entry point에서 EXPIRED_SESSION으로 401 응답
