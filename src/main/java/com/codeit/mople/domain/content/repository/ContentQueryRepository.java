@@ -84,13 +84,7 @@ public class ContentQueryRepository {
       return content.watcherCount.lt(count).or(content.watcherCount.eq(count).and(content.id.gt(cursorId)));
     } else if (sortBy == ContentSortBy.RATING) {
       double rating = (Double) parsedCursorValue;
-
-      NumberExpression<Double> averageRating =
-          new CaseBuilder()
-              .when(content.reviewCount.eq(0L))
-              .then(0.0)
-              .otherwise(content.ratingSum.divide(content.reviewCount));
-
+      NumberExpression<Double> averageRating = averageRatingExpression();
       return averageRating.lt(rating).or(averageRating.eq(rating).and(content.id.gt(cursorId)));
     } else { // CREATED_AT
       Instant time = (Instant) parsedCursorValue;
@@ -103,9 +97,19 @@ public class ContentQueryRepository {
     if (sortBy == ContentSortBy.WATCHER_COUNT) {
       return new OrderSpecifier<?>[]{content.watcherCount.desc().nullsLast(), content.id.asc()};
     } else if (sortBy == ContentSortBy.RATING) {
-      return new OrderSpecifier<?>[]{content.ratingSum.desc().nullsLast(), content.id.asc()};
+      NumberExpression<Double> averageRating = averageRatingExpression();
+      return new OrderSpecifier<?>[]{averageRating.desc().nullsLast(), content.id.asc()};
     } else { // CREATED_AT
       return new OrderSpecifier<?>[]{content.createdAt.desc().nullsLast(), content.id.asc()};
     }
+  }
+
+  private NumberExpression<Double> averageRatingExpression() {
+    return new CaseBuilder()
+        .when(content.reviewCount.eq(0L))
+        .then(0.0)
+        .otherwise(
+            content.ratingSum.divide(content.reviewCount.doubleValue())
+        );
   }
 }
