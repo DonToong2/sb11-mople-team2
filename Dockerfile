@@ -18,6 +18,7 @@ WORKDIR /app
 
 # non-root 사용자로 실행
 RUN useradd -r -u 1001 appuser
+RUN mkdir -p /app/.logs && chown -R appuser:appuser /app
 USER appuser
 
 COPY --from=build /app/build/libs/mople-0.0.1-SNAPSHOT.jar app.jar
