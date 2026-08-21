@@ -38,6 +38,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    volumes:
+      - postgres-test-data:/var/lib/postgresql/data
 
   # 부하 테스트용 Redis
   redis-test:
@@ -45,6 +47,8 @@ services:
     container_name: mople-redis-test
     ports:
       - "6381:6379"
+    volumes:
+      - redis-test-data:/data
 
   # 부하 테스트용 Kafka
   broker-test:
@@ -75,3 +79,10 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LOG_DIRS: /var/lib/kafka/data
       CLUSTER_ID: MkU30EVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka-test-data:/var/lib/kafka/data
+
+volumes:
+  postgres-test-data:
+  redis-test-data:
+  kafka-test-data:
