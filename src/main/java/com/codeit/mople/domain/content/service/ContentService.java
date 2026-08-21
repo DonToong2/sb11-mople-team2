@@ -55,7 +55,7 @@ public class ContentService{
       contentType = ContentType.from(request.type());
     } catch (IllegalArgumentException e) {
       log.warn("콘텐츠 생성 실패(잘못된 ContentType) - type: {}", request.type());
-      throw new ContentException(ContentErrorCode.INVALID_CONTENT_TYPE, Map.of("type", request.type()));
+      throw new ContentException(ContentErrorCode.INVALID_CONTENT_TYPE, Map.of("type", String.valueOf(request.type())));
     }
 
     //썸네일 이미지 업로드 처리(현재는 임시 URL 처리)
