@@ -4,17 +4,12 @@ import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.annotation.BeforeStep;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.stereotype.Component;
@@ -25,14 +20,6 @@ import org.springframework.stereotype.Component;
 public class SportsDbItemWriter implements ItemWriter<Content> {
 
   private final ContentRepository contentRepository;
-
-  //스텝 실행 시점의 정보를 담기 위한 StepExecution 필드
-  private StepExecution stepExecution;
-
-  @BeforeStep
-  public void beforeStep(StepExecution stepExecution) {
-    this.stepExecution = stepExecution;
-  }
 
   @Override
   public void write(Chunk<? extends Content> chunk) {
@@ -77,27 +64,7 @@ public class SportsDbItemWriter implements ItemWriter<Content> {
     }
 
     if (!toSave.isEmpty()) {
-      List<Content> savedContents = contentRepository.saveAll(toSave);
-
-      //방금 저장/갱신된 엔티티들의 ID 추출
-      List<UUID> currentProcessedIds = savedContents.stream()
-          .map(Content::getId)
-          .toList();
-
-      //JobExecutionContext에 오늘 처리된 ID 목록 누적 저장(차집합 비교용)
-      synchronized (this) {
-        @SuppressWarnings("unchecked")
-        Set<UUID> processedIds = (Set<UUID>) stepExecution.getJobExecution()
-            .getExecutionContext()
-            .get("processedIds");
-
-        if (processedIds == null) {
-          processedIds = new HashSet<>();
-          stepExecution.getJobExecution().getExecutionContext().put("processedIds", processedIds);
-        }
-        processedIds.addAll(currentProcessedIds);
-      }
-
+      contentRepository.saveAll(toSave);
       log.info("스포츠 경기 데이터 처리 완료 - 신규 등록: {}건, 기존 갱신: {}건", insertedCount, updatedCount);
     } else {
       log.info("저장할 새로운 경기 데이터가 없습니다");
