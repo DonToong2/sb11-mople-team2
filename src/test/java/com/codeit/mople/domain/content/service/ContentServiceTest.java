@@ -24,6 +24,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +34,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 public class ContentServiceTest {
@@ -47,6 +51,20 @@ public class ContentServiceTest {
 
   @InjectMocks
   private ContentService contentService;
+
+  //=========================================================================================
+
+  @BeforeEach
+  void setUp() {
+    //테스트 시작 전 트랜잭션 동기화 강제 활성화
+    TransactionSynchronizationManager.initSynchronization();
+  }
+
+  @AfterEach
+  void tearDown() {
+    //다음 테스트에 영향을 주지 않도록 초기화
+    TransactionSynchronizationManager.clear();
+  }
 
   //=========================================================================================
   //콘텐츠 생성 테스트
@@ -263,6 +281,9 @@ public class ContentServiceTest {
     assertThat(response).isNotNull();
     assertThat(response.title()).isEqualTo("수정된 제목");
 
+    //트랜잭션 커밋 이벤트 강제 트리거
+    TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+
     //S3 삭제 및 업로드 메서드가 호출되었는지 검증
     verify(fileStorageService).delete("/uploads/old.png");
     verify(fileStorageService).upload(thumbnail);
@@ -319,6 +340,9 @@ public class ContentServiceTest {
     given(contentRepository.findById(any(UUID.class))).willReturn(Optional.of(content));
 
     contentService.deleteContent(contentId);
+
+    //트랜잭션 커밋 이벤트 강제 트리거
+    TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
 
     //S3 삭제 및 엔티티 삭제 메서드가 호출되었는지 검증
     verify(fileStorageService).delete("/uploads/delete.png");
