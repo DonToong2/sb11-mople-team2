@@ -8,8 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.codeit.mople.domain.auth.repository.AccountLockRepository;
-import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
-import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.jwt.JwtProvider;
 import com.codeit.mople.support.AbstractRedisCleanupTest;
