@@ -4,12 +4,15 @@ import com.codeit.mople.domain.directmessage.exception.DirectMessageException;
 import com.codeit.mople.domain.notification.exception.NotificationException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions;
+import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
@@ -23,6 +26,7 @@ import org.springframework.util.StringUtils;
 public class KafkaConfig {
 
   private static final String FAILED_STREAM_KEY = "kafka:events:failed";
+  private static final Duration FAILED_STREAM_RETENTION = Duration.ofDays(7);
 
   private final StringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper;
@@ -70,6 +74,9 @@ public class KafkaConfig {
     try {
       String data = objectMapper.writeValueAsString(record.value());
 
+      RecordId retainFrom =
+          RecordId.of(System.currentTimeMillis() - FAILED_STREAM_RETENTION.toMillis(), 0);
+
       // record(Consumer)는 partition, offest 등도 같이 제공해줌
       // StringRedisTemplate을 통해 Redis Stream에 넣어줌
       redisTemplate.opsForStream().add(
@@ -82,7 +89,8 @@ public class KafkaConfig {
               "partition", String.valueOf(record.partition()),
               "offset", String.valueOf(record.offset()),
               "error", ex == null ? "Unknown" : String.valueOf(ex.getMessage())
-          )
+          ),
+          XAddOptions.none().minId(retainFrom)
       );
 
       log.error("Kafka Consumer 이벤트 최종 실패: topic={}, partition={}, offset={}, key{}",
