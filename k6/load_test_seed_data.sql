@@ -32,7 +32,7 @@ FROM generate_series(1, 10000) AS gs;
 -- 2. CONTENTS
 INSERT INTO contents (
     id, created_at, updated_at, type, title, description,
-    "thumbnailUrl", rating_sum, review_count, watcher_count, external_id
+    thumbnail_url, rating_sum, review_count, watcher_count, external_id
 )
 SELECT
     gen_random_uuid(),
