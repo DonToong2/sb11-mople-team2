@@ -15,6 +15,7 @@ import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.ExpiredJwtException;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
@@ -38,6 +39,9 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
   private final ConversationRepository conversationRepository;
   private final SessionTokenRepository sessionTokenRepository;
   private final ContentRepository contentRepository;
+
+  private static final String ERROR_KEY = "reason";
+  private static final String AUTH_ERROR_MESSAGE = "유효하지 않은 토큰입니다.";
   private final WebSocketSessionRegistryService sessionRegistryService;
 
   private static final String ERROR_KEY = "reason";

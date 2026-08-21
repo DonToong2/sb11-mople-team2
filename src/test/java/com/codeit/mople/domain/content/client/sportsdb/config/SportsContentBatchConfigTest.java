@@ -198,7 +198,7 @@ class SportsContentBatchConfigTest {
       assertThat(contentRepository.count()).isEqualTo(2);
       assertThat(contentRepository.findAll())
           .extracting(Content::getExternalId)
-          .containsExactlyInAnyOrder("EVENT-1", "EVENT-2");
+          .containsExactlyInAnyOrder("OLD-1", "EVENT-1", "EVENT-2");
     }
   }
 }

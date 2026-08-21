@@ -31,34 +31,43 @@ public class SseService {
 
   public SseEmitter connect(UUID receiverId, UUID lastEventId) {
     SseEmitter emitter = new SseEmitter(TIMEOUT);
+    log.info("SSE 연결 등록: receiverId={}, emitter={}",
+        receiverId, emitter);
+
+    UUID connectionId = UUID.randomUUID();
 
     // 입력, 반환 둘 다 없음(Runnable)
     emitter.onCompletion(() -> {
-      log.debug("SSE 연결 종료 - receiverId={}",
-          receiverId);
+      log.debug("SSE 연결 종료 - receiverId={}, emitter={}, connectionId={}",
+          receiverId, emitter, connectionId);
 
       emitterRepository.remove(receiverId, emitter);
-      connectionRepository.removeIfOwner(receiverId, serverId);
+      connectionRepository.removeIfOwner(receiverId, serverId, connectionId);
     });
     emitter.onTimeout(() -> {
-      log.debug("SSE 연결 시간 초과 - receiverId={}",
-          receiverId);
+      log.debug("SSE 연결 시간 초과 - receiverId={}, emitter={}, connectionId={}",
+          receiverId, emitter, connectionId);
 
       emitterRepository.remove(receiverId, emitter);
-      connectionRepository.removeIfOwner(receiverId, serverId);
+      connectionRepository.removeIfOwner(receiverId, serverId, connectionId);
     });
 
     // Consumer(void)
     emitter.onError(throwable -> {
-      log.warn("SSE 연결 오류 발생 - receiverId={}",
-          receiverId, throwable);
+      log.warn("SSE 연결 오류 발생 - receiverId={}, emitter={}, connectionId={}",
+          receiverId, emitter, connectionId, throwable);
 
       emitterRepository.remove(receiverId, emitter);
-      connectionRepository.removeIfOwner(receiverId, serverId);
+      connectionRepository.removeIfOwner(receiverId, serverId, connectionId);
     });
 
     emitterRepository.save(receiverId, emitter);
-    connectionRepository.save(receiverId, serverId);
+    connectionRepository.save(receiverId, serverId, connectionId);
+
+    log.debug(
+        "SSE 연결 Redis 저장: receiverId={}, serverId={}, connectionId={}",
+        receiverId, serverId, connectionId
+    );
 
     resendEvents(receiverId, lastEventId, emitter);
 
@@ -82,11 +91,15 @@ public class SseService {
 
     // 연결이 어떤 서버에도 없을 경우 스킵(Stream 저장소에 저장도 같이 스킵)
     if (connectedServerId == null) {
+      log.debug("서버 ID가 존재하지 않습니다.");
       return;
     }
 
     // 지금 서버와 다를 경우 스킵(Stream 저장소에 저장)
     if (!serverId.equals(connectedServerId)) {
+      log.debug("현재 서버와 다른 서버입니다: serverId={}, connectedServerId={}",
+          serverId, connectedServerId);
+
       streamRepository.save(sseEvent, connectedServerId);
       return;
     }
@@ -94,8 +107,18 @@ public class SseService {
     SseEmitter emitter = emitterRepository.find(receiverId);
 
     if (emitter == null) {
+      log.debug("emitter가 존재하지 않습니다: receiverId={}",
+          receiverId);
+
       return;
     }
+
+    log.info(
+        "SSE 전송 시도: receiverId={}, emitter={}, serverId={}",
+        receiverId,
+        System.identityHashCode(emitter),
+        connectedServerId
+    );
 
     try {
       emitter.send(
@@ -104,6 +127,13 @@ public class SseService {
               .name(eventName)
               .data(data)
       );
+
+      log.info(
+          "SSE 전송 성공: receiverId={}, emitter={}",
+          receiverId,
+          System.identityHashCode(emitter)
+      );
+
     } catch (IOException e) {
       log.warn("SSE 전송 실패 receiverId={}",
           receiverId, e);
@@ -126,12 +156,25 @@ public class SseService {
     }
 
     try {
+      log.info(
+          "SSE 전송 시도분산: receiverId={}, emitter={}",
+          receiverId,
+          System.identityHashCode(emitter)
+      );
       emitter.send(
           SseEmitter.event()
               .id(eventId.toString())
               .name(eventName)
               .data(data)
       );
+
+
+      log.info(
+          "SSE 전송 성공분산: receiverId={}, emitter={}",
+          receiverId,
+          System.identityHashCode(emitter)
+      );
+
     } catch (IOException e) {
       log.warn("Redis Stream SSE 전송 실패 - receiverId={}",
           receiverId, e);
