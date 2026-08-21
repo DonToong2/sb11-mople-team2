@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.content.client.sportsdb.batch;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -18,7 +19,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class SportsDbItemReaderTest {
@@ -56,10 +56,35 @@ class SportsDbItemReaderTest {
   }
 
   @Test
-  @DisplayName("API 응답이 null이거나 events 목록이 비어있으면 곧바로 null을 반환한다")
-  void read_Success_EmptyResponse() {
-    //비어있는 응답 설정
-    SportsDbEventResponse emptyResponse = new SportsDbEventResponse(null);
+  @DisplayName("API 응답(response) 자체가 null이면 IllegalStateException 예외가 발생한다")
+  void read_Fail_WhenResponseIsNull() {
+    // API 응답 객체 자체가 null인 경우 모킹
+    given(feignClient.getEventsByDate(anyString(), eq("Soccer"))).willReturn(null);
+
+    // 비정상 응답 수신 시 예외 발생 검증
+    assertThatThrownBy(() -> reader.read())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("외부 API 응답이 누락되었거나 유효하지 않습니다.");
+  }
+
+  @Test
+  @DisplayName("events 목록이 null이면 IllegalStateException 예외가 발생한다")
+  void read_Fail_WhenEventsIsNull() {
+    // events가 null인 비정상 응답 설정
+    SportsDbEventResponse invalidResponse = new SportsDbEventResponse(null);
+    given(feignClient.getEventsByDate(anyString(), eq("Soccer"))).willReturn(invalidResponse);
+
+    // 비정상 응답 수신 시 예외 발생 검증
+    assertThatThrownBy(() -> reader.read())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("외부 API 응답이 누락되었거나 유효하지 않습니다.");
+  }
+
+  @Test
+  @DisplayName("events 목록이 빈 리스트인 경우 정상적으로 null을 반환한다 (빈 경기일)")
+  void read_Success_WhenEventsIsEmpty() {
+    // events가 빈 리스트인 정상 응답 설정 (경기가 없는 날)
+    SportsDbEventResponse emptyResponse = new SportsDbEventResponse(List.of());
     given(feignClient.getEventsByDate(anyString(), eq("Soccer"))).willReturn(emptyResponse);
 
     SportsDbEventDto result = reader.read();

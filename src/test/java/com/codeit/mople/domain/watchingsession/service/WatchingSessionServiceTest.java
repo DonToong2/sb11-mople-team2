@@ -25,6 +25,7 @@ import com.codeit.mople.domain.watchingsession.dto.ContentChatSendRequest;
 import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionEvent;
 import java.security.Principal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -40,8 +41,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SessionCallback;
-import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
@@ -70,13 +71,13 @@ public class WatchingSessionServiceTest {
   private ValueOperations<String, Object> valueOperations;
 
   @Mock
-  private SetOperations<String, Object> setOperations;
+  private ZSetOperations<String, Object> zSetOperations;
 
   @BeforeEach
   void setUp() {
-    //RedisTemplate 의 opsForValue, opsForSet 호출 시 Mock 객체 반환하도록 설정
+    //RedisTemplate 의 opsForValue, opsForZSet 호출 시 Mock 객체 반환하도록 설정
     lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-    lenient().when(redisTemplate.opsForSet()).thenReturn(setOperations);
+    lenient().when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
   }
 
   @Test
@@ -105,11 +106,18 @@ public class WatchingSessionServiceTest {
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
     given(mockContent.getId()).willReturn(contentId);
 
-    //Redis에 1명의 유저가 접속 중이라고 가정
-    given(setOperations.members(contentKey)).willReturn(Set.of(userId.toString()));
+    //ZSet에 1명의 유저가 접속 중이라고 가정(점수 포함 튜플 모킹)
+    ZSetOperations.TypedTuple<Object> mockTuple = mock(ZSetOperations.TypedTuple.class);
+    given(mockTuple.getValue()).willReturn(userId.toString());
+    given(mockTuple.getScore()).willReturn((double) Instant.now().toEpochMilli());
+    given(zSetOperations.reverseRangeWithScores(contentKey, 0, -1)).willReturn(Set.of(mockTuple));
 
     //DB에서 해당 유저 정보 조회 모킹
     given(userRepository.findAllById(anyList())).willReturn(List.of(mockUser));
+
+    //Redis multiGet으로 활성 세션 ID 일괄 조회 모킹
+    given(valueOperations.multiGet(anyList())).willReturn(List.of(UUID.randomUUID().toString()));
+
     given(mockUser.getId()).willReturn(userId);
     given(mockContent.getType()).willReturn(ContentType.MOVIE);
     given(mockUser.getName()).willReturn("테스터");
@@ -138,9 +146,19 @@ public class WatchingSessionServiceTest {
     User user2 = mock(User.class);
 
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
-    given(setOperations.members(contentKey)).willReturn(Set.of(user1Id.toString(), user2Id.toString()));
+
+    ZSetOperations.TypedTuple<Object> tuple1 = mock(ZSetOperations.TypedTuple.class);
+    given(tuple1.getValue()).willReturn(user1Id.toString());
+    given(tuple1.getScore()).willReturn((double) Instant.now().toEpochMilli());
+
+    ZSetOperations.TypedTuple<Object> tuple2 = mock(ZSetOperations.TypedTuple.class);
+    given(tuple2.getValue()).willReturn(user2Id.toString());
+    given(tuple2.getScore()).willReturn((double) Instant.now().toEpochMilli());
+
+    given(zSetOperations.reverseRangeWithScores(contentKey, 0, -1)).willReturn(Set.of(tuple1, tuple2));
 
     given(userRepository.findAllById(any())).willReturn(List.of(user1, user2));
+    given(valueOperations.multiGet(anyList())).willReturn(List.of(UUID.randomUUID().toString()));
 
     given(user1.getId()).willReturn(user1Id);
     given(user2.getId()).willReturn(user2Id);
@@ -156,6 +174,91 @@ public class WatchingSessionServiceTest {
     assertNotNull(result);
     assertEquals(1, result.totalCount()); //"홍길동" 1명만 필터링되어야 함
     assertEquals("홍길동", result.data().get(0).watcher().name());
+  }
+
+  @Test
+  @DisplayName("시청 세션 목록 조회 성공 - 동일 세션을 두 번 조회해도 랜덤값이 아닌 실제 Redis에 저장된 동일한 sessionUuid를 반환")
+  void getWatchingSessions_Success_StableSessionId() {
+    UUID contentId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    String contentKey = "content:watchers:" + contentId;
+
+    Content mockContent = mock(Content.class);
+    given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
+    given(mockContent.getId()).willReturn(contentId);
+    given(mockContent.getType()).willReturn(ContentType.MOVIE); //NPE 방지
+
+    ZSetOperations.TypedTuple<Object> mockTuple = mock(ZSetOperations.TypedTuple.class);
+    given(mockTuple.getValue()).willReturn(userId.toString());
+    given(mockTuple.getScore()).willReturn((double) Instant.now().toEpochMilli());
+    given(zSetOperations.reverseRangeWithScores(contentKey, 0, -1)).willReturn(Set.of(mockTuple));
+
+    //실제 Redis에 저장되어 있는 세션 ID를 모킹
+    String expectedSessionUuid = UUID.randomUUID().toString();
+    given(valueOperations.multiGet(anyList())).willReturn(List.of(expectedSessionUuid));
+
+    CursorResponseWatchingSessionDto result1 = watchingSessionService.getWatchingSessions(
+        contentId, null, null, null, 10, "DESCENDING", "createdAt");
+
+    CursorResponseWatchingSessionDto result2 = watchingSessionService.getWatchingSessions(
+        contentId, null, null, null, 10, "DESCENDING", "createdAt");
+
+    //두 번의 조회 모두 동일한 ID가 반환되는지 검증
+    assertEquals(expectedSessionUuid, result1.data().get(0).id().toString());
+    assertEquals(expectedSessionUuid, result2.data().get(0).id().toString());
+  }
+
+  @Test
+  @DisplayName("시청 세션 목록 조회 성공 - 커서 유저 퇴장 시 joinedAt과 userId 복합 비교를 통해 중복 없이 다음 항목을 찾는다")
+  void getWatchingSessions_Success_CompositeCursorFallback() {
+    UUID contentId = UUID.randomUUID();
+    String contentKey = "content:watchers:" + contentId;
+    Content mockContent = mock(Content.class);
+    given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
+    given(mockContent.getType()).willReturn(ContentType.MOVIE); //NPE 방지
+
+    long sameTime = Instant.now().toEpochMilli();
+    UUID user1Id = new UUID(0, 1);
+    UUID user2Id = new UUID(0, 2);
+    UUID user3Id = new UUID(0, 3);
+
+    User user1 = mock(User.class);
+    User user2 = mock(User.class);
+    given(user1.getId()).willReturn(user1Id);
+    given(user2.getId()).willReturn(user2Id);
+    given(userRepository.findAllById(any())).willReturn(List.of(user1, user2));
+
+    ZSetOperations.TypedTuple<Object> t1 = mock(ZSetOperations.TypedTuple.class);
+    given(t1.getValue()).willReturn(user1Id.toString());
+    given(t1.getScore()).willReturn((double) sameTime);
+
+    ZSetOperations.TypedTuple<Object> t2 = mock(ZSetOperations.TypedTuple.class);
+    given(t2.getValue()).willReturn(user2Id.toString());
+    given(t2.getScore()).willReturn((double) sameTime);
+
+    //커서였던 user3이 퇴장하여 현재 ZSet에는 user2와 user1만 남아있는 상황 모킹(역순 반환)
+    Set<ZSetOperations.TypedTuple<Object>> returnedSet = new java.util.LinkedHashSet<>();
+    returnedSet.add(t2);
+    returnedSet.add(t1);
+    given(zSetOperations.reverseRangeWithScores(contentKey, 0, -1)).willReturn(returnedSet);
+
+    //이전 페이지 마지막 항목이었던 user3 정보를 커서로 전달
+    String cursorStr = String.valueOf(sameTime);
+    UUID idAfter = user3Id;
+
+    given(valueOperations.multiGet(anyList())).willReturn(List.of(
+        UUID.randomUUID().toString(),
+        UUID.randomUUID().toString()
+    ));
+
+    CursorResponseWatchingSessionDto result = watchingSessionService.getWatchingSessions(
+        contentId, null, cursorStr, idAfter, 10, "DESCENDING", "createdAt"
+    );
+
+    //퇴장한 user3 다음 순서인 user2부터 정상적으로 2개의 항목이 조회되어야 함
+    assertEquals(2, result.data().size());
+    assertEquals(user2Id.toString(), result.data().get(0).watcher().userId().toString());
+    assertEquals(user1Id.toString(), result.data().get(1).watcher().userId().toString());
   }
 
   @Test
@@ -208,7 +311,7 @@ public class WatchingSessionServiceTest {
       return action.execute(redisTemplate);
     });
 
-    given(setOperations.size(contentKey)).willReturn(1L);
+    given(zSetOperations.zCard(contentKey)).willReturn(1L);
 
     Long result = watchingSessionService.enterSession(userId, contentId);
 
@@ -263,7 +366,7 @@ public class WatchingSessionServiceTest {
       return action.execute(redisTemplate);
     });
 
-    given(setOperations.size(contentKey)).willReturn(0L); //퇴장 후 총 0명
+    given(zSetOperations.zCard(contentKey)).willReturn(0L); //퇴장 후 총 0명
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
 
     Long result = watchingSessionService.leaveSession(userId, contentId);
@@ -326,7 +429,7 @@ public class WatchingSessionServiceTest {
       SessionCallback<?> action = invocation.getArgument(0);
       return action.execute(redisTemplate);
     });
-    given(setOperations.size(contentKey)).willReturn(5L); //방에 다른 유저 5명 남음
+    given(zSetOperations.zCard(contentKey)).willReturn(5L); //방에 다른 유저 5명 남음
 
     Long result = watchingSessionService.leaveSession(userId, contentId);
 
@@ -359,8 +462,8 @@ public class WatchingSessionServiceTest {
       return action.execute(redisTemplate);
     });
 
-    lenient().when(setOperations.size(oldContentKey)).thenReturn(0L);
-    given(setOperations.size(newContentKey)).willReturn(1L);
+    lenient().when(zSetOperations.zCard(oldContentKey)).thenReturn(0L);
+    given(zSetOperations.zCard(newContentKey)).willReturn(1L);
 
     given(contentRepository.findById(oldContentId)).willReturn(Optional.of(mockOldContent));
     given(contentRepository.findById(newContentId)).willReturn(Optional.of(mockNewContent));
@@ -428,7 +531,7 @@ public class WatchingSessionServiceTest {
       return action.execute(redisTemplate);
     });
 
-    given(setOperations.size(contentKey)).willReturn(2L);
+    given(zSetOperations.zCard(contentKey)).willReturn(2L);
 
     watchingSessionService.enterSession(userId, contentId);
 

@@ -97,13 +97,16 @@ class SportsContentBatchConfigTest {
       assertThat(execution.getExitStatus()).isEqualTo(ExitStatus.COMPLETED);
       assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
-      //기존 1건 보존 + 신규 2건 적재로 총 3건 유지
-      assertThat(contentRepository.count()).isEqualTo(3);
+      //기존 구버전 데이터(OLD-1)는 차집합 삭제되고 신규 2건만 유지
+      assertThat(contentRepository.count()).isEqualTo(2);
+      assertThat(contentRepository.findAll())
+          .extracting(Content::getExternalId)
+          .containsExactlyInAnyOrder("EVENT-1", "EVENT-2");
 
-      //스텝 실행 순서와 처리량 검증
+      //스텝 실행 순서와 처리량 검증 (3개 스텝이 순서대로 실행됨)
       assertThat(execution.getStepExecutions())
           .extracting(StepExecution::getStepName)
-          .containsExactly("sportsContentStep");
+          .containsExactly("backupOldSportsDataStep", "sportsContentStep", "deleteOldSportsDataStep");
     }
 
     @Test
@@ -191,11 +194,11 @@ class SportsContentBatchConfigTest {
       JobExecution restartedExecution = jobLauncherTestUtils.launchJob(parameters);
       assertThat(restartedExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
-      //재시작 후 기존 데이터 유지 및 새 데이터 추가 검증
-      assertThat(contentRepository.count()).isEqualTo(3);
+      //재시작 후 구버전 데이터 삭제 및 신규 수집 데이터 2건 적재 검증
+      assertThat(contentRepository.count()).isEqualTo(2);
       assertThat(contentRepository.findAll())
           .extracting(Content::getExternalId)
-          .containsExactlyInAnyOrder("OLD-1", "EVENT-1", "EVENT-2");
+          .containsExactlyInAnyOrder("EVENT-1", "EVENT-2");
     }
   }
 }

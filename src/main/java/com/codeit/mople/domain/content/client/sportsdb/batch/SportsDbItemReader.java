@@ -36,13 +36,14 @@ public class SportsDbItemReader implements ItemReader<SportsDbEventDto> {
 
       SportsDbEventResponse response = feignClient.getEventsByDate(targetDate, "Soccer");
 
-      if (response != null && response.events() != null) {
-        eventIterator = response.events().iterator();
-        log.info("조회된 경기 수: {}건", response.events().size());
-      } else {
-        eventIterator = List.<SportsDbEventDto>of().iterator();
-        log.info("조회된 경기가 없습니다.");
+      //외부 API 응답 누락 또는 비정상 데이터인 경우 예외 발생시켜 Step 실패 처리
+      if (response == null || response.events() == null) {
+        log.error("SportsDB API 응답 누락 또는 비정상 데이터 수집 - response: {}", response);
+        throw new IllegalStateException("외부 API 응답이 누락되었거나 유효하지 않습니다.");
       }
+
+      eventIterator = response.events().iterator();
+      log.info("조회된 경기 수: {}건", response.events().size());
     }
     //Iterator를 통해 Processor로 데이터를 한 건씩 전달(더 없으면 null 반환)
     return eventIterator.hasNext() ? eventIterator.next() : null;

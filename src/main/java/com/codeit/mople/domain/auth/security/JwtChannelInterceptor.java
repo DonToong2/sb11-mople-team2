@@ -13,6 +13,7 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.security.SignatureException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.ExpiredJwtException;
+import java.util.Map;
 import java.util.UUID;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -148,7 +149,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     if (destination.startsWith("/sub/conversations/")) {
       validateConversationSubscription(accessor, destination);
     } else if (destination.startsWith("/sub/contents/")) { //콘텐츠 시청 세션 및 실시간 채팅 구독 경로 허용
-      validateContentSubscription(destination);
+      validateContentSubscription(accessor, destination);
     } else {
       log.warn("WebSocket 구독 거부: 화이트리스트에 등록되지 않은 경로 구독 시도 - destination: {}", destination);
       throw new AuthException(AuthErrorCode.INVALID_TOKEN);
@@ -195,9 +196,16 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     }
   }
 
-  //콘텐츠 구독 권한 검증 로직(형식 및 DB 존재 여부 확인)
-  private void validateContentSubscription(String destination) {
+  //콘텐츠 구독 권한 검증 로직(인증 여부, 형식 및 DB 존재 여부 확인)
+  private void validateContentSubscription(StompHeaderAccessor accessor, String destination) {
     try {
+      //인증되지 않은 유저의 콘텐츠 구독 차단
+      if (!(accessor.getUser() instanceof UsernamePasswordAuthenticationToken authentication)
+          || !authentication.isAuthenticated()) {
+        log.warn("WebSocket 구독 거부: 인증되지 않은 유저의 콘텐츠 채널 구독 시도 - destination: {}", destination);
+        throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+      }
+
       String[] parts = destination.split("/");
       UUID contentId = UUID.fromString(parts[3]); //UUID 파싱을 통해 올바른 형식인지 1차 검증
 
@@ -211,6 +219,8 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
       log.warn("WebSocket 구독 실패: 잘못된 콘텐츠 구독 경로 형식 - destination: {}", destination);
       throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));
+    } catch (AuthException e) {
+      throw e;
     } catch (Exception e) {
       log.error("WebSocket 콘텐츠 구독 검증 중 예외 발생 - destination: " + destination, e);
       throw new AuthException(AuthErrorCode.INVALID_TOKEN, Map.of(ERROR_KEY, AUTH_ERROR_MESSAGE));

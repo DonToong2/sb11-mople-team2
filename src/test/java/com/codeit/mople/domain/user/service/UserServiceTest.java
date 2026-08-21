@@ -24,6 +24,7 @@ import com.codeit.mople.global.storage.FileStorageService;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 public class UserServiceTest {
@@ -60,6 +64,12 @@ public class UserServiceTest {
   @BeforeEach
   void setUp() {
     user = User.createUser("test@test.com", "encodedPassword", "testUser");
+    TransactionSynchronizationManager.initSynchronization();
+  }
+
+  @AfterEach
+  void tearDown() {
+    TransactionSynchronizationManager.clear();
   }
 
   @Test
@@ -274,9 +284,12 @@ public class UserServiceTest {
   }
 
   @Test
-  @DisplayName("이름과 이미지 둘 다 변경")
+  @DisplayName("이름과 이미지 둘 다 변경(기존 이미지가 있을 경우 삭제 호출 검증)")
   void updateProfile_success_both() {
     UUID userId = UUID.randomUUID();
+
+    ReflectionTestUtils.setField(user, "profileImageUrl", "https://placeholder.mople.com/old.jpg");
+
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(fileStorageService.upload(any())).thenReturn("https://placeholder.mople.com/test.jpg");
 
@@ -287,6 +300,12 @@ public class UserServiceTest {
 
     assertThat(response.name()).isEqualTo("newName");
     assertThat(response.profileImageUrl()).isEqualTo("https://placeholder.mople.com/test.jpg");
+
+    //트랜잭션 커밋 이벤트 강제 트리거
+    TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+
+    //S3에서 기존 이미지를 삭제하는 로직이 정상 호출되었는지 검증
+    verify(fileStorageService).delete("https://placeholder.mople.com/old.jpg");
   }
 
   @Test
