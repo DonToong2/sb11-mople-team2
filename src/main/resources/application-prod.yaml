@@ -92,7 +92,7 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGIN}
 
 cookie:
-  secure: ${COOKIE_SECURE:false}
+  secure: ${COOKIE_SECURE:true}
 
 oauth2:
   redirect:
