@@ -1,7 +1,7 @@
 package com.codeit.mople.domain.directmessage.dto.request;
 
+import com.codeit.mople.domain.directmessage.exception.DirectMessageErrorCode;
 import com.codeit.mople.domain.directmessage.exception.DirectMessageException;
-import com.codeit.mople.global.error.CommonErrorCode;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
@@ -40,7 +40,7 @@ public record DirectMessageCursorRequest(
 
     if (hasCursor != hasIdAfter) {
       throw new DirectMessageException(
-          CommonErrorCode.INVALID_INPUT, Map.of("message", "커서 페이싱 시 cursor와 idAfter는 함께 제공해야 합니다."));
+          DirectMessageErrorCode.INVALID_INPUT, Map.of("message", "커서 페이싱 시 cursor와 idAfter는 함께 제공해야 합니다."));
     }
   }
 
@@ -51,7 +51,7 @@ public record DirectMessageCursorRequest(
     try {
       return Instant.parse(cursor);
     } catch (Exception e) {
-      throw new DirectMessageException(CommonErrorCode.INVALID_INPUT,
+      throw new DirectMessageException(DirectMessageErrorCode.INVALID_INPUT,
           Map.of("invalidCursor", cursor));
     }
   }

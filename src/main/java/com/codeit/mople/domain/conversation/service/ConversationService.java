@@ -99,7 +99,7 @@ public class ConversationService {
     log.debug("내 대화방 목록 조회 요청 - requesterId: {}, limit: {}, cursor: {}", requesterId, request.limit(), request.cursor());
 
     userRepository.findById(requesterId)
-        .orElseThrow(() -> new ConversationException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", requesterId)));
+        .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", requesterId)));
 
     long totalCount = conversationRepository.countByParticipantIdAndKeyword(requesterId, request.keywordLike());
     Instant cursorTime = request.parseCursorToInstant();
