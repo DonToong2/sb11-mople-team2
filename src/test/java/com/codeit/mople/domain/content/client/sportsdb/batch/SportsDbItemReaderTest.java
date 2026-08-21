@@ -56,8 +56,20 @@ class SportsDbItemReaderTest {
   }
 
   @Test
-  @DisplayName("API 응답이 null이거나 events 목록이 null이면 IllegalStateException 예외가 발생한다")
-  void read_Fail_WhenResponseOrEventsIsNull() {
+  @DisplayName("API 응답(response) 자체가 null이면 IllegalStateException 예외가 발생한다")
+  void read_Fail_WhenResponseIsNull() {
+    // API 응답 객체 자체가 null인 경우 모킹
+    given(feignClient.getEventsByDate(anyString(), eq("Soccer"))).willReturn(null);
+
+    // 비정상 응답 수신 시 예외 발생 검증
+    assertThatThrownBy(() -> reader.read())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("외부 API 응답이 누락되었거나 유효하지 않습니다.");
+  }
+
+  @Test
+  @DisplayName("events 목록이 null이면 IllegalStateException 예외가 발생한다")
+  void read_Fail_WhenEventsIsNull() {
     // events가 null인 비정상 응답 설정
     SportsDbEventResponse invalidResponse = new SportsDbEventResponse(null);
     given(feignClient.getEventsByDate(anyString(), eq("Soccer"))).willReturn(invalidResponse);
