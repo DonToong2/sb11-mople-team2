@@ -69,7 +69,7 @@ external-api:
     base-url: https://api.themoviedb.org/3
     api-key: ${TMDB_API_KEY}
   sportsdb:
-    base-url: https://www.thesportsdb.com/api/v1/json/
+    base-url: https://www.thesportsdb.com/api/v1/json
     api-key: ${SPORTSDB_API_KEY}
 
 redis:
@@ -90,3 +90,11 @@ app:
       - ${FRONTEND_ORIGIN:https://mople.com}
   websocket:
     allowed-origins: ${CORS_ALLOWED_ORIGIN}
+
+cookie:
+  secure: ${COOKIE_SECURE:true}
+
+oauth2:
+  redirect:
+    success-uri: ${FRONTEND_ORIGIN}/
+    failure-uri: ${FRONTEND_ORIGIN}/
