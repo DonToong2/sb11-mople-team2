@@ -33,51 +33,30 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        {duration: '1m', target: 50}, // 1분간 0VU → 50VU로 서서히 증가
-        {duration: '1m', target: 100}, // 2분간 50VU → 100VU로 서서히 증가
-        {duration: '2m', target: 200}, // 3분간 100VU → 200VU로 서서히 증가
-        {duration: '3m', target: 500}, // 3분간 200VU → 500VU로 서서히 증가
-        {duration: '3m', target: 200}, // 3분간 500VU → 200VU로 서서히 감소
-        {duration: '2m', target: 100}, // 2분간 200VU → 100VU로 서서히 감소
-        {duration: '1m', target: 50}, // 1분간 100VU → 50VU으로 서서히 증가
-        {duration: '1m', target: 0}, // 1분간 50VU → 0VU으로 서서히 감소
+        {duration: '1m', target: 50},
+        {duration: '1m', target: 100},
+        {duration: '2m', target: 200},
+        {duration: '3m', target: 500},
+        {duration: '3m', target: 200},
+        {duration: '2m', target: 100},
+        {duration: '1m', target: 50},
+        {duration: '1m', target: 0},
       ],
       exec: 'readLoad',
     },
 
-    // 5분 시점
-    write_1: {
+    // 쓰기 부하
+    write_load: {
       executor: 'shared-iterations',
       vus: 1,
       iterations: 1,
-      startTime: '5m',
-      maxDuration: '30s',
-      exec: 'write1',
-    },
-
-    // 8분 시점
-    write_2: {
-      executor: 'shared-iterations',
-      vus: 1,
-      iterations: 1,
-      startTime: '8m',
-      maxDuration: '30s',
-      exec: 'write2',
-    },
-
-    // 10분 시점
-    write_3: {
-      executor: 'shared-iterations',
-      vus: 1,
-      iterations: 1,
-      startTime: '10m',
-      maxDuration: '30s',
-      exec: 'write3',
+      maxDuration: '15m',
+      exec: 'writeLoad',
     },
   },
 
   thresholds: {
-    http_req_duration: ['p(95)<200', 'p(99)<500'], // P95는 200ms 미만, P99는 500ms 미만
+    http_req_duration: ['p(95)<200', 'p(99)<500'],
     error_rate: ['rate<0.01'],
   },
 };
@@ -92,9 +71,9 @@ const ADMIN_PASSWORD = 'Admin1234!';
 
 // 시드 데이터의 실제 Content UUID
 const SAMPLE_CONTENT_IDS = [
-  'b98308d3-fe81-4676-947d-6b4f704d3118',
-  'eee6c3b9-54b3-4ad7-bc8b-72aa38b8e944',
-  'cdef410b-956b-44db-9a4e-5f92ffc22dba',
+  'b3ac7de9-e94f-4faf-b14f-8e0f2b296c4c',
+  'eb4262d4-a42c-4d10-a1ff-f3ba87ece3b3',
+  'cb0222bf-80a7-4081-80f8-87e45f7c6cce',
 ];
 
 // 검색 키워드
@@ -125,7 +104,7 @@ const USER_KEYWORDS = [
 
 // 부하 테스트에서 수정할 기존 사용자
 const LOAD_TEST_USER_EMAIL = 'test1@test.com';
-const LOAD_TEST_USER_ORIGINAL_NAME = '사용자 1';
+const LOAD_TEST_USER_ORIGINAL_NAME = 'test1';
 const LOAD_TEST_USER_MODIFIED_NAME = '부하테스트 사용자 수정';
 
 // 부하 테스트에서 생성한 Content ID
@@ -152,8 +131,9 @@ function randomUser() {
   };
 }
 
-// ADMIN 인증
+// ADMIN 인증 + CSRF 토큰 발급
 export function setup() {
+
   const adminLoginRes = http.post(
       `${BASE_URL}/auth/sign-in`,
       {
@@ -174,8 +154,33 @@ export function setup() {
 
   const adminAccessToken = adminLoginRes.json('accessToken');
 
+  /*
+   * CookieCsrfTokenRepository가 XSRF-TOKEN 쿠키를 발급하도록
+   * 인증된 GET 요청을 한 번 호출한다.
+   */
+  const csrfRes = http.get(
+      `${BASE_URL}/contents?limit=1&sortDirection=DESCENDING&sortBy=createdAt`,
+      {
+        headers: {
+          Authorization: `Bearer ${adminAccessToken}`,
+        },
+      }
+  );
+
+  const csrfCookie = csrfRes.cookies['XSRF-TOKEN']
+  ?.find((cookie) => cookie.value)?.value;
+
+  if (!csrfCookie) {
+    throw new Error(
+        `CSRF token not found: status=${csrfRes.status}, cookies=${JSON.stringify(csrfRes.cookies)}`
+    );
+  }
+
+  const csrfToken = decodeURIComponent(csrfCookie);
+
   return {
     adminAccessToken,
+    csrfToken,
   };
 }
 
@@ -313,38 +318,87 @@ export function readLoad(data) {
   sleep(0.2);
 }
 
-// 5분 시점 쓰기 작업
-export function write1(data) {
-  executeWriteScenario(data.adminAccessToken, 'write1', 0, 2, 12);
-}
+export function writeLoad(data) {
 
-// 8분 시점 쓰기 작업
-export function write2(data) {
-  executeWriteScenario(data.adminAccessToken, 'write2', 0, 0, 8);
+  // 5분 시점
+  sleep(5 * 60);
 
-  // 2번째 시점에 1번째 시점에서 생성한 콘텐츠 1개 수정
-  updateLoadTestContent(data.adminAccessToken);
+  console.log('[WRITE 1 START]');
 
-  // 2번째 시점에 기존 사용자 1명 수정
-  updateLoadTestUser(data.adminAccessToken);
-}
+  executeWriteScenario(
+      data.adminAccessToken,
+      data.csrfToken,
+      'write1',
+      0,
+      2,
+      12
+  );
 
-// 10분 시점 쓰기 작업
-export function write3(data) {
+  console.log(
+      `[WRITE 1 END] contentIds=${JSON.stringify(loadTestContentIds)}, ` +
+      `playlistIds=${JSON.stringify(loadTestPlaylistIds)}`
+  );
 
-  // 3번째 시점에 생성한 콘텐츠 2개 삭제
-  deleteLoadTestContents(data.adminAccessToken);
 
-  // 3번째 시점에 생성한 플레이리스트 20개 삭제
-  deleteLoadTestPlaylists(data.adminAccessToken);
+  // 9분 시점
+  sleep(4 * 60);
 
-  // 3번째 시점에 수정했던 사용자 1명 원복
-  restoreLoadTestUser(data.adminAccessToken);
+  console.log('[WRITE 2 START]');
+
+  executeWriteScenario(
+      data.adminAccessToken,
+      data.csrfToken,
+      'write2',
+      0,
+      0,
+      8
+  );
+
+  updateLoadTestContent(
+      data.adminAccessToken,
+      data.csrfToken
+  );
+
+  updateLoadTestUser(
+      data.adminAccessToken,
+      data.csrfToken
+  );
+
+  console.log('[WRITE 2 END]');
+
+
+  // 13분 시점
+  sleep(4 * 60);
+
+  console.log('[WRITE 3 START]');
+
+  deleteLoadTestContents(
+      data.adminAccessToken,
+      data.csrfToken
+  );
+
+  deleteLoadTestPlaylists(
+      data.adminAccessToken,
+      data.csrfToken
+  );
+
+  restoreLoadTestUser(
+      data.adminAccessToken,
+      data.csrfToken
+  );
+
+  console.log('[WRITE 3 END]');
 }
 
 // 사용자, 콘텐츠, 플레이리스트 추가
-function executeWriteScenario(adminAccessToken, prefix, signupCount,
-    contentCount, playlistCount) {
+function executeWriteScenario(
+    adminAccessToken,
+    csrfToken,
+    prefix,
+    signupCount,
+    contentCount,
+    playlistCount
+) {
 
   // 1. 사용자 회원가입
   for (let i = 1; i <= signupCount; i++) {
@@ -380,17 +434,23 @@ function executeWriteScenario(adminAccessToken, prefix, signupCount,
 
     const contentRes = http.post(
         `${BASE_URL}/contents`,
-        JSON.stringify({
-          type: 'MOVIE',
-          title: `부하테스트 콘텐츠 ${uniqueId}`,
-          description: `부하테스트용 콘텐츠 ${uniqueId}`,
-          thumbnailUrl: 'https://image.tmdb.org/t/p/w500/86EdVHOEFjFNPeE0sWjpCqcUORj.jpg',
-          tags: ['테스트'],
-        }),
+        {
+          request: http.file(
+              JSON.stringify({
+                type: 'MOVIE',
+                title: `부하테스트 콘텐츠 ${uniqueId}`,
+                description: `부하테스트용 콘텐츠 ${uniqueId}`,
+                tags: ['테스트'],
+              }),
+              'request.json',
+              'application/json'
+          ),
+        },
         {
           headers: {
-            'Content-Type': 'application/json',
             Authorization: `Bearer ${adminAccessToken}`,
+            'X-XSRF-TOKEN': csrfToken,
+            Cookie: `XSRF-TOKEN=${encodeURIComponent(csrfToken)}`,
           },
         }
     );
@@ -401,6 +461,12 @@ function executeWriteScenario(adminAccessToken, prefix, signupCount,
 
     errorRate.add(!contentCreateSuccess);
     contentCreateTrend.add(contentRes.timings.duration);
+
+    if (!contentCreateSuccess) {
+      console.log(
+          `[CONTENT CREATE FAIL] status=${contentRes.status}, body=${contentRes.body}`
+      );
+    }
 
     if (contentCreateSuccess) {
       const content = contentRes.json();
@@ -426,6 +492,8 @@ function executeWriteScenario(adminAccessToken, prefix, signupCount,
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${adminAccessToken}`,
+            'X-XSRF-TOKEN': csrfToken,
+            Cookie: `XSRF-TOKEN=${encodeURIComponent(csrfToken)}`,
           },
         }
     );
@@ -436,6 +504,12 @@ function executeWriteScenario(adminAccessToken, prefix, signupCount,
 
     errorRate.add(!playlistCreateSuccess);
     playlistCreateTrend.add(playlistRes.timings.duration);
+
+    if (!playlistCreateSuccess) {
+      console.log(
+          `[PLAYLIST CREATE FAIL] status=${playlistRes.status}, body=${playlistRes.body}`
+      );
+    }
 
     if (playlistCreateSuccess) {
       const playlist = playlistRes.json();
@@ -448,9 +522,10 @@ function executeWriteScenario(adminAccessToken, prefix, signupCount,
 }
 
 // 1번째 쓰기 작업에서 생성된 콘텐츠 1개 수정
-function updateLoadTestContent(adminAccessToken) {
+function updateLoadTestContent(adminAccessToken, csrfToken) {
 
   if (loadTestContentIds.length === 0) {
+    console.log('[CONTENT UPDATE SKIP] 수정할 콘텐츠가 없습니다.');
     return;
   }
 
@@ -472,20 +547,29 @@ function updateLoadTestContent(adminAccessToken) {
   errorRate.add(!detailSuccess);
 
   if (!detailSuccess) {
+    console.log(
+        `[CONTENT UPDATE DETAIL FAIL] id=${contentId}, ` +
+        `status=${contentDetailRes.status}, body=${contentDetailRes.body}`
+    );
     return;
   }
 
-  const content = contentDetailRes.json();
-
   const updateRes = http.patch(
       `${BASE_URL}/contents/${contentId}`,
-      JSON.stringify({
-        description: '부하테스트 수정 요청',
-      }),
+      {
+        request: http.file(
+            JSON.stringify({
+              description: '부하테스트 수정 요청',
+            }),
+            'request.json',
+            'application/json'
+        ),
+      },
       {
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${adminAccessToken}`,
+          'X-XSRF-TOKEN': csrfToken,
+          Cookie: `XSRF-TOKEN=${encodeURIComponent(csrfToken)}`,
         },
       }
   );
@@ -495,10 +579,21 @@ function updateLoadTestContent(adminAccessToken) {
   });
 
   errorRate.add(!updateSuccess);
+
+  if (!updateSuccess) {
+    console.log(
+        `[CONTENT UPDATE FAIL] id=${contentId}, ` +
+        `status=${updateRes.status}, body=${updateRes.body}`
+    );
+  } else {
+    console.log(
+        `[CONTENT UPDATE SUCCESS] id=${contentId}, status=${updateRes.status}`
+    );
+  }
 }
 
 // 기존 사용자 1명 수정
-function updateLoadTestUser(adminAccessToken) {
+function updateLoadTestUser(adminAccessToken, csrfToken) {
 
   const userSearchRes = http.get(
       `${BASE_URL}/users?emailLike=${encodeURIComponent(
@@ -538,10 +633,21 @@ function updateLoadTestUser(adminAccessToken) {
   const updateRes = http.patch(
       `${BASE_URL}/users/${loadTestUserId}`,
       {
-        request: JSON.stringify({
-          name: LOAD_TEST_USER_MODIFIED_NAME,
-        }),
+        request: http.file(
+            JSON.stringify({
+              name: LOAD_TEST_USER_MODIFIED_NAME,
+            }),
+            'request.json',
+            'application/json'
+        ),
         image: http.file('', 'empty'),
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${adminAccessToken}`,
+          'X-XSRF-TOKEN': csrfToken,
+          Cookie: `XSRF-TOKEN=${encodeURIComponent(csrfToken)}`,
+        },
       }
   );
 
@@ -550,10 +656,16 @@ function updateLoadTestUser(adminAccessToken) {
   });
 
   errorRate.add(!updateSuccess);
+
+  if (!updateSuccess) {
+    console.log(
+        `[USER UPDATE FAIL] status=${updateRes.status}, body=${updateRes.body}`
+    );
+  }
 }
 
-// 3번째 시점에 생성된 콘텐츠 2개 삭제
-function deleteLoadTestContents(adminAccessToken) {
+// 생성된 콘텐츠 삭제
+function deleteLoadTestContents(adminAccessToken, csrfToken) {
 
   for (const contentId of loadTestContentIds) {
 
@@ -563,22 +675,30 @@ function deleteLoadTestContents(adminAccessToken) {
         {
           headers: {
             Authorization: `Bearer ${adminAccessToken}`,
+            'X-XSRF-TOKEN': csrfToken,
+            Cookie: `XSRF-TOKEN=${encodeURIComponent(csrfToken)}`,
           },
         }
     );
 
     const deleteSuccess = check(deleteRes, {
-      'load test content delete status is 200': (r) => r.status === 200,
+      'content delete status is 204': (r) => r.status === 204,
     });
 
     errorRate.add(!deleteSuccess);
+
+    if (!deleteSuccess) {
+      console.log(
+          `[CONTENT DELETE FAIL] id=${contentId}, status=${deleteRes.status}, body=${deleteRes.body}`
+      );
+    }
   }
 
   loadTestContentIds = [];
 }
 
-// 3번째 시점에 생성된 플레이리스트 20개 삭제
-function deleteLoadTestPlaylists(adminAccessToken) {
+// 생성된 플레이리스트 삭제
+function deleteLoadTestPlaylists(adminAccessToken, csrfToken) {
 
   for (const playlistId of loadTestPlaylistIds) {
 
@@ -588,22 +708,30 @@ function deleteLoadTestPlaylists(adminAccessToken) {
         {
           headers: {
             Authorization: `Bearer ${adminAccessToken}`,
+            'X-XSRF-TOKEN': csrfToken,
+            Cookie: `XSRF-TOKEN=${encodeURIComponent(csrfToken)}`,
           },
         }
     );
 
     const deleteSuccess = check(deleteRes, {
-      'load test playlist delete status is 204': (r) => r.status === 204,
+      'playlist delete status is 204': (r) => r.status === 204,
     });
 
     errorRate.add(!deleteSuccess);
+
+    if (!deleteSuccess) {
+      console.log(
+          `[PLAYLIST DELETE FAIL] id=${playlistId}, status=${deleteRes.status}, body=${deleteRes.body}`
+      );
+    }
   }
 
   loadTestPlaylistIds = [];
 }
 
 // 수정했던 사용자 원복
-function restoreLoadTestUser(adminAccessToken) {
+function restoreLoadTestUser(adminAccessToken, csrfToken) {
 
   if (!loadTestUserId) {
     return;
@@ -612,10 +740,21 @@ function restoreLoadTestUser(adminAccessToken) {
   const updateRes = http.patch(
       `${BASE_URL}/users/${loadTestUserId}`,
       {
-        request: JSON.stringify({
-          name: LOAD_TEST_USER_ORIGINAL_NAME,
-        }),
+        request: http.file(
+            JSON.stringify({
+              name: LOAD_TEST_USER_ORIGINAL_NAME,
+            }),
+            'request.json',
+            'application/json'
+        ),
         image: http.file('', 'empty'),
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${adminAccessToken}`,
+          'X-XSRF-TOKEN': csrfToken,
+          Cookie: `XSRF-TOKEN=${encodeURIComponent(csrfToken)}`,
+        },
       }
   );
 
@@ -624,6 +763,12 @@ function restoreLoadTestUser(adminAccessToken) {
   });
 
   errorRate.add(!restoreSuccess);
+
+  if (!restoreSuccess) {
+    console.log(
+        `[USER RESTORE FAIL] status=${updateRes.status}, body=${updateRes.body}`
+    );
+  }
 
   loadTestUserId = null;
 }
