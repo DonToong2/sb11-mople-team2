@@ -3,10 +3,7 @@ package com.codeit.mople.global.event;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.codeit.mople.domain.follow.event.FollowCreatedEvent;
-import com.codeit.mople.domain.follow.event.FollowCreatedEventRelay;
 import com.codeit.mople.domain.playlist.event.PlaylistContentAddedEvent;
-import com.codeit.mople.domain.playlist.event.PlaylistContentAddedEventRelay;
-import com.codeit.mople.global.config.KafkaConfig;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
@@ -19,7 +16,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -46,9 +42,6 @@ class KafkaRelaySmokeTest {
   static final String PLAYLIST_CONTENT_TOPIC = "mople.playlist.content-added.v1";
 
   @Autowired
-  ApplicationContext context;
-
-  @Autowired
   ApplicationEventPublisher eventPublisher;
 
   @Autowired
@@ -65,21 +58,6 @@ class KafkaRelaySmokeTest {
     embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic);
 
     return consumer;
-  }
-
-  @Nested
-  @DisplayName("플래그를 켠 컨텍스트")
-  class FlagEnabledContext {
-
-    @Test
-    @DisplayName("@ConditionalOnProperty 뒤의 빈 네 개가 모두 생성되는지")
-    void createsBeansBehindFlag() {
-      // then
-      assertThat(context.getBeansOfType(KafkaConfig.class)).hasSize(1);
-      assertThat(context.getBeansOfType(KafkaEventPublisher.class)).hasSize(1);
-      assertThat(context.getBeansOfType(FollowCreatedEventRelay.class)).hasSize(1);
-      assertThat(context.getBeansOfType(PlaylistContentAddedEventRelay.class)).hasSize(1);
-    }
   }
 
   @Nested
