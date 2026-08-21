@@ -48,8 +48,10 @@ public class Conversation extends BaseEntity {
   @Column(nullable = false)
   private Instant lastMessageAt;
 
+  @Column(name = "user_a_last_read_at")
   private Instant userALastReadAt;
 
+  @Column(name = "user_b_last_read_at")
   private Instant userBLastReadAt;
 
   private Conversation(User userA, User userB) {
