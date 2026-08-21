@@ -667,6 +667,8 @@ function updateLoadTestUser(adminAccessToken, csrfToken) {
 // 생성된 콘텐츠 삭제
 function deleteLoadTestContents(adminAccessToken, csrfToken) {
 
+  const failedContentIds = [];
+
   for (const contentId of loadTestContentIds) {
 
     const deleteRes = http.del(
@@ -688,10 +690,21 @@ function deleteLoadTestContents(adminAccessToken, csrfToken) {
     errorRate.add(!deleteSuccess);
 
     if (!deleteSuccess) {
+      failedContentIds.push(contentId);
+
       console.log(
-          `[CONTENT DELETE FAIL] id=${contentId}, status=${deleteRes.status}, body=${deleteRes.body}`
+          `[CONTENT DELETE FAIL] id=${contentId}, ` +
+          `status=${deleteRes.status}, body=${deleteRes.body}`
       );
     }
+  }
+
+  if (failedContentIds.length > 0) {
+    loadTestContentIds = failedContentIds;
+
+    throw new Error(
+        `콘텐츠 정리 실패: ${JSON.stringify(failedContentIds)}`
+    );
   }
 
   loadTestContentIds = [];
@@ -699,6 +712,8 @@ function deleteLoadTestContents(adminAccessToken, csrfToken) {
 
 // 생성된 플레이리스트 삭제
 function deleteLoadTestPlaylists(adminAccessToken, csrfToken) {
+
+  const failedPlaylistIds = [];
 
   for (const playlistId of loadTestPlaylistIds) {
 
@@ -721,10 +736,21 @@ function deleteLoadTestPlaylists(adminAccessToken, csrfToken) {
     errorRate.add(!deleteSuccess);
 
     if (!deleteSuccess) {
+      failedPlaylistIds.push(playlistId);
+
       console.log(
-          `[PLAYLIST DELETE FAIL] id=${playlistId}, status=${deleteRes.status}, body=${deleteRes.body}`
+          `[PLAYLIST DELETE FAIL] id=${playlistId}, ` +
+          `status=${deleteRes.status}, body=${deleteRes.body}`
       );
     }
+  }
+
+  if (failedPlaylistIds.length > 0) {
+    loadTestPlaylistIds = failedPlaylistIds;
+
+    throw new Error(
+        `플레이리스트 정리 실패: ${JSON.stringify(failedPlaylistIds)}`
+    );
   }
 
   loadTestPlaylistIds = [];
