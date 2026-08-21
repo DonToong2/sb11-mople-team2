@@ -38,7 +38,7 @@ public class Content extends BaseTimeEntity {
   @Column(name = "description", columnDefinition = "TEXT")
   private String description;
 
-  @Column(name = "thumbnailUrl")
+  @Column(name = "thumbnail_url")
   private String thumbnailUrl;
 
   @ElementCollection(fetch = FetchType.LAZY)
