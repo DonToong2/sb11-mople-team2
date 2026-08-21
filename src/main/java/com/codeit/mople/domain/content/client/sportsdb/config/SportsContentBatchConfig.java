@@ -39,14 +39,11 @@ public class SportsContentBatchConfig {
   @Bean
   public Job sportsContentJob(
       JobRepository jobRepository,
-      Step backupOldSportsDataStep,
-      Step sportsContentStep,
-      Step deleteOldSportsDataStep) {
+      Step sportsContentStep) {
 
+    //선삭제 흐름 제거, ItemWriter에서 Upsert(갱신)로 처리하여 실패 시 기존 데이터 보존
     return new JobBuilder("sportsContentJob", jobRepository)
-        .start(backupOldSportsDataStep) //기존 데이터 사전 백업
-        .next(sportsContentStep)        //신규 데이터 수집 및 저장(실패 시 여기서 중단되어 기존 데이터 보존)
-        .next(deleteOldSportsDataStep)  //삭제 완료 후 이전 만료 데이터를 정리
+        .start(sportsContentStep) //신규 데이터 수집 및 저장(실패 시 여기서 중단되어 기존 데이터 보존)
         .listener(jobListener)
         .build();
   }
@@ -56,11 +53,8 @@ public class SportsContentBatchConfig {
   public Step backupOldSportsDataStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
     return new StepBuilder("backupOldSportsDataStep", jobRepository)
         .tasklet((contribution, chunkContext) -> {
-          //기존 데이터의 ID 리스트 조회
-          List<UUID> oldIds = contentRepository.findAll().stream()
-              .filter(c -> c.getType() == ContentType.SPORT)
-              .map(Content::getId)
-              .toList();
+          //externalId가 있는 외부 배치 수집 데이터만 백업 대상으로 지정
+          List<UUID> oldIds = contentRepository.findIdsByType(ContentType.SPORT);
 
           //Job Execution Context에 백업 ID 목록 저장
           chunkContext.getStepContext()
@@ -105,8 +99,6 @@ public class SportsContentBatchConfig {
   public Step deleteOldSportsDataStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
     return new StepBuilder("deleteOldSportsDataStep", jobRepository)
         .tasklet((contribution, chunkContext) -> {
-          log.info("새로운 스포츠 데이터 수집 완료 후, 이전 만료 데이터를 정리합니다.");
-
           // 안전하게 신규 데이터를 먼저 적재한 뒤 구버전 데이터를 정리하도록 순서 변경
           List<UUID> oldIds = (List<UUID>) chunkContext.getStepContext()
               .getStepExecution()
@@ -114,9 +106,21 @@ public class SportsContentBatchConfig {
               .getExecutionContext()
               .get("oldSportsIds");
 
-          if (oldIds != null && !oldIds.isEmpty()) {
-            contentRepository.deleteAllById(oldIds); //기존 데이터 초기화
-            log.info("신규 수집 완료 후 이전 구버전 데이터 {}건을 삭제 정리했습니다.", oldIds.size());
+          //Step Execution에서 새로 저장된 건수를 확인하여, 신규 저장이 실제로 일어났을 때만 과거 데이터를 정리
+          long writeCount = chunkContext.getStepContext()
+              .getStepExecution()
+              .getJobExecution()
+              .getStepExecutions()
+              .stream()
+              .filter(stepExecution -> "sportsContentStep".equals(stepExecution.getStepName()))
+              .mapToLong(org.springframework.batch.core.StepExecution::getWriteCount)
+              .sum();
+
+          if (writeCount > 0 && oldIds != null && !oldIds.isEmpty()) {
+            contentRepository.deleteAllById(oldIds);
+            log.info("신규 수집 완료({}건) 후 이전 구버전 데이터 {}건을 삭제 정리했습니다", writeCount, oldIds.size());
+          } else {
+            log.info("신규 저장된 데이터가 없거나 삭제 대상이 없어 기존 데이터를 보존합니다");
           }
 
           return RepeatStatus.FINISHED;

@@ -5,6 +5,7 @@ import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
 import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.entity.ContentSortBy;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
@@ -16,7 +17,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -86,54 +86,51 @@ public class ContentService{
   //콘텐츠 목록 조회
   @Transactional(readOnly = true)
   public CursorResponseContentDto getContents(
-      UUID cursorId, String cursorValue, int limit, String type, String keywordLike, String sortBy) {
-    log.debug("콘텐츠 목록 조회 시작 - cursorId: {}, cursorValue: {}, limit: {}, type: {}, sortBy: {}", cursorId, cursorValue, limit, type, sortBy);
+      UUID cursorId, String cursorValue, int limit, String typeEqual, String keywordLike, String sortBy) {
+    log.debug("콘텐츠 목록 조회 시작 - cursorId: {}, cursorValue: {}, limit: {}, typeEqual: {}, sortBy: {}", cursorId, cursorValue, limit, typeEqual, sortBy);
 
     if (limit <= 0 || limit > 100) {
       log.warn("콘텐츠 목록 조회 실패(잘못된 페이징 조건) - limit: {}", limit);
       throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("limit", limit));
     }
 
-    //커서 피라미터가 둘 중 하나만 드어온 경우 예외 처리
-    if ((cursorId == null) != (cursorValue == null)) {
+    //커서 파라미터가 둘 중 하나만 들어오거나, cursorValue가 빈 문자열("")인 경우 모두 예외 처리 방어
+    boolean hasCursorId = cursorId != null;
+    boolean hasCursorValue = cursorValue != null && !cursorValue.isBlank();
+
+    if (hasCursorId != hasCursorValue) {
       log.warn("콘텐츠 목록 조회 실패(불완전한 커서 조건) - cursorId: {}, cursorValue: {}", cursorId, cursorValue);
       throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST,
           Map.of("cursorId", String.valueOf(cursorId), "cursorValue", String.valueOf(cursorValue)));
     }
 
-    //ContentType 필터 처리 (ALL 또는 빈 값일 경우 전체 조회)
-    ContentType contentType = null;
-    if (type != null && !type.isBlank() && !type.equalsIgnoreCase("ALL")) {
+    ContentType parsedType = parseContentType(typeEqual);
+    ContentSortBy contentSortBy = ContentSortBy.from(sortBy);
+
+    //커서 파싱 및 유효성 검증(400 에러 처리)
+    Object parsedCursorValue = null;
+    if (hasCursorValue) {
       try {
-        contentType = ContentType.from(type);
-      } catch (IllegalArgumentException e) {
-        log.warn("지원하지 않는 분류 필터 무시: {}", type);
+        parsedCursorValue = contentSortBy.parseCursor(cursorValue);
+      } catch (NumberFormatException | java.time.format.DateTimeParseException e) {
+        log.warn("콘텐츠 목록 조회 실패(커서 파싱 오류) - cursorValue: {}, sortBy: {}", cursorValue, contentSortBy.getValue());
+        throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("cursorValue", cursorValue));
       }
     }
 
-    //정렬 기본값 설정
-    String actualSortBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
-
     //데이터 조회 및 카운트
     List<Content> contents = contentQueryRepository
-        .findContentByCursor(cursorId, cursorValue, limit, contentType, keywordLike, actualSortBy);
-    long totalCount = contentQueryRepository.countContentsByTypeAndKeyword(contentType, keywordLike);
+        .findContentByCursor(cursorId, parsedCursorValue, limit, parsedType, keywordLike, contentSortBy);
+    long totalCount = contentQueryRepository.countContentsByTypeAndKeyword(parsedType, keywordLike);
 
     CursorResponse<Content> cursorResponse = CursorResponse.of(
         contents,
         limit,
         totalCount,
-        actualSortBy,
+        contentSortBy.getValue(),
         "DESCENDING",
-        content -> {
-          if ("averageRating".equals(actualSortBy) || "rating".equals(actualSortBy) || "score".equals(actualSortBy) || "rate".equals(actualSortBy)) {
-            return String.valueOf(content.calculateAverageRating());
-          } else if ("watcherCount".equals(actualSortBy)) {
-            return String.valueOf(content.getWatcherCount());
-          } else {
-            return content.getCreatedAt() != null ? content.getCreatedAt().toString() : null;
-          }
-        }, Content::getId
+        contentSortBy::extractCursorValue,
+        Content::getId
     );
 
     List<ContentResponse> contentResponses = cursorResponse.data().stream()
@@ -161,6 +158,19 @@ public class ContentService{
         cursorResponse.sortBy(),
         cursorResponse.sortDirection()
     );
+  }
+
+  //ContentType 파싱 및 예외 변환 (유효하지 않은 타입 요청 시 400 예외 발생)
+  private ContentType parseContentType(String typeEqual) {
+    if (typeEqual == null || typeEqual.isBlank()) {
+      return null;
+    }
+    try {
+      return ContentType.from(typeEqual);
+    } catch (IllegalArgumentException e) {
+      log.warn("콘텐츠 목록 조회 실패(잘못된 ContentType) - typeEqual: {}", typeEqual);
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("typeEqual", typeEqual));
+    }
   }
 
   //콘텐츠 단건 조회

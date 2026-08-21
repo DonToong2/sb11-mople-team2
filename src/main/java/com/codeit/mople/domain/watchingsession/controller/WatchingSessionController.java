@@ -42,11 +42,6 @@ public class WatchingSessionController implements WatchingSessionApi {
       @RequestParam(value = "sortBy", defaultValue = "id") String sortBy,
       @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-    //목록을 조회하러 들어온 순간, 세션 입장 처리를 먼저 실행
-    if (userDetails != null) {
-      watchingSessionService.enterSession(userDetails.getUserId(), contentId);
-    }
-
     //최신화된 시청자 목록을 조회하여 반환
     CursorResponseWatchingSessionDto response = watchingSessionService.getWatchingSessions(
         contentId, watcherNameLike, cursor, idAfter, limit, sortDirection, sortBy);

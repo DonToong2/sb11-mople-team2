@@ -13,7 +13,7 @@ public record PlaylistContentResponse(
     String thumbnailUrl,
     List<String> tags,
     double averageRating,
-    int reviewCount
+    long reviewCount
 ) {
 
   public static PlaylistContentResponse from(PlaylistContent playlistContent) {

@@ -3,6 +3,7 @@ package com.codeit.mople.domain.content.repository;
 import static com.codeit.mople.domain.content.entity.QContent.content;
 
 import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.entity.ContentSortBy;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -19,13 +20,13 @@ public class ContentQueryRepository {
   private final JPAQueryFactory queryFactory;
 
   //커서 기반 데이터 조회 (limit + 1개)
-  public List<Content> findContentByCursor(UUID cursorId, String cursorValue,
-      int limit, ContentType type, String keyword, String sortBy) {
+  public List<Content> findContentByCursor(UUID cursorId, Object parsedCursorValue,
+      int limit, ContentType type, String keyword, ContentSortBy sortBy) {
     return queryFactory.selectFrom(content)
         .where(
             typeCondition(type), //카테고리 동적 필터
             titleLikeCondition(keyword), //검색어 동적 필터
-            cursorCondition(cursorId, cursorValue, sortBy) //정렬 기준별 커서 동적 조건
+            cursorCondition(cursorId, parsedCursorValue, sortBy) //정렬 기준별 커서 동적 조건 (수정됨)
         )
         .orderBy(orderSpecifiers(sortBy)) //동적 OrderBy
         .limit(limit + 1)
@@ -69,37 +70,33 @@ public class ContentQueryRepository {
         .replace("_", "._");
 
     //대소문자 구분 없이 검색하기 위해 lower() 적용
-    return content.title.lower().like("%" + escaped.toLowerCase() + "%", '.');
+    return content.title.lower().like(escaped.toLowerCase() + "%", '.');
   }
 
-  // 커서 필터링 조건
-  private BooleanExpression cursorCondition(UUID cursorId, String cursorValue, String sortBy) {
-    if (cursorId == null || cursorValue == null || cursorValue.isBlank()) {
-      return null;
-    }
+  // 커서 필터링 조건(Service 계층에서 이미 타입 검증/파싱된 값을 받음)
+  private BooleanExpression cursorCondition(UUID cursorId, Object parsedCursorValue, ContentSortBy sortBy) {
+    if (cursorId == null || parsedCursorValue == null) return null;
 
-    if ("watcherCount".equals(sortBy)) {
-      long count = Long.parseLong(cursorValue);
-      return content.watcherCount.lt(count)
-          .or(content.watcherCount.eq(count).and(content.id.gt(cursorId)));
-    } else if ("ratingSum".equals(sortBy) || "rating".equals(sortBy) || "score".equals(sortBy) || "rate".equals(sortBy)) {
-      double rating = Double.parseDouble(cursorValue);
-      return content.ratingSum.lt(rating)
-          .or(content.ratingSum.eq(rating).and(content.id.gt(cursorId)));
-    } else { // 기본값: 최신순 (createdAt)
-      Instant time = Instant.parse(cursorValue);
-      return content.createdAt.lt(time)
-          .or(content.createdAt.eq(time).and(content.id.gt(cursorId)));
+    if (sortBy == ContentSortBy.WATCHER_COUNT) {
+      long count = (Long) parsedCursorValue;
+      return content.watcherCount.lt(count).or(content.watcherCount.eq(count).and(content.id.gt(cursorId)));
+    } else if (sortBy == ContentSortBy.RATING) {
+      double rating = (Double) parsedCursorValue;
+      return content.ratingSum.lt(rating).or(content.ratingSum.eq(rating).and(content.id.gt(cursorId)));
+    } else { // CREATED_AT
+      Instant time = (Instant) parsedCursorValue;
+      return content.createdAt.lt(time).or(content.createdAt.eq(time).and(content.id.gt(cursorId)));
     }
   }
 
   // 동적 정렬 조건 메서드
-  private OrderSpecifier<?>[] orderSpecifiers(String sortBy) {
-    if ("watcherCount".equals(sortBy)) {
+  private OrderSpecifier<?>[] orderSpecifiers(ContentSortBy sortBy) {
+    if (sortBy == ContentSortBy.WATCHER_COUNT) {
       return new OrderSpecifier<?>[]{content.watcherCount.desc().nullsLast(), content.id.asc()};
-    } else if ("ratingSum".equals(sortBy) || "rating".equals(sortBy) || "score".equals(sortBy) || "rate".equals(sortBy)) {
+    } else if (sortBy == ContentSortBy.RATING) {
       return new OrderSpecifier<?>[]{content.ratingSum.desc().nullsLast(), content.id.asc()};
+    } else { // CREATED_AT
+      return new OrderSpecifier<?>[]{content.createdAt.desc().nullsLast(), content.id.asc()};
     }
-    return new OrderSpecifier<?>[]{content.createdAt.desc().nullsLast(), content.id.asc()};
   }
 }

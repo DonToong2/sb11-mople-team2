@@ -12,6 +12,7 @@ import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
 import com.codeit.mople.domain.content.entity.Content;
+import com.codeit.mople.domain.content.entity.ContentSortBy;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
@@ -114,12 +115,13 @@ public class ContentServiceTest {
     List<Content> mockContents = new ArrayList<>();
     mockContents.add(content1); //limit보다 적게 반환
 
-    given(contentQueryRepository.findContentByCursor(any(), any(), eq(limit), any(), any(), any()))
-        .willReturn(mockContents);
+    given(contentQueryRepository.findContentByCursor(any(), any(), eq(limit), any(), any(), any(
+        ContentSortBy.class))).willReturn(mockContents);
     given(contentQueryRepository.countContentsByTypeAndKeyword(any(), any())).willReturn(1L);
 
+    //null을 넘길 때 String 타입에 맞게 호출
     CursorResponseContentDto response = contentService.getContents(
-        null, null, limit, null, null, "createdAt");
+        null, null, limit, (String) null, null, "createdAt");
 
     assertThat(response).isNotNull();
     assertThat(response.data()).hasSize(1);
@@ -128,23 +130,28 @@ public class ContentServiceTest {
     assertThat(response.hasNext()).isFalse(); // limit보다 작으므로 false
   }
 
+  //cursorValue(공백 문자열 등) 전달 시 불완전한 커서 조건으로 판단하여 400 에러 발생 검증
   @Test
-  @DisplayName("콘텐츠 목록 조회 성공 - type 필터가 ALL이거나 유효하지 않으면 예외 없이 전체 조회를 수행한다")
-  void getContents_Success_InvalidTypeFallback() {
-    int limit = 10;
+  @DisplayName("콘텐츠 목록 조회 실패 - cursorId는 있고 cursorValue가 빈 문자열일 경우 INVALID_PAGE_REQUEST(400) 예외 발생")
+  void getContents_Fail_IncompleteCursorWithBlankValue() {
+    UUID cursorId = UUID.randomUUID();
+    String blankCursorValue = "   "; //공백 문자열
 
-    given(contentQueryRepository.findContentByCursor(any(), any(), eq(limit), eq(null), any(), any()))
-        .willReturn(new ArrayList<>());
-    given(contentQueryRepository.countContentsByTypeAndKeyword(eq(null), any())).willReturn(0L);
+    assertThatThrownBy(() -> contentService.getContents(
+        cursorId, blankCursorValue, 10, null, null, "createdAt"))
+        .isInstanceOf(ContentException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);
+  }
 
-    //type 파라미터에 유효하지 않은 "INVALID_TYPE" 전달
-    CursorResponseContentDto response = contentService.getContents(
-        null, null, limit, "INVALID_TYPE", null, "createdAt");
-
-    assertThat(response).isNotNull();
-
-    //예외가 터지지 않고 contentType이 null(전체 조회)로 치환되어 쿼리 메서드가 호출되었는지 검증
-    verify(contentQueryRepository).findContentByCursor(any(), any(), eq(limit), eq(null), any(), any());
+  @Test
+  @DisplayName("콘텐츠 목록 조회 실패 - 잘못된 typeEqual 값 전달 시 INVALID_PAGE_REQUEST(400) 예외 발생")
+  void getContents_Fail_InvalidTypeEqual() {
+    assertThatThrownBy(() -> contentService.getContents(
+        null, null, 10, "INVALID_TYPE", null, "createdAt"))
+        .isInstanceOf(ContentException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);
   }
 
   @Test
@@ -152,6 +159,39 @@ public class ContentServiceTest {
   void getContents_Fail_NegativeLimit() {
     assertThatThrownBy(() -> contentService.getContents(
         null, null, -1, null, null, null))
+        .isInstanceOf(ContentException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);
+  }
+
+  @Test
+  @DisplayName("콘텐츠 목록 조회 실패 - 잘못된 형식의 커서 값(cursorValue) 전달 시 400 에러 발생")
+  void getContents_Fail_InvalidCursorValueParsing() {
+    UUID cursorId = UUID.randomUUID();
+    int limit = 10;
+
+    //createdAt 정렬일 때 문자열("잘못된날짜형식")을 전달하여 DateTimeParseException 유도
+    String invalidDateCursorValue = "잘못된날짜형식";
+    assertThatThrownBy(() -> contentService.getContents(
+        cursorId, invalidDateCursorValue, limit, null, null, "createdAt"))
+        .isInstanceOf(ContentException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);
+
+    //watcherCount 정렬일 때 문자열("abc")을 전달하여 NumberFormatException 유도
+    String invalidNumberCursorValue = "abc";
+    assertThatThrownBy(() -> contentService.getContents(
+        cursorId, invalidNumberCursorValue, limit, null, null, "watcherCount"))
+        .isInstanceOf(ContentException.class)
+        .extracting("errorCode")
+        .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);
+  }
+
+  @Test
+  @DisplayName("콘텐츠 목록 조회 실패 - 지원하지 않는 정렬 키(sortBy) 전달 시 400 에러 발생")
+  void getContents_Fail_InvalidSortBy() {
+    assertThatThrownBy(() -> contentService.getContents(
+        null, null, 10, null, null, "INVALID_SORT"))
         .isInstanceOf(ContentException.class)
         .extracting("errorCode")
         .isEqualTo(ContentErrorCode.INVALID_PAGE_REQUEST);

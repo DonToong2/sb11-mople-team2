@@ -23,8 +23,7 @@ import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.domain.watchingsession.dto.ContentChatDto;
 import com.codeit.mople.domain.watchingsession.dto.ContentChatSendRequest;
 import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
-import com.codeit.mople.domain.watchingsession.dto.WatchingSessionChange;
-import com.codeit.mople.global.sse.service.SseService;
+import com.codeit.mople.domain.watchingsession.dto.WatchingSessionEvent;
 import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
@@ -34,9 +33,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.SetOperations;
@@ -60,7 +61,10 @@ public class WatchingSessionServiceTest {
   private RedisTemplate<String, Object> redisTemplate;
 
   @Mock
-  private SimpMessagingTemplate messagingTemplate;
+  private SimpMessagingTemplate messagingTemplate; //채팅 검증용
+
+  @Mock
+  private ApplicationEventPublisher eventPublisher; //이벤트 발행 검증용
 
   @Mock
   private ValueOperations<String, Object> valueOperations;
@@ -68,12 +72,9 @@ public class WatchingSessionServiceTest {
   @Mock
   private SetOperations<String, Object> setOperations;
 
-  @Mock
-  private SseService sseService;
-
   @BeforeEach
   void setUp() {
-    // RedisTemplate 의 opsForValue, opsForSet 호출 시 Mock 객체 반환하도록 설정
+    //RedisTemplate 의 opsForValue, opsForSet 호출 시 Mock 객체 반환하도록 설정
     lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
     lenient().when(redisTemplate.opsForSet()).thenReturn(setOperations);
   }
@@ -88,7 +89,7 @@ public class WatchingSessionServiceTest {
     assertThrows(ContentException.class, () ->
         watchingSessionService.getWatchingSessions(contentId, null,
             null, null, 10,
-            "ASCENDING", "id"));
+            "ASCENDING", "createdAt"));
   }
 
   @Test
@@ -115,7 +116,7 @@ public class WatchingSessionServiceTest {
 
     CursorResponseWatchingSessionDto result = watchingSessionService.getWatchingSessions(
         contentId, null, null, null, 10,
-        "DESCENDING", "id");
+        "DESCENDING", "createdAt");
 
     assertNotNull(result);
     assertEquals(1, result.totalCount());
@@ -150,43 +151,92 @@ public class WatchingSessionServiceTest {
 
     CursorResponseWatchingSessionDto result = watchingSessionService.getWatchingSessions(
         contentId, "홍길", null, null, 10,
-        "DESCENDING", "id");
+        "DESCENDING", "createdAt");
 
     assertNotNull(result);
-    assertEquals(1, result.totalCount()); // "홍길동" 1명만 필터링되어야 함
+    assertEquals(1, result.totalCount()); //"홍길동" 1명만 필터링되어야 함
     assertEquals("홍길동", result.data().get(0).watcher().name());
   }
 
   @Test
-  @DisplayName("유저 입장 성공 - Redis 기록, DB 동기화 및 웹소켓 브로드캐스팅 확인")
+  @DisplayName("시청 세션 목록 조회 실패 - 지원하지 않는 정렬 기준(sortBy) 검증")
+  void getWatchingSessions_Fail_InvalidSortBy() {
+    UUID contentId = UUID.randomUUID();
+    Content mockContent = mock(Content.class);
+    given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
+
+    //지원하지 않는 sortBy("id")로 요청 시 ContentException 발생 검증
+    assertThrows(ContentException.class, () ->
+        watchingSessionService.getWatchingSessions(contentId, null,
+            null, null, 10,
+            "ASCENDING", "id"));
+  }
+
+  @Test
+  @DisplayName("시청 세션 목록 조회 실패 - 지원하지 않는 정렬 방향(sortDirection) 검증")
+  void getWatchingSessions_Fail_InvalidSortDirection() {
+    UUID contentId = UUID.randomUUID();
+    Content mockContent = mock(Content.class);
+    given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
+
+    //지원하지 않는 sortDirection("INVALID")으로 요청 시 ContentException 발생 검증
+    assertThrows(ContentException.class, () ->
+        watchingSessionService.getWatchingSessions(contentId, null,
+            null, null, 10,
+            "INVALID", "createdAt"));
+  }
+
+  @Test
+  @DisplayName("유저 입장 성공 - DB 검증 선행, Redis 기록 후 Event 발행 확인")
   void enterSession_Success() {
     UUID userId = UUID.randomUUID();
     UUID contentId = UUID.randomUUID();
-    String userKey = "user:watching:" + userId;
     String contentKey = "content:watchers:" + contentId;
     String sessionIdKey = "user:session:id:" + userId;
+    String userKey = "user:watching:" + userId;
 
     Content mockContent = mock(Content.class);
     lenient().when(mockContent.getType()).thenReturn(ContentType.MOVIE);
 
+    given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
     given(valueOperations.get(sessionIdKey)).willReturn(null);
 
+    given(valueOperations.get(userKey)).willReturn(null);
+    given(redisTemplate.exec()).willReturn(List.of(new Object()));
     given(redisTemplate.execute(any(SessionCallback.class))).willAnswer(invocation -> {
       SessionCallback<?> action = invocation.getArgument(0);
-      action.execute(redisTemplate);
-      return "NULL_PREV";
+      return action.execute(redisTemplate);
     });
 
-    given(valueOperations.get(userKey)).willReturn(null);
-    given(setOperations.size(contentKey)).willReturn(1L); //입장 후 총 1명
-    given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
+    given(setOperations.size(contentKey)).willReturn(1L);
 
     Long result = watchingSessionService.enterSession(userId, contentId);
 
     assertEquals(1L, result);
-    verify(mockContent).updateWatcherCount(1L); //DB 동기화가 정상 호출되었는지 검증
-    verify(messagingTemplate).convertAndSend(eq(
-        "/sub/contents/" + contentId + "/watch"), any(WatchingSessionChange.class));
+    verify(mockContent).updateWatcherCount(1L);
+
+    //정확한 이벤트 타입과 contentId 검증
+    ArgumentCaptor<WatchingSessionEvent> eventCaptor = ArgumentCaptor.forClass(WatchingSessionEvent.class);
+    verify(eventPublisher).publishEvent(eventCaptor.capture());
+    WatchingSessionEvent publishedEvent = eventCaptor.getValue();
+    assertEquals(contentId, publishedEvent.contentId());
+    assertEquals("JOIN", publishedEvent.changeEvent().type());
+  }
+
+  @Test
+  @DisplayName("유저 입장 실패 - 콘텐츠가 없으면 Redis 기록 전 예외 발생")
+  void enterSession_Fail_ContentNotFound() {
+    UUID userId = UUID.randomUUID();
+    UUID contentId = UUID.randomUUID();
+
+    //콘텐츠가 DB에 없다고 설정
+    given(contentRepository.findById(contentId)).willReturn(Optional.empty());
+
+    //Redis 진입 전 터지는지 검증
+    assertThrows(ContentException.class, () -> watchingSessionService.enterSession(userId, contentId));
+
+    //예외 발생 시 Redis 트랜잭션 로직이 단 한 번도 호출되지 않았음을 명시적으로 검증
+    verify(redisTemplate, org.mockito.Mockito.never()).execute(any(SessionCallback.class));
   }
 
   @Test
@@ -194,22 +244,25 @@ public class WatchingSessionServiceTest {
   void leaveSession_Success() {
     UUID userId = UUID.randomUUID();
     UUID contentId = UUID.randomUUID();
-    String userKey = "user:watching:" + userId;
     String contentKey = "content:watchers:" + contentId;
     String sessionIdKey = "user:session:id:" + userId;
+    String userKey = "user:watching:" + userId; //SessionCallback 내부 조회를 위한 userKey
 
     Content mockContent = mock(Content.class);
     lenient().when(mockContent.getType()).thenReturn(ContentType.MOVIE);
 
     given(valueOperations.get(sessionIdKey)).willReturn(UUID.randomUUID().toString());
 
+    //익명 클래스 내부 로직을 끝까지 타게 만들기 위한 모킹 설정
+    given(valueOperations.get(userKey)).willReturn(contentId.toString());
+    given(redisTemplate.exec()).willReturn(List.of(new Object()));
+
+    //강제로 "SUCCESS"를 리턴하지 않고 실제 익명 클래스 내부 로직의 반환값을 사용하도록 변경
     given(redisTemplate.execute(any(SessionCallback.class))).willAnswer(invocation -> {
       SessionCallback<?> action = invocation.getArgument(0);
-      action.execute(redisTemplate);
-      return "SUCCESS";
+      return action.execute(redisTemplate);
     });
 
-    given(valueOperations.get(userKey)).willReturn(contentId.toString());
     given(setOperations.size(contentKey)).willReturn(0L); //퇴장 후 총 0명
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
 
@@ -217,8 +270,13 @@ public class WatchingSessionServiceTest {
 
     assertEquals(0L, result);
     verify(mockContent).updateWatcherCount(0L); //DB 동기화가 정상 호출되었는지 검증
-    verify(messagingTemplate).convertAndSend(eq(
-        "/sub/contents/" + contentId + "/watch"), any(WatchingSessionChange.class));
+
+    //정확한 이벤트 타입과 contentId 검증
+    ArgumentCaptor<WatchingSessionEvent> eventCaptor = ArgumentCaptor.forClass(WatchingSessionEvent.class);
+    verify(eventPublisher).publishEvent(eventCaptor.capture());
+    WatchingSessionEvent publishedEvent = eventCaptor.getValue();
+    assertEquals(contentId, publishedEvent.contentId());
+    assertEquals("LEAVE", publishedEvent.changeEvent().type());
   }
 
   @Test
@@ -263,13 +321,11 @@ public class WatchingSessionServiceTest {
 
     lenient().when(valueOperations.get(sessionIdKey)).thenReturn(UUID.randomUUID().toString());
 
+    given(valueOperations.get(userKey)).willReturn(null); // 다른 방에 있거나 시청 중이 아님
     given(redisTemplate.execute(any(SessionCallback.class))).willAnswer(invocation -> {
       SessionCallback<?> action = invocation.getArgument(0);
-      action.execute(redisTemplate);
-      return "NOT_WATCHING";
+      return action.execute(redisTemplate);
     });
-
-    given(valueOperations.get(userKey)).willReturn(null);
     given(setOperations.size(contentKey)).willReturn(5L); //방에 다른 유저 5명 남음
 
     Long result = watchingSessionService.leaveSession(userId, contentId);
@@ -279,15 +335,15 @@ public class WatchingSessionServiceTest {
   }
 
   @Test
-  @DisplayName("유저 입장 성공 - 다른 방에서 이동해 온 경우 이전 방 퇴장(LEAVE) 이벤트 브로드캐스팅 확인")
+  @DisplayName("유저 입장 성공 - 다른 방에서 이동해 온 경우 이전 방 퇴장(LEAVE) 후 새 방 입장(JOIN) 순서 확인")
   void enterSession_Success_RoomSwitching() {
     UUID userId = UUID.randomUUID();
     UUID oldContentId = UUID.randomUUID();
     UUID newContentId = UUID.randomUUID();
-    String userKey = "user:watching:" + userId;
     String newContentKey = "content:watchers:" + newContentId;
     String oldContentKey = "content:watchers:" + oldContentId;
     String sessionIdKey = "user:session:id:" + userId;
+    String userKey = "user:watching:" + userId;
 
     Content mockOldContent = mock(Content.class);
     Content mockNewContent = mock(Content.class);
@@ -296,10 +352,13 @@ public class WatchingSessionServiceTest {
 
     given(valueOperations.get(sessionIdKey)).willReturn(UUID.randomUUID().toString());
 
-    //Redis 트랜잭션 실행 시 이전 방 ID("oldContentId")를 반환하도록 설정
-    given(redisTemplate.execute(any(SessionCallback.class))).willReturn(oldContentId.toString());
+    given(valueOperations.get(userKey)).willReturn(oldContentId.toString());
+    given(redisTemplate.exec()).willReturn(List.of(new Object()));
+    given(redisTemplate.execute(any(SessionCallback.class))).willAnswer(invocation -> {
+      SessionCallback<?> action = invocation.getArgument(0);
+      return action.execute(redisTemplate);
+    });
 
-    //lenient()를 적용하거나 실제 로직에서 타는 size()만 지정
     lenient().when(setOperations.size(oldContentKey)).thenReturn(0L);
     given(setOperations.size(newContentKey)).willReturn(1L);
 
@@ -308,12 +367,19 @@ public class WatchingSessionServiceTest {
 
     watchingSessionService.enterSession(userId, newContentId);
 
-    //이전 방에 대한 LEAVE 메시지가 브로드캐스팅 되었는지 검증
-    verify(messagingTemplate).convertAndSend(eq(
-        "/sub/contents/" + oldContentId + "/watch"), any(WatchingSessionChange.class));
-    //새 방에 대한 ENTER 메시지가 브로드캐스팅 되었는지 검증
-    verify(messagingTemplate).convertAndSend(eq(
-        "/sub/contents/" + newContentId + "/watch"), any(WatchingSessionChange.class));
+    //ArgumentCaptor를 사용하여 2개의 이벤트 순서 및 데이터 정밀 검증
+    ArgumentCaptor<WatchingSessionEvent> eventCaptor = ArgumentCaptor.forClass(WatchingSessionEvent.class);
+    verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(eventCaptor.capture());
+
+    List<WatchingSessionEvent> publishedEvents = eventCaptor.getAllValues();
+
+    //첫 번째 이벤트는 이전 방의 LEAVE 이벤트여야 함
+    assertEquals(oldContentId, publishedEvents.get(0).contentId());
+    assertEquals("LEAVE", publishedEvents.get(0).changeEvent().type());
+
+    //두 번째 이벤트는 새 방의 JOIN 이벤트여야 함
+    assertEquals(newContentId, publishedEvents.get(1).contentId());
+    assertEquals("JOIN", publishedEvents.get(1).changeEvent().type());
   }
 
   @Test
@@ -338,14 +404,14 @@ public class WatchingSessionServiceTest {
   }
 
   @Test
-  @DisplayName("유저 입장 성공 - 기존 세션 UUID 재사용 및 SSE 브로드캐스팅 확인")
+  @DisplayName("유저 입장 성공 - 기존 세션 UUID 재사용 및 이벤트 발행 확인")
   void enterSession_Success_ReusesSessionIdAndSendsSse() {
     UUID userId = UUID.randomUUID();
     UUID contentId = UUID.randomUUID();
 
-    //userKey는 해당 테스트에서 호출되지 않으므로 제거 가능
     String contentKey = "content:watchers:" + contentId;
     String sessionIdKey = "user:session:id:" + userId;
+    String userKey = "user:watching:" + userId;
     String existingSessionUuid = UUID.randomUUID().toString();
 
     Content mockContent = mock(Content.class);
@@ -355,27 +421,23 @@ public class WatchingSessionServiceTest {
     //기존 세션 ID가 Redis에 존재하는 상황 모킹
     given(valueOperations.get(sessionIdKey)).willReturn(existingSessionUuid);
 
-    given(redisTemplate.execute(any(SessionCallback.class))).willAnswer(invocation -> "NULL_PREV");
+    given(valueOperations.get(userKey)).willReturn(null);
+    given(redisTemplate.exec()).willReturn(List.of(new Object()));
+    given(redisTemplate.execute(any(SessionCallback.class))).willAnswer(invocation -> {
+      SessionCallback<?> action = invocation.getArgument(0);
+      return action.execute(redisTemplate);
+    });
 
-    given(setOperations.size(contentKey)).willReturn(2L); //방 인원 2명 가정
-
-    //SSE 발송 대상자 모킹(방에 본인 포함 2명이 있다고 가정)
-    UUID otherUserId = UUID.randomUUID();
-    given(setOperations.members(contentKey)).willReturn(Set.of(userId.toString(), otherUserId.toString()));
+    given(setOperations.size(contentKey)).willReturn(2L);
 
     watchingSessionService.enterSession(userId, contentId);
 
-    //웹소켓 이벤트 캡처 및 검증
-    org.mockito.ArgumentCaptor<WatchingSessionChange> captor = org.mockito.ArgumentCaptor.forClass(WatchingSessionChange.class);
-    verify(messagingTemplate).convertAndSend(eq("/sub/contents/" + contentId + "/watch"), captor.capture());
+    ArgumentCaptor<WatchingSessionEvent> captor = ArgumentCaptor.forClass(WatchingSessionEvent.class);
+    verify(eventPublisher).publishEvent(captor.capture());
 
-    WatchingSessionChange event = captor.getValue();
-    assertEquals("JOIN", event.type());
-    assertEquals(existingSessionUuid, event.watchingSession().id().toString());
-
-    //SSE 전송 검증(본인 및 다른 유저 모두에게 전송되어야 함)
-    verify(sseService).send(eq(userId), eq("watch"), org.mockito.ArgumentMatchers.same(event));
-    verify(sseService).send(eq(otherUserId), eq("watch"), org.mockito.ArgumentMatchers.same(event));
+    WatchingSessionEvent event = captor.getValue();
+    assertEquals("JOIN", event.changeEvent().type());
+    assertEquals(existingSessionUuid, event.changeEvent().watchingSession().id().toString());
   }
 
   @Test
