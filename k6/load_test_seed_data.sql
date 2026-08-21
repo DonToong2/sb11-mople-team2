@@ -18,7 +18,7 @@ SELECT
     gen_random_uuid(),
     NOW() - (random() * INTERVAL '180 days'), -- 생성일을 현재~6개월 전까지로 설정
     'test' || gs || '@test.com', -- test1@test.com ~ test10000@test.com
-    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', -- 실제 암호화된 값이 들어가도록 설정
+    '$2a$10$RPAKeL68hFvEK6DTS5bqseUskXp1AIfYvb8pKOjRS1HjiUypET.tq', -- 실제 암호화된 값이 들어가도록 설정(평문 비밀번호 12345678)
     'test' || gs, -- test1 ~ test10000
     NULL,
     'USER',
