@@ -52,12 +52,12 @@ class SportsDbItemWriterTest {
 
     writer.write(chunk);
 
-    //ArgumentCaptor를 통해 저장된 리스트 검증
+    //ArgumentCaptor를 통해 저장된 리스트 캡처
     verify(contentRepository).saveAll(saveAllCaptor.capture());
     List<Content> savedContents = saveAllCaptor.getValue();
 
-    //두 객체 모두 포함된 리스트로 saveAll이 호출되었는지 검증
-    verify(contentRepository).saveAll(anyList());
+    //캡처한 리스트에 두 객체가 정확히 모두 포함되어 저장 요청되었는지 검증
+    assertThat(savedContents).containsExactlyInAnyOrder(content1, content2);
   }
 
   @Test
