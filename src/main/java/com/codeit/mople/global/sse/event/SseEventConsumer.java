@@ -4,16 +4,19 @@ import com.codeit.mople.domain.directmessage.dto.response.DirectMessageDto;
 import com.codeit.mople.domain.directmessage.event.DirectMessageCreatedEvent;
 import com.codeit.mople.domain.notification.dto.response.NotificationResponse;
 import com.codeit.mople.domain.notification.event.NotificationCreatedEvent;
+import com.codeit.mople.global.config.KafkaProperties;
 import com.codeit.mople.global.sse.service.SseEventService;
 import com.codeit.mople.global.sse.service.SseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = KafkaProperties.PREFIX, name = "enabled", havingValue = "true")
 public class SseEventConsumer {
 
   private final SseService sseService;
