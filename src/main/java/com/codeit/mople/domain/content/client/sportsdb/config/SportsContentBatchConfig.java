@@ -98,7 +98,7 @@ public class SportsContentBatchConfig {
         .build();
   }
 
-  // 기존 스포츠 데이터를 일괄 삭제하는 Tasklet Step 추가
+  //기존 스포츠 데이터를 일괄 삭제하는 Tasklet Step 추가
   @Bean
   @SuppressWarnings("unchecked")
   public Step deleteOldSportsDataStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
@@ -128,9 +128,14 @@ public class SportsContentBatchConfig {
               .sum();
 
           if (writeCount > 0 && oldIds != null && !oldIds.isEmpty()) {
-            if (processedIds != null) {
-              oldIds.removeAll(processedIds);
+
+            //수집된 건수는 있으나 처리된 ID 목록이 비어있거나 null이면 데이터 전체 유실 방지를 위해 삭제 중단
+            if (processedIds == null || processedIds.isEmpty()) {
+              log.warn("신규 수집 건수는 있으나 처리된 ID 목록(processedIds)이 없어 데이터 유실 방지를 위해 삭제를 중단합니다.");
+              return RepeatStatus.FINISHED;
             }
+
+            oldIds.removeAll(processedIds);
             if (!oldIds.isEmpty()) {
               contentRepository.deleteAllById(oldIds);
               log.info("신규 수집 완료({}건) 후 오늘 수집된 데이터를 제외한 구버전 데이터 {}건을 차집합 방식으로 삭제 정리했습니다", writeCount, oldIds.size());
