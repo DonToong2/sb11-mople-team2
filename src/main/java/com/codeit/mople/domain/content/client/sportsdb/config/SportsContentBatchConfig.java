@@ -117,33 +117,20 @@ public class SportsContentBatchConfig {
               .getExecutionContext()
               .get("processedIds");
 
-          //Step Execution에서 새로 저장된 건수를 확인하여, 신규 저장이 실제로 일어났을 때만 과거 데이터를 정리
-          long writeCount = chunkContext.getStepContext()
-              .getStepExecution()
-              .getJobExecution()
-              .getStepExecutions()
-              .stream()
-              .filter(stepExecution -> "sportsContentStep".equals(stepExecution.getStepName()))
-              .mapToLong(org.springframework.batch.core.StepExecution::getWriteCount)
-              .sum();
-
-          if (writeCount > 0 && oldIds != null && !oldIds.isEmpty()) {
-
-            //수집된 건수는 있으나 처리된 ID 목록이 비어있거나 null이면 데이터 전체 유실 방지를 위해 삭제 중단
-            if (processedIds == null || processedIds.isEmpty()) {
-              log.warn("신규 수집 건수는 있으나 처리된 ID 목록(processedIds)이 없어 데이터 유실 방지를 위해 삭제를 중단합니다.");
-              return RepeatStatus.FINISHED;
+          if (oldIds != null && !oldIds.isEmpty()) {
+            //오늘 수집된 데이터가 있다면 차집합 연산 수행 (processedIds가 비어있다면 오늘 경기가 없는 날이므로 oldIds 전체가 정리 대상이 됨)
+            if (processedIds != null && !processedIds.isEmpty()) {
+              oldIds.removeAll(processedIds);
             }
 
-            oldIds.removeAll(processedIds);
             if (!oldIds.isEmpty()) {
               contentRepository.deleteAllById(oldIds);
-              log.info("신규 수집 완료({}건) 후 오늘 수집된 데이터를 제외한 구버전 데이터 {}건을 차집합 방식으로 삭제 정리했습니다", writeCount, oldIds.size());
+              log.info("오늘 수집된 데이터를 제외한 구버전 데이터 {}건을 차집합 방식으로 삭제 정리했습니다", oldIds.size());
             } else {
               log.info("삭제할 구버전 데이터가 없습니다 (모든 데이터가 정상 갱신됨)");
             }
           } else {
-            log.info("신규 저장된 데이터가 없거나 삭제 대상이 없어 기존 데이터를 보존합니다");
+            log.info("삭제 대상 데이터가 없습니다");
           }
 
           return RepeatStatus.FINISHED;
