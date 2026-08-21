@@ -44,9 +44,11 @@ public class KafkaEventPublisher {
             }
           });
     } catch (SerializationException e) {
+      saveFailedEvent(topic, null, event, e);
       log.error("Kafka 이벤트 직렬화 실패(재시도 불가): topic={}, eventId={}, eventType={}",
           topic, eventId, eventType, e);
     } catch (Exception e) {
+      saveFailedEvent(topic, null, event, e);
       log.error("Kafka 이벤트 발행 시도 실패: topic={}, eventId={}, eventType={}",
           topic, eventId, eventType, e);
     }
@@ -65,18 +67,30 @@ public class KafkaEventPublisher {
             }
           });
     } catch (SerializationException e) {
+      saveFailedEvent(topic, key, event, e);
       log.error("Kafka 이벤트 직렬화 실패(재시도 불가): topic={}, key={}, eventId={}, eventType={}",
           topic, key, eventId, eventType, e);
     } catch (Exception e) {
+      saveFailedEvent(topic, key, event, e);
       log.error("Kafka 이벤트 발행 시도 실패: topic={}, key={}, eventId={}, eventType={}",
           topic, key, eventId, eventType, e);
     }
   }
 
-  private void saveFailedEvent(String topic, String key, Object event, Throwable ex) {
-    try {
-      String data = objectMapper.writeValueAsString(event);
+  private void saveFailedEvent(String topic, String key, PublishableEvent event, Throwable ex) {
+    UUID eventId = event.eventId();
+    String eventType = event.getClass().getSimpleName();
 
+    String data;
+    try {
+      data = objectMapper.writeValueAsString(event);
+    } catch (JsonProcessingException e) {
+      data = "";
+      log.error("kafka Producer 실패 이벤트 본문 직렬화 실패: topic={}, key={}, eventId={}, eventType={}",
+          topic, key, eventId, eventType, e);
+    }
+
+    try {
       RecordId retainFrom =
           RecordId.of(System.currentTimeMillis() - FAILED_STREAM_RETENTION.toMillis(), 0);
 
@@ -86,14 +100,13 @@ public class KafkaEventPublisher {
               "type", "PRODUCER",
               "topic", topic,
               "key", key == null ? "" : key,
+              "eventId", String.valueOf(eventId),
+              "eventType", eventType,
               "data", data,
               "error", ex == null ? "Unknown" : String.valueOf(ex.getMessage())
           ),
           XAddOptions.none().minId(retainFrom)
       );
-    } catch (JsonProcessingException e) {
-      log.error("Kafka Producer 최종 실패 이벤트 직렬화 실패: topic={}, key={}"
-          , topic, key, e);
     } catch (Exception e) {
       log.error("Kafka Producer 최종 실패 이벤트 Redis 저장 실패: topic={}, key={}",
           topic, key, e);
