@@ -40,7 +40,9 @@ public class SportsContentBatchConfig {
   @Bean
   public Job sportsContentJob(
       JobRepository jobRepository,
-      Step sportsContentStep) {
+      Step backupOldSportsDataStep,
+      Step sportsContentStep,
+      Step deleteOldSportsDataStep) {
 
     //선삭제 흐름 제거, ItemWriter에서 Upsert(갱신)로 처리하여 실패 시 기존 데이터 보존
     return new JobBuilder("sportsContentJob", jobRepository)
