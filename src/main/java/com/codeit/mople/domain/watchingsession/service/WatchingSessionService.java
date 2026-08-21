@@ -142,13 +142,24 @@ public class WatchingSessionService {
       if (foundIndex != -1) {
         startIndex = foundIndex + 1;
       } else {
+        //유저가 퇴장하여 커서 ID를 찾지 못한 경우 정렬 위치 보정
         try {
           long targetTime = Long.parseLong(cursor);
           for (int i = 0; i < watcherDataList.size(); i++) {
             long wTime = watcherDataList.get(i).joinedAt().toEpochMilli();
-            if ((isDesc && wTime <= targetTime) || (!isDesc && wTime >= targetTime)) {
-              startIndex = i;
-              break;
+            String wId = watcherDataList.get(i).userId();
+
+            //시간이 같을 경우 userId까지 복합적으로 비교하여 안정적인 페이징 경계선 설정
+            if (isDesc) {
+              if (wTime < targetTime || (wTime == targetTime && wId.compareTo(targetId) < 0)) {
+                startIndex = i;
+                break;
+              }
+            } else {
+              if (wTime > targetTime || (wTime == targetTime && wId.compareTo(targetId) > 0)) {
+                startIndex = i;
+                break;
+              }
             }
             if (i == watcherDataList.size() - 1) {
               startIndex = watcherDataList.size();
@@ -172,33 +183,55 @@ public class WatchingSessionService {
         .map(w -> UUID.fromString(w.userId()))
         .toList();
 
+    //Redis에서 페이징 대상 유저들의 활성 세션 ID를 일괄 조회(multiGet)
+    List<String> sessionKeys = targetUserIds.stream()
+        .map(uId -> USER_SESSION_ID_KEY_PREFIX + uId.toString())
+        .toList();
+    List<Object> sessionIds = redisTemplate.opsForValue().multiGet(sessionKeys);
+
+    //DB에서 페이징 대상 유저들을 한 번에 조회하여 Map으로 캐싱 (N+1 방지)
     Map<UUID, User> userMap = userRepository.findAllById(targetUserIds).stream()
         .collect(Collectors.toMap(User::getId, Function.identity()));
 
+    //콘텐츠 정보를 담을 DTO 생성
     WatchingSessionContentDto contentDto = new WatchingSessionContentDto(
         content.getId(), content.getType().name(), content.getTitle(),
         content.getDescription(), content.getThumbnailUrl(), content.getTags(),
         content.calculateAverageRating(), content.getReviewCount()
     );
 
-    List<WatchingSessionResponse> responses = resultData.stream().map(w -> {
+    //Redis 데이터 -> response dto 매핑
+    List<WatchingSessionResponse> responses = new java.util.ArrayList<>();
+    for (int i = 0; i < resultData.size(); i++) {
+      WatcherData w = resultData.get(i);
+      Object sessIdObj = sessionIds != null ? sessionIds.get(i) : null;
+
+      //세션 ID가 없는 항목은 제외 정책 적용
+      if (sessIdObj == null) {
+        log.warn("ZSet에는 존재하나 활성 세션 ID가 누락된 유저 발견, 목록에서 제외 - userId: {}", w.userId());
+        continue;
+      }
+
+      UUID sessionUuid = UUID.fromString((String) sessIdObj);
       UUID uId = UUID.fromString(w.userId());
       User user = userMap.get(uId);
 
+      //유저가 DB에 없을 경우를 대비한 Null-safe 방어 로직
       String name = user != null ? user.getName() : "알 수 없는 유저";
       String profileImageUrl = user != null ? user.getProfileImageUrl() : null;
 
       UserSummary userSummary = new UserSummary(uId, name, profileImageUrl);
 
-      //ZSet에 저장되어 있던 실제 입장 시각(w.joinedAt()) 사용
-      return new WatchingSessionResponse(
-          UUID.randomUUID(),
+      //ZSet에 저장되어 있던 실제 입장 시각(w.joinedAt()) 사용 및 고정된 sessionUuid 사용
+      responses.add(new WatchingSessionResponse(
+          sessionUuid,
           w.joinedAt(),
           userSummary,
           contentDto
-      );
-    }).toList();
+      ));
+    }
 
+    //다음 커서 값 추출
     String nextCursor = null;
     UUID nextIdAfter = null;
     if (hasNext && !resultData.isEmpty()) {
