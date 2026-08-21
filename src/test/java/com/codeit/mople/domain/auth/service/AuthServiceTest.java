@@ -404,6 +404,22 @@ public class AuthServiceTest {
   }
 
   @Test
+  @DisplayName("잠긴 계정이면 refreshToken이 유효해도 재발급이 거부됨")
+  void refresh_throwsException_whenAccountIsLocked() {
+    UUID userId = UUID.randomUUID();
+    User lockedUser = User.createUser("locked@test.com", "encodedPw", "lockedUser");
+    lockedUser.lock();
+    when(jwtProvider.getUserId("locked-user-token")).thenReturn(userId);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(lockedUser));
+
+    assertThatThrownBy(() -> authService.refresh("locked-user-token"))
+        .isInstanceOf(AuthException.class)
+        .hasFieldOrPropertyWithValue("errorCode", AuthErrorCode.LOCKED_ACCOUNT);
+
+    verify(refreshTokenRepository, never()).rotate(any(), any(), any(), any());
+  }
+
+  @Test
   @DisplayName("refresh 성공 시 Refresh Token Rotation이 원자적으로 적용됨")
   void refresh_success_rotateRefreshToken() {
     UUID userId = UUID.randomUUID();
