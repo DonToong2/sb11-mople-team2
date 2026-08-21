@@ -25,6 +25,7 @@ import com.codeit.mople.domain.watchingsession.dto.ContentChatSendRequest;
 import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionEvent;
 import java.security.Principal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -40,8 +41,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SessionCallback;
-import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
@@ -70,13 +71,13 @@ public class WatchingSessionServiceTest {
   private ValueOperations<String, Object> valueOperations;
 
   @Mock
-  private SetOperations<String, Object> setOperations;
+  private ZSetOperations<String, Object> zSetOperations;
 
   @BeforeEach
   void setUp() {
-    //RedisTemplate 의 opsForValue, opsForSet 호출 시 Mock 객체 반환하도록 설정
+    //RedisTemplate 의 opsForValue, opsForZSet 호출 시 Mock 객체 반환하도록 설정
     lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-    lenient().when(redisTemplate.opsForSet()).thenReturn(setOperations);
+    lenient().when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
   }
 
   @Test
@@ -105,8 +106,11 @@ public class WatchingSessionServiceTest {
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
     given(mockContent.getId()).willReturn(contentId);
 
-    //Redis에 1명의 유저가 접속 중이라고 가정
-    given(setOperations.members(contentKey)).willReturn(Set.of(userId.toString()));
+    //ZSet에 1명의 유저가 접속 중이라고 가정(점수 포함 튜플 모킹)
+    ZSetOperations.TypedTuple<Object> mockTuple = mock(ZSetOperations.TypedTuple.class);
+    given(mockTuple.getValue()).willReturn(userId.toString());
+    given(mockTuple.getScore()).willReturn((double) Instant.now().toEpochMilli());
+    given(zSetOperations.reverseRangeWithScores(contentKey, 0, -1)).willReturn(Set.of(mockTuple));
 
     //DB에서 해당 유저 정보 조회 모킹
     given(userRepository.findAllById(anyList())).willReturn(List.of(mockUser));
@@ -138,7 +142,16 @@ public class WatchingSessionServiceTest {
     User user2 = mock(User.class);
 
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
-    given(setOperations.members(contentKey)).willReturn(Set.of(user1Id.toString(), user2Id.toString()));
+
+    ZSetOperations.TypedTuple<Object> tuple1 = mock(ZSetOperations.TypedTuple.class);
+    given(tuple1.getValue()).willReturn(user1Id.toString());
+    given(tuple1.getScore()).willReturn((double) Instant.now().toEpochMilli());
+
+    ZSetOperations.TypedTuple<Object> tuple2 = mock(ZSetOperations.TypedTuple.class);
+    given(tuple2.getValue()).willReturn(user2Id.toString());
+    given(tuple2.getScore()).willReturn((double) Instant.now().toEpochMilli());
+
+    given(zSetOperations.reverseRangeWithScores(contentKey, 0, -1)).willReturn(Set.of(tuple1, tuple2));
 
     given(userRepository.findAllById(any())).willReturn(List.of(user1, user2));
 
@@ -208,7 +221,7 @@ public class WatchingSessionServiceTest {
       return action.execute(redisTemplate);
     });
 
-    given(setOperations.size(contentKey)).willReturn(1L);
+    given(zSetOperations.zCard(contentKey)).willReturn(1L);
 
     Long result = watchingSessionService.enterSession(userId, contentId);
 
@@ -263,7 +276,7 @@ public class WatchingSessionServiceTest {
       return action.execute(redisTemplate);
     });
 
-    given(setOperations.size(contentKey)).willReturn(0L); //퇴장 후 총 0명
+    given(zSetOperations.zCard(contentKey)).willReturn(0L); //퇴장 후 총 0명
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
 
     Long result = watchingSessionService.leaveSession(userId, contentId);
@@ -326,7 +339,7 @@ public class WatchingSessionServiceTest {
       SessionCallback<?> action = invocation.getArgument(0);
       return action.execute(redisTemplate);
     });
-    given(setOperations.size(contentKey)).willReturn(5L); //방에 다른 유저 5명 남음
+    given(zSetOperations.zCard(contentKey)).willReturn(5L); //방에 다른 유저 5명 남음
 
     Long result = watchingSessionService.leaveSession(userId, contentId);
 
@@ -359,8 +372,8 @@ public class WatchingSessionServiceTest {
       return action.execute(redisTemplate);
     });
 
-    lenient().when(setOperations.size(oldContentKey)).thenReturn(0L);
-    given(setOperations.size(newContentKey)).willReturn(1L);
+    lenient().when(zSetOperations.zCard(oldContentKey)).thenReturn(0L);
+    given(zSetOperations.zCard(newContentKey)).willReturn(1L);
 
     given(contentRepository.findById(oldContentId)).willReturn(Optional.of(mockOldContent));
     given(contentRepository.findById(newContentId)).willReturn(Optional.of(mockNewContent));
@@ -428,7 +441,7 @@ public class WatchingSessionServiceTest {
       return action.execute(redisTemplate);
     });
 
-    given(setOperations.size(contentKey)).willReturn(2L);
+    given(zSetOperations.zCard(contentKey)).willReturn(2L);
 
     watchingSessionService.enterSession(userId, contentId);
 
