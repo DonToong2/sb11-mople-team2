@@ -26,6 +26,7 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.global.config.CacheNames;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.dto.UserSummary;
 import java.util.HashSet;
@@ -36,6 +37,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +56,7 @@ public class PlaylistService {
   private final ApplicationEventPublisher publisher;
   private final PlaylistSearchRepository searchRepository;
 
+  @CacheEvict(cacheNames = {CacheNames.PLAYLISTS, CacheNames.PLAYLIST_LIST}, allEntries = true)
   @Transactional
   public PlaylistResponse create(PlaylistCreateRequest request, UUID ownerId) {
 
@@ -95,6 +99,7 @@ public class PlaylistService {
   }
 
   // 플레이리스트 세부 조회(단건 조회)
+  @Cacheable(value = CacheNames.PLAYLISTS, key = "{#playlistId, #requesterId}")
   @Transactional(readOnly = true)
   public PlaylistResponse find(UUID playlistId, UUID requesterId) {
 
@@ -132,6 +137,20 @@ public class PlaylistService {
   }
 
   // 플레이리스트 목록 조회
+  @Cacheable(
+      cacheNames = CacheNames.PLAYLIST_LIST,
+      key = "{"
+          + "#condition.keywordLike(),"
+          + "#condition.ownerIdEqual(),"
+          + "#condition.subscriberIdEqual(), "
+          + "#condition.cursor(),"
+          + "#condition.idAfter(),"
+          + "#condition.limit(), "
+          + "#condition.sortBy(),"
+          + "#condition.sortDirection(),"
+          + "#requesterId"
+          + "}"
+  )
   @Transactional(readOnly = true)
   public CursorResponse<PlaylistResponse> findAll(PlaylistQueryCondition condition,
       UUID requesterId) {
@@ -223,6 +242,7 @@ public class PlaylistService {
     return response;
   }
 
+  @CacheEvict(cacheNames = {CacheNames.PLAYLISTS, CacheNames.PLAYLIST_LIST}, allEntries = true)
   @Transactional
   public PlaylistResponse update(
       UUID playlistId,
@@ -272,6 +292,7 @@ public class PlaylistService {
     return response;
   }
 
+  @CacheEvict(cacheNames = {CacheNames.PLAYLISTS, CacheNames.PLAYLIST_LIST}, allEntries = true)
   @Transactional
   public void delete(UUID playlistId, UUID ownerId) {
 
