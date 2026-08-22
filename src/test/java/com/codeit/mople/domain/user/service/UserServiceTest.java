@@ -3,6 +3,7 @@ package com.codeit.mople.domain.user.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,6 +16,7 @@ import com.codeit.mople.domain.user.dto.request.UserSortBy;
 import com.codeit.mople.domain.user.dto.request.UserUpdateRequest;
 import com.codeit.mople.domain.user.dto.response.UserDto;
 import com.codeit.mople.domain.user.entity.User;
+import com.codeit.mople.domain.user.event.UserSearchIndexEvent;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
@@ -34,6 +36,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -61,6 +64,9 @@ public class UserServiceTest {
   @Mock
   private UserSearchRepository searchRepository;
 
+  @Mock
+  private ApplicationEventPublisher eventPublisher;
+
   @InjectMocks
   private UserService userService;
 
@@ -80,7 +86,11 @@ public class UserServiceTest {
   @Test
   @DisplayName("회원가입 성공")
   void signUp_success() {
+    UUID userId = UUID.randomUUID();
     UserCreateRequest request = new UserCreateRequest("test@test.com", "rawPw123", "testUser");
+
+    ReflectionTestUtils.setField(user, "id", userId);
+
     when(userRepository.existsByEmail(request.email())).thenReturn(false);
     when(passwordEncoder.encode(request.password())).thenReturn("encodedPw");
     when(userRepository.save(any(User.class))).thenReturn(user);
@@ -88,8 +98,15 @@ public class UserServiceTest {
     UserDto response = userService.signUp(request);
 
     assertThat(response.email()).isEqualTo("test@test.com");
+
     verify(userRepository).save(any(User.class));
-    verify(searchRepository).save(any(UserDocument.class));
+    verify(eventPublisher).publishEvent(
+        argThat((UserSearchIndexEvent event) ->
+            event.eventId() != null
+                && event.userId().equals(userId)
+                && event.email().equals(user.getEmail())
+        )
+    );
   }
 
   @Test

@@ -3,6 +3,7 @@ package com.codeit.mople.domain.playlist.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -24,6 +25,8 @@ import com.codeit.mople.domain.playlist.entity.PlaylistContent;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.playlist.event.PlaylistContentAddedEvent;
 import com.codeit.mople.domain.playlist.event.PlaylistCreatedEvent;
+import com.codeit.mople.domain.playlist.event.PlaylistSearchIndexDeleteEvent;
+import com.codeit.mople.domain.playlist.event.PlaylistSearchIndexEvent;
 import com.codeit.mople.domain.playlist.event.PlaylistSubscribedEvent;
 import com.codeit.mople.domain.playlist.event.PlaylistUnsubscribedEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
@@ -55,6 +58,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 public class PlaylistServiceTest {
@@ -174,8 +178,19 @@ public class PlaylistServiceTest {
       // 행위 중심(given(...) 메서드가 호출됐는지 검증)
       verify(userRepository).findById(ownerId);
       verify(playlistRepository).save(any(Playlist.class));
-      verify(searchRepository).save(any(PlaylistDocument.class));
       verify(eventPublisher).publishEvent(new PlaylistCreatedEvent(ownerId, "test", title));
+
+      // publishEvent 동시에 검증 시 ClassCastException 발생하여 assert로 값 검증
+      ArgumentCaptor<PlaylistSearchIndexEvent> captor =
+          ArgumentCaptor.forClass(PlaylistSearchIndexEvent.class);
+
+      verify(eventPublisher).publishEvent(captor.capture());
+
+      PlaylistSearchIndexEvent event = captor.getValue();
+
+      assertThat(event.eventId()).isNotNull();
+      assertThat(event.playlistId()).isEqualTo(playlist.getId());
+      assertThat(event.title()).isEqualTo(title);
     }
 
     @Test
@@ -684,6 +699,8 @@ public class PlaylistServiceTest {
       given(owner.getProfileImageUrl())
           .willReturn(null);
 
+      ReflectionTestUtils.setField(playlist, "id", playlistId);
+
       given(playlistRepository.findById(playlistId))
           .willReturn(Optional.of(playlist));
 
@@ -698,8 +715,14 @@ public class PlaylistServiceTest {
       assertThat(playlist.getDescription()).isEqualTo("수정한 설명");
 
       verify(playlistRepository).findById(playlistId);
-      verify(searchRepository).save(any(PlaylistDocument.class));
       verify(playlistContentRepository).findAllByPlaylistIdOrderByCreatedAtAsc(playlistId);
+      verify(eventPublisher).publishEvent(
+          argThat((PlaylistSearchIndexEvent event) ->
+              event.eventId() != null
+                  && event.playlistId().equals(playlist.getId())
+                  && event.title().equals("수정한 제목")
+          )
+      );
     }
 
     @Test
@@ -774,7 +797,12 @@ public class PlaylistServiceTest {
       verify(playlistRepository).findById(playlistId);
       verify(playlistContentRepository).deleteAllByPlaylistId(playlistId);
       verify(playlistRepository).delete(playlist);
-      verify(searchRepository).deleteById(playlistId);
+      verify(eventPublisher).publishEvent(
+          argThat((PlaylistSearchIndexDeleteEvent event) ->
+              event.eventId() != null
+                  && event.playlistId().equals(playlistId)
+          )
+      );
     }
 
     @Test
