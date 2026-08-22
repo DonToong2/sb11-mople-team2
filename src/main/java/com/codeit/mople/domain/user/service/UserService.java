@@ -9,10 +9,10 @@ import com.codeit.mople.domain.user.dto.request.UserSortBy;
 import com.codeit.mople.domain.user.dto.request.UserUpdateRequest;
 import com.codeit.mople.domain.user.dto.response.UserDto;
 import com.codeit.mople.domain.user.entity.User;
+import com.codeit.mople.domain.user.event.UserSearchIndexEvent;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
-import com.codeit.mople.domain.user.repository.search.UserDocument;
 import com.codeit.mople.domain.user.repository.search.UserSearchRepository;
 import com.codeit.mople.global.config.CacheNames;
 import com.codeit.mople.global.dto.CursorResponse;
@@ -24,6 +24,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,8 @@ public class UserService {
   private final RefreshTokenRepository refreshTokenRepository;
   private final UserSearchRepository searchRepository;
 
+  private final ApplicationEventPublisher eventPublisher;
+
   @CacheEvict(value = CacheNames.USERS, allEntries = true)
   @Transactional
   public UserDto signUp(UserCreateRequest request) {
@@ -54,11 +57,9 @@ public class UserService {
     String encodedPassword = passwordEncoder.encode(request.password());
     User user = User.createUser(normalizedEmail, encodedPassword, request.name());
     User saved = userRepository.save(user);
-    searchRepository.save(
-        new UserDocument(
-            saved.getId(),
-            saved.getEmail()
-        )
+
+    eventPublisher.publishEvent(
+        new UserSearchIndexEvent(UUID.randomUUID(), saved.getId(), saved.getEmail())
     );
 
     return UserDto.from(saved);

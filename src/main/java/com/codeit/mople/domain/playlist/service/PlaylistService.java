@@ -13,6 +13,8 @@ import com.codeit.mople.domain.playlist.entity.PlaylistContent;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.playlist.event.PlaylistContentAddedEvent;
 import com.codeit.mople.domain.playlist.event.PlaylistCreatedEvent;
+import com.codeit.mople.domain.playlist.event.PlaylistSearchIndexDeleteEvent;
+import com.codeit.mople.domain.playlist.event.PlaylistSearchIndexEvent;
 import com.codeit.mople.domain.playlist.event.PlaylistSubscribedEvent;
 import com.codeit.mople.domain.playlist.event.PlaylistUnsubscribedEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
@@ -20,7 +22,6 @@ import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistSubscriptionRepository;
-import com.codeit.mople.domain.playlist.repository.search.PlaylistDocument;
 import com.codeit.mople.domain.playlist.repository.search.PlaylistSearchRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
@@ -74,13 +75,6 @@ public class PlaylistService {
 
     Playlist savedPlaylist = playlistRepository.save(playlist);
 
-    searchRepository.save(
-        new PlaylistDocument(
-            savedPlaylist.getId(),
-            savedPlaylist.getTitle()
-        )
-    );
-
     UserSummary ownerResponse = toUserSummary(owner);
 
     PlaylistResponse response = PlaylistResponse.from(
@@ -93,7 +87,14 @@ public class PlaylistService {
         savedPlaylist.getId(), owner.getId());
 
     publisher.publishEvent(
-        new PlaylistCreatedEvent(ownerId, owner.getName(), savedPlaylist.getTitle()));
+        new PlaylistCreatedEvent(ownerId, owner.getName(), savedPlaylist.getTitle())
+    );
+
+    publisher.publishEvent(
+        new PlaylistSearchIndexEvent(
+            UUID.randomUUID(), savedPlaylist.getId(), savedPlaylist.getTitle()
+        )
+    );
 
     return response;
   }
@@ -265,13 +266,6 @@ public class PlaylistService {
 
     playlist.update(request.title(), request.description());
 
-    searchRepository.save(
-        new PlaylistDocument(
-            playlist.getId(),
-            playlist.getTitle()
-        )
-    );
-
     UserSummary ownerResponse = toUserSummary(playlist.getOwner());
 
     List<PlaylistContentResponse> contents =
@@ -288,6 +282,14 @@ public class PlaylistService {
 
     log.info("플레이리스트 수정 완료: playlistId={}, ownerId={}",
         playlistId, ownerId);
+
+    publisher.publishEvent(
+        new PlaylistSearchIndexEvent(
+            UUID.randomUUID(),
+            playlist.getId(),
+            playlist.getTitle()
+        )
+    );
 
     return response;
   }
@@ -313,10 +315,15 @@ public class PlaylistService {
     // deleteById도 가능하지만 where id=로 조회 후 delete하기 때문에(불필요한 조회가 발생함) 조회 실행을 뺌
     playlistRepository.delete(playlist);
 
-    searchRepository.deleteById(playlistId);
-
     log.info("플레이리스트 삭제 완료: playlistId={}, ownerId={}",
         playlistId, ownerId);
+
+    publisher.publishEvent(
+        new PlaylistSearchIndexDeleteEvent(
+            UUID.randomUUID(),
+            playlistId
+        )
+    );
 
   }
 

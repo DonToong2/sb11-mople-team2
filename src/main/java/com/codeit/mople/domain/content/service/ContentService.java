@@ -7,20 +7,16 @@ import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentSortBy;
 import com.codeit.mople.domain.content.entity.ContentType;
+import com.codeit.mople.domain.content.event.ContentSearchIndexDeleteEvent;
+import com.codeit.mople.domain.content.event.ContentSearchIndexEvent;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.repository.ContentQueryRepository;
 import com.codeit.mople.domain.content.repository.ContentRepository;
-import com.codeit.mople.domain.content.repository.search.ContentDocument;
 import com.codeit.mople.domain.content.repository.search.ContentSearchRepository;
 import com.codeit.mople.global.config.CacheNames;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.storage.FileStorageService;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -28,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -43,6 +40,8 @@ public class ContentService{
   private final ContentQueryRepository contentQueryRepository;
   private final FileStorageService fileStorageService;
   private final ContentSearchRepository searchRepository;
+
+  private final ApplicationEventPublisher eventPublisher;
 
   //허용할 이미지 MIME 타입 및 확장자 정의
   private static final List<String> ALLOWED_MIME_TYPES = List.of(
@@ -79,14 +78,12 @@ public class ContentService{
     //DB에 엔티티 저장
     Content savedContent = contentRepository.save(content);
 
-    searchRepository.save(
-        new ContentDocument(
-            savedContent.getId(),
-            savedContent.getTitle()
-        )
-    );
-
     log.info("콘텐츠 생성 완료 - contentId: {}, title: {}", savedContent.getId(), savedContent.getTitle());
+
+    eventPublisher.publishEvent(
+        new ContentSearchIndexEvent(
+            UUID.randomUUID(), savedContent.getId(), savedContent.getTitle())
+    );
 
     return new ContentResponse(
         savedContent.getId(),
@@ -270,15 +267,11 @@ public class ContentService{
         request.tags()
     );
 
-    // Document 갱신
-    searchRepository.save(
-        new ContentDocument(
-            content.getId(),
-            content.getTitle()
-        )
-    );
-
     log.info("콘텐츠 수정 완료 - contentId: {}", content.getId());
+
+    eventPublisher.publishEvent(
+        new ContentSearchIndexEvent(UUID.randomUUID(), content.getId(), content.getTitle())
+    );
 
     return new ContentResponse(
         content.getId(),
@@ -310,9 +303,6 @@ public class ContentService{
     //DB 엔티티 삭제
     contentRepository.delete(content);
 
-    // Document도 같이 삭제
-    searchRepository.deleteById(contentId);
-
     //삭제 트랜잭션 커밋이 성공한 후에 S3 이미지도 동반 삭제하도록 예약
     if (oldThumbnailUrl != null) {
       TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -324,6 +314,8 @@ public class ContentService{
     }
 
     log.info("콘텐츠 삭제 완료 - contentId: {}", contentId);
+
+    eventPublisher.publishEvent(new ContentSearchIndexDeleteEvent(UUID.randomUUID(), contentId));
   }
 
   //썸네일 검증 및 파일 시스템 저장 메서드
