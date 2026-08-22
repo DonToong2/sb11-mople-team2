@@ -17,6 +17,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -85,12 +86,13 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
     }
 
     String escaped = keywordLike
-        .replace(".", "..") // '.'를 이스케이프 문자로 지정
+        .toLowerCase(Locale.ROOT)
+        .replace(".", "..")
         .replace("%", ".%")
         .replace("_", "._");
 
     // keywordLike과 일치하는 제목을 반환
-    return playlist.title.like("%" + escaped + "%", '.');
+    return playlist.title.lower().like("%" + escaped + "%", '.');
   }
 
   // 소유자 ID
