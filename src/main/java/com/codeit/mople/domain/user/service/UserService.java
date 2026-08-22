@@ -75,6 +75,8 @@ public class UserService {
       value = CacheNames.USERS,
       key = "{"
           + "#request.emailLike(),"
+          + "#request.roleEqual(),"
+          + "#request.isLocked(),"
           + "#request.cursor(),"
           + "#request.idAfter(),"
           + "#request.limitOrDefault(),"
