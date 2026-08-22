@@ -46,11 +46,18 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
   }
 
   private BooleanExpression emailLikeCondition(UserSearchRequest request) {
-    return (request.emailLike() != null && !request.emailLike().isBlank())
-        ? user.email.startsWith(request.emailLike().toLowerCase(Locale.ROOT))
-        : null;
-  }
+    if (request.emailLike() == null || request.emailLike().isBlank()) {
+      return null;
+    }
 
+    String escaped = request.emailLike()
+        .toLowerCase(Locale.ROOT)
+        .replace(".", "..")
+        .replace("%", ".%")
+        .replace("_", "._");
+
+    return user.email.like("%" + escaped + "%", '.');
+  }
   private BooleanExpression roleEqualCondition(UserSearchRequest request) {
     return request.roleEqual() != null ? user.role.eq(request.roleEqual()) : null;
   }

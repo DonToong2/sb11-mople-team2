@@ -89,22 +89,23 @@ public class UserRepositoryTest {
   }
 
   @Test
-  @DisplayName("emailLike는 대소문자를 구분하지 않고 앞부분만 매칭한다 (중간 일치는 안 됨)")
-  void searchUsers_emailLike_isPrefixOnly_ignoresCase() {
+  @DisplayName("emailLike는 대소문자를 구분하지 않고 이메일에 포함된 값을 매칭한다")
+  void searchUsers_emailLike_contains_ignoresCase() {
     userRepository.save(User.createUser("TestUser@Test.com", "encoded", "user1"));
     userRepository.save(User.createUser("other@mople.com", "encoded", "user2"));
 
-    UserSearchRequest prefixUpperCase = new UserSearchRequest(
+    UserSearchRequest upperCase = new UserSearchRequest(
         "TEST", null, null, null, null, 10,
         SortDirection.ASCENDING, UserSortBy.NAME
     );
+
     UserSearchRequest middleMatch = new UserSearchRequest(
         "mople", null, null, null, null, 10,
         SortDirection.ASCENDING, UserSortBy.NAME
     );
 
-    assertThat(userRepository.searchUsers(prefixUpperCase)).hasSize(1);
-    assertThat(userRepository.searchUsers(middleMatch)).isEmpty();
+    assertThat(userRepository.searchUsers(upperCase)).hasSize(1);
+    assertThat(userRepository.searchUsers(middleMatch)).hasSize(1);
   }
 
   @Test
