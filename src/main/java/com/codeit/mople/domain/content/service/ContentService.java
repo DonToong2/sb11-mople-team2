@@ -227,7 +227,7 @@ public class ContentService{
   }
 
   //콘텐츠 수정
-  @CacheEvict(cacheNames = CacheNames.CONTENTS, key = "#contentId")
+  @CacheEvict(cacheNames = CacheNames.CONTENTS, allEntries = true)
   @Transactional
   public ContentResponse updateContent(UUID contentId, ContentUpdateRequest request, MultipartFile thumbnail) {
     log.debug("콘텐츠 수정 시작 - contentId: {}, updateTitle: {}", contentId, request.title());
@@ -287,7 +287,7 @@ public class ContentService{
   }
 
   //콘텐츠 삭제
-  @CacheEvict(cacheNames = CacheNames.CONTENTS, key = "#contentId")
+  @CacheEvict(cacheNames = CacheNames.CONTENTS, allEntries = true)
   @Transactional
   public void deleteContent(UUID contentId) {
     log.debug("콘텐츠 삭제 시작 - contentId: {}", contentId);
