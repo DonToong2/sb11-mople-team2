@@ -370,23 +370,25 @@ export function writeLoad(data) {
 
   console.log('[WRITE 3 START]');
 
-  deleteLoadTestContents(
-      data.adminAccessToken,
-      data.csrfToken
-  );
+  const cleanupErrors = [];
 
-  deleteLoadTestPlaylists(
-      data.adminAccessToken,
-      data.csrfToken
-  );
-
-  restoreLoadTestUser(
-      data.adminAccessToken,
-      data.csrfToken
-  );
+  for (const cleanup of [
+    deleteLoadTestContents,
+    deleteLoadTestPlaylists,
+    restoreLoadTestUser,
+  ]) {
+    try {
+      cleanup(data.adminAccessToken, data.csrfToken);
+    } catch (e) {
+      cleanupErrors.push(e.message);
+    }
+  }
 
   console.log('[WRITE 3 END]');
-}
+
+  if (cleanupErrors.length > 0) {
+    throw new Error(`정리 실패: ${JSON.stringify(cleanupErrors)}`);
+  }
 
 // 콘텐츠, 플레이리스트 추가
 function executeWriteScenario(
