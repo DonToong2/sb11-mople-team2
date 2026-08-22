@@ -47,7 +47,7 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
 
   private BooleanExpression emailLikeCondition(UserSearchRequest request) {
     return (request.emailLike() != null && !request.emailLike().isBlank())
-        ? user.email.startsWith(request.emailLike().toLowerCase(Locale.ROOT))
+        ? user.email.like("%" + request.emailLike().toLowerCase(Locale.ROOT) + "%")
         : null;
   }
 
