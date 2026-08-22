@@ -41,7 +41,6 @@ public class DirectMessageReadRedisRepository {
         "local cur = redis.call('GET', KEYS[1]) " +
             "if cur and cur >= ARGV[1] then return 0 end " +
             "redis.call('SET', KEYS[1], ARGV[1], 'EX', " + READ_DATA_TTL.toSeconds() + ") " +
-            "redis.call('SADD', KEYS[2], ARGV[2]) " +
             "return 1"
     );
     SAVE_LAST_READ_SCRIPT.setResultType(Long.class);
@@ -57,13 +56,15 @@ public class DirectMessageReadRedisRepository {
 
       Long result = redisTemplate.execute(
           SAVE_LAST_READ_SCRIPT,
-          List.of(valueKey, DIRTY_SET_KEY), // KEYS[1], KEYS[2]
-          readAtStr, dirtyMember // ARGV[1], ARGV[2]
+          List.of(valueKey), // KEYS[1]
+          readAtStr // ARGV[1]
       );
 
       if (result != null && result == 0L) {
         log.debug("Redis 읽음 워터마크 역행 방지: 기존 최신 시각이 존재하여 갱신 무시 - key: {}, requestTime: {}", valueKey, readAtStr);
       } else {
+        // Lua 스크립트가 성공(1)하면, Java에서 Set 추가 (CROSSSLOT 에러 회피)
+        redisTemplate.opsForSet().add(DIRTY_SET_KEY, dirtyMember);
         log.info("Redis 읽음 시각 기록 및 대기열 추가 완료(Lua) - key: {}, readAt: {}", valueKey, readAtStr);
       }
 
