@@ -41,18 +41,13 @@ class ContentSearchRepositoryIntegrationTest {
     ));
 
     // when
-    List<ContentDocument> result =
-        contentSearchRepository.findByTitleContainingIgnoreCase("콘텐츠");
+    List<UUID> result =
+        contentSearchRepository.findAllByTitleContainingIgnoreCase("콘텐츠");
 
     // then
     assertThat(result)
         .hasSize(3)
-        .extracting(ContentDocument::getTitle)
-        .containsExactlyInAnyOrder(
-            "새 콘텐츠 (1)",
-            "새 콘텐츠 (2)",
-            "새 콘텐츠 (3)"
-        );
+        .containsExactlyInAnyOrder(contentId1, contentId2, contentId3);
   }
 
   @Test
@@ -66,14 +61,11 @@ class ContentSearchRepositoryIntegrationTest {
     );
 
     // when
-    List<ContentDocument> result =
-        contentSearchRepository.findByTitleContainingIgnoreCase("nEw");
+    List<UUID> result = contentSearchRepository.findAllByTitleContainingIgnoreCase("nEw");
 
     // then
-    assertThat(result)
-        .hasSize(1)
-        .extracting(ContentDocument::getTitle)
-        .containsExactly("New Content (1)");
+    assertThat(result).hasSize(1)
+        .containsExactly(contentId);
   }
 
   @Test
@@ -88,10 +80,10 @@ class ContentSearchRepositoryIntegrationTest {
     );
 
     // when
-    List<ContentDocument> result =
-        contentSearchRepository.findByTitleContainingIgnoreCase("33");
+    List<UUID> result = contentSearchRepository.findAllByTitleContainingIgnoreCase("33");
 
     // then
     assertThat(result).isEmpty();
   }
+
 }

@@ -41,17 +41,11 @@ class UserSearchRepositoryIntegrationTest {
     ));
 
     // when
-    List<UUID> result =
-        userSearchRepository.findAllByEmailContainingIgnoreCase("test");
+    List<UUID> result = userSearchRepository.findAllByEmailContainingIgnoreCase("test");
 
     // then
-    assertThat(result)
-        .hasSize(3)
-        .containsExactlyInAnyOrder(
-            userId1,
-            userId2,
-            userId3
-        );
+    assertThat(result).hasSize(3)
+        .containsExactlyInAnyOrder(userId1, userId2, userId3);
   }
 
   @Test
@@ -66,8 +60,7 @@ class UserSearchRepositoryIntegrationTest {
     );
 
     // when
-    List<UUID> result =
-        userSearchRepository.findAllByEmailContainingIgnoreCase("what");
+    List<UUID> result = userSearchRepository.findAllByEmailContainingIgnoreCase("what");
 
     // then
     assertThat(result).isEmpty();

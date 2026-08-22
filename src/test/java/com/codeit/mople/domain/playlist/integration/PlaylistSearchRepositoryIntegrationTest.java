@@ -41,17 +41,12 @@ class PlaylistSearchRepositoryIntegrationTest {
     ));
 
     // when
-    List<PlaylistDocument> result =
-        playlistSearchRepository.findByTitleContainingIgnoreCase("플레이");
+    List<UUID> result =
+        playlistSearchRepository.findAllByTitleContainingIgnoreCase("플레이");
 
     // then
-    assertThat(result)
-        .hasSize(2)
-        .extracting(PlaylistDocument::getTitle)
-        .containsExactlyInAnyOrder(
-            "새 플레이리스트 (1)",
-            "새 플레이리스트 (2)"
-        );
+    assertThat(result).hasSize(2)
+        .containsExactlyInAnyOrder(playlistId1, playlistId2);
   }
 
   @Test
@@ -65,14 +60,11 @@ class PlaylistSearchRepositoryIntegrationTest {
     );
 
     // when
-    List<PlaylistDocument> result =
-        playlistSearchRepository.findByTitleContainingIgnoreCase("nEw");
+    List<UUID> result = playlistSearchRepository.findAllByTitleContainingIgnoreCase("nEw");
 
     // then
-    assertThat(result)
-        .hasSize(1)
-        .extracting(PlaylistDocument::getTitle)
-        .containsExactly("New Playlist (1)");
+    assertThat(result).hasSize(1)
+        .containsExactly(playlistId);
   }
 
   @Test
@@ -83,9 +75,10 @@ class PlaylistSearchRepositoryIntegrationTest {
         new PlaylistDocument(UUID.randomUUID(), "새 플레이리스트 (1)"));
 
     // when
-    List<PlaylistDocument> result = playlistSearchRepository.findByTitleContainingIgnoreCase("33");
+    List<UUID> result = playlistSearchRepository.findAllByTitleContainingIgnoreCase("33");
 
     // then
     assertThat(result).isEmpty();
   }
+
 }
