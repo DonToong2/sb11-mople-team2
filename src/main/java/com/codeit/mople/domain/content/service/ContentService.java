@@ -142,9 +142,8 @@ public class ContentService{
     List<UUID> contentIds = null;
 
     if (keywordLike != null && !keywordLike.isBlank()) {
-      contentIds = searchRepository.findByTitleContainingIgnoreCase(keywordLike).stream()
-          .map(ContentDocument::getId)
-          .toList();
+      contentIds =
+          searchRepository.findAllByTitleContainingIgnoreCase(keywordLike);
     }
 
     //데이터 조회 및 카운트
