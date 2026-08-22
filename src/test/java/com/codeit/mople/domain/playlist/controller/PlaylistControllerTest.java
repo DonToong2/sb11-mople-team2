@@ -12,10 +12,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.codeit.mople.domain.auth.repository.AccountLockRepository;
+import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
+import com.codeit.mople.domain.auth.security.CustomOAuth2UserService;
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
+import com.codeit.mople.domain.auth.security.handler.OAuth2FailureHandler;
+import com.codeit.mople.domain.auth.security.handler.OAuth2SuccessHandler;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistCreateRequest;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition.PlaylistSortBy;
@@ -26,9 +32,11 @@ import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.service.PlaylistService;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
+import com.codeit.mople.global.config.SecurityConfig;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.dto.SortDirection;
 import com.codeit.mople.global.dto.UserSummary;
+import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
@@ -40,11 +48,13 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(PlaylistController.class)
+@Import(SecurityConfig.class)
 public class PlaylistControllerTest {
 
   @Autowired
@@ -55,6 +65,24 @@ public class PlaylistControllerTest {
 
   @MockitoBean
   private PlaylistService playlistService;
+
+  @MockitoBean
+  private JwtProvider jwtProvider;
+
+  @MockitoBean
+  private AccountLockRepository accountLockRepository;
+
+  @MockitoBean
+  private SessionTokenRepository sessionTokenRepository;
+
+  @MockitoBean
+  private CustomOAuth2UserService customOAuth2UserService;
+
+  @MockitoBean
+  private OAuth2SuccessHandler oAuth2SuccessHandler;
+
+  @MockitoBean
+  private OAuth2FailureHandler oAuth2FailureHandler;
 
   private CustomUserDetails userDetails;
   private User owner;
@@ -533,6 +561,290 @@ public class PlaylistControllerTest {
       verify(playlistService).delete(eq(playlistId), eq(ownerId));
     }
 
+  }
+
+  @Nested
+  @DisplayName("플레이리스트 콘텐츠 추가 [POST /api/playlists/{playlistId}/contents/{contentId}]")
+  class AddContent {
+
+    private final UUID contentId = UUID.randomUUID();
+
+    @Test
+    @DisplayName("콘텐츠 추가에 성공하면 204와 빈 본문을 반환")
+    void addContentSuccess() throws Exception {
+      // when, then
+      mockMvc.perform(post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
+              .with(user(userDetails))
+              .with(csrf())
+          )
+          .andExpect(status().isNoContent())
+          .andExpect(content().string(""));
+
+      verify(playlistService).addContent(eq(playlistId), eq(contentId), eq(ownerId));
+    }
+
+    @Test
+    @DisplayName("플레이리스트를 찾을 수 없으면 400을 반환")
+    void addContentFailWhenPlaylistNotFound() throws Exception {
+      // given
+      doThrow(new PlaylistException(
+          PlaylistErrorCode.PLAYLIST_CONTENT_PLAY_NOT_FOUND,
+          Map.of("playlistId", playlistId)
+      ))
+          .when(playlistService).addContent(eq(playlistId), eq(contentId), eq(ownerId));
+
+      // when, then
+      mockMvc.perform(post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
+              .with(user(userDetails))
+              .with(csrf())
+          )
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.error.code").value("PLAYLIST-011"));
+    }
+
+    @Test
+    @DisplayName("이미 담긴 콘텐츠면 400을 반환")
+    void addContentFailWhenDuplicate() throws Exception {
+      // given
+      doThrow(new PlaylistException(
+          PlaylistErrorCode.PLAYLIST_CONTENT_DUPLICATE,
+          Map.of("playlistId", playlistId, "contentId", contentId)
+      ))
+          .when(playlistService).addContent(eq(playlistId), eq(contentId), eq(ownerId));
+
+      // when, then
+      mockMvc.perform(post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
+              .with(user(userDetails))
+              .with(csrf())
+          )
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.error.code").value("PLAYLIST-013"));
+    }
+
+    @Test
+    @DisplayName("플레이리스트 소유자가 아니면 403을 반환")
+    void addContentFailWhenNotOwner() throws Exception {
+      // given
+      doThrow(new PlaylistException(
+          PlaylistErrorCode.PLAYLIST_FORBIDDEN,
+          Map.of("playlistId", playlistId)
+      ))
+          .when(playlistService).addContent(eq(playlistId), eq(contentId), eq(ownerId));
+
+      // when, then
+      mockMvc.perform(post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
+              .with(user(userDetails))
+              .with(csrf())
+          )
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.error.code").value("PLAYLIST-003"));
+    }
+
+    @Test
+    @DisplayName("인증 없이 요청하면 401을 반환")
+    void addContentFailWhenUnauthenticated() throws Exception {
+      // when, then
+      mockMvc.perform(post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
+              .with(csrf())
+          )
+          .andExpect(status().isUnauthorized());
+
+      verifyNoInteractions(playlistService);
+    }
+  }
+
+  @Nested
+  @DisplayName("플레이리스트 콘텐츠 삭제 [DELETE /api/playlists/{playlistId}/contents/{contentId}]")
+  class RemoveContent {
+
+    private final UUID contentId = UUID.randomUUID();
+
+    @Test
+    @DisplayName("콘텐츠 삭제에 성공하면 204와 빈 본문을 반환")
+    void removeContentSuccess() throws Exception {
+      // when, then
+      mockMvc.perform(
+              delete("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
+                  .with(user(userDetails))
+                  .with(csrf())
+          )
+          .andExpect(status().isNoContent())
+          .andExpect(content().string(""));
+
+      verify(playlistService).removeContent(eq(playlistId), eq(contentId), eq(ownerId));
+    }
+
+    @Test
+    @DisplayName("플레이리스트에 없는 콘텐츠면 400을 반환")
+    void removeContentFailWhenContentNotInPlaylist() throws Exception {
+      // given
+      doThrow(new PlaylistException(
+          PlaylistErrorCode.UN_PLAYLIST_CONTENT_NOT_FOUND,
+          Map.of("playlistId", playlistId, "contentId", contentId)
+      ))
+          .when(playlistService).removeContent(eq(playlistId), eq(contentId), eq(ownerId));
+
+      // when, then
+      mockMvc.perform(
+              delete("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
+                  .with(user(userDetails))
+                  .with(csrf())
+          )
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.error.code").value("PLAYLIST-014"));
+    }
+
+    @Test
+    @DisplayName("플레이리스트 소유자가 아니면 403을 반환")
+    void removeContentFailWhenNotOwner() throws Exception {
+      // given
+      doThrow(new PlaylistException(
+          PlaylistErrorCode.PLAYLIST_FORBIDDEN,
+          Map.of("playlistId", playlistId)
+      ))
+          .when(playlistService).removeContent(eq(playlistId), eq(contentId), eq(ownerId));
+
+      // when, then
+      mockMvc.perform(
+              delete("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
+                  .with(user(userDetails))
+                  .with(csrf())
+          )
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.error.code").value("PLAYLIST-003"));
+    }
+
+    @Test
+    @DisplayName("인증 없이 요청하면 401을 반환")
+    void removeContentFailWhenUnauthenticated() throws Exception {
+      // when, then
+      mockMvc.perform(
+              delete("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
+                  .with(csrf())
+          )
+          .andExpect(status().isUnauthorized());
+
+      verifyNoInteractions(playlistService);
+    }
+  }
+
+  @Nested
+  @DisplayName("플레이리스트 구독 [POST /api/playlists/{playlistId}/subscription]")
+  class Subscribe {
+
+    @Test
+    @DisplayName("구독에 성공하면 204와 빈 본문을 반환")
+    void subscribeSuccess() throws Exception {
+      // when, then
+      mockMvc.perform(post("/api/playlists/{playlistId}/subscription", playlistId)
+              .with(user(userDetails))
+              .with(csrf())
+          )
+          .andExpect(status().isNoContent())
+          .andExpect(content().string(""));
+
+      verify(playlistService).subscribe(eq(playlistId), eq(ownerId));
+    }
+
+    @Test
+    @DisplayName("본인의 플레이리스트를 구독하면 400을 반환")
+    void subscribeFailWhenOwnPlaylist() throws Exception {
+      // given
+      doThrow(new PlaylistException(
+          PlaylistErrorCode.SUBSCRIBE_NOT_ALLOWED,
+          Map.of("playlistId", playlistId)
+      ))
+          .when(playlistService).subscribe(eq(playlistId), eq(ownerId));
+
+      // when, then
+      mockMvc.perform(post("/api/playlists/{playlistId}/subscription", playlistId)
+              .with(user(userDetails))
+              .with(csrf())
+          )
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.error.code").value("PLAYLIST-007"));
+    }
+
+    @Test
+    @DisplayName("이미 구독 중이면 400을 반환")
+    void subscribeFailWhenDuplicate() throws Exception {
+      // given
+      doThrow(new PlaylistException(
+          PlaylistErrorCode.SUBSCRIBE_DUPLICATE,
+          Map.of("playlistId", playlistId)
+      ))
+          .when(playlistService).subscribe(eq(playlistId), eq(ownerId));
+
+      // when, then
+      mockMvc.perform(post("/api/playlists/{playlistId}/subscription", playlistId)
+              .with(user(userDetails))
+              .with(csrf())
+          )
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.error.code").value("PLAYLIST-009"));
+    }
+
+    @Test
+    @DisplayName("인증 없이 요청하면 401을 반환")
+    void subscribeFailWhenUnauthenticated() throws Exception {
+      // when, then
+      mockMvc.perform(post("/api/playlists/{playlistId}/subscription", playlistId)
+              .with(csrf())
+          )
+          .andExpect(status().isUnauthorized());
+
+      verifyNoInteractions(playlistService);
+    }
+  }
+
+  @Nested
+  @DisplayName("플레이리스트 구독 취소 [DELETE /api/playlists/{playlistId}/subscription]")
+  class CancelSubscribe {
+
+    @Test
+    @DisplayName("구독 취소에 성공하면 204와 빈 본문을 반환")
+    void cancelSubscribeSuccess() throws Exception {
+      // when, then
+      mockMvc.perform(delete("/api/playlists/{playlistId}/subscription", playlistId)
+              .with(user(userDetails))
+              .with(csrf())
+          )
+          .andExpect(status().isNoContent())
+          .andExpect(content().string(""));
+
+      verify(playlistService).unSubscribe(eq(playlistId), eq(ownerId));
+    }
+
+    @Test
+    @DisplayName("구독하지 않은 플레이리스트면 400을 반환")
+    void cancelSubscribeFailWhenNotSubscribed() throws Exception {
+      // given
+      doThrow(new PlaylistException(
+          PlaylistErrorCode.UNSUBSCRIBE_NOT_FOUND,
+          Map.of("playlistId", playlistId)
+      ))
+          .when(playlistService).unSubscribe(eq(playlistId), eq(ownerId));
+
+      // when, then
+      mockMvc.perform(delete("/api/playlists/{playlistId}/subscription", playlistId)
+              .with(user(userDetails))
+              .with(csrf())
+          )
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.error.code").value("PLAYLIST-010"));
+    }
+
+    @Test
+    @DisplayName("인증 없이 요청하면 401을 반환")
+    void cancelSubscribeFailWhenUnauthenticated() throws Exception {
+      // when, then
+      mockMvc.perform(delete("/api/playlists/{playlistId}/subscription", playlistId)
+              .with(csrf())
+          )
+          .andExpect(status().isUnauthorized());
+
+      verifyNoInteractions(playlistService);
+    }
   }
 
 }

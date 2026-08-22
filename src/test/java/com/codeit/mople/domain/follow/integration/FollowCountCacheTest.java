@@ -1,14 +1,26 @@
 package com.codeit.mople.domain.follow.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willReturn;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.follow.dto.FollowRequest;
 import com.codeit.mople.domain.follow.dto.FollowResponse;
 import com.codeit.mople.domain.follow.repository.FollowRepository;
 import com.codeit.mople.domain.follow.service.FollowService;
 import com.codeit.mople.domain.notification.service.NotificationCreator;
+import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.config.CacheNames;
@@ -18,14 +30,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @DisplayName("팔로워 수 캐시 통합 테스트")
 class FollowCountCacheTest {
@@ -37,18 +54,21 @@ class FollowCountCacheTest {
 
   @Autowired
   UserRepository userRepository;
-  
+
   @MockitoSpyBean
   FollowRepository followRepository;
 
   @Autowired
   StringRedisTemplate stringRedisTemplate;
 
-  @Autowired
+  @MockitoSpyBean
   CacheManager cacheManager;
-  
+
   @MockitoBean
   NotificationCreator notificationCreator;
+
+  @Autowired
+  MockMvc mockMvc;
 
   UUID followeeId;
   UUID followerId;
@@ -75,7 +95,18 @@ class FollowCountCacheTest {
   }
 
   private void clearFollowCountCache() {
+    reset(cacheManager);
     cacheManager.getCache(CacheNames.FOLLOW_COUNT).clear();
+  }
+
+  private void breakFollowCountCache() {
+    Cache brokenCache = mock(Cache.class);
+    given(brokenCache.getName()).willReturn(CacheNames.FOLLOW_COUNT);
+    given(brokenCache.get(any())).willThrow(new RedisConnectionFailureException("redis down"));
+    willThrow(new RedisConnectionFailureException("redis down"))
+        .given(brokenCache).put(any(), any());
+
+    willReturn(brokenCache).given(cacheManager).getCache(CacheNames.FOLLOW_COUNT);
   }
 
   @Test
@@ -84,7 +115,7 @@ class FollowCountCacheTest {
     // when
     followService.getFollowCount(followeeId);
     followService.getFollowCount(followeeId);
-    
+
     verify(followRepository, times(1)).countByFolloweeId(followeeId);
   }
 
@@ -123,5 +154,33 @@ class FollowCountCacheTest {
 
     // then
     assertThat(stringRedisTemplate.hasKey(CACHE_KEY_PREFIX + followeeId)).isTrue();
+  }
+
+  @Test
+  @DisplayName("캐시 조회가 실패해도 원본을 조회해 200을 반환하는지")
+  void fallsBackToOriginWhenCacheIsDown() throws Exception {
+    // given
+    breakFollowCountCache();
+
+    // when & then
+    mockMvc.perform(get("/api/follows/count")
+            .param("followeeId", followeeId.toString())
+            .with(user(new CustomUserDetails(followerId, Role.USER))))
+        .andExpect(status().isOk())
+        .andExpect(content().string("0"));
+  }
+
+  @Test
+  @DisplayName("캐시가 죽으면 호출마다 원본 집계 쿼리가 나가는지")
+  void queriesOriginEveryTimeWhenCacheIsDown() {
+    // given
+    breakFollowCountCache();
+
+    // when
+    followService.getFollowCount(followeeId);
+    followService.getFollowCount(followeeId);
+
+    // then
+    verify(followRepository, times(2)).countByFolloweeId(followeeId);
   }
 }
