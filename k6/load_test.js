@@ -32,14 +32,14 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        {duration: '1m', target: 50},
-        {duration: '1m', target: 100},
-        {duration: '2m', target: 200},
-        {duration: '3m', target: 500},
-        {duration: '3m', target: 200},
-        {duration: '2m', target: 100},
-        {duration: '1m', target: 50},
-        {duration: '1m', target: 0},
+        {duration: '1m', target: 50}, // 1분간 0VU -> 50VU로 서서히 증가
+        {duration: '1m', target: 100}, // 1분간 50VU -> 100VU로 서서히 증가
+        {duration: '2m', target: 200}, // 2분간 100VU -> 200VU로 서서히 증가
+        {duration: '3m', target: 500}, // 3분간 200VU -> 500VU로 서서히 증가
+        {duration: '3m', target: 200}, // 3분간 500VU -> 200VU로 서서히 감소
+        {duration: '2m', target: 100}, // 2분간 200VU -> 100VU로 서서히 감소
+        {duration: '1m', target: 50}, // 1분간 100VU -> 50VU로 서서히 감소
+        {duration: '1m', target: 0}, // 1분간 50VU -> 0VU로 감소(종료)
       ],
       exec: 'readLoad',
     },
