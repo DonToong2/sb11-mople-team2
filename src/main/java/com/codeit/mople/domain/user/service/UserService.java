@@ -48,7 +48,7 @@ public class UserService {
   @Transactional
   public UserDto signUp(UserCreateRequest request) {
     String normalizedEmail = request.email().toLowerCase(Locale.ROOT);
-    if(userRepository.existsByEmail(normalizedEmail)) {
+    if (userRepository.existsByEmail(normalizedEmail)) {
       throw new UserException(UserErrorCode.DUPLICATE_EMAIL, Map.of("email", normalizedEmail));
     }
     String encodedPassword = passwordEncoder.encode(request.password());
@@ -85,16 +85,19 @@ public class UserService {
     List<UUID> userIds = null;
 
     if (request.emailLike() != null && !request.emailLike().isBlank()) {
-      userIds = searchRepository.findByEmailContainingIgnoreCase(request.emailLike()).stream()
-          .map(UserDocument::getId)
-          .toList();
+      userIds = searchRepository.findAllByEmailContainingIgnoreCase(
+          request.emailLike()
+      );
     }
 
-    List<User> users = userRepository.searchUsers(request, userIds);
     long totalCount = userRepository.countUsers(request, userIds);
 
+    List<User> users = userRepository.searchUsers(request, userIds);
+
     return CursorResponse.of(
-        users.stream().map(UserDto::from).toList(),
+        users.stream()
+            .map(UserDto::from)
+            .toList(),
         request.limitOrDefault(),
         totalCount,
         request.sortByOrDefault().getValue(),
@@ -113,7 +116,7 @@ public class UserService {
     String imageUrl = user.getProfileImageUrl(); //새롭게 반영될 URL
     final String oldImageUrl = user.getProfileImageUrl(); //삭제 예약을 위한 기존 URL 백업
 
-    if(image != null && !image.isEmpty()) {
+    if (image != null && !image.isEmpty()) {
       //새로운 이미지 업로드 먼저 수행
       imageUrl = fileStorageService.upload(image);
 
