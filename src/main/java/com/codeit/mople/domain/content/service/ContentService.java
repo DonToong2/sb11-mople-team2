@@ -25,6 +25,8 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -51,6 +53,7 @@ public class ContentService{
 
   //콘텐츠 생성
   @Transactional
+  @CacheEvict(cacheNames = "contents", allEntries = true)
   public ContentResponse createContent(ContentCreateRequest request, MultipartFile thumbnail) {
     log.debug("콘텐트 생성 시작 - type: {}, title: {}", request.type(), request.title());
 
@@ -98,6 +101,9 @@ public class ContentService{
   }
 
   //콘텐츠 목록 조회
+  @Cacheable(cacheNames = "contents",
+      key = "{#cursorId, #cursorValue, #limit, #typeEqual, #keywordLike, #sortBy}"
+  )
   @Transactional(readOnly = true)
   public CursorResponseContentDto getContents(
       UUID cursorId, String cursorValue, int limit, String typeEqual, String keywordLike, String sortBy) {
@@ -196,6 +202,7 @@ public class ContentService{
   }
 
   //콘텐츠 단건 조회
+  @Cacheable(cacheNames = "contents", key = "#contentId")
   @Transactional(readOnly = true)
   public ContentResponse getContent(UUID contentId) {
     log.debug("콘텐츠 단건 조회 시작 - contentId: {}", contentId);
@@ -223,6 +230,7 @@ public class ContentService{
   }
 
   //콘텐츠 수정
+  @CacheEvict(cacheNames = "contents", key = "#contentId")
   @Transactional
   public ContentResponse updateContent(UUID contentId, ContentUpdateRequest request, MultipartFile thumbnail) {
     log.debug("콘텐츠 수정 시작 - contentId: {}, updateTitle: {}", contentId, request.title());
@@ -286,6 +294,7 @@ public class ContentService{
   }
 
   //콘텐츠 삭제
+  @CacheEvict(cacheNames = "contents", key = "#contentId")
   @Transactional
   public void deleteContent(UUID contentId) {
     log.debug("콘텐츠 삭제 시작 - contentId: {}", contentId);
