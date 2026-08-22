@@ -20,7 +20,6 @@ const playlistSearchTrend = new Trend('playlist_search_duration');
 const userSearchTrend = new Trend('user_search_duration');
 
 // 쓰기
-const signupTrend = new Trend('signup_duration');
 const contentCreateTrend = new Trend('content_create_duration');
 const playlistCreateTrend = new Trend('playlist_create_duration');
 
@@ -330,7 +329,6 @@ export function writeLoad(data) {
       data.adminAccessToken,
       data.csrfToken,
       'write1',
-      0,
       2,
       12
   );
@@ -350,7 +348,6 @@ export function writeLoad(data) {
       data.adminAccessToken,
       data.csrfToken,
       'write2',
-      0,
       0,
       8
   );
@@ -391,44 +388,16 @@ export function writeLoad(data) {
   console.log('[WRITE 3 END]');
 }
 
-// 사용자, 콘텐츠, 플레이리스트 추가
+// 콘텐츠, 플레이리스트 추가
 function executeWriteScenario(
     adminAccessToken,
     csrfToken,
     prefix,
-    signupCount,
     contentCount,
     playlistCount
 ) {
 
-  // 1. 사용자 회원가입
-  for (let i = 1; i <= signupCount; i++) {
-
-    const uniqueId = `${prefix}_${Date.now()}_${i}`;
-
-    const signUpRes = http.post(
-        `${BASE_URL}/users`,
-        JSON.stringify({
-          email: `loadtest_${uniqueId}@test.com`,
-          password: PASSWORD,
-          name: `부하테스트 사용자 ${uniqueId}`,
-        }),
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-    );
-
-    const signUpSuccess = check(signUpRes, {
-      'user signup status is 201': (r) => r.status === 201,
-    });
-
-    errorRate.add(!signUpSuccess);
-    signupTrend.add(signUpRes.timings.duration);
-  }
-
-  // 2. 관리자 콘텐츠 추가
+  // 1. 관리자 콘텐츠 추가
   for (let i = 1; i <= contentCount; i++) {
 
     const uniqueId = `${prefix}_${Date.now()}_${i}`;
@@ -478,7 +447,7 @@ function executeWriteScenario(
     }
   }
 
-  // 3. 관리자 플레이리스트 추가
+  // 2. 관리자 플레이리스트 추가
   for (let i = 1; i <= playlistCount; i++) {
 
     const uniqueId = `${prefix}_${Date.now()}_${i}`;
