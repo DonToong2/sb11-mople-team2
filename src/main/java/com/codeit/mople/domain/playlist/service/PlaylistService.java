@@ -20,6 +20,8 @@ import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistSubscriptionRepository;
+import com.codeit.mople.domain.playlist.repository.search.PlaylistDocument;
+import com.codeit.mople.domain.playlist.repository.search.PlaylistSearchRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
@@ -49,6 +51,7 @@ public class PlaylistService {
   private final ContentRepository contentRepository;
   private final PlaylistSubscriptionRepository playlistSubscriptionRepository;
   private final ApplicationEventPublisher publisher;
+  private final PlaylistSearchRepository searchRepository;
 
   @Transactional
   public PlaylistResponse create(PlaylistCreateRequest request, UUID ownerId) {
@@ -67,6 +70,13 @@ public class PlaylistService {
 
     Playlist savedPlaylist = playlistRepository.save(playlist);
 
+    searchRepository.save(
+        new PlaylistDocument(
+            savedPlaylist.getId(),
+            savedPlaylist.getTitle()
+        )
+    );
+
     UserSummary ownerResponse = toUserSummary(owner);
 
     PlaylistResponse response = PlaylistResponse.from(
@@ -78,7 +88,8 @@ public class PlaylistService {
     log.info("플레이리스트 생성 완료: playlistId={}, ownerId={}",
         savedPlaylist.getId(), owner.getId());
 
-    publisher.publishEvent(new PlaylistCreatedEvent(ownerId, owner.getName(), savedPlaylist.getTitle()));
+    publisher.publishEvent(
+        new PlaylistCreatedEvent(ownerId, owner.getName(), savedPlaylist.getTitle()));
 
     return response;
   }
@@ -122,7 +133,8 @@ public class PlaylistService {
 
   // 플레이리스트 목록 조회
   @Transactional(readOnly = true)
-  public CursorResponse<PlaylistResponse> findAll(PlaylistQueryCondition condition, UUID requesterId) {
+  public CursorResponse<PlaylistResponse> findAll(PlaylistQueryCondition condition,
+      UUID requesterId) {
 
     log.debug("플레이리스트 목록 조회 시도: requesterId={}, keywordLike={}, ownerId={}, subscriberId={},"
             + " cursor={}, idAfter={}, limit={}, sortBy={}, sortDirection={}",
@@ -137,11 +149,20 @@ public class PlaylistService {
         condition.sortDirection()
     );
 
+    List<UUID> searchPlaylistIds = null;
+
+    if (condition.keywordLike() != null && !condition.keywordLike().isBlank()) {
+      searchPlaylistIds =
+          searchRepository.findByTitleContainingIgnoreCase(condition.keywordLike()).stream()
+              .map(PlaylistDocument::getId)
+              .toList();
+    }
+
     // 목록 조회(limit + 1까지)
-    List<Playlist> playlists = playlistRepository.findAll(condition);
+    List<Playlist> playlists = playlistRepository.findAll(condition, searchPlaylistIds);
 
     // 목록 조회된 Playlist의 총 개수
-    long totalCount = playlistRepository.count(condition);
+    long totalCount = playlistRepository.count(condition, searchPlaylistIds);
 
     // 조회된 플레이리스트 ID
     List<UUID> playlistIds = playlists.stream().map(Playlist::getId).toList();
@@ -224,6 +245,13 @@ public class PlaylistService {
 
     playlist.update(request.title(), request.description());
 
+    searchRepository.save(
+        new PlaylistDocument(
+            playlist.getId(),
+            playlist.getTitle()
+        )
+    );
+
     UserSummary ownerResponse = toUserSummary(playlist.getOwner());
 
     List<PlaylistContentResponse> contents =
@@ -263,6 +291,8 @@ public class PlaylistService {
 
     // deleteById도 가능하지만 where id=로 조회 후 delete하기 때문에(불필요한 조회가 발생함) 조회 실행을 뺌
     playlistRepository.delete(playlist);
+
+    searchRepository.deleteById(playlistId);
 
     log.info("플레이리스트 삭제 완료: playlistId={}, ownerId={}",
         playlistId, ownerId);
