@@ -327,6 +327,7 @@ public class PlaylistService {
 
   }
 
+  @CacheEvict(cacheNames = {CacheNames.PLAYLISTS, CacheNames.PLAYLIST_LIST}, allEntries = true)
   @Transactional
   public void subscribe(UUID playlistId, UUID subscriberId) {
 
@@ -374,6 +375,7 @@ public class PlaylistService {
     ));
   }
 
+  @CacheEvict(cacheNames = {CacheNames.PLAYLISTS, CacheNames.PLAYLIST_LIST}, allEntries = true)
   @Transactional
   public void unSubscribe(UUID playlistId, UUID subscriberId) {
     log.debug("플레이리스트 구독 취소 시도: playlistId={}, subscriberId={}",
@@ -397,6 +399,7 @@ public class PlaylistService {
         playlistId, subscriberId);
   }
 
+  @CacheEvict(cacheNames = {CacheNames.PLAYLISTS, CacheNames.PLAYLIST_LIST}, allEntries = true)
   @Transactional
   public void addContent(UUID playlistId, UUID contentId, UUID requesterId) {
     log.debug("플레이리스트에 콘텐츠 추가 시도: playlistId={}, contentId={}, requesterId={}",
@@ -436,6 +439,7 @@ public class PlaylistService {
     ));
   }
 
+  @CacheEvict(cacheNames = {CacheNames.PLAYLISTS, CacheNames.PLAYLIST_LIST}, allEntries = true)
   @Transactional
   public void removeContent(UUID playlistId, UUID contentId, UUID requesterId) {
     log.debug("플레이리스트에 콘텐츠 삭제 시도: playlistId={}, contentId={}, requesterId={}",
