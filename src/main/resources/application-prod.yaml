@@ -21,7 +21,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
 
   security:
@@ -90,3 +90,11 @@ app:
       - ${FRONTEND_ORIGIN:https://mople.com}
   websocket:
     allowed-origins: ${CORS_ALLOWED_ORIGIN}
+
+cookie:
+  secure: ${COOKIE_SECURE:true}
+
+oauth2:
+  redirect:
+    success-uri: ${FRONTEND_ORIGIN}/
+    failure-uri: ${FRONTEND_ORIGIN}/

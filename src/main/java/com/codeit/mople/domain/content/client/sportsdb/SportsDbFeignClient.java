@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @FeignClient(
     name = "sportsDbClient",
-    url = "${external-api.sportsdb.base-url}/${external-api.sportsdb.api-key}",
+    url = "${external-api.sportsdb.base-url}${external-api.sportsdb.api-key}",
     configuration = SportsDbFeignConfig.class
 )
 public interface SportsDbFeignClient {

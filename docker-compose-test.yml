@@ -1,0 +1,77 @@
+name: mople-load-test
+services:
+  # 부하 테스트 대상 Spring Boot 애플리케이션
+  app-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mople-app-test
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: load
+      TMDB_API_KEY: ${TMDB_API_KEY}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_started
+      broker-test:
+        condition: service_started
+
+  # 부하 테스트용 PostgreSQL
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: mople-postgres-test
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_USER: mople
+      POSTGRES_PASSWORD: mople1234
+      POSTGRES_DB: mople_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mople -d mople_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # 부하 테스트용 Redis
+  redis-test:
+    image: redis:7-alpine
+    container_name: mople-redis-test
+    ports:
+      - "6381:6379"
+
+  # 부하 테스트용 Kafka
+  broker-test:
+    image: apache/kafka:3.9.0
+    hostname: broker-test
+    container_name: mople-kafka-test
+    ports:
+      - "19093:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker-test:29092,PLAINTEXT_HOST://localhost:19093
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker-test:29093
+
+      KAFKA_LISTENERS: PLAINTEXT://broker-test:29092,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://broker-test:29093
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: MkU30EVBNTcwNTJENDM2Qk
