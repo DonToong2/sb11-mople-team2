@@ -9,7 +9,7 @@ import java.util.Map;
 public enum ContentSortBy {
   CREATED_AT("createdAt"),
   WATCHER_COUNT("watcherCount"),
-  RATING("ratingSum");
+  RATING("rate");
 
   private final String value;
 
@@ -51,7 +51,7 @@ public enum ContentSortBy {
     if (this == WATCHER_COUNT) {
       return String.valueOf(content.getWatcherCount());
     } else if (this == RATING) {
-      return String.valueOf(content.getRatingSum());
+      return String.valueOf(content.calculateAverageRating());
     } else {
       return content.getCreatedAt() != null ? content.getCreatedAt().toString() : null;
     }
