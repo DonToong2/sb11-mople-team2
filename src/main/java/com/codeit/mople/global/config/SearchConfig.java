@@ -18,6 +18,7 @@ public class SearchConfig {
   @Bean
   public CommandLineRunner indexContents() {
     return args -> {
+      // 콘텐츠 제목들을 저장소에 저장함
       var documents = contentRepository.findAll().stream()
           .map(content -> new ContentDocument(
               content.getId(),

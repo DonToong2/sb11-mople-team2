@@ -11,6 +11,8 @@ import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.repository.ContentQueryRepository;
 import com.codeit.mople.domain.content.repository.ContentRepository;
+import com.codeit.mople.domain.content.repository.search.ContentDocument;
+import com.codeit.mople.domain.content.repository.search.ContentSearchRepository;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.storage.FileStorageService;
 import java.io.File;
@@ -37,6 +39,7 @@ public class ContentService{
   private final ContentRepository contentRepository;
   private final ContentQueryRepository contentQueryRepository;
   private final FileStorageService fileStorageService;
+  private final ContentSearchRepository contentSearchRepository;
 
   //허용할 이미지 MIME 타입 및 확장자 정의
   private static final List<String> ALLOWED_MIME_TYPES = List.of(
@@ -71,6 +74,13 @@ public class ContentService{
 
     //DB에 엔티티 저장
     Content savedContent = contentRepository.save(content);
+
+    contentSearchRepository.save(
+        new ContentDocument(
+            savedContent.getId(),
+            savedContent.getTitle()
+        )
+    );
 
     log.info("콘텐츠 생성 완료 - contentId: {}, title: {}", savedContent.getId(), savedContent.getTitle());
 
@@ -122,10 +132,18 @@ public class ContentService{
       }
     }
 
+    List<UUID> contentIds = null;
+
+    if (keywordLike != null && !keywordLike.isBlank()) {
+      contentIds = contentSearchRepository.findByTitleContainingIgnoreCase(keywordLike).stream()
+          .map(ContentDocument::getId)
+          .toList();
+    }
+
     //데이터 조회 및 카운트
     List<Content> contents = contentQueryRepository
-        .findContentByCursor(cursorId, parsedCursorValue, limit, parsedType, keywordLike, contentSortBy);
-    long totalCount = contentQueryRepository.countContentsByTypeAndKeyword(parsedType, keywordLike);
+        .findContentByCursor(cursorId, parsedCursorValue, limit, parsedType, contentIds, contentSortBy);
+    long totalCount = contentQueryRepository.countContentsByTypeAndIds(parsedType, contentIds);
 
     CursorResponse<Content> cursorResponse = CursorResponse.of(
         contents,
@@ -244,6 +262,14 @@ public class ContentService{
         request.tags()
     );
 
+    // Document 갱신
+    contentSearchRepository.save(
+        new ContentDocument(
+            content.getId(),
+            content.getTitle()
+        )
+    );
+
     log.info("콘텐츠 수정 완료 - contentId: {}", content.getId());
 
     return new ContentResponse(
@@ -274,6 +300,9 @@ public class ContentService{
 
     //DB 엔티티 삭제
     contentRepository.delete(content);
+
+    // Document도 같이 삭제
+    contentSearchRepository.deleteById(contentId);
 
     //삭제 트랜잭션 커밋이 성공한 후에 S3 이미지도 동반 삭제하도록 예약
     if (oldThumbnailUrl != null) {
