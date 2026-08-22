@@ -39,7 +39,7 @@ public class ContentService{
   private final ContentRepository contentRepository;
   private final ContentQueryRepository contentQueryRepository;
   private final FileStorageService fileStorageService;
-  private final ContentSearchRepository contentSearchRepository;
+  private final ContentSearchRepository searchRepository;
 
   //허용할 이미지 MIME 타입 및 확장자 정의
   private static final List<String> ALLOWED_MIME_TYPES = List.of(
@@ -75,7 +75,7 @@ public class ContentService{
     //DB에 엔티티 저장
     Content savedContent = contentRepository.save(content);
 
-    contentSearchRepository.save(
+    searchRepository.save(
         new ContentDocument(
             savedContent.getId(),
             savedContent.getTitle()
@@ -135,7 +135,7 @@ public class ContentService{
     List<UUID> contentIds = null;
 
     if (keywordLike != null && !keywordLike.isBlank()) {
-      contentIds = contentSearchRepository.findByTitleContainingIgnoreCase(keywordLike).stream()
+      contentIds = searchRepository.findByTitleContainingIgnoreCase(keywordLike).stream()
           .map(ContentDocument::getId)
           .toList();
     }
@@ -263,7 +263,7 @@ public class ContentService{
     );
 
     // Document 갱신
-    contentSearchRepository.save(
+    searchRepository.save(
         new ContentDocument(
             content.getId(),
             content.getTitle()
@@ -302,7 +302,7 @@ public class ContentService{
     contentRepository.delete(content);
 
     // Document도 같이 삭제
-    contentSearchRepository.deleteById(contentId);
+    searchRepository.deleteById(contentId);
 
     //삭제 트랜잭션 커밋이 성공한 후에 S3 이미지도 동반 삭제하도록 예약
     if (oldThumbnailUrl != null) {

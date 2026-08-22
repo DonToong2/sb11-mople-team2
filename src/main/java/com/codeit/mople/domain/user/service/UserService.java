@@ -12,6 +12,8 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.domain.user.repository.search.UserDocument;
+import com.codeit.mople.domain.user.repository.search.UserSearchRepository;
 import com.codeit.mople.global.config.CacheNames;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.storage.FileStorageService;
@@ -40,6 +42,7 @@ public class UserService {
   private final FileStorageService fileStorageService;
   private final SessionTokenRepository sessionTokenRepository;
   private final RefreshTokenRepository refreshTokenRepository;
+  private final UserSearchRepository searchRepository;
 
   @Transactional
   public UserDto signUp(UserCreateRequest request) {
@@ -50,6 +53,13 @@ public class UserService {
     String encodedPassword = passwordEncoder.encode(request.password());
     User user = User.createUser(normalizedEmail, encodedPassword, request.name());
     User saved = userRepository.save(user);
+    searchRepository.save(
+        new UserDocument(
+            saved.getId(),
+            saved.getEmail()
+        )
+    );
+
     return UserDto.from(saved);
   }
 
@@ -60,8 +70,16 @@ public class UserService {
   }
 
   public CursorResponse<UserDto> getUsers(UserSearchRequest request) {
-    List<User> users = userRepository.searchUsers(request);
-    long totalCount = userRepository.countUsers(request);
+    List<UUID> userIds = null;
+
+    if (request.emailLike() != null && !request.emailLike().isBlank()) {
+      userIds = searchRepository.findByEmailContainingIgnoreCase(request.emailLike()).stream()
+          .map(UserDocument::getId)
+          .toList();
+    }
+
+    List<User> users = userRepository.searchUsers(request, userIds);
+    long totalCount = userRepository.countUsers(request, userIds);
 
     return CursorResponse.of(
         users.stream().map(UserDto::from).toList(),

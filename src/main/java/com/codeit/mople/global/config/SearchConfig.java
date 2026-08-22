@@ -1,8 +1,7 @@
 package com.codeit.mople.global.config;
 
-import com.codeit.mople.domain.content.repository.ContentRepository;
-import com.codeit.mople.domain.content.repository.search.ContentDocument;
-import com.codeit.mople.domain.content.repository.search.ContentSearchRepository;
+import com.codeit.mople.domain.content.service.ContentSearchService;
+import com.codeit.mople.domain.user.service.UserSearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -12,21 +11,14 @@ import org.springframework.context.annotation.Configuration;
 @RequiredArgsConstructor
 public class SearchConfig {
 
-  private final ContentRepository contentRepository;
-  private final ContentSearchRepository contentSearchRepository;
+  private final ContentSearchService contentSearchService;
+  private final UserSearchService userSearchService;
 
   @Bean
-  public CommandLineRunner indexContents() {
+  public CommandLineRunner indexSearchDocuments() {
     return args -> {
-      // 콘텐츠 제목들을 저장소에 저장함
-      var documents = contentRepository.findAll().stream()
-          .map(content -> new ContentDocument(
-              content.getId(),
-              content.getTitle()
-          ))
-          .toList();
-
-      contentSearchRepository.saveAll(documents);
+      contentSearchService.indexAll();
+      userSearchService.indexAll();
     };
   }
 }
