@@ -44,6 +44,7 @@ public class UserService {
   private final RefreshTokenRepository refreshTokenRepository;
   private final UserSearchRepository searchRepository;
 
+  @CacheEvict(value = CacheNames.USERS, allEntries = true)
   @Transactional
   public UserDto signUp(UserCreateRequest request) {
     String normalizedEmail = request.email().toLowerCase(Locale.ROOT);
@@ -69,6 +70,17 @@ public class UserService {
     return UserDto.from(user);
   }
 
+  @Cacheable(
+      value = CacheNames.USERS,
+      key = "{"
+          + "#request.emailLike(),"
+          + "#request.cursor(),"
+          + "#request.idAfter(),"
+          + "#request.limitOrDefault(),"
+          + "#request.sortByOrDefault(),"
+          + "#request.sortDirectionOrDefault()"
+          + "}"
+  )
   public CursorResponse<UserDto> getUsers(UserSearchRequest request) {
     List<UUID> userIds = null;
 
@@ -93,7 +105,7 @@ public class UserService {
   }
 
   @PreAuthorize("hasRole('ADMIN') or #targetUserId == authentication.principal.userId")
-  @CacheEvict(value = CacheNames.USERS, key = "#targetUserId")
+  @CacheEvict(value = CacheNames.USERS, allEntries = true)
   @Transactional
   public UserDto updateProfile(UUID targetUserId, UserUpdateRequest request, MultipartFile image) {
     User user = findUserOrThrow(targetUserId);

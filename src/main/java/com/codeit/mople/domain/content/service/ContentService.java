@@ -13,6 +13,7 @@ import com.codeit.mople.domain.content.repository.ContentQueryRepository;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.domain.content.repository.search.ContentDocument;
 import com.codeit.mople.domain.content.repository.search.ContentSearchRepository;
+import com.codeit.mople.global.config.CacheNames;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.storage.FileStorageService;
 import java.io.File;
@@ -53,7 +54,7 @@ public class ContentService{
 
   //콘텐츠 생성
   @Transactional
-  @CacheEvict(cacheNames = "contents", allEntries = true)
+  @CacheEvict(cacheNames = CacheNames.CONTENTS, allEntries = true)
   public ContentResponse createContent(ContentCreateRequest request, MultipartFile thumbnail) {
     log.debug("콘텐트 생성 시작 - type: {}, title: {}", request.type(), request.title());
 
@@ -101,7 +102,7 @@ public class ContentService{
   }
 
   //콘텐츠 목록 조회
-  @Cacheable(cacheNames = "contents",
+  @Cacheable(cacheNames = CacheNames.CONTENTS,
       key = "{#cursorId, #cursorValue, #limit, #typeEqual, #keywordLike, #sortBy}"
   )
   @Transactional(readOnly = true)
@@ -202,7 +203,7 @@ public class ContentService{
   }
 
   //콘텐츠 단건 조회
-  @Cacheable(cacheNames = "contents", key = "#contentId")
+  @Cacheable(cacheNames = CacheNames.CONTENTS, key = "#contentId")
   @Transactional(readOnly = true)
   public ContentResponse getContent(UUID contentId) {
     log.debug("콘텐츠 단건 조회 시작 - contentId: {}", contentId);
@@ -230,7 +231,7 @@ public class ContentService{
   }
 
   //콘텐츠 수정
-  @CacheEvict(cacheNames = "contents", key = "#contentId")
+  @CacheEvict(cacheNames = CacheNames.CONTENTS, key = "#contentId")
   @Transactional
   public ContentResponse updateContent(UUID contentId, ContentUpdateRequest request, MultipartFile thumbnail) {
     log.debug("콘텐츠 수정 시작 - contentId: {}, updateTitle: {}", contentId, request.title());
@@ -294,7 +295,7 @@ public class ContentService{
   }
 
   //콘텐츠 삭제
-  @CacheEvict(cacheNames = "contents", key = "#contentId")
+  @CacheEvict(cacheNames = CacheNames.CONTENTS, key = "#contentId")
   @Transactional
   public void deleteContent(UUID contentId) {
     log.debug("콘텐츠 삭제 시작 - contentId: {}", contentId);
