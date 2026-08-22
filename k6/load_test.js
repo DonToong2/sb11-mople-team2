@@ -25,6 +25,8 @@ const playlistCreateTrend = new Trend('playlist_create_duration');
 
 // Test Options
 export const options = {
+  summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(95)', 'p(99)'],
+
   scenarios: {
 
     // 조회 부하
@@ -797,4 +799,44 @@ function extractItems(response) {
   }
 
   return [];
+}
+
+export function handleSummary(data) {
+  const metrics = [
+    'login_duration',
+    'content_detail_duration',
+    'content_list_duration',
+    'content_search_duration',
+    'playlist_search_duration',
+    'user_search_duration',
+    'content_create_duration',
+    'playlist_create_duration',
+  ];
+
+  let output = '\n===== LOAD TEST RESULT =====\n';
+
+  for (const name of metrics) {
+    const metric = data.metrics[name];
+
+    if (!metric) {
+      continue;
+    }
+
+    output += `
+${name}
+  avg : ${metric.values.avg.toFixed(2)} ms
+  min : ${metric.values.min.toFixed(2)} ms
+  med : ${metric.values.med.toFixed(2)} ms
+  max : ${metric.values.max.toFixed(2)} ms
+  p95 : ${metric.values['p(95)'].toFixed(2)} ms
+  p99 : ${metric.values['p(99)'].toFixed(2)} ms
+`;
+  }
+
+  return {
+    stdout: textSummary(data, {
+      indent: ' ',
+      enableColors: true,
+    }) + output,
+  };
 }
