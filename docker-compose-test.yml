@@ -22,6 +22,8 @@ services:
         condition: service_started
       broker-test:
         condition: service_started
+      elasticsearch-test:
+        condition: service_healthy
 
   # 부하 테스트용 PostgreSQL
   postgres-test:
@@ -93,6 +95,11 @@ services:
       discovery.type: single-node
       xpack.security.enabled: "false"
       ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     volumes:
       - elasticsearch-test-data:/usr/share/elasticsearch/data
 
