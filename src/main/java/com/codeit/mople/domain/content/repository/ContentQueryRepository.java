@@ -7,6 +7,8 @@ import com.codeit.mople.domain.content.entity.ContentSortBy;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.Instant;
 import java.util.List;
@@ -82,7 +84,8 @@ public class ContentQueryRepository {
       return content.watcherCount.lt(count).or(content.watcherCount.eq(count).and(content.id.gt(cursorId)));
     } else if (sortBy == ContentSortBy.RATING) {
       double rating = (Double) parsedCursorValue;
-      return content.ratingSum.lt(rating).or(content.ratingSum.eq(rating).and(content.id.gt(cursorId)));
+      NumberExpression<Double> averageRating = averageRatingExpression();
+      return averageRating.lt(rating).or(averageRating.eq(rating).and(content.id.gt(cursorId)));
     } else { // CREATED_AT
       Instant time = (Instant) parsedCursorValue;
       return content.createdAt.lt(time).or(content.createdAt.eq(time).and(content.id.gt(cursorId)));
@@ -94,9 +97,19 @@ public class ContentQueryRepository {
     if (sortBy == ContentSortBy.WATCHER_COUNT) {
       return new OrderSpecifier<?>[]{content.watcherCount.desc().nullsLast(), content.id.asc()};
     } else if (sortBy == ContentSortBy.RATING) {
-      return new OrderSpecifier<?>[]{content.ratingSum.desc().nullsLast(), content.id.asc()};
+      NumberExpression<Double> averageRating = averageRatingExpression();
+      return new OrderSpecifier<?>[]{averageRating.desc().nullsLast(), content.id.asc()};
     } else { // CREATED_AT
       return new OrderSpecifier<?>[]{content.createdAt.desc().nullsLast(), content.id.asc()};
     }
+  }
+
+  private NumberExpression<Double> averageRatingExpression() {
+    return new CaseBuilder()
+        .when(content.reviewCount.eq(0L))
+        .then(0.0)
+        .otherwise(
+            content.ratingSum.divide(content.reviewCount.doubleValue())
+        );
   }
 }

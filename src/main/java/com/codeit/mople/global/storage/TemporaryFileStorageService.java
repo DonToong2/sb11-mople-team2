@@ -8,7 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
-@Profile({"local", "test"}) //로컬과 테스트 환경에서 이 구현체를 스프링 빈 등록
+@Profile({"local", "test", "load"}) //로컬과 테스트, 부하 테스트 환경에서 이 구현체를 스프링 빈 등록
 public class TemporaryFileStorageService implements FileStorageService {
 
   @Override
