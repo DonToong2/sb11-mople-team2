@@ -54,7 +54,6 @@ services:
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
-    hostname: elasticsearch
     container_name: mople-elasticsearch
     environment:
       discovery.type: single-node
@@ -66,7 +65,7 @@ services:
       timeout: 5s
       retries: 10
     ports:
-      - "19200:9200"
+      - "19201:9200"
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
 

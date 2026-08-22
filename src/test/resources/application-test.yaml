@@ -22,7 +22,7 @@ spring:
       connect-timeout: 1s
 
   elasticsearch:
-    uris: http://localhost:19200
+    uris: http://localhost:19201
 
   jpa:
     hibernate:
