@@ -338,7 +338,6 @@ export function writeLoad(data) {
       `playlistIds=${JSON.stringify(loadTestPlaylistIds)}`
   );
 
-
   // 9분 시점
   sleep(4 * 60);
 
@@ -364,7 +363,6 @@ export function writeLoad(data) {
 
   console.log('[WRITE 2 END]');
 
-
   // 13분 시점
   sleep(4 * 60);
 
@@ -389,6 +387,7 @@ export function writeLoad(data) {
   if (cleanupErrors.length > 0) {
     throw new Error(`정리 실패: ${JSON.stringify(cleanupErrors)}`);
   }
+}
 
 // 콘텐츠, 플레이리스트 추가
 function executeWriteScenario(
