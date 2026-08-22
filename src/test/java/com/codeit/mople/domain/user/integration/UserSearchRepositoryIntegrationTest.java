@@ -41,17 +41,16 @@ class UserSearchRepositoryIntegrationTest {
     ));
 
     // when
-    List<UserDocument> result =
-        userSearchRepository.findByEmailContainingIgnoreCase("test");
+    List<UUID> result =
+        userSearchRepository.findAllByEmailContainingIgnoreCase("test");
 
     // then
     assertThat(result)
         .hasSize(3)
-        .extracting(UserDocument::getEmail)
         .containsExactlyInAnyOrder(
-            "user1@test.com",
-            "user2@test.com",
-            "admin@test.com"
+            userId1,
+            userId2,
+            userId3
         );
   }
 
@@ -67,8 +66,8 @@ class UserSearchRepositoryIntegrationTest {
     );
 
     // when
-    List<UserDocument> result =
-        userSearchRepository.findByEmailContainingIgnoreCase("what");
+    List<UUID> result =
+        userSearchRepository.findAllByEmailContainingIgnoreCase("what");
 
     // then
     assertThat(result).isEmpty();
