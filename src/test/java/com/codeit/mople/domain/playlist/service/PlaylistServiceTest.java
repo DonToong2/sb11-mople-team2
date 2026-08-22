@@ -31,6 +31,8 @@ import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistSubscriptionRepository;
+import com.codeit.mople.domain.playlist.repository.search.PlaylistDocument;
+import com.codeit.mople.domain.playlist.repository.search.PlaylistSearchRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
@@ -74,6 +76,9 @@ public class PlaylistServiceTest {
 
   @Mock
   private ApplicationEventPublisher eventPublisher;
+
+  @Mock
+  private PlaylistSearchRepository searchRepository;
 
   @Captor
   private ArgumentCaptor<PlaylistSubscribedEvent> subscribedEventCaptor;
@@ -169,6 +174,7 @@ public class PlaylistServiceTest {
       // 행위 중심(given(...) 메서드가 호출됐는지 검증)
       verify(userRepository).findById(ownerId);
       verify(playlistRepository).save(any(Playlist.class));
+      verify(searchRepository).save(any(PlaylistDocument.class));
       verify(eventPublisher).publishEvent(new PlaylistCreatedEvent(ownerId, "test", title));
     }
 
@@ -350,9 +356,9 @@ public class PlaylistServiceTest {
       given(mockPlaylist.getSubscriberCount())
           .willReturn(0L);
 
-      given(playlistRepository.findAll(condition))
+      given(playlistRepository.findAll(condition, null))
           .willReturn(List.of(mockPlaylist));
-      given(playlistRepository.count(condition))
+      given(playlistRepository.count(condition, null))
           .willReturn(1L);
 
       given(playlistContentRepository.findAllByPlaylistIdInOrderByCreatedAtAsc(
@@ -377,8 +383,8 @@ public class PlaylistServiceTest {
       assertThat(result.nextCursor()).isNull();
       assertThat(result.nextIdAfter()).isNull();
 
-      verify(playlistRepository).findAll(condition);
-      verify(playlistRepository).count(condition);
+      verify(playlistRepository).findAll(condition, null);
+      verify(playlistRepository).count(condition, null);
       verify(playlistContentRepository)
           .findAllByPlaylistIdInOrderByCreatedAtAsc(List.of(playlistId));
       verify(playlistSubscriptionRepository)
@@ -448,9 +454,9 @@ public class PlaylistServiceTest {
           .willReturn(0L);
 
       // 임시 Playlist Mock 객체를 추가하여 3개가 들어있는거로 가장
-      given(playlistRepository.findAll(condition))
+      given(playlistRepository.findAll(condition, null))
           .willReturn(List.of(mockPlaylist, nextPlaylist, extraPlaylist));
-      given(playlistRepository.count(condition))
+      given(playlistRepository.count(condition, null))
           .willReturn(3L);
 
       given(playlistContentRepository
@@ -526,10 +532,10 @@ public class PlaylistServiceTest {
       given(lastPlaylist.getSubscriberCount())
           .willReturn(1L);
 
-      given(playlistRepository.findAll(condition))
+      given(playlistRepository.findAll(condition, null))
           .willReturn(List.of(mockPlaylist, lastPlaylist));
 
-      given(playlistRepository.count(condition))
+      given(playlistRepository.count(condition, null))
           .willReturn(2L);
 
       given(playlistContentRepository
@@ -586,10 +592,10 @@ public class PlaylistServiceTest {
       given(mockPlaylist.getOwner())
           .willReturn(owner);
 
-      given(playlistRepository.findAll(condition))
+      given(playlistRepository.findAll(condition, null))
           .willReturn(List.of(mockPlaylist));
 
-      given(playlistRepository.count(condition))
+      given(playlistRepository.count(condition, null))
           .willReturn(1L);
 
       given(playlistContentRepository
@@ -632,10 +638,10 @@ public class PlaylistServiceTest {
           PlaylistSortBy.UPDATED_AT
       );
 
-      given(playlistRepository.findAll(condition))
+      given(playlistRepository.findAll(condition, null))
           .willReturn(List.of());
 
-      given(playlistRepository.count(condition))
+      given(playlistRepository.count(condition, null))
           .willReturn(0L);
 
       // when
@@ -649,8 +655,8 @@ public class PlaylistServiceTest {
       assertThat(result.nextIdAfter()).isNull();
 
       // 실패가 아니라 플레이리스트가 리스트에 없는 성공 테스트이기 때문에 호출 검증
-      verify(playlistRepository).findAll(condition);
-      verify(playlistRepository).count(condition);
+      verify(playlistRepository).findAll(condition, null);
+      verify(playlistRepository).count(condition, null);
 
       verifyNoInteractions(
           playlistSubscriptionRepository,
@@ -692,6 +698,7 @@ public class PlaylistServiceTest {
       assertThat(playlist.getDescription()).isEqualTo("수정한 설명");
 
       verify(playlistRepository).findById(playlistId);
+      verify(searchRepository).save(any(PlaylistDocument.class));
       verify(playlistContentRepository).findAllByPlaylistIdOrderByCreatedAtAsc(playlistId);
     }
 
@@ -767,6 +774,7 @@ public class PlaylistServiceTest {
       verify(playlistRepository).findById(playlistId);
       verify(playlistContentRepository).deleteAllByPlaylistId(playlistId);
       verify(playlistRepository).delete(playlist);
+      verify(searchRepository).deleteById(playlistId);
     }
 
     @Test

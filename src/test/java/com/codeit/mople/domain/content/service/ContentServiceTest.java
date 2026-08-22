@@ -18,6 +18,8 @@ import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.repository.ContentQueryRepository;
 import com.codeit.mople.domain.content.repository.ContentRepository;
+import com.codeit.mople.domain.content.repository.search.ContentDocument;
+import com.codeit.mople.domain.content.repository.search.ContentSearchRepository;
 import com.codeit.mople.global.storage.FileStorageService;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -48,6 +50,9 @@ public class ContentServiceTest {
 
   @Mock
   private FileStorageService fileStorageService;
+
+  @Mock
+  private ContentSearchRepository searchRepository;
 
   @InjectMocks
   private ContentService contentService;
@@ -91,6 +96,7 @@ public class ContentServiceTest {
     assertThat(response.title()).isEqualTo("테스트 영화");
     verify(fileStorageService).upload(any()); //업로드 호출 검증
     verify(contentRepository).save(any(Content.class));
+    verify(searchRepository).save(any(ContentDocument.class));
   }
 
   @Test
@@ -139,9 +145,12 @@ public class ContentServiceTest {
     List<Content> mockContents = new ArrayList<>();
     mockContents.add(content1); //limit보다 적게 반환
 
-    given(contentQueryRepository.findContentByCursor(any(), any(), eq(limit), any(), any(), any(
-        ContentSortBy.class))).willReturn(mockContents);
-    given(contentQueryRepository.countContentsByTypeAndKeyword(any(), any())).willReturn(1L);
+    given(contentQueryRepository.findContentByCursor(
+        any(), any(), eq(limit), any(), any(), any(ContentSortBy.class)
+    )).willReturn(mockContents);
+
+    given(contentQueryRepository.countContentsByTypeAndIds(any(), any()))
+        .willReturn(1L);
 
     //null을 넘길 때 String 타입에 맞게 호출
     CursorResponseContentDto response = contentService.getContents(
@@ -306,6 +315,8 @@ public class ContentServiceTest {
 
     assertThat(response).isNotNull();
     assertThat(response.thumbnailUrl()).isEqualTo("/uploads/old.png"); //기존 URL이 그대로 유지되는지 검증
+
+    verify(searchRepository).save(any(ContentDocument.class));
   }
 
   @Test
@@ -347,6 +358,7 @@ public class ContentServiceTest {
     //S3 삭제 및 엔티티 삭제 메서드가 호출되었는지 검증
     verify(fileStorageService).delete("/uploads/delete.png");
     verify(contentRepository).delete(content);
+    verify(searchRepository).deleteById(contentId);
   }
 
   @Test
