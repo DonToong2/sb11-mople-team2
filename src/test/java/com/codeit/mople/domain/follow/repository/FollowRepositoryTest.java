@@ -1,6 +1,7 @@
 package com.codeit.mople.domain.follow.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import com.codeit.mople.domain.follow.entity.Follow;
 import com.codeit.mople.domain.user.entity.User;
@@ -8,6 +9,7 @@ import com.codeit.mople.global.config.JpaAuditingConfig;
 import com.codeit.mople.global.config.QueryDslConfig;
 import java.util.List;
 import java.util.UUID;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @DataJpaTest
 @Import({JpaAuditingConfig.class, QueryDslConfig.class})
@@ -68,5 +71,27 @@ class FollowRepositoryTest {
     assertThat(followerIds).containsExactly(follower.getId());
     // followee가 나오면 비정상
     assertThat(followerIds).doesNotContain(followee.getId());
+  }
+
+  @Test
+  @DisplayName("같은 조합을 두 번 저장하면 유니크 제약 이름과 함께 예외가 발생")
+  void failWhenDuplicateFollow() {
+    // given
+    entityManager.persist(Follow.create(followee, follower));
+    entityManager.flush();
+
+    // when
+    Throwable thrown = catchThrowable(
+        () -> followRepository.saveAndFlush(Follow.create(followee, follower)));
+
+    // then
+    assertThat(thrown)
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasCauseInstanceOf(ConstraintViolationException.class);
+
+    ConstraintViolationException cause = (ConstraintViolationException) thrown.getCause();
+    assertThat(cause.getConstraintName()).isNotNull();
+    assertThat(cause.getConstraintName().toLowerCase())
+        .contains("uk_follows_followee_follower");
   }
 }

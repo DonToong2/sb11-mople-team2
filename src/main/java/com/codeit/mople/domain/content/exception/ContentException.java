@@ -1,16 +1,15 @@
 package com.codeit.mople.domain.content.exception;
 
 import com.codeit.mople.global.error.CustomException;
-import com.codeit.mople.global.error.ErrorCode;
 import java.util.Map;
 
 public class ContentException extends CustomException {
 
-  public ContentException(ErrorCode errorCode) {
+  public ContentException(ContentErrorCode errorCode) {
     super(errorCode);
   }
 
-  public ContentException(ErrorCode errorCode, Map<String, Object> details) {
+  public ContentException(ContentErrorCode errorCode, Map<String, Object> details) {
     super(errorCode, details);
   }
 }
