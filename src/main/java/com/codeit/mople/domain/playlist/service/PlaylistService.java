@@ -172,9 +172,9 @@ public class PlaylistService {
 
     if (condition.keywordLike() != null && !condition.keywordLike().isBlank()) {
       searchPlaylistIds =
-          searchRepository.findByTitleContainingIgnoreCase(condition.keywordLike()).stream()
-              .map(PlaylistDocument::getId)
-              .toList();
+          searchRepository.findAllByTitleContainingIgnoreCase(
+              condition.keywordLike()
+          );
     }
 
     // 목록 조회(limit + 1까지)
