@@ -7,5 +7,4 @@ import org.springframework.data.elasticsearch.repository.ElasticsearchRepository
 public interface UserSearchRepository extends ElasticsearchRepository<UserDocument, UUID> {
 
   List<UserDocument> findByEmailContainingIgnoreCase(String email);
-
 }
