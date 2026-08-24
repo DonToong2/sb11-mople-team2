@@ -26,6 +26,9 @@ import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.dto.UserSummary;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +52,18 @@ public class PlaylistService {
   private final ContentRepository contentRepository;
   private final PlaylistSubscriptionRepository playlistSubscriptionRepository;
   private final ApplicationEventPublisher publisher;
+
+  private final MeterRegistry meterRegistry;
+  private Counter playlistCreateCounter;
+  private Counter playlistSubscribeCounter;
+  private Counter playlistContentAddCounter;
+
+  @PostConstruct
+  public void initMetrics() {
+    this.playlistCreateCounter = Counter.builder("mople.playlist.create.count").register(meterRegistry);
+    this.playlistSubscribeCounter = Counter.builder("mople.playlist.subscribe.count").register(meterRegistry);
+    this.playlistContentAddCounter = Counter.builder("mople.playlist.content.add.count").register(meterRegistry);
+  }
 
   @Transactional
   public PlaylistResponse create(PlaylistCreateRequest request, UUID ownerId) {
@@ -79,6 +94,9 @@ public class PlaylistService {
         savedPlaylist.getId(), owner.getId());
 
     publisher.publishEvent(new PlaylistCreatedEvent(ownerId, owner.getName(), savedPlaylist.getTitle()));
+
+    //생성 완료 후 카운트
+    playlistCreateCounter.increment();
 
     return response;
   }
@@ -314,6 +332,9 @@ public class PlaylistService {
         subscriber.getName(),
         playlist.getTitle()
     ));
+
+    //구독 성공 후 카운트
+    playlistSubscribeCounter.increment();
   }
 
   @Transactional
@@ -376,6 +397,9 @@ public class PlaylistService {
         contentId,
         playlist.getTitle()
     ));
+
+    //플레이리스트에 콘텐츠 추가 성공 후 카운트
+    playlistContentAddCounter.increment();
   }
 
   @Transactional

@@ -16,6 +16,9 @@ import com.codeit.mople.domain.directmessage.event.DirectMessageReceivedEvent;
 import com.codeit.mople.domain.directmessage.repository.DirectMessageRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.dto.CursorResponse;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +40,21 @@ public class DirectMessageService {
   private final ConversationRepository conversationRepository;
   private final ApplicationEventPublisher publisher;
   private final DirectMessageReadRedisRepository readRedisRepository;
+
+  private final MeterRegistry meterRegistry;
+  private Counter dmSendCounter;
+  private Counter dmReadCounter;
+
+  @PostConstruct
+  public void initMetrics() {
+    this.dmSendCounter = Counter.builder("mople.dm.send.count")
+        .description("DM 메시지 발송 횟수")
+        .register(meterRegistry);
+
+    this.dmReadCounter = Counter.builder("mople.dm.read.count")
+        .description("DM 메시지 읽음 처리 횟수")
+        .register(meterRegistry);
+  }
 
   // DM 발송 및 DB에 저장
   @Transactional
@@ -64,6 +82,9 @@ public class DirectMessageService {
     DirectMessageDto responseDto = DirectMessageDto.from(directMessage);
 
     publisher.publishEvent(new DirectMessageCreatedEvent(UUID.randomUUID(), receiver.getId(), directMessage.getId()));
+
+    //발송 성공 시 카운트 증가
+    dmSendCounter.increment();
 
     log.info("WebSocket DM 저장 및 워터마크/마지막 메시지 갱신 완료 - conversationId: {}, messageId: {}", conversationId, directMessage.getId());
 
@@ -162,6 +183,9 @@ public class DirectMessageService {
     }
 
     updateLastReadAt(conversation, requesterId, message.getCreatedAt());
+
+    //읽음 처리 성공 시 카운트 증가
+    dmReadCounter.increment();
   }
 
   private void updateLastReadAt(Conversation conversation, UUID userId, Instant readAt) {

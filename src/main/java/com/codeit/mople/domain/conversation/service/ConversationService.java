@@ -12,6 +12,9 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +34,21 @@ public class ConversationService {
   private final UserRepository userRepository;
   private final ConversationRepository conversationRepository;
   private final ConversationMapper conversationMapper;
+
+  private final MeterRegistry meterRegistry;
+  private Counter conversationCreateCounter;
+  private Counter conversationGetCounter;
+
+  @PostConstruct
+  public void initMetrics() {
+    this.conversationCreateCounter = Counter.builder("mople.conversation.create.count")
+        .description("새로운 대화방 생성 횟수")
+        .register(meterRegistry);
+
+    this.conversationGetCounter = Counter.builder("mople.conversation.get.count")
+        .description("대화방 목록 및 단건 조회 횟수")
+        .register(meterRegistry);
+  }
 
   @Transactional
   public ConversationDto findOrCreateConversation(UUID requesterId, UUID targetUserId) {
@@ -54,6 +72,8 @@ public class ConversationService {
       conversation = conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)
           .orElseGet(() -> {
             log.info("기존 대화방 없음, 새 대화방 생성 - userAId: {}, userBId: {}", userAId, userBId);
+            //새 대화방 생성될 때 카운트 증가
+            conversationCreateCounter.increment();
             return conversationRepository.saveAndFlush(Conversation.createConversation(userA, userB));
           });
     } catch (DataIntegrityViolationException e) {
@@ -97,6 +117,9 @@ public class ConversationService {
 
   public CursorResponseConversationDto getMyConversations(UUID requesterId, ConversationCursorRequest request) {
     log.debug("내 대화방 목록 조회 요청 - requesterId: {}, limit: {}, cursor: {}", requesterId, request.limit(), request.cursor());
+
+    //목록 조회 시 카운트 증가
+    conversationGetCounter.increment();
 
     userRepository.findById(requesterId)
         .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", requesterId)));
