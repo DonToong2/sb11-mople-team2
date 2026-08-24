@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import {check, sleep} from 'k6';
 import {Rate, Trend} from 'k6/metrics';
-import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
+import {textSummary} from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
 
 // 커스텀 Metrics 추가
 
@@ -48,6 +48,22 @@ export const options = {
       exec: 'readLoad',
     },
 
+    // 로그인 부하
+    login_load: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        {duration: '1m', target: 10},
+        {duration: '2m', target: 30},
+        {duration: '3m', target: 50},
+        {duration: '3m', target: 50},
+        {duration: '3m', target: 30},
+        {duration: '2m', target: 10},
+        {duration: '1m', target: 0},
+      ],
+      exec: 'loginLoad',
+    },
+
     // 쓰기 부하
     write_1: {
       executor: 'shared-iterations',
@@ -90,6 +106,7 @@ export const options = {
 const BASE_URL = 'http://localhost:8080/api';
 
 const PASSWORD = '12345678';
+const LOAD_TEST_USER_COUNT = 500;
 
 const ADMIN_EMAIL = 'admin@mople.com';
 const ADMIN_PASSWORD = 'Admin1234!';
@@ -159,6 +176,7 @@ function randomUser() {
 // ADMIN 인증 + CSRF 토큰 발급
 export function setup() {
 
+  // ADMIN 인증
   const adminLoginRes = http.post(
       `${BASE_URL}/auth/sign-in`,
       {
@@ -179,10 +197,33 @@ export function setup() {
 
   const adminAccessToken = adminLoginRes.json('accessToken');
 
-  /*
-   * CookieCsrfTokenRepository가 XSRF-TOKEN 쿠키를 발급하도록
-   * 인증된 GET 요청을 한 번 호출한다.
-   */
+  // 조회 부하작업에서 로그인 없이 여기서 만든 토큰을 재사용
+  const userAccessTokens = [];
+
+  for (let i = 1; i <= LOAD_TEST_USER_COUNT; i++) {
+    const loginRes = http.post(
+        `${BASE_URL}/auth/sign-in`,
+        {
+          username: `test${i}@test.com`,
+          password: PASSWORD,
+        }
+    );
+
+    const loginSuccess = check(loginRes, {
+      'load test user login status is 200': (r) => r.status === 200,
+    });
+
+    if (!loginSuccess) {
+      throw new Error(
+          `Load test user login failed: email=test${i}@test.com, ` +
+          `status=${loginRes.status}, body=${loginRes.body}`
+      );
+    }
+
+    userAccessTokens.push(loginRes.json('accessToken'));
+  }
+
+  // CSRF token 발급
   const csrfRes = http.get(
       `${BASE_URL}/contents?limit=1&sortDirection=DESCENDING&sortBy=createdAt`,
       {
@@ -197,7 +238,8 @@ export function setup() {
 
   if (!csrfCookie) {
     throw new Error(
-        `CSRF token not found: status=${csrfRes.status}, cookies=${JSON.stringify(csrfRes.cookies)}`
+        `CSRF token not found: status=${csrfRes.status}, ` +
+        `cookies=${JSON.stringify(csrfRes.cookies)}`
     );
   }
 
@@ -206,11 +248,11 @@ export function setup() {
   return {
     adminAccessToken,
     csrfToken,
+    userAccessTokens,
   };
 }
 
-// 테스트 시나리오
-export function readLoad(data) {
+export function loginLoad() {
 
   // 1. 사용자 로그인
   const user = randomUser();
@@ -230,11 +272,13 @@ export function readLoad(data) {
   errorRate.add(!loginSuccess);
   loginTrend.add(loginRes.timings.duration);
 
-  if (!loginSuccess) {
-    return;
-  }
+  sleep(0.1);
+}
 
-  const accessToken = loginRes.json('accessToken');
+// 테스트 시나리오
+export function readLoad(data) {
+
+  const accessToken = randomItem(data.userAccessTokens);
 
   const authHeaders = {
     Authorization: `Bearer ${accessToken}`,
@@ -685,7 +729,6 @@ function deleteLoadTestContents(adminAccessToken, csrfToken) {
 
     errorRate.add(!deleteSuccess);
     writeErrorRate.add(!deleteSuccess);
-
 
     if (!deleteSuccess) {
       failedContentIds.push(contentId);
