@@ -11,4 +11,6 @@ public interface PlaylistCustomRepository {
 
   long count(PlaylistQueryCondition condition, List<UUID> playlistIds);
 
+  List<Playlist> findPlaylistsByIds(List<UUID> playlistIds, PlaylistQueryCondition condition);
+
 }

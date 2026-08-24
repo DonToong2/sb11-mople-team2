@@ -16,10 +16,14 @@ import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.domain.content.repository.search.ContentSearchRepository;
 import com.codeit.mople.global.config.CacheNames;
 import com.codeit.mople.global.dto.CursorResponse;
+import com.codeit.mople.global.dto.SearchResult;
 import com.codeit.mople.global.storage.FileStorageService;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -82,7 +86,14 @@ public class ContentService{
 
     eventPublisher.publishEvent(
         new ContentSearchIndexEvent(
-            UUID.randomUUID(), savedContent.getId(), savedContent.getTitle())
+            UUID.randomUUID(),
+            savedContent.getId(),
+            savedContent.getTitle(),
+            savedContent.getType(),
+            savedContent.calculateAverageRating(),
+            savedContent.getWatcherCount(),
+            savedContent.getCreatedAt()
+        )
     );
 
     return new ContentResponse(
@@ -136,27 +147,55 @@ public class ContentService{
       }
     }
 
-    List<UUID> contentIds = null;
+    CursorResponse<Content> cursorResponse;
 
+    // 검색 키워드가 있을 경우 Elasticsearch에서 커서 페이지네이션
     if (keywordLike != null && !keywordLike.isBlank()) {
-      contentIds =
-          searchRepository.findAllByTitleContainingIgnoreCase(keywordLike);
+      SearchResult searchResult =
+          searchRepository.findAllByTitleContainingIgnoreCase(
+              keywordLike,
+              cursorId,
+              parsedCursorValue,
+              limit,
+              parsedType,
+              contentSortBy
+          );
+
+      List<Content> contents = contentQueryRepository.findContentsByIds(searchResult.ids());
+
+      Map<UUID, Content> contentMap = contents.stream()
+          .collect(Collectors.toMap(Content::getId, Function.identity()));
+
+      List<Content> orderedContents = searchResult.ids().stream()
+          .map(contentMap::get)
+          .filter(Objects::nonNull)
+          .toList();
+
+      cursorResponse = CursorResponse.ofSearchResult(
+          orderedContents,
+          searchResult.nextCursor(),
+          searchResult.nextIdAfter(),
+          searchResult.hasNext(),
+          searchResult.totalCount(),
+          contentSortBy.getValue(),
+          "DESCENDING"
+      );
+    } else { // 검색 키워드가 없을 경우 DB에서 커서 페이지네이션
+      //데이터 조회 및 카운트
+      List<Content> contents = contentQueryRepository
+          .findContentByCursor(cursorId, parsedCursorValue, limit, parsedType, null, contentSortBy);
+      long totalCount = contentQueryRepository.countContentsByTypeAndIds(parsedType, null);
+
+      cursorResponse = CursorResponse.of(
+          contents,
+          limit,
+          totalCount,
+          contentSortBy.getValue(),
+          "DESCENDING",
+          contentSortBy::extractCursorValue,
+          Content::getId
+      );
     }
-
-    //데이터 조회 및 카운트
-    List<Content> contents = contentQueryRepository
-        .findContentByCursor(cursorId, parsedCursorValue, limit, parsedType, contentIds, contentSortBy);
-    long totalCount = contentQueryRepository.countContentsByTypeAndIds(parsedType, contentIds);
-
-    CursorResponse<Content> cursorResponse = CursorResponse.of(
-        contents,
-        limit,
-        totalCount,
-        contentSortBy.getValue(),
-        "DESCENDING",
-        contentSortBy::extractCursorValue,
-        Content::getId
-    );
 
     List<ContentResponse> contentResponses = cursorResponse.data().stream()
         .map(content -> new ContentResponse(
@@ -270,7 +309,15 @@ public class ContentService{
     log.info("콘텐츠 수정 완료 - contentId: {}", content.getId());
 
     eventPublisher.publishEvent(
-        new ContentSearchIndexEvent(UUID.randomUUID(), content.getId(), content.getTitle())
+        new ContentSearchIndexEvent(
+            UUID.randomUUID(),
+            content.getId(),
+            content.getTitle(),
+            content.getType(),
+            content.calculateAverageRating(),
+            content.getWatcherCount(),
+            content.getCreatedAt()
+        )
     );
 
     return new ContentResponse(

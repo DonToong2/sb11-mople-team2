@@ -5,6 +5,7 @@ import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.SecurityUtils;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
+import com.codeit.mople.domain.user.event.UserSearchIndexEvent;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.domain.user.exception.UserException;
@@ -44,6 +45,18 @@ public class AdminService {
       sessionTokenRepository.invalidate(userId);
       refreshTokenRepository.invalidate(userId);
       eventPublisher.publishEvent(new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ROLE_CHANGE, true));
+
+      eventPublisher.publishEvent(
+          new UserSearchIndexEvent(
+              UUID.randomUUID(),
+              user.getId(),
+              user.getEmail(),
+              user.getName(),
+              user.getCreatedAt(),
+              user.isLocked(),
+              user.getRole().name()
+          )
+      );
     }
     log.info("권한 변경 완료 - userId: {}, role: {}", userId, role);
   }
@@ -64,6 +77,18 @@ public class AdminService {
     if (previousLocked != locked) {
       ForceLogoutReason reason = locked ? ForceLogoutReason.ACCOUNT_LOCKED : ForceLogoutReason.ACCOUNT_UNLOCKED;
       eventPublisher.publishEvent(new UserAccountStatusChangedEvent(userId, reason, locked));
+
+      eventPublisher.publishEvent(
+          new UserSearchIndexEvent(
+              UUID.randomUUID(),
+              user.getId(),
+              user.getEmail(),
+              user.getName(),
+              user.getCreatedAt(),
+              user.isLocked(),
+              user.getRole().name()
+          )
+      );
     }
     log.info("계정 잠금 변경 완료 - userId: {}, locked: {}", userId, locked);
   }

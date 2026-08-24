@@ -1,8 +1,17 @@
 package com.codeit.mople.domain.content.repository.search;
 
-import java.util.List;
+import com.codeit.mople.domain.content.entity.ContentSortBy;
+import com.codeit.mople.domain.content.entity.ContentType;
+import com.codeit.mople.global.dto.SearchResult;
 import java.util.UUID;
 
 public interface ContentSearchRepositoryCustom {
-  List<UUID> findAllByTitleContainingIgnoreCase(String title);
+  SearchResult findAllByTitleContainingIgnoreCase(
+      String title,
+      UUID cursorId,
+      Object cursorValue,
+      int limit,
+      ContentType type,
+      ContentSortBy sortBy
+  );
 }

@@ -76,6 +76,35 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
     return count == null ? 0L : count;
   }
 
+  // Elasticsearch 검색 결과 ID로 실제 Playlist 조회
+  @Override
+  public List<Playlist> findPlaylistsByIds(
+      List<UUID> playlistIds,
+      PlaylistQueryCondition condition
+  ) {
+    if (playlistIds == null || playlistIds.isEmpty()) {
+      return List.of();
+    }
+
+    JPAQuery<Playlist> query = queryFactory
+        .selectFrom(playlist)
+        .join(playlist.owner)
+        .fetchJoin();
+
+    if (condition.subscriberIdEqual() != null) {
+      query.join(playlistSubscription)
+          .on(playlistSubscription.playlist.eq(playlist));
+    }
+
+    return query
+        .where(
+            playlist.id.in(playlistIds),
+            ownerIdEqual(condition.ownerIdEqual()),
+            subscriberIdEqual(condition.subscriberIdEqual())
+        )
+        .fetch();
+  }
+
   // WHERE 절
   // 제목(키워드)
   private BooleanExpression idCondition(List<UUID> playlistIds) {

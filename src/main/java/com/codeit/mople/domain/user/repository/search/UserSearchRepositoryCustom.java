@@ -1,9 +1,21 @@
 package com.codeit.mople.domain.user.repository.search;
 
-import java.util.List;
+import com.codeit.mople.domain.user.dto.request.UserSortBy;
+import com.codeit.mople.domain.user.entity.Role;
+import com.codeit.mople.global.dto.SearchResult;
+import com.codeit.mople.global.dto.SortDirection;
 import java.util.UUID;
 
 public interface UserSearchRepositoryCustom {
 
-  List<UUID> findAllByEmailContainingIgnoreCase(String email);
+  SearchResult findAllByEmailContainingIgnoreCase(
+      String email,
+      UUID cursorId,
+      Object cursorValue,
+      int limit,
+      UserSortBy sortBy,
+      SortDirection sortDirection,
+      Role role,
+      Boolean locked
+  );
 }

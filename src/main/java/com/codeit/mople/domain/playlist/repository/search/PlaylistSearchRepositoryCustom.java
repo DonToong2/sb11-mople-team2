@@ -1,9 +1,18 @@
 package com.codeit.mople.domain.playlist.repository.search;
 
-import java.util.List;
+import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition.PlaylistSortBy;
+import com.codeit.mople.global.dto.SearchResult;
+import com.codeit.mople.global.dto.SortDirection;
 import java.util.UUID;
 
 public interface PlaylistSearchRepositoryCustom {
 
-  List<UUID> findAllByTitleContainingIgnoreCase(String title);
+  SearchResult findAllByTitleContainingIgnoreCase(
+      String title,
+      UUID cursorId,
+      Object cursorValue,
+      int limit,
+      PlaylistSortBy sortBy,
+      SortDirection sortDirection
+  );
 }

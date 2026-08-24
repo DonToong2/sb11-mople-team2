@@ -40,7 +40,11 @@ public class ContentSearchIndexConsumer {
     contentSearchRepository.save(
         new ContentDocument(
             event.contentId(),
-            event.title()
+            event.title(),
+            event.type(),
+            event.rating(),
+            event.watcherCount(),
+            event.createdAt()
         )
     );
 

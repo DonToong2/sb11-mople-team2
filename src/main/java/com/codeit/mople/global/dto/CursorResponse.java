@@ -36,4 +36,24 @@ public record CursorResponse<T>(
 
     return new CursorResponse<>(data, nextCursor, nextIdAfter, hasNext, totalCount, sortBy, sortDirection);
   }
+
+  public static <T> CursorResponse<T> ofSearchResult(
+      List<T> data,
+      String nextCursor,
+      UUID nextIdAfter,
+      boolean hasNext,
+      long totalCount,
+      String sortBy,
+      String sortDirection
+  ) {
+    return new CursorResponse<>(
+        data,
+        nextCursor,
+        nextIdAfter,
+        hasNext,
+        totalCount,
+        sortBy,
+        sortDirection
+    );
+  }
 }

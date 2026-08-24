@@ -20,7 +20,9 @@ public class PlaylistSearchService {
     var documents = playlistRepository.findAll().stream()
         .map(playlist -> new PlaylistDocument(
             playlist.getId(),
-            playlist.getTitle()
+            playlist.getTitle(),
+            playlist.getSubscriberCount(),
+            playlist.getUpdatedAt()
         ))
         .toList();
 

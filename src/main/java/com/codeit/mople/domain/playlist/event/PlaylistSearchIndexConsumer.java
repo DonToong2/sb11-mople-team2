@@ -40,7 +40,9 @@ public class PlaylistSearchIndexConsumer {
     playlistSearchRepository.save(
         new PlaylistDocument(
             event.playlistId(),
-            event.title()
+            event.title(),
+            event.subscribeCount(),
+            event.updatedAt()
         )
     );
 

@@ -35,12 +35,16 @@ public class ContentQueryRepository {
         .fetch();
   }
 
-  //전체 데이터 개수 조회
-  public long countAllContents() {
-    Long count = queryFactory.select(content.count())
-        .from(content)
-        .fetchOne();
-    return count != null ? count : 0L;
+  // Elasticsearch 검색 결과 ID로 실제 Content 조회
+  public List<Content> findContentsByIds(List<UUID> contentIds) {
+    if (contentIds == null || contentIds.isEmpty()) {
+      return List.of();
+    }
+
+    return queryFactory
+        .selectFrom(content)
+        .where(content.id.in(contentIds))
+        .fetch();
   }
 
   //분류(type)별 데이터 개수 조회 메서드

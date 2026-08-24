@@ -1,6 +1,8 @@
 package com.codeit.mople.domain.playlist.repository.search;
 
-import java.util.ArrayList;
+import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition.PlaylistSortBy;
+import com.codeit.mople.global.dto.SearchResult;
+import com.codeit.mople.global.dto.SortDirection;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -17,58 +19,130 @@ import org.springframework.stereotype.Repository;
 public class PlaylistSearchRepositoryCustomImpl
     implements PlaylistSearchRepositoryCustom {
 
-  private static final int BATCH_SIZE = 1000;
-
   private final ElasticsearchOperations elasticsearchOperations;
 
   @Override
-  public List<UUID> findAllByTitleContainingIgnoreCase(String title) {
+  public SearchResult findAllByTitleContainingIgnoreCase(
+      String title,
+      UUID cursorId,
+      Object cursorValue,
+      int limit,
+      PlaylistSortBy sortBy,
+      SortDirection sortDirection
+  ) {
 
-    List<UUID> playlistIds = new ArrayList<>();
-    List<Object> searchAfter = null;
+    NativeQuery query = NativeQuery.builder()
+        .withQuery(q -> q
+            .match(m -> m
+                .field("title")
+                .query(title)
+            )
+        )
+        .withPageable(PageRequest.of(0, limit + 1))
+        .withSort(getSort(sortBy, sortDirection))
+        .build();
 
-    while (true) {
-      NativeQuery query = NativeQuery.builder()
-          .withQuery(q -> q
-              .match(m -> m
-                  .field("title")
-                  .query(title)
-              )
-          )
-          .withPageable(PageRequest.of(0, BATCH_SIZE))
-          .withSort(Sort.by(Sort.Direction.ASC, "id.keyword"))
-          .build();
-
-      if (searchAfter != null && !searchAfter.isEmpty()) {
-        query.setSearchAfter(searchAfter);
-      }
-
-      SearchHits<PlaylistDocument> hits =
-          elasticsearchOperations.search(query, PlaylistDocument.class);
-
-      List<SearchHit<PlaylistDocument>> searchHits =
-          hits.getSearchHits();
-
-      if (searchHits.isEmpty()) {
-        break;
-      }
-
-      playlistIds.addAll(
-          searchHits.stream()
-              .map(SearchHit::getContent)
-              .map(PlaylistDocument::getId)
-              .toList()
+    if (cursorId != null && cursorValue != null) {
+      query.setSearchAfter(
+          List.of(cursorValue, cursorId.toString())
       );
-
-      if (searchHits.size() < BATCH_SIZE) {
-        break;
-      }
-
-      searchAfter =
-          searchHits.get(searchHits.size() - 1)
-              .getSortValues();
     }
 
-    return playlistIds;
+    SearchHits<PlaylistDocument> hits =
+        elasticsearchOperations.search(
+            query,
+            PlaylistDocument.class
+        );
+
+    List<SearchHit<PlaylistDocument>> searchHits =
+        hits.getSearchHits();
+
+    boolean hasNext = searchHits.size() > limit;
+
+    List<SearchHit<PlaylistDocument>> pageHits =
+        hasNext
+            ? searchHits.subList(0, limit)
+            : searchHits;
+
+    if (pageHits.isEmpty()) {
+      return new SearchResult(
+          List.of(),
+          null,
+          null,
+          false,
+          0
+      );
+    }
+
+    List<UUID> ids = pageHits.stream()
+        .map(SearchHit::getContent)
+        .map(PlaylistDocument::getId)
+        .toList();
+
+    PlaylistDocument last =
+        pageHits.get(pageHits.size() - 1).getContent();
+
+    return new SearchResult(
+        ids,
+        extractCursor(last, sortBy),
+        last.getId(),
+        hasNext,
+        count(title)
+    );
+  }
+
+  private Sort getSort(
+      PlaylistSortBy sortBy,
+      SortDirection sortDirection
+  ) {
+    Sort.Direction direction =
+        sortDirection == SortDirection.ASCENDING
+            ? Sort.Direction.ASC
+            : Sort.Direction.DESC;
+
+    return switch (sortBy) {
+      case UPDATED_AT -> Sort.by(
+          new Sort.Order(direction, "updatedAt"),
+          new Sort.Order(Sort.Direction.ASC, "id")
+      );
+
+      case SUBSCRIBE_COUNT -> Sort.by(
+          new Sort.Order(direction, "subscribeCount"),
+          new Sort.Order(Sort.Direction.ASC, "id")
+      );
+    };
+  }
+
+  private String extractCursor(
+      PlaylistDocument playlist,
+      PlaylistSortBy sortBy
+  ) {
+    return switch (sortBy) {
+      case UPDATED_AT ->
+          playlist.getUpdatedAt().toString();
+
+      case SUBSCRIBE_COUNT ->
+          String.valueOf(playlist.getSubscribeCount());
+    };
+  }
+
+  private long count(String title) {
+    NativeQuery query = NativeQuery.builder()
+        .withQuery(q -> q
+            .match(m -> m
+                .field("title")
+                .query(title)
+            )
+        )
+        .withPageable(PageRequest.of(0, 0))
+        .build();
+
+    SearchHits<PlaylistDocument> hits =
+        elasticsearchOperations.search(
+            query,
+            PlaylistDocument.class
+        );
+
+    return hits.getTotalHits();
   }
 }

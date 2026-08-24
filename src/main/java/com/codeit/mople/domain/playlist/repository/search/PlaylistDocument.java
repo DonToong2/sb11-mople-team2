@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.playlist.repository.search;
 
+import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,9 +26,19 @@ public class PlaylistDocument {
   )
   private String title;
 
-  public PlaylistDocument(UUID id, String title) {
+  // 구독순
+  @Field(type = FieldType.Long)
+  private long subscribeCount;
+
+  // 최신순
+  @Field(type = FieldType.Date)
+  private Instant updatedAt;
+
+  public PlaylistDocument(UUID id, String title, long subscribeCount, Instant updatedAt) {
     this.id = id;
     this.title = title;
+    this.subscribeCount = subscribeCount;
+    this.updatedAt = updatedAt;
   }
 
 }

@@ -29,12 +29,17 @@ import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.config.CacheNames;
 import com.codeit.mople.global.dto.CursorResponse;
+import com.codeit.mople.global.dto.SearchResult;
 import com.codeit.mople.global.dto.UserSummary;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -92,7 +97,11 @@ public class PlaylistService {
 
     publisher.publishEvent(
         new PlaylistSearchIndexEvent(
-            UUID.randomUUID(), savedPlaylist.getId(), savedPlaylist.getTitle()
+            UUID.randomUUID(),
+            savedPlaylist.getId(),
+            savedPlaylist.getTitle(),
+            savedPlaylist.getUpdatedAt(),
+            savedPlaylist.getSubscriberCount()
         )
     );
 
@@ -138,6 +147,7 @@ public class PlaylistService {
   }
 
   // 플레이리스트 목록 조회
+// 플레이리스트 목록 조회
   @Cacheable(
       cacheNames = CacheNames.PLAYLIST_LIST,
       key = "{"
@@ -169,23 +179,54 @@ public class PlaylistService {
         condition.sortDirection()
     );
 
-    List<UUID> searchPlaylistIds = null;
+    SearchResult searchResult = null;
 
+    // 검색 키워드가 있을 경우 Elasticsearch에서 커서 페이지네이션
     if (condition.keywordLike() != null && !condition.keywordLike().isBlank()) {
-      searchPlaylistIds =
+      searchResult =
           searchRepository.findAllByTitleContainingIgnoreCase(
-              condition.keywordLike()
+              condition.keywordLike(),
+              condition.idAfter(),
+              parseCursor(condition.cursor(), condition.sortBy()),
+              condition.limit(),
+              condition.sortBy(),
+              condition.sortDirection()
           );
     }
 
     // 목록 조회(limit + 1까지)
-    List<Playlist> playlists = playlistRepository.findAll(condition, searchPlaylistIds);
+    List<Playlist> playlists =
+        searchResult == null
+            ? playlistRepository.findAll(condition, null)
+            : playlistRepository.findPlaylistsByIds(
+                searchResult.ids(),
+                condition
+            );
 
     // 목록 조회된 Playlist의 총 개수
-    long totalCount = playlistRepository.count(condition, searchPlaylistIds);
+    long totalCount =
+        searchResult == null
+            ? playlistRepository.count(condition, null)
+            : searchResult.totalCount();
+
+    // Elasticsearch 검색 결과 순서 유지
+    if (searchResult != null) {
+      Map<UUID, Playlist> playlistMap = playlists.stream()
+          .collect(Collectors.toMap(
+              Playlist::getId,
+              Function.identity()
+          ));
+
+      playlists = searchResult.ids().stream()
+          .map(playlistMap::get)
+          .filter(Objects::nonNull)
+          .toList();
+    }
 
     // 조회된 플레이리스트 ID
-    List<UUID> playlistIds = playlists.stream().map(Playlist::getId).toList();
+    List<UUID> playlistIds = playlists.stream()
+        .map(Playlist::getId)
+        .toList();
 
     // 플레이리스트 별 콘텐츠 조회
     Map<UUID, List<PlaylistContentResponse>> contentsByPlaylistId =
@@ -218,24 +259,38 @@ public class PlaylistService {
         ))
         .toList();
 
-    CursorResponse<PlaylistResponse> response = CursorResponse.of(
-        data,
-        condition.limit(),
-        totalCount,
-        condition.sortBy().name(),
-        condition.sortDirection().name(),
-        playlist -> {
-          // 정렬조건
-          if (condition.sortBy() == PlaylistSortBy.UPDATED_AT) {
-            return String.valueOf(playlist.updatedAt());
-          } else if (condition.sortBy() == PlaylistSortBy.SUBSCRIBE_COUNT) {
-            return String.valueOf(playlist.subscriberCount());
-          }
+    CursorResponse<PlaylistResponse> response;
 
-          return null;
-        },
-        PlaylistResponse::id
-    );
+    if (searchResult != null) {
+      response = CursorResponse.ofSearchResult(
+          data,
+          searchResult.nextCursor(),
+          searchResult.nextIdAfter(),
+          searchResult.hasNext(),
+          searchResult.totalCount(),
+          condition.sortBy().getValue(),
+          condition.sortDirection().name()
+      );
+    } else {
+      response = CursorResponse.of(
+          data,
+          condition.limit(),
+          totalCount,
+          condition.sortBy().getValue(),
+          condition.sortDirection().name(),
+          playlist -> {
+            // 정렬조건
+            if (condition.sortBy() == PlaylistSortBy.UPDATED_AT) {
+              return String.valueOf(playlist.updatedAt());
+            } else if (condition.sortBy() == PlaylistSortBy.SUBSCRIBE_COUNT) {
+              return String.valueOf(playlist.subscriberCount());
+            }
+
+            return null;
+          },
+          PlaylistResponse::id
+      );
+    }
 
     log.info("플레이리스트 목록 조회 완료: size={}, totalCount={}, hasNext={}",
         data.size(), response.totalCount(), response.hasNext());
@@ -287,7 +342,9 @@ public class PlaylistService {
         new PlaylistSearchIndexEvent(
             UUID.randomUUID(),
             playlist.getId(),
-            playlist.getTitle()
+            playlist.getTitle(),
+            playlist.getUpdatedAt(),
+            playlist.getSubscriberCount()
         )
     );
 
@@ -483,6 +540,43 @@ public class PlaylistService {
       throw new PlaylistException(
           PlaylistErrorCode.PLAYLIST_FORBIDDEN,
           Map.of("ownerId", ownerId, "requesterId", requesterId)
+      );
+    }
+  }
+
+  private Object parseCursor(String cursor, PlaylistSortBy sortBy) {
+    if (cursor == null) {
+      return null;
+    }
+
+    if (cursor.isBlank()) {
+      throw new PlaylistException(
+          PlaylistErrorCode.PLAYLIST_INVALID_CURSOR,
+          Map.of("cursor", cursor)
+      );
+    }
+
+    try {
+      return switch (sortBy) {
+        case UPDATED_AT -> Instant.parse(cursor);
+
+        case SUBSCRIBE_COUNT -> {
+          long parsed = Long.parseLong(cursor);
+
+          if (parsed < 0) {
+            throw new PlaylistException(
+                PlaylistErrorCode.PLAYLIST_INVALID_CURSOR,
+                Map.of("cursor", cursor)
+            );
+          }
+
+          yield parsed;
+        }
+      };
+    } catch (DateTimeParseException | NumberFormatException e) {
+      throw new PlaylistException(
+          PlaylistErrorCode.PLAYLIST_INVALID_CURSOR,
+          Map.of("cursor", cursor)
       );
     }
   }

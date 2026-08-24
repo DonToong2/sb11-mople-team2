@@ -20,7 +20,11 @@ public class UserSearchService {
     var documents = userRepository.findAll().stream()
         .map(user -> new UserDocument(
             user.getId(),
-            user.getEmail()
+            user.getEmail(),
+            user.getName(),
+            user.getCreatedAt(),
+            user.isLocked(),
+            user.getRole().name()
         ))
         .toList();
 

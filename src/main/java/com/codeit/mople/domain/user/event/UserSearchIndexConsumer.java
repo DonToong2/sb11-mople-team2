@@ -40,7 +40,11 @@ public class UserSearchIndexConsumer {
     userSearchRepository.save(
         new UserDocument(
             event.userId(),
-            event.email()
+            event.email(),
+            event.name(),
+            event.createdAt(),
+            event.locked(),
+            event.role()
         )
     );
 

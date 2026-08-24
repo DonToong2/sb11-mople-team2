@@ -1,5 +1,7 @@
 package com.codeit.mople.domain.content.repository.search;
 
+import com.codeit.mople.domain.content.entity.ContentType;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,9 +26,35 @@ public class ContentDocument {
       searchAnalyzer = "content_search_analyzer")
   private String title;
 
-  public ContentDocument(UUID id, String title) {
+  @Field(type = FieldType.Keyword)
+  private ContentType type;
+
+  // 평점순
+  @Field(type = FieldType.Double)
+  private double rating;
+
+  // 인기순
+  @Field(type = FieldType.Long)
+  private long watcherCount;
+
+  // 최신순
+  @Field(type = FieldType.Date)
+  private Instant createdAt;
+
+  public ContentDocument(
+      UUID id,
+      String title,
+      ContentType type,
+      double rating,
+      long watcherCount,
+      Instant createdAt
+  ) {
     this.id = id;
     this.title = title;
+    this.type = type;
+    this.rating = rating;
+    this.watcherCount = watcherCount;
+    this.createdAt = createdAt;
   }
 
 }

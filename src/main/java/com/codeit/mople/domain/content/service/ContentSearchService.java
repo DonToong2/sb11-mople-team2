@@ -20,7 +20,11 @@ public class ContentSearchService {
     var documents = contentRepository.findAll().stream()
         .map(content -> new ContentDocument(
             content.getId(),
-            content.getTitle()
+            content.getTitle(),
+            content.getType(),
+            content.calculateAverageRating(),
+            content.getWatcherCount(),
+            content.getCreatedAt()
         ))
         .toList();
 

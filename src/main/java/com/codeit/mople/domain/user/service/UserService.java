@@ -16,11 +16,18 @@ import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.domain.user.repository.search.UserSearchRepository;
 import com.codeit.mople.global.config.CacheNames;
 import com.codeit.mople.global.dto.CursorResponse;
+import com.codeit.mople.global.dto.SearchResult;
+import com.codeit.mople.global.dto.SortDirection;
 import com.codeit.mople.global.storage.FileStorageService;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -59,7 +66,15 @@ public class UserService {
     User saved = userRepository.save(user);
 
     eventPublisher.publishEvent(
-        new UserSearchIndexEvent(UUID.randomUUID(), saved.getId(), saved.getEmail())
+        new UserSearchIndexEvent(
+            UUID.randomUUID(),
+            saved.getId(),
+            saved.getEmail(),
+            saved.getName(),
+            saved.getCreatedAt(),
+            saved.isLocked(),
+            saved.getRole().name()
+        )
     );
 
     return UserDto.from(saved);
@@ -84,28 +99,77 @@ public class UserService {
           + "#request.sortDirectionOrDefault()"
           + "}"
   )
+  @Transactional(readOnly = true)
   public CursorResponse<UserDto> getUsers(UserSearchRequest request) {
-    List<UUID> userIds = null;
 
+    UserSortBy sortBy = request.sortByOrDefault();
+    SortDirection sortDirection = request.sortDirectionOrDefault();
+    int limit = request.limitOrDefault();
+
+    // 이메일 검색이 있으면 Elasticsearch가
+    // 검색 + 필터 + 정렬 + 커서 페이지네이션을 담당
     if (request.emailLike() != null && !request.emailLike().isBlank()) {
-      userIds = searchRepository.findAllByEmailContainingIgnoreCase(
-          request.emailLike()
+
+      SearchResult searchResult =
+          searchRepository.findAllByEmailContainingIgnoreCase(
+              request.emailLike(),
+              request.idAfter(),
+              parseCursor(request.cursor(), sortBy),
+              limit,
+              sortBy,
+              sortDirection,
+              request.roleEqual(),
+              request.isLocked()
+          );
+
+      List<User> users =
+          userRepository.searchUsers(
+              request,
+              searchResult.ids()
+          );
+
+      Map<UUID, User> userMap = users.stream()
+          .collect(Collectors.toMap(
+              User::getId,
+              Function.identity()
+          ));
+
+      // DB 조회 결과를 ES의 정렬 순서로 복원
+      List<UserDto> data = searchResult.ids().stream()
+          .map(userMap::get)
+          .filter(Objects::nonNull)
+          .map(UserDto::from)
+          .toList();
+
+      return CursorResponse.ofSearchResult(
+          data,
+          searchResult.nextCursor(),
+          searchResult.nextIdAfter(),
+          searchResult.hasNext(),
+          searchResult.totalCount(),
+          sortBy.getValue(),
+          sortDirection.name()
       );
     }
 
-    long totalCount = userRepository.countUsers(request, userIds);
+    // 검색어가 없으면 기존 DB QueryDSL 페이지네이션
+    long totalCount = userRepository.countUsers(request, null);
 
-    List<User> users = userRepository.searchUsers(request, userIds);
+    List<User> users =
+        userRepository.searchUsers(request, null);
 
     return CursorResponse.of(
         users.stream()
             .map(UserDto::from)
             .toList(),
-        request.limitOrDefault(),
+        limit,
         totalCount,
-        request.sortByOrDefault().getValue(),
-        request.sortDirectionOrDefault().name(),
-        dto -> cursorValueOf(dto, request.sortByOrDefault()),
+        sortBy.getValue(),
+        sortDirection.name(),
+        user -> cursorValueOf(
+            user,
+            sortBy
+        ),
         UserDto::id
     );
   }
@@ -136,6 +200,18 @@ public class UserService {
 
     user.updateProfile(request.name(), imageUrl);
 
+    eventPublisher.publishEvent(
+        new UserSearchIndexEvent(
+            UUID.randomUUID(),
+            user.getId(),
+            user.getEmail(),
+            user.getName(),
+            user.getCreatedAt(),
+            user.isLocked(),
+            user.getRole().name()
+        )
+    );
+
     return UserDto.from(user);
   }
 
@@ -162,5 +238,44 @@ public class UserService {
       case IS_LOCKED -> String.valueOf(dto.locked());
       case ROLE -> dto.role().name();
     };
+  }
+
+  private Object parseCursor(String cursor, UserSortBy sortBy) {
+
+    if (cursor == null) {
+      return null;
+    }
+
+    if (cursor.isBlank()) {
+      throw new UserException(
+          UserErrorCode.INVALID_CURSOR,
+          Map.of("cursor", cursor)
+      );
+    }
+
+    try {
+      return switch (sortBy) {
+        case NAME, EMAIL, ROLE -> cursor;
+
+        case CREATED_AT -> Instant.parse(cursor);
+
+        case IS_LOCKED -> {
+          if (!"true".equalsIgnoreCase(cursor)
+              && !"false".equalsIgnoreCase(cursor)) {
+            throw new UserException(
+                UserErrorCode.INVALID_CURSOR,
+                Map.of("cursor", cursor)
+            );
+          }
+
+          yield Boolean.parseBoolean(cursor);
+        }
+      };
+    } catch (DateTimeParseException e) {
+      throw new UserException(
+          UserErrorCode.INVALID_CURSOR,
+          Map.of("cursor", cursor)
+      );
+    }
   }
 }
