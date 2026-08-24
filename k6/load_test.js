@@ -118,7 +118,7 @@ const SAMPLE_CONTENT_IDS = [
   'cb0222bf-80a7-4081-80f8-87e45f7c6cce',
 ];
 
-// 검색 키워드
+// 검색 키워드(load_test_seed_data.sql 시드 데이터 크기에 맞춤)
 const CONTENT_KEYWORDS = [
   '1',
   '10',
@@ -298,6 +298,10 @@ export function readLoad(data) {
 
   const detailSuccess = check(detailRes, {
     'content detail status is 200': (r) => r.status === 200,
+    'content detail has result': (r) => {
+      const body = r.json();
+      return body != null && body.id != null;
+    },
   });
 
   errorRate.add(!detailSuccess);
@@ -315,6 +319,7 @@ export function readLoad(data) {
 
   const contentListSuccess = check(contentListRes, {
     'content list status is 200': (r) => r.status === 200,
+    'content list has result': (r) => extractItems(r).length > 0,
   });
 
   errorRate.add(!contentListSuccess);
@@ -335,6 +340,7 @@ export function readLoad(data) {
 
   const contentSearchSuccess = check(contentSearchRes, {
     'content search status is 200': (r) => r.status === 200,
+    'content search has result': (r) => extractItems(r).length > 0,
   });
 
   errorRate.add(!contentSearchSuccess);
@@ -355,6 +361,7 @@ export function readLoad(data) {
 
   const playlistSearchSuccess = check(playlistSearchRes, {
     'playlist search status is 200': (r) => r.status === 200,
+    'playlist search has result': (r) => extractItems(r).length > 0,
   });
 
   errorRate.add(!playlistSearchSuccess);
@@ -379,6 +386,7 @@ export function readLoad(data) {
 
   const userSearchSuccess = check(userSearchRes, {
     'user search status is 200': (r) => r.status === 200,
+    'user search has result': (r) => extractItems(r).length > 0,
   });
 
   errorRate.add(!userSearchSuccess);
