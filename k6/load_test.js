@@ -49,13 +49,34 @@ export const options = {
     },
 
     // 쓰기 부하
-    write_load: {
+    write_1: {
       executor: 'shared-iterations',
+      startTime: '4m',
       vus: 1,
       iterations: 1,
-      maxDuration: '20m',
+      maxDuration: '5m',
       gracefulStop: '2m',
-      exec: 'writeLoad',
+      exec: 'writeLoad1',
+    },
+
+    write_2: {
+      executor: 'shared-iterations',
+      startTime: '7m',
+      vus: 1,
+      iterations: 1,
+      maxDuration: '5m',
+      gracefulStop: '2m',
+      exec: 'writeLoad2',
+    },
+
+    write_3: {
+      executor: 'shared-iterations',
+      startTime: '10m',
+      vus: 1,
+      iterations: 1,
+      maxDuration: '5m',
+      gracefulStop: '2m',
+      exec: 'writeLoad3',
     },
   },
 
@@ -322,11 +343,7 @@ export function readLoad(data) {
   sleep(0.2);
 }
 
-export function writeLoad(data) {
-
-  // 5분 시점
-  sleep(5 * 60);
-
+export function writeLoad1(data) {
   console.log('[WRITE 1 START]');
 
   executeWriteScenario(
@@ -341,10 +358,9 @@ export function writeLoad(data) {
       `[WRITE 1 END] contentIds=${JSON.stringify(loadTestContentIds)}, ` +
       `playlistIds=${JSON.stringify(loadTestPlaylistIds)}`
   );
+}
 
-  // 9분 시점
-  sleep(4 * 60);
-
+export function writeLoad2(data) {
   console.log('[WRITE 2 START]');
 
   executeWriteScenario(
@@ -366,10 +382,9 @@ export function writeLoad(data) {
   );
 
   console.log('[WRITE 2 END]');
+}
 
-  // 13분 시점
-  sleep(4 * 60);
-
+export function writeLoad3(data) {
   console.log('[WRITE 3 START]');
 
   const cleanupErrors = [];
