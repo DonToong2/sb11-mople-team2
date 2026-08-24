@@ -102,10 +102,12 @@ public class AuthService {
     String accessToken = jwtProvider.createAccessToken(user.getId(), jti, user.getRole());
     sessionTokenRepository.save(user.getId(), jti, sessionTtl());
 
+    AuthTokens authTokens = issueRefreshToken(user, accessToken);
+    
     //검증 통과 후 토큰 발급 전 성공 카운트 증가
     loginSuccessCounter.increment();
 
-    return issueRefreshToken(user, accessToken);
+    return authTokens;
   }
 
   @Transactional(readOnly = true)
