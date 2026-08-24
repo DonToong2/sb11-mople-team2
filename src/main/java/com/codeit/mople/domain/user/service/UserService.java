@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -87,7 +88,7 @@ public class UserService {
   }
 
   @Cacheable(
-      value = CacheNames.USERS,
+      value = CacheNames.USER_LIST,
       key = "{"
           + "#request.emailLike(),"
           + "#request.roleEqual(),"
@@ -175,7 +176,12 @@ public class UserService {
   }
 
   @PreAuthorize("hasRole('ADMIN') or #targetUserId == authentication.principal.userId")
-  @CacheEvict(value = CacheNames.USERS, allEntries = true)
+  @Caching(
+      evict = {
+          @CacheEvict(value = CacheNames.USERS, key = "#targetUserId"),
+          @CacheEvict(value = CacheNames.USER_LIST, allEntries = true)
+      }
+  )
   @Transactional
   public UserDto updateProfile(UUID targetUserId, UserUpdateRequest request, MultipartFile image) {
     User user = findUserOrThrow(targetUserId);

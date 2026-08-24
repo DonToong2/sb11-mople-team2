@@ -28,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,7 +58,7 @@ public class ContentService{
 
   //콘텐츠 생성
   @Transactional
-  @CacheEvict(cacheNames = CacheNames.CONTENTS, allEntries = true)
+  @CacheEvict(cacheNames = CacheNames.CONTENT_LIST, allEntries = true)
   public ContentResponse createContent(ContentCreateRequest request, MultipartFile thumbnail) {
     log.debug("콘텐트 생성 시작 - type: {}, title: {}", request.type(), request.title());
 
@@ -110,7 +111,7 @@ public class ContentService{
   }
 
   //콘텐츠 목록 조회
-  @Cacheable(cacheNames = CacheNames.CONTENTS,
+  @Cacheable(cacheNames = CacheNames.CONTENT_LIST,
       key = "{#cursorId, #cursorValue, #limit, #typeEqual, #keywordLike, #sortBy}"
   )
   @Transactional(readOnly = true)
@@ -266,7 +267,12 @@ public class ContentService{
   }
 
   //콘텐츠 수정
-  @CacheEvict(cacheNames = CacheNames.CONTENTS, allEntries = true)
+  @Caching(
+      evict = {
+          @CacheEvict(value = CacheNames.CONTENTS, key = "#contentId"),
+          @CacheEvict(value = CacheNames.CONTENT_LIST, allEntries = true)
+      }
+  )
   @Transactional
   public ContentResponse updateContent(UUID contentId, ContentUpdateRequest request, MultipartFile thumbnail) {
     log.debug("콘텐츠 수정 시작 - contentId: {}, updateTitle: {}", contentId, request.title());
@@ -334,7 +340,12 @@ public class ContentService{
   }
 
   //콘텐츠 삭제
-  @CacheEvict(cacheNames = CacheNames.CONTENTS, allEntries = true)
+  @Caching(
+      evict = {
+          @CacheEvict(value = CacheNames.CONTENTS, key = "#contentId"),
+          @CacheEvict(value = CacheNames.CONTENT_LIST, allEntries = true)
+      }
+  )
   @Transactional
   public void deleteContent(UUID contentId) {
     log.debug("콘텐츠 삭제 시작 - contentId: {}", contentId);

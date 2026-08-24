@@ -62,7 +62,7 @@ public class PlaylistService {
   private final ApplicationEventPublisher publisher;
   private final PlaylistSearchRepository searchRepository;
 
-  @CacheEvict(cacheNames = {CacheNames.PLAYLISTS, CacheNames.PLAYLIST_LIST}, allEntries = true)
+  @CacheEvict(value = CacheNames.PLAYLIST_LIST, allEntries = true)
   @Transactional
   public PlaylistResponse create(PlaylistCreateRequest request, UUID ownerId) {
 
@@ -147,7 +147,6 @@ public class PlaylistService {
   }
 
   // 플레이리스트 목록 조회
-// 플레이리스트 목록 조회
   @Cacheable(
       cacheNames = CacheNames.PLAYLIST_LIST,
       key = "{"
@@ -298,6 +297,7 @@ public class PlaylistService {
     return response;
   }
 
+  // 플레이리스트 수정
   @CacheEvict(cacheNames = {CacheNames.PLAYLISTS, CacheNames.PLAYLIST_LIST}, allEntries = true)
   @Transactional
   public PlaylistResponse update(
@@ -351,6 +351,7 @@ public class PlaylistService {
     return response;
   }
 
+  // 플레이리스트 삭제
   @CacheEvict(cacheNames = {CacheNames.PLAYLISTS, CacheNames.PLAYLIST_LIST}, allEntries = true)
   @Transactional
   public void delete(UUID playlistId, UUID ownerId) {

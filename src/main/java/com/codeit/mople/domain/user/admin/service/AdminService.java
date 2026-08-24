@@ -16,6 +16,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +32,12 @@ public class AdminService {
   private final SessionTokenRepository sessionTokenRepository;
   private final RefreshTokenRepository refreshTokenRepository;
 
-  @CacheEvict(value = CacheNames.USERS, allEntries = true)
+  @Caching(
+      evict = {
+          @CacheEvict(value = CacheNames.USERS, key = "#userId"),
+          @CacheEvict(value = CacheNames.USER_LIST, allEntries = true)
+      }
+  )
   @Transactional
   public void changeUserRole(UUID userId, String roleStr) {
     validateNotSelf(userId);
@@ -61,7 +67,12 @@ public class AdminService {
     log.info("권한 변경 완료 - userId: {}, role: {}", userId, role);
   }
 
-  @CacheEvict(value = CacheNames.USERS, allEntries = true)
+  @Caching(
+      evict = {
+          @CacheEvict(value = CacheNames.USERS, key = "#userId"),
+          @CacheEvict(value = CacheNames.USER_LIST, allEntries = true)
+      }
+  )
   @Transactional
   public void changeUserLocked(UUID userId, boolean locked) {
     validateNotSelf(userId);
