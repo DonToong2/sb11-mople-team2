@@ -39,6 +39,7 @@ public class TmdbFeignConfig {
         .register(meterRegistry);
 
     return template -> {
+      tmdbCallCounter.increment();
       template.header("Authorization", "Bearer " + properties.apiKey());
       template.query("language", LANGUAGE);
     };
