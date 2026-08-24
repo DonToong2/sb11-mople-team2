@@ -84,7 +84,7 @@ jobs:
             echo "현재 서비스 중인 이미지: $PREV_IMAGE (교체 실패 시 그대로 유지됨)"
 
             docker rm -f "$CANDIDATE_NAME" 2>/dev/null || true
-            docker run -d --name "$CANDIDATE_NAME" -p 127.0.0.1:${CANDIDATE_PORT}:8080 --memory=320m --env-file /home/ubuntu/mople.env "$IMAGE"
+            docker run -d --name "$CANDIDATE_NAME" -p 127.0.0.1:${CANDIDATE_PORT}:8080 --memory=320m --env-file /home/ubuntu/mople.env -e SPRING_PROFILES_ACTIVE=prod,probe -e KAFKA_ENABLED=false "$IMAGE"
 
             READY=false
             for i in $(seq 1 30); do
