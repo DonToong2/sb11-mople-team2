@@ -118,11 +118,15 @@ jobs:
               exit 1
             }
             
-            docker rm -f "$ROLLBACK_NAME" 2>/dev/null || true
             if docker inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
               docker stop "$CONTAINER_NAME" 2>/dev/null || true
+              docker rm -f "$ROLLBACK_NAME" 2>/dev/null || true
+              if ! docker rename "$CONTAINER_NAME" "$ROLLBACK_NAME"; then
+                echo "기존 컨테이너 rename 실패 - 원래 이름으로 재시작 시도"
+                docker start "$CONTAINER_NAME" || true
+                exit 1
+              fi
               trap rollback ERR
-              docker rename "$CONTAINER_NAME" "$ROLLBACK_NAME"
             fi
 
             if ! docker run -d --name "$CONTAINER_NAME" --restart unless-stopped -p 8080:8080 --memory=320m --env-file /home/ubuntu/mople.env "$IMAGE"; then
