@@ -119,4 +119,4 @@ mail:
 
 discord:
   webhook:
-    url: "https://discord.com/api/webhooks/1541325359515963402/Ugx5g7z2V-4FSWrasSbRme46paLnnfX7UZ_XHgYIEtrfWezQXNfb30p-Hs-6_ioyr0-l"
+    url: ${DISCORD_WEBHOOK_URL:}
