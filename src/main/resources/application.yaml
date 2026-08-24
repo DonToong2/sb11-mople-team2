@@ -95,7 +95,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, metrics
+        include: health, info, metrics, prometheus
 external-api:
   tmdb:
     image-base-url: https://image.tmdb.org/t/p/w500
