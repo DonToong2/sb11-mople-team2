@@ -6,7 +6,6 @@ WORKDIR /app
 COPY gradlew build.gradle settings.gradle ./
 COPY gradle ./gradle
 RUN chmod +x ./gradlew
-RUN ./gradlew dependencies --no-daemon || true
 
 # 소스 복사 후 빌드 (테스트는 CI에서 검증되므로 스킵)
 COPY src ./src
