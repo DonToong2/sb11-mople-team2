@@ -18,11 +18,14 @@ import com.codeit.mople.domain.conversation.exception.ConversationErrorCode;
 import com.codeit.mople.domain.conversation.exception.ConversationException;
 import com.codeit.mople.domain.conversation.mapper.ConversationMapper;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
+import com.codeit.mople.domain.directmessage.document.DirectMessageDocument;
 import com.codeit.mople.domain.directmessage.entity.DirectMessage;
+import com.codeit.mople.domain.directmessage.repository.DirectMessageSearchRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.UserSummary;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,6 +50,9 @@ public class ConversationServiceTest {
 
   @Mock
   private ConversationMapper conversationMapper;
+
+  @Mock
+  private DirectMessageSearchRepository directMessageSearchRepository;
 
   @InjectMocks
   private ConversationService conversationService;
@@ -239,8 +245,9 @@ public class ConversationServiceTest {
       given(mockRequest.sortBy()).willReturn("createdAt");
       given(mockRequest.sortDirection()).willReturn("DESCENDING");
       given(mockRequest.parseCursorToInstant()).willReturn(null);
+      given(mockRequest.keywordLike()).willReturn(null);
 
-      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any()))
+      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(), any()))
           .willReturn(List.of(conversation));
 
       ConversationDto dummyDto = new ConversationDto(UUID.randomUUID(), null, null, false);
@@ -273,9 +280,10 @@ public class ConversationServiceTest {
       given(mockRequest.sortBy()).willReturn("createdAt");
       given(mockRequest.sortDirection()).willReturn("DESCENDING");
       given(mockRequest.parseCursorToInstant()).willReturn(null);
+      given(mockRequest.keywordLike()).willReturn(null);
 
       Conversation dummyConversation = Conversation.createConversation(userA, userB);
-      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any()))
+      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(), any()))
           .willReturn(List.of(emptyConversation, dummyConversation));
 
       ConversationDto dummyDto = new ConversationDto(UUID.randomUUID(), null, null, false);
@@ -291,6 +299,115 @@ public class ConversationServiceTest {
 
       assertThat(result.nextCursor()).isEqualTo(lastMessageAtTime.toString());
       assertThat(result.nextIdAfter()).isEqualTo(conversationId);
+    }
+
+    @Test
+    @DisplayName("성공: 검색 키워드가 있으면 엘라스틱서치를 먼저 조회하고 그 결과를 DB 조회 파라미터로 넘긴다.")
+    void success_get_my_conversations_with_elasticsearch() {
+      //given
+      given(userRepository.findById(userAId)).willReturn(Optional.of(userA));
+
+      String searchKeyword = "피자";
+      ConversationCursorRequest mockRequest = mock(ConversationCursorRequest.class);
+      given(mockRequest.limit()).willReturn(20);
+      given(mockRequest.sortBy()).willReturn("createdAt");
+      given(mockRequest.sortDirection()).willReturn("DESCENDING");
+      given(mockRequest.parseCursorToInstant()).willReturn(null);
+      given(mockRequest.keywordLike()).willReturn(searchKeyword);
+
+      UUID matchedConvId = UUID.randomUUID();
+      DirectMessageDocument mockDoc = mock(DirectMessageDocument.class);
+      given(mockDoc.getConversationId()).willReturn(matchedConvId);
+
+       given(directMessageSearchRepository.findByContentMatches(searchKeyword))
+          .willReturn(List.of(mockDoc));
+
+      Conversation conversation = Conversation.createConversation(userA, userB);
+      DirectMessage mockMessage = mock(DirectMessage.class);
+      conversation.updateLastMessage(mockMessage);
+
+      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(), any()))
+          .willReturn(List.of(conversation));
+
+      ConversationDto dummyDto = new ConversationDto(matchedConvId, null, null, false);
+      given(conversationMapper.toDto(any(Conversation.class), eq(userAId))).willReturn(dummyDto);
+
+      //when
+      CursorResponseConversationDto result = conversationService.getMyConversations(userAId, mockRequest);
+
+      //then
+      assertThat(result).isNotNull();
+      assertThat(result.data()).hasSize(1);
+
+      verify(directMessageSearchRepository, times(1)).findByContentMatches(searchKeyword);
+    }
+
+    @Test
+    @DisplayName("성공: 엘라스틱서치 검색 결과가 0건이어도, 빈 배열을 DB로 넘겨 정상 작동한다.")
+    void success_get_my_conversations_with_empty_es_result() {
+      // given
+      given(userRepository.findById(userAId)).willReturn(Optional.of(userA));
+
+      String searchKeyword = "없는단어";
+      ConversationCursorRequest mockRequest = mock(ConversationCursorRequest.class);
+      given(mockRequest.limit()).willReturn(20);
+      given(mockRequest.sortBy()).willReturn("createdAt");
+      given(mockRequest.sortDirection()).willReturn("DESCENDING");
+      given(mockRequest.parseCursorToInstant()).willReturn(null);
+      given(mockRequest.keywordLike()).willReturn(searchKeyword);
+
+      given(directMessageSearchRepository.findByContentMatches(searchKeyword))
+          .willReturn(List.of());
+
+      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(), eq(List.of())))
+          .willReturn(List.of());
+
+      // when
+      CursorResponseConversationDto result = conversationService.getMyConversations(userAId, mockRequest);
+
+      // then
+      assertThat(result).isNotNull();
+      assertThat(result.data()).isEmpty();
+      verify(directMessageSearchRepository, times(1)).findByContentMatches(searchKeyword);
+    }
+
+    @Test
+    @DisplayName("성공(Fallback): 엘라스틱서치 서버 장애 시, API가 죽지 않고 DB 닉네임 검색으로 자연스럽게 우회한다.")
+    void success_fallback_when_es_is_down() {
+      // given
+      given(userRepository.findById(userAId)).willReturn(Optional.of(userA));
+
+      String searchKeyword = "장애테스트";
+      ConversationCursorRequest mockRequest = mock(ConversationCursorRequest.class);
+      given(mockRequest.limit()).willReturn(20);
+      given(mockRequest.sortBy()).willReturn("createdAt");
+      given(mockRequest.sortDirection()).willReturn("DESCENDING");
+      given(mockRequest.parseCursorToInstant()).willReturn(null);
+      given(mockRequest.keywordLike()).willReturn(searchKeyword);
+
+      given(directMessageSearchRepository.findByContentMatches(searchKeyword))
+          .willThrow(new RuntimeException("Elasticsearch Connection Refused"));
+
+      Conversation conversation = Conversation.createConversation(userA, userB);
+      DirectMessage mockMessage = mock(DirectMessage.class);
+      conversation.updateLastMessage(mockMessage);
+
+      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(), eq(null)))
+          .willReturn(List.of(conversation));
+
+      ConversationDto dummyDto = new ConversationDto(UUID.randomUUID(), null, null, false);
+      given(conversationMapper.toDto(any(Conversation.class), eq(userAId))).willReturn(dummyDto);
+
+      // when (에러가 밖으로 터져 나오지 않고 무사히 result를 받아와야 함)
+      CursorResponseConversationDto result = conversationService.getMyConversations(userAId, mockRequest);
+
+      // then
+      assertThat(result).isNotNull();
+      assertThat(result.data()).hasSize(1);
+
+      // ES 호출은 시도했지만 에러가 났고, 우회해서 DB를 조회했음을 증명
+      verify(directMessageSearchRepository, times(1)).findByContentMatches(searchKeyword);
+      verify(conversationRepository, times(1)).findConversationByCursor(eq(userAId), eq(mockRequest), any(), eq(null));
     }
   }
 }

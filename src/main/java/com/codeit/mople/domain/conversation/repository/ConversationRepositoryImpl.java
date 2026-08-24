@@ -1,14 +1,12 @@
 package com.codeit.mople.domain.conversation.repository;
 
 import static com.codeit.mople.domain.conversation.entity.QConversation.conversation;
-import static com.codeit.mople.domain.directmessage.entity.QDirectMessage.directMessage;
 
 import com.codeit.mople.domain.conversation.dto.request.ConversationCursorRequest;
 import com.codeit.mople.domain.conversation.entity.Conversation;
 import com.codeit.mople.domain.directmessage.entity.QDirectMessage;
 import com.codeit.mople.domain.user.entity.QUser;
 import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.Instant;
 import java.util.List;
