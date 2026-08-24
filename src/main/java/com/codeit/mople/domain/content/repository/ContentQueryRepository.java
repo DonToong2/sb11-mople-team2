@@ -8,6 +8,7 @@ import com.codeit.mople.domain.content.entity.ContentType;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.Instant;
@@ -66,7 +67,15 @@ public class ContentQueryRepository {
 
   //검색어 필터링 조건(Elasticsearch Document 활용)
   private BooleanExpression idCondition(List<UUID> contentIds) {
-    return contentIds == null ? null : content.id.in(contentIds);
+    if (contentIds == null) {
+      return null;
+    }
+
+    if (contentIds.isEmpty()) {
+      return Expressions.FALSE;
+    }
+
+    return content.id.in(contentIds);
   }
 
   // 커서 필터링 조건(Service 계층에서 이미 타입 검증/파싱된 값을 받음)

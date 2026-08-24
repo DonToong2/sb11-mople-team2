@@ -12,6 +12,7 @@ import com.codeit.mople.global.dto.SortDirection;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.Instant;
@@ -108,7 +109,15 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
   // WHERE 절
   // 제목(키워드)
   private BooleanExpression idCondition(List<UUID> playlistIds) {
-    return playlistIds == null ? null : playlist.id.in(playlistIds);
+    if (playlistIds == null) {
+      return null;
+    }
+
+    if (playlistIds.isEmpty()) {
+      return Expressions.FALSE;
+    }
+
+    return playlist.id.in(playlistIds);
   }
 
   // 소유자 ID

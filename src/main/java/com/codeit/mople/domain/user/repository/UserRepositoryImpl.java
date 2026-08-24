@@ -9,6 +9,7 @@ import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.global.dto.SortDirection;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -51,7 +52,7 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
     }
 
     if (userIds.isEmpty()) {
-      return user.id.isNull();
+      return Expressions.FALSE;
     }
 
     return user.id.in(userIds);
