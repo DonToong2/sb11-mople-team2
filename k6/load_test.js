@@ -155,9 +155,6 @@ let loadTestContentIds = [];
 // 부하 테스트에서 생성한 Playlist ID
 let loadTestPlaylistIds = [];
 
-// 수정한 사용자 ID
-let loadTestUserId = null;
-
 // Utility
 
 function randomItem(array) {
@@ -460,6 +457,37 @@ export function writeLoad3(data) {
   }
 }
 
+// 비정상 종료/중간 실패 등에 대비한 최종 원복
+export function teardown(data) {
+  console.log('[TEARDOWN START]');
+
+  const cleanupErrors = [];
+
+  for (const cleanup of [
+    cleanupLoadTestContents,
+    cleanupLoadTestPlaylists,
+    restoreLoadTestUser,
+  ]) {
+    try {
+      cleanup(
+          data.adminAccessToken,
+          data.csrfToken
+      );
+    } catch (e) {
+      cleanupErrors.push(e.message);
+      console.log(`[TEARDOWN CLEANUP FAIL] ${e.message}`);
+    }
+  }
+
+  console.log('[TEARDOWN END]');
+
+  if (cleanupErrors.length > 0) {
+    throw new Error(
+        `Teardown 원복 실패: ${JSON.stringify(cleanupErrors)}`
+    );
+  }
+}
+
 // 콘텐츠, 플레이리스트 추가
 function executeWriteScenario(
     adminAccessToken,
@@ -675,10 +703,8 @@ function updateLoadTestUser(adminAccessToken, csrfToken) {
     return;
   }
 
-  loadTestUserId = user.id;
-
   const updateRes = http.patch(
-      `${BASE_URL}/users/${loadTestUserId}`,
+      `${BASE_URL}/users/${user.id}`,
       {
         request: http.file(
             JSON.stringify({
@@ -806,15 +832,166 @@ function deleteLoadTestPlaylists(adminAccessToken, csrfToken) {
   loadTestPlaylistIds = [];
 }
 
+// 부하 테스트로 생성된 콘텐츠 삭제
+function cleanupLoadTestContents(adminAccessToken, csrfToken) {
+
+  const response = http.get(
+      `${BASE_URL}/contents?keywordLike=${encodeURIComponent(
+          '부하테스트 콘텐츠'
+      )}&limit=100&sortDirection=DESCENDING&sortBy=createdAt`,
+      {
+        headers: {
+          Authorization: `Bearer ${adminAccessToken}`,
+        },
+      }
+  );
+
+  const searchSuccess = check(response, {
+    'cleanup content search status is 200': (r) => r.status === 200,
+  });
+
+  if (!searchSuccess) {
+    throw new Error(
+        `콘텐츠 정리 대상 조회 실패: status=${response.status}`
+    );
+  }
+
+  const contents = extractItems(response);
+
+  console.log(
+      `[TEARDOWN CONTENT] 정리 대상 ${contents.length}건`
+  );
+
+  for (const content of contents) {
+
+    if (!content.id) {
+      continue;
+    }
+
+    const deleteRes = http.del(
+        `${BASE_URL}/contents/${content.id}`,
+        null,
+        {
+          headers: {
+            Authorization: `Bearer ${adminAccessToken}`,
+            'X-XSRF-TOKEN': csrfToken,
+            Cookie: `XSRF-TOKEN=${encodeURIComponent(csrfToken)}`,
+          },
+        }
+    );
+
+    const deleteSuccess = check(deleteRes, {
+      'cleanup content delete status is 204': (r) => r.status === 204,
+    });
+
+    if (!deleteSuccess) {
+      throw new Error(
+          `콘텐츠 삭제 실패: id=${content.id}, ` +
+          `status=${deleteRes.status}`
+      );
+    }
+  }
+}
+
+// 부하 테스트로 생성된 플레이리스트 삭제
+function cleanupLoadTestPlaylists(adminAccessToken, csrfToken) {
+
+  const response = http.get(
+      `${BASE_URL}/playlists?keywordLike=${encodeURIComponent(
+          '부하테스트 플레이리스트'
+      )}&limit=100&sortDirection=DESCENDING&sortBy=updatedAt`,
+      {
+        headers: {
+          Authorization: `Bearer ${adminAccessToken}`,
+        },
+      }
+  );
+
+  const searchSuccess = check(response, {
+    'cleanup playlist search status is 200': (r) => r.status === 200,
+  });
+
+  if (!searchSuccess) {
+    throw new Error(
+        `플레이리스트 정리 대상 조회 실패: status=${response.status}`
+    );
+  }
+
+  const playlists = extractItems(response);
+
+  console.log(
+      `[TEARDOWN PLAYLIST] 정리 대상 ${playlists.length}건`
+  );
+
+  for (const playlist of playlists) {
+
+    if (!playlist.id) {
+      continue;
+    }
+
+    const deleteRes = http.del(
+        `${BASE_URL}/playlists/${playlist.id}`,
+        null,
+        {
+          headers: {
+            Authorization: `Bearer ${adminAccessToken}`,
+            'X-XSRF-TOKEN': csrfToken,
+            Cookie: `XSRF-TOKEN=${encodeURIComponent(csrfToken)}`,
+          },
+        }
+    );
+
+    const deleteSuccess = check(deleteRes, {
+      'cleanup playlist delete status is 204': (r) => r.status === 204,
+    });
+
+    if (!deleteSuccess) {
+      throw new Error(
+          `플레이리스트 삭제 실패: id=${playlist.id}, ` +
+          `status=${deleteRes.status}`
+      );
+    }
+  }
+}
+
 // 수정했던 사용자 원복
 function restoreLoadTestUser(adminAccessToken, csrfToken) {
 
-  if (!loadTestUserId) {
-    return;
+  const userSearchRes = http.get(
+      `${BASE_URL}/users?emailLike=${encodeURIComponent(
+          LOAD_TEST_USER_EMAIL
+      )}&limit=20&sortDirection=DESCENDING&sortBy=email`,
+      {
+        headers: {
+          Authorization: `Bearer ${adminAccessToken}`,
+        },
+      }
+  );
+
+  const searchSuccess = check(userSearchRes, {
+    'restore user search status is 200': (r) => r.status === 200,
+  });
+
+  if (!searchSuccess) {
+    throw new Error(
+        `사용자 원복 대상 조회 실패: status=${userSearchRes.status}`
+    );
+  }
+
+  const users = extractItems(userSearchRes);
+
+  const user = users.find(
+      (item) => item.email === LOAD_TEST_USER_EMAIL
+  );
+
+  if (!user) {
+    throw new Error(
+        `사용자 원복 대상 없음: email=${LOAD_TEST_USER_EMAIL}`
+    );
   }
 
   const updateRes = http.patch(
-      `${BASE_URL}/users/${loadTestUserId}`,
+      `${BASE_URL}/users/${user.id}`,
       {
         request: http.file(
             JSON.stringify({
@@ -835,24 +1012,19 @@ function restoreLoadTestUser(adminAccessToken, csrfToken) {
   );
 
   const restoreSuccess = check(updateRes, {
-    'load test user restore status is 200': (r) => r.status === 200,
+    'restore user status is 200': (r) => r.status === 200,
   });
 
-  errorRate.add(!restoreSuccess);
-  writeErrorRate.add(!restoreSuccess);
-
   if (!restoreSuccess) {
-    console.log(
-        `[USER RESTORE FAIL] status=${updateRes.status}, body=${updateRes.body}`
-    );
-
     throw new Error(
-        `사용자 원복 실패: userId=${loadTestUserId}, status=${updateRes.status}`
+        `사용자 원복 실패: userId=${user.id}, ` +
+        `status=${updateRes.status}, body=${updateRes.body}`
     );
   }
 
-// 복원 성공한 경우에만 상태 초기화
-  loadTestUserId = null;
+  console.log(
+      `[TEARDOWN USER] 사용자 원복 성공: userId=${user.id}`
+  );
 }
 
 // 목록 응답에서 실제 데이터 배열 추출
