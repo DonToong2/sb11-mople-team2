@@ -3,6 +3,8 @@ package com.codeit.mople.domain.content.client.tmdb.config;
 import feign.RequestInterceptor;
 import feign.Retryer;
 import feign.codec.ErrorDecoder;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Bean;
 
 // Fegin 프록시 내부에서 자동으로 호출
@@ -12,8 +14,8 @@ public class TmdbFeignConfig {
 
   // 커스텀 에러처리
   @Bean
-  public ErrorDecoder tmdbErrorDecoder() {
-    return new TmdbErrorDecoder();
+  public ErrorDecoder tmdbErrorDecoder(MeterRegistry meterRegistry) {
+    return new TmdbErrorDecoder(meterRegistry);
   }
 
   // 참고: spring cloud openFeign의 기본값은 [Retryer.NEVER_RETYR] 이고 이것은 재시도 안하는것임
@@ -30,7 +32,12 @@ public class TmdbFeignConfig {
 
   // 모든 요청 직전에 공통 값을 채움
   @Bean
-  public RequestInterceptor tmdbRequestInterceptor(TmdbProperties properties) {
+  public RequestInterceptor tmdbRequestInterceptor(TmdbProperties properties, MeterRegistry meterRegistry) {
+    Counter tmdbCallCounter = Counter.builder("mople.external.api.call.count")
+        .tag("provider", "tmdb") //태그로 sportsDB와 구분
+        .description("TMDB API 호출 횟수")
+        .register(meterRegistry);
+
     return template -> {
       template.header("Authorization", "Bearer " + properties.apiKey());
       template.query("language", LANGUAGE);

@@ -9,26 +9,36 @@ import feign.Request.HttpMethod;
 import feign.RequestTemplate;
 import feign.Response;
 import feign.RetryableException;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-@DisplayName("TmdbErorrDecoder 단위 테스트")
+@DisplayName("TmdbErrorDecoder 단위 테스트")
 public class TmdbErrorDecoderTest {
 
   private static final String METHOD_KEY = "TmdbClient#getPopularMovies(int)";
-  private static final String URL = "https://api.themviedb.org/3/movie/popular?page=1";
+  private static final String URL = "https://api.themoviedb.org/3/movie/popular?page=1";
   private static final String ERROR_BODY = """
-      {"staus_code":7,"status_message":Invalid API key."}
+      {"status_code":7,"status_message":"Invalid API key."}
       """;
 
-  private final TmdbErrorDecoder decoder = new TmdbErrorDecoder();
+  private MeterRegistry meterRegistry;
+  private TmdbErrorDecoder decoder;
+
+  @BeforeEach
+  void setUp() {
+    meterRegistry = new SimpleMeterRegistry();
+    decoder = new TmdbErrorDecoder(meterRegistry);
+  }
 
   @ParameterizedTest(name = "status={0} -> {1}")
   @CsvSource({
@@ -65,6 +75,19 @@ public class TmdbErrorDecoderTest {
     assertThat(((RetryableException) exception).retryAfter())
         .isNotNull()
         .isBetween(before + 10_000L, System.currentTimeMillis() + 10_000L);
+  }
+
+  @Test
+  @DisplayName("에러 디코딩 시 TMDB 에러 카운터가 1 증가")
+  void decode_IncrementsErrorCounter() {
+    decoder.decode(METHOD_KEY, response(401));
+
+    double count = meterRegistry.get("mople.external.api.error.count")
+        .tag("provider", "tmdb")
+        .counter()
+        .count();
+
+    assertThat(count).isEqualTo(1.0);
   }
 
   private Response response(int status) {
