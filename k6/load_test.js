@@ -713,7 +713,6 @@ function updateLoadTestUser(adminAccessToken, csrfToken) {
             'request.json',
             'application/json'
         ),
-        image: http.file('', 'empty'),
       },
       {
         headers: {
@@ -1000,7 +999,6 @@ function restoreLoadTestUser(adminAccessToken, csrfToken) {
             'request.json',
             'application/json'
         ),
-        image: http.file('', 'empty'),
       },
       {
         headers: {
