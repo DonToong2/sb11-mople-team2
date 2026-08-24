@@ -72,9 +72,10 @@ public class ConversationService {
       conversation = conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)
           .orElseGet(() -> {
             log.info("기존 대화방 없음, 새 대화방 생성 - userAId: {}, userBId: {}", userAId, userBId);
-            //새 대화방 생성될 때 카운트 증가
+            Conversation created = conversationRepository.saveAndFlush(Conversation.createConversation(userA, userB));
+            //저장이 성공한 뒤 카운트 증가
             conversationCreateCounter.increment();
-            return conversationRepository.saveAndFlush(Conversation.createConversation(userA, userB));
+            return created;
           });
     } catch (DataIntegrityViolationException e) {
       log.info("동시 대화방 생성 충돌 발생, 기존 방 재조회 시도 - userAId: {}, userBId: {}", userAId, userBId);
@@ -94,6 +95,8 @@ public class ConversationService {
 
     validateParticipant(conversation, requesterId);
 
+    conversationGetCounter.increment(); //성공적으로 조회된 후 카운트 증가
+
     return conversationMapper.toDto(conversation, requesterId);
   }
 
@@ -111,6 +114,8 @@ public class ConversationService {
 
     Conversation conversation = conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)
         .orElseThrow(() -> new ConversationException(ConversationErrorCode.CONVERSATION_NOT_FOUND, Map.of("userAId", userAId, "userBId", userBId)));
+
+    conversationGetCounter.increment(); //성공적으로 조회된 후 카운트 증가
 
     return conversationMapper.toDto(conversation, requesterId);
   }
