@@ -1,5 +1,6 @@
 package com.codeit.mople.global.error;
 
+import static org.mockito.Mockito.mock;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.codeit.mople.domain.follow.exception.FollowConstraintErrorCodes;
@@ -17,8 +18,10 @@ import org.springframework.http.ResponseEntity;
 @DisplayName("GlobalExceptionHandler 테스트")
 class GlobalExceptionHandlerTest {
 
+  private final DiscordWebhookService discordWebhookService = mock(DiscordWebhookService.class);
+
   private final GlobalExceptionHandler handler =
-      new GlobalExceptionHandler(List.of(new FollowConstraintErrorCodes()));
+      new GlobalExceptionHandler(List.of(new FollowConstraintErrorCodes()), discordWebhookService);
 
   private DataIntegrityViolationException violationOf(String constraintName) {
     ConstraintViolationException cause =

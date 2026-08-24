@@ -1,6 +1,7 @@
 package com.codeit.mople.global.error;
 
 import com.codeit.mople.global.response.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
   private final Map<String, ErrorCode> constraintErrorCodes;
+  private final DiscordWebhookService discordWebhookService;
 
   // 직접 정의한 비즈니스 예외
   @ExceptionHandler(CustomException.class)
@@ -37,11 +39,11 @@ public class GlobalExceptionHandler {
   // Record 생성자에서 던진 CustomException이 BeanInstantiationException으로 감싸진 경우
   @ExceptionHandler(BeanInstantiationException.class)
   public ResponseEntity<ApiResponse<Void>> handleBeanInstantiationException(
-      BeanInstantiationException e) {
+      BeanInstantiationException e, HttpServletRequest request) {
     if (e.getCause() instanceof CustomException customException) {
       return handleCustomException(customException);
     }
-    return handleException(e);
+    return handleException(e, request);
   }
 
   // 경로 변수/파라미터 타입 변환 실패 (e.g. UUID 형식 오류)
@@ -115,8 +117,12 @@ public class GlobalExceptionHandler {
 
   // 예상 못 한 모든 예외
   @ExceptionHandler(Exception.class)
-  public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
+  public ResponseEntity<ApiResponse<Void>> handleException(Exception e, HttpServletRequest request) { // request 추가
     log.error("[Unhandled exception] Message: {}", e.getMessage(), e);
+
+    //디스코드 알림 발송 코드 추가
+    discordWebhookService.sendErrorAlert(e, request);
+
     CommonErrorCode errorCode = CommonErrorCode.INTERNAL_SERVER_ERROR;
     return ResponseEntity
         .status(errorCode.getStatus())
@@ -155,10 +161,12 @@ public class GlobalExceptionHandler {
         .orElse(null);
   }
 
-  public GlobalExceptionHandler(List<ConstraintErrorCodes> contributors) {
+  public GlobalExceptionHandler(List<ConstraintErrorCodes> contributors, DiscordWebhookService discordWebhookService) {
     this.constraintErrorCodes = contributors.stream()
         .flatMap(c -> c.get().entrySet().stream())
         .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    this.discordWebhookService = discordWebhookService;
   }
 
   //경로 변수(PathVariable)나 쿼리 파라미터(RequestParam)의 타입 변환 실패 시 발생
