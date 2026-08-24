@@ -8,7 +8,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.codeit.mople.domain.auth.security.CustomUserDetails;
 import com.codeit.mople.domain.user.entity.Role;
+import com.codeit.mople.global.error.DiscordWebhookService;
 import com.codeit.mople.global.sse.service.SseService;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,6 +30,12 @@ public class SseControllerTest {
 
   @MockitoBean
   private SseService sseService;
+
+  @MockitoBean
+  private MeterRegistry meterRegistry;
+
+  @MockitoBean
+  private DiscordWebhookService discordWebhookService;
 
   private UUID userId;
   private CustomUserDetails userDetails;

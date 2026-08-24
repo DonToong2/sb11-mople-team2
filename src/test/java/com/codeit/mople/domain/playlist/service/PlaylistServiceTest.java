@@ -38,6 +38,8 @@ import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.dto.SortDirection;
 import com.codeit.mople.global.dto.UserSummary;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -51,6 +53,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -84,6 +87,9 @@ public class PlaylistServiceTest {
   @Captor
   private ArgumentCaptor<PlaylistContentAddedEvent> contentAddedEventCaptor;
 
+  @Spy
+  private MeterRegistry meterRegistry = new SimpleMeterRegistry();
+
   @InjectMocks
   private PlaylistService playlistService;
 
@@ -105,6 +111,9 @@ public class PlaylistServiceTest {
 
   @BeforeEach
   void setUp() {
+    //수동으로 카운터 초기화
+    playlistService.initMetrics();
+
     owner = mock(User.class);
     ownerId = UUID.randomUUID();
     title = "새 플레이리스트 (1)";
