@@ -13,7 +13,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
@@ -23,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
     name = "enabled",
     havingValue = "true"
 )
-@KafkaListener(topics = "user-search-index-events")
+@KafkaListener(topics = "${spring.kafka.topics.user-search-index}")
 public class UserSearchIndexConsumer {
 
   private final UserSearchRepository userSearchRepository;

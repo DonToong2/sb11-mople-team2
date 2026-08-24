@@ -17,12 +17,8 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(
-    prefix = KafkaProperties.PREFIX,
-    name = "enabled",
-    havingValue = "true"
-)
-@KafkaListener(topics = "content-search-index-events")
+@ConditionalOnProperty(prefix = KafkaProperties.PREFIX, name = "enabled", havingValue = "true")
+@KafkaListener(topics = "${spring.kafka.topics.content-search-index}")
 public class ContentSearchIndexConsumer {
 
   private final ContentSearchRepository contentSearchRepository;

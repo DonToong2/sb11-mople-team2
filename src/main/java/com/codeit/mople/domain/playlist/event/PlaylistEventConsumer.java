@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = KafkaProperties.PREFIX, name = "enabled", havingValue = "true")
-@KafkaListener(topics = "playlist-events")
+@KafkaListener(topics = "${spring.kafka.topics.playlist-events}")
 public class PlaylistEventConsumer {
 
   private final PlaylistRepository playlistRepository;
