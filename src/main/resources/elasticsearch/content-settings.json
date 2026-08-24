@@ -1,4 +1,5 @@
 {
+  "index.max_ngram_diff": 8,
   "analysis": {
     "analyzer": {
       "content_ngram_analyzer": {

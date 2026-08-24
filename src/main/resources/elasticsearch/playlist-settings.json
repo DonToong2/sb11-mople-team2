@@ -1,4 +1,5 @@
 {
+  "index.max_ngram_diff": 8,
   "analysis": {
     "analyzer": {
       "playlist_ngram_analyzer": {
