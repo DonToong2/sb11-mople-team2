@@ -156,6 +156,12 @@ let loadTestContentIds = [];
 // 부하 테스트에서 생성한 Playlist ID
 let loadTestPlaylistIds = [];
 
+// 조회 부하에서 랜덤 사용자 1명을 선택하고 최초 1회 로그인 후 토큰 재사용
+const sharedUser = {
+  email: null,
+  accessToken: null,
+};
+
 // Utility
 
 function randomItem(array) {
@@ -195,31 +201,7 @@ export function setup() {
 
   const adminAccessToken = adminLoginRes.json('accessToken');
 
-  // 조회 부하작업에서 로그인 없이 여기서 만든 토큰을 재사용
-  const userAccessTokens = [];
 
-  for (let i = 1; i <= LOAD_TEST_USER_COUNT; i++) {
-    const loginRes = http.post(
-        `${BASE_URL}/auth/sign-in`,
-        {
-          username: `test${i}@test.com`,
-          password: PASSWORD,
-        }
-    );
-
-    const loginSuccess = check(loginRes, {
-      'load test user login status is 200': (r) => r.status === 200,
-    });
-
-    if (!loginSuccess) {
-      throw new Error(
-          `Load test user login failed: email=test${i}@test.com, ` +
-          `status=${loginRes.status}, body=${loginRes.body}`
-      );
-    }
-
-    userAccessTokens.push(loginRes.json('accessToken'));
-  }
 
   // CSRF token 발급
   const csrfRes = http.get(
@@ -246,7 +228,6 @@ export function setup() {
   return {
     adminAccessToken,
     csrfToken,
-    userAccessTokens,
   };
 }
 
@@ -276,10 +257,51 @@ export function loginLoad() {
 // 테스트 시나리오
 export function readLoad(data) {
 
-  const accessToken = randomItem(data.userAccessTokens);
+// 조회 부하에서 사용할 랜덤 사용자 1명 선택
+  if (!sharedUser.email) {
+    const userNumber =
+        Math.floor(Math.random() * LOAD_TEST_USER_COUNT) + 1;
+
+    sharedUser.email = `test${userNumber}@test.com`;
+  }
+
+// 랜덤 선택된 사용자가 최초 요청할 때만 로그인
+  if (!sharedUser.accessToken) {
+    const loginRes = http.post(
+        `${BASE_URL}/auth/sign-in`,
+        {
+          username: sharedUser.email,
+          password: PASSWORD,
+        }
+    );
+
+    const loginSuccess = check(loginRes, {
+      'read load user login status is 200': (r) => r.status === 200,
+    });
+
+    errorRate.add(!loginSuccess);
+    loginTrend.add(loginRes.timings.duration);
+
+    if (!loginSuccess) {
+      throw new Error(
+          `Read load user login failed: email=${sharedUser.email}, ` +
+          `status=${loginRes.status}, body=${loginRes.body}`
+      );
+    }
+
+    const accessToken = loginRes.json('accessToken');
+
+    if (!accessToken) {
+      throw new Error(
+          `Read load user access token not found: email=${sharedUser.email}`
+      );
+    }
+
+    sharedUser.accessToken = accessToken;
+  }
 
   const authHeaders = {
-    Authorization: `Bearer ${accessToken}`,
+    Authorization: `Bearer ${sharedUser.accessToken}`,
   };
 
   sleep(0.1);
