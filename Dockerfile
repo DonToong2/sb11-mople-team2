@@ -6,7 +6,6 @@ WORKDIR /app
 COPY gradlew build.gradle settings.gradle ./
 COPY gradle ./gradle
 RUN chmod +x ./gradlew
-RUN ./gradlew dependencies --no-daemon || true
 
 # 소스 복사 후 빌드 (테스트는 CI에서 검증되므로 스킵)
 COPY src ./src
@@ -29,4 +28,4 @@ COPY --from=build /app/build/libs/mople-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
 ENV SPRING_PROFILES_ACTIVE=prod
 
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=70.0", "-XX:+ExitOnOutOfMemoryError", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=65.0", "-XX:+ExitOnOutOfMemoryError", "-jar", "app.jar"]
