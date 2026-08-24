@@ -107,6 +107,8 @@ public class UserService {
     SortDirection sortDirection = request.sortDirectionOrDefault();
     int limit = request.limitOrDefault();
 
+    Object cursor = parseCursor(request.cursor(), sortBy);
+
     // 이메일 검색이 있으면 Elasticsearch가
     // 검색 + 필터 + 정렬 + 커서 페이지네이션을 담당
     if (request.emailLike() != null && !request.emailLike().isBlank()) {
@@ -115,7 +117,7 @@ public class UserService {
           searchRepository.findAllByEmailContainingIgnoreCase(
               request.emailLike(),
               request.idAfter(),
-              parseCursor(request.cursor(), sortBy),
+              cursor,
               limit,
               sortBy,
               sortDirection,
@@ -135,7 +137,6 @@ public class UserService {
               Function.identity()
           ));
 
-      // DB 조회 결과를 ES의 정렬 순서로 복원
       List<UserDto> data = searchResult.ids().stream()
           .map(userMap::get)
           .filter(Objects::nonNull)
@@ -153,7 +154,7 @@ public class UserService {
       );
     }
 
-    // 검색어가 없으면 기존 DB QueryDSL 페이지네이션
+    // 검색어가 없으면 DB QueryDSL
     long totalCount = userRepository.countUsers(request, null);
 
     List<User> users =
