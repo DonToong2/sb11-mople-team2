@@ -103,12 +103,12 @@ public class PlaylistSearchRepositoryCustomImpl
     return switch (sortBy) {
       case UPDATED_AT -> Sort.by(
           new Sort.Order(direction, "updatedAt"),
-          new Sort.Order(Sort.Direction.ASC, "id")
+          new Sort.Order(Sort.Direction.ASC, "id.keyword")
       );
 
       case SUBSCRIBE_COUNT -> Sort.by(
           new Sort.Order(direction, "subscribeCount"),
-          new Sort.Order(Sort.Direction.ASC, "id")
+          new Sort.Order(Sort.Direction.ASC, "id.keyword")
       );
     };
   }
@@ -134,7 +134,7 @@ public class PlaylistSearchRepositoryCustomImpl
                 .query(title)
             )
         )
-        .withPageable(PageRequest.of(0, 0))
+        .withPageable(PageRequest.of(0, 1))
         .build();
 
     SearchHits<PlaylistDocument> hits =

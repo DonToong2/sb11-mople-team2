@@ -109,17 +109,17 @@ public class ContentSearchRepositoryCustomImpl
     return switch (sortBy) {
       case RATING -> Sort.by(
           Sort.Order.desc("rating"),
-          Sort.Order.asc("id")
+          Sort.Order.asc("id.keyword")
       );
 
       case WATCHER_COUNT -> Sort.by(
           Sort.Order.desc("watcherCount"),
-          Sort.Order.asc("id")
+          Sort.Order.asc("id.keyword")
       );
 
       case CREATED_AT -> Sort.by(
           Sort.Order.desc("createdAt"),
-          Sort.Order.asc("id")
+          Sort.Order.asc("id.keyword")
       );
     };
   }
@@ -166,7 +166,7 @@ public class ContentSearchRepositoryCustomImpl
 
           return b;
         }))
-        .withPageable(PageRequest.of(0, 0))
+        .withPageable(PageRequest.of(0, 1))
         .build();
 
     SearchHits<ContentDocument> hits =
