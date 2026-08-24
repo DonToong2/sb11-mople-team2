@@ -23,8 +23,10 @@ import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.domain.user.repository.search.UserDocument;
 import com.codeit.mople.domain.user.repository.search.UserSearchRepository;
 import com.codeit.mople.global.dto.CursorResponse;
+import com.codeit.mople.global.dto.SearchResult;
 import com.codeit.mople.global.dto.SortDirection;
 import com.codeit.mople.global.storage.FileStorageService;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -345,5 +347,403 @@ public class UserServiceTest {
     assertThat(user.getPassword()).isEqualTo("encodedNewPw");
     verify(refreshTokenRepository).invalidate(userId);
     verify(sessionTokenRepository).invalidate(userId);
+  }
+
+  @Test
+  @DisplayName("사용자 이메일 검색 성공")
+  void getUsers_success_withEmailLike() {
+    UserSearchRequest request = new UserSearchRequest(
+        "test", null, null, null, null, 10,
+        SortDirection.ASCENDING, UserSortBy.EMAIL
+    );
+
+    UUID userId = UUID.randomUUID();
+    User user = User.createUser("test@test.com", "encoded", "testUser");
+    ReflectionTestUtils.setField(user, "id", userId);
+
+    SearchResult searchResult = new SearchResult(
+        List.of(userId),
+        "test@test.com",
+        null,
+        false,
+        1L
+    );
+
+    when(searchRepository.findAllByEmailContainingIgnoreCase(
+        request.emailLike(),
+        request.idAfter(),
+        null,
+        request.limitOrDefault(),
+        request.sortByOrDefault(),
+        request.sortDirectionOrDefault(),
+        request.roleEqual(),
+        request.isLocked()
+    )).thenReturn(searchResult);
+
+    when(userRepository.searchUsers(request, List.of(userId)))
+        .thenReturn(List.of(user));
+
+    CursorResponse<UserDto> response = userService.getUsers(request);
+
+    assertThat(response.data()).hasSize(1);
+    assertThat(response.data().get(0).email()).isEqualTo("test@test.com");
+    assertThat(response.totalCount()).isEqualTo(1L);
+    assertThat(response.hasNext()).isFalse();
+
+    verify(searchRepository).findAllByEmailContainingIgnoreCase(
+        request.emailLike(),
+        request.idAfter(),
+        null,
+        request.limitOrDefault(),
+        request.sortByOrDefault(),
+        request.sortDirectionOrDefault(),
+        request.roleEqual(),
+        request.isLocked()
+    );
+  }
+
+  @Test
+  @DisplayName("ES 검색 결과 중 DB에 존재하지 않는 사용자는 제외됨")
+  void getUsers_filtersOutUsersNotFoundInDb() {
+    UserSearchRequest request = new UserSearchRequest(
+        "test", null, null, null, null, 10,
+        SortDirection.ASCENDING, UserSortBy.EMAIL
+    );
+
+    UUID existingUserId = UUID.randomUUID();
+    UUID missingUserId = UUID.randomUUID();
+
+    User user = User.createUser("test@test.com", "encoded", "testUser");
+    ReflectionTestUtils.setField(user, "id", existingUserId);
+
+    SearchResult searchResult = new SearchResult(
+        List.of(existingUserId, missingUserId),
+        "missing@test.com",
+        missingUserId,
+        true,
+        2L
+    );
+
+    when(searchRepository.findAllByEmailContainingIgnoreCase(
+        request.emailLike(),
+        request.idAfter(),
+        null,
+        request.limitOrDefault(),
+        request.sortByOrDefault(),
+        request.sortDirectionOrDefault(),
+        request.roleEqual(),
+        request.isLocked()
+    )).thenReturn(searchResult);
+
+    when(userRepository.searchUsers(request, List.of(existingUserId, missingUserId)))
+        .thenReturn(List.of(user));
+
+    CursorResponse<UserDto> response = userService.getUsers(request);
+
+    assertThat(response.data()).hasSize(1);
+    assertThat(response.data().get(0).id()).isEqualTo(existingUserId);
+    assertThat(response.hasNext()).isTrue();
+    assertThat(response.nextCursor()).isEqualTo("missing@test.com");
+    assertThat(response.nextIdAfter()).isEqualTo(missingUserId);
+    assertThat(response.totalCount()).isEqualTo(2L);
+  }
+
+  @Test
+  @DisplayName("빈 커서 입력 시 INVALID_CURSOR 예외 발생")
+  void getUsers_throwsException_whenCursorIsBlank() {
+    UserSearchRequest request = new UserSearchRequest(
+        null, null, null, "", null, 10,
+        SortDirection.ASCENDING, UserSortBy.NAME
+    );
+
+    assertThatThrownBy(() -> userService.getUsers(request))
+        .isInstanceOf(UserException.class)
+        .hasFieldOrPropertyWithValue(
+            "errorCode",
+            UserErrorCode.INVALID_CURSOR
+        );
+  }
+
+  @Test
+  @DisplayName("CREATED_AT 커서가 정상적으로 파싱됨")
+  void getUsers_success_withCreatedAtCursor() {
+    String cursor = "2026-08-24T10:00:00Z";
+
+    UserSearchRequest request = new UserSearchRequest(
+        "test", null, null, cursor, null, 10,
+        SortDirection.ASCENDING, UserSortBy.CREATED_AT
+    );
+
+    UUID userId = UUID.randomUUID();
+    User user = User.createUser("test@test.com", "encoded", "testUser");
+    ReflectionTestUtils.setField(user, "id", userId);
+
+    SearchResult searchResult = new SearchResult(
+        List.of(userId),
+        null,
+        null,
+        false,
+        1L
+    );
+
+    when(searchRepository.findAllByEmailContainingIgnoreCase(
+        request.emailLike(),
+        request.idAfter(),
+        Instant.parse(cursor),
+        request.limitOrDefault(),
+        request.sortByOrDefault(),
+        request.sortDirectionOrDefault(),
+        request.roleEqual(),
+        request.isLocked()
+    )).thenReturn(searchResult);
+
+    when(userRepository.searchUsers(request, List.of(userId)))
+        .thenReturn(List.of(user));
+
+    CursorResponse<UserDto> response = userService.getUsers(request);
+
+    assertThat(response.data()).hasSize(1);
+
+    verify(searchRepository).findAllByEmailContainingIgnoreCase(
+        request.emailLike(),
+        request.idAfter(),
+        Instant.parse(cursor),
+        request.limitOrDefault(),
+        request.sortByOrDefault(),
+        request.sortDirectionOrDefault(),
+        request.roleEqual(),
+        request.isLocked()
+    );
+  }
+
+  @Test
+  @DisplayName("잘못된 CREATED_AT 커서 입력 시 INVALID_CURSOR 예외 발생")
+  void getUsers_throwsException_whenCreatedAtCursorIsInvalid() {
+    UserSearchRequest request = new UserSearchRequest(
+        "test", null, null, "invalid-date", null, 10,
+        SortDirection.ASCENDING, UserSortBy.CREATED_AT
+    );
+
+    assertThatThrownBy(() -> userService.getUsers(request))
+        .isInstanceOf(UserException.class)
+        .hasFieldOrPropertyWithValue(
+            "errorCode",
+            UserErrorCode.INVALID_CURSOR
+        );
+  }
+
+  @Test
+  @DisplayName("IS_LOCKED 커서가 true로 정상 파싱됨")
+  void getUsers_success_withLockedTrueCursor() {
+    UserSearchRequest request = new UserSearchRequest(
+        "test", null, null, "true", null, 10,
+        SortDirection.ASCENDING, UserSortBy.IS_LOCKED
+    );
+
+    UUID userId = UUID.randomUUID();
+    User user = User.createUser("test@test.com", "encoded", "testUser");
+    ReflectionTestUtils.setField(user, "id", userId);
+
+    SearchResult searchResult = new SearchResult(
+        List.of(userId),
+        null,
+        null,
+        false,
+        1L
+    );
+
+    when(searchRepository.findAllByEmailContainingIgnoreCase(
+        request.emailLike(),
+        request.idAfter(),
+        true,
+        request.limitOrDefault(),
+        request.sortByOrDefault(),
+        request.sortDirectionOrDefault(),
+        request.roleEqual(),
+        request.isLocked()
+    )).thenReturn(searchResult);
+
+    when(userRepository.searchUsers(request, List.of(userId)))
+        .thenReturn(List.of(user));
+
+    CursorResponse<UserDto> response = userService.getUsers(request);
+
+    assertThat(response.data()).hasSize(1);
+
+    verify(searchRepository).findAllByEmailContainingIgnoreCase(
+        request.emailLike(),
+        request.idAfter(),
+        true,
+        request.limitOrDefault(),
+        request.sortByOrDefault(),
+        request.sortDirectionOrDefault(),
+        request.roleEqual(),
+        request.isLocked()
+    );
+  }
+
+  @Test
+  @DisplayName("IS_LOCKED 커서가 false로 정상 파싱됨")
+  void getUsers_success_withLockedFalseCursor() {
+    UserSearchRequest request = new UserSearchRequest(
+        "test", null, null, "false", null, 10,
+        SortDirection.ASCENDING, UserSortBy.IS_LOCKED
+    );
+
+    UUID userId = UUID.randomUUID();
+    User user = User.createUser("test@test.com", "encoded", "testUser");
+    ReflectionTestUtils.setField(user, "id", userId);
+
+    SearchResult searchResult = new SearchResult(
+        List.of(userId),
+        null,
+        null,
+        false,
+        1L
+    );
+
+    when(searchRepository.findAllByEmailContainingIgnoreCase(
+        request.emailLike(),
+        request.idAfter(),
+        false,
+        request.limitOrDefault(),
+        request.sortByOrDefault(),
+        request.sortDirectionOrDefault(),
+        request.roleEqual(),
+        request.isLocked()
+    )).thenReturn(searchResult);
+
+    when(userRepository.searchUsers(request, List.of(userId)))
+        .thenReturn(List.of(user));
+
+    CursorResponse<UserDto> response = userService.getUsers(request);
+
+    assertThat(response.data()).hasSize(1);
+  }
+
+  @Test
+  @DisplayName("잘못된 IS_LOCKED 커서 입력 시 INVALID_CURSOR 예외 발생")
+  void getUsers_throwsException_whenLockedCursorIsInvalid() {
+    UserSearchRequest request = new UserSearchRequest(
+        "test", null, null, "invalid", null, 10,
+        SortDirection.ASCENDING, UserSortBy.IS_LOCKED
+    );
+
+    assertThatThrownBy(() -> userService.getUsers(request))
+        .isInstanceOf(UserException.class)
+        .hasFieldOrPropertyWithValue(
+            "errorCode",
+            UserErrorCode.INVALID_CURSOR
+        );
+  }
+
+  @Test
+  @DisplayName("ROLE 커서가 문자열로 정상 처리됨")
+  void getUsers_success_withRoleCursor() {
+    UserSearchRequest request = new UserSearchRequest(
+        "test", null, null, "USER", null, 10,
+        SortDirection.ASCENDING, UserSortBy.ROLE
+    );
+
+    UUID userId = UUID.randomUUID();
+    User user = User.createUser("test@test.com", "encoded", "testUser");
+    ReflectionTestUtils.setField(user, "id", userId);
+
+    SearchResult searchResult = new SearchResult(
+        List.of(userId),
+        null,
+        null,
+        false,
+        1L
+    );
+
+    when(searchRepository.findAllByEmailContainingIgnoreCase(
+        request.emailLike(),
+        request.idAfter(),
+        "USER",
+        request.limitOrDefault(),
+        request.sortByOrDefault(),
+        request.sortDirectionOrDefault(),
+        request.roleEqual(),
+        request.isLocked()
+    )).thenReturn(searchResult);
+
+    when(userRepository.searchUsers(request, List.of(userId)))
+        .thenReturn(List.of(user));
+
+    CursorResponse<UserDto> response = userService.getUsers(request);
+
+    assertThat(response.data()).hasSize(1);
+
+    verify(searchRepository).findAllByEmailContainingIgnoreCase(
+        request.emailLike(),
+        request.idAfter(),
+        "USER",
+        request.limitOrDefault(),
+        request.sortByOrDefault(),
+        request.sortDirectionOrDefault(),
+        request.roleEqual(),
+        request.isLocked()
+    );
+  }
+
+  @Test
+  @DisplayName("빈 MultipartFile이면 이미지 업로드를 수행하지 않음")
+  void updateProfile_doesNotUpload_whenImageIsEmpty() {
+    UUID userId = UUID.randomUUID();
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+    MockMultipartFile emptyImage = new MockMultipartFile(
+        "image",
+        "empty.jpg",
+        "image/jpeg",
+        new byte[0]
+    );
+
+    UserUpdateRequest request = new UserUpdateRequest("newName");
+
+    UserDto response = userService.updateProfile(
+        userId,
+        request,
+        emptyImage
+    );
+
+    assertThat(response.name()).isEqualTo("newName");
+
+    verify(fileStorageService, org.mockito.Mockito.never()).upload(any());
+  }
+
+  @Test
+  @DisplayName("기존 이미지가 없을 때 새 이미지만 업로드하고 기존 이미지 삭제는 수행하지 않음")
+  void updateProfile_success_imageOnly_withoutOldImage() {
+    UUID userId = UUID.randomUUID();
+
+    ReflectionTestUtils.setField(user, "profileImageUrl", null);
+
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    when(fileStorageService.upload(any()))
+        .thenReturn("https://placeholder.mople.com/new.jpg");
+
+    MockMultipartFile image = new MockMultipartFile(
+        "image",
+        "test.jpg",
+        "image/jpeg",
+        "content".getBytes()
+    );
+
+    UserUpdateRequest request = new UserUpdateRequest(null);
+
+    UserDto response = userService.updateProfile(
+        userId,
+        request,
+        image
+    );
+
+    assertThat(response.profileImageUrl())
+        .isEqualTo("https://placeholder.mople.com/new.jpg");
+
+    verify(fileStorageService).upload(image);
+    verify(fileStorageService, org.mockito.Mockito.never())
+        .delete(any());
   }
 }
