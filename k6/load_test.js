@@ -27,6 +27,7 @@ const playlistCreateTrend = new Trend('playlist_create_duration');
 
 // Test Options
 export const options = {
+  setupTimeout: '10m',
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(95)', 'p(99)'],
 
   scenarios: {
@@ -106,7 +107,7 @@ export const options = {
 const BASE_URL = 'http://localhost:8080/api';
 
 const PASSWORD = '12345678';
-const LOAD_TEST_USER_COUNT = 500;
+const LOAD_TEST_USER_COUNT = 10000;
 
 const ADMIN_EMAIL = 'admin@mople.com';
 const ADMIN_PASSWORD = 'Admin1234!';
