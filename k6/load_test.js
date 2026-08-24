@@ -7,6 +7,7 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
 
 // 에러율
 const errorRate = new Rate('error_rate');
+const writeErrorRate = new Rate('write_error_rate');
 
 // 로그인
 const loginTrend = new Trend('login_duration');
@@ -434,6 +435,7 @@ function executeWriteScenario(
     });
 
     errorRate.add(!contentCreateSuccess);
+    writeErrorRate.add(!contentCreateSuccess);
     contentCreateTrend.add(contentRes.timings.duration);
 
     if (!contentCreateSuccess) {
@@ -477,6 +479,7 @@ function executeWriteScenario(
     });
 
     errorRate.add(!playlistCreateSuccess);
+    writeErrorRate.add(!playlistCreateSuccess);
     playlistCreateTrend.add(playlistRes.timings.duration);
 
     if (!playlistCreateSuccess) {
@@ -519,6 +522,7 @@ function updateLoadTestContent(adminAccessToken, csrfToken) {
   });
 
   errorRate.add(!detailSuccess);
+  writeErrorRate.add(!detailSuccess);
 
   if (!detailSuccess) {
     console.log(
@@ -553,6 +557,7 @@ function updateLoadTestContent(adminAccessToken, csrfToken) {
   });
 
   errorRate.add(!updateSuccess);
+  writeErrorRate.add(!updateSuccess);
 
   if (!updateSuccess) {
     console.log(
@@ -584,6 +589,7 @@ function updateLoadTestUser(adminAccessToken, csrfToken) {
   });
 
   errorRate.add(!searchSuccess);
+  writeErrorRate.add(!searchSuccess);
 
   if (!searchSuccess) {
     return;
@@ -630,6 +636,7 @@ function updateLoadTestUser(adminAccessToken, csrfToken) {
   });
 
   errorRate.add(!updateSuccess);
+  writeErrorRate.add(!updateSuccess);
 
   if (!updateSuccess) {
     console.log(
@@ -662,6 +669,8 @@ function deleteLoadTestContents(adminAccessToken, csrfToken) {
     });
 
     errorRate.add(!deleteSuccess);
+    writeErrorRate.add(!deleteSuccess);
+
 
     if (!deleteSuccess) {
       failedContentIds.push(contentId);
@@ -708,6 +717,7 @@ function deleteLoadTestPlaylists(adminAccessToken, csrfToken) {
     });
 
     errorRate.add(!deleteSuccess);
+    writeErrorRate.add(!deleteSuccess);
 
     if (!deleteSuccess) {
       failedPlaylistIds.push(playlistId);
@@ -763,6 +773,7 @@ function restoreLoadTestUser(adminAccessToken, csrfToken) {
   });
 
   errorRate.add(!restoreSuccess);
+  writeErrorRate.add(!restoreSuccess);
 
   if (!restoreSuccess) {
     console.log(
