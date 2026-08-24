@@ -1,0 +1,21 @@
+{
+  "analysis": {
+    "analyzer": {
+      "playlist_ngram_analyzer": {
+        "tokenizer": "playlist_ngram_tokenizer",
+        "filter": ["lowercase"]
+      },
+      "playlist_search_analyzer": {
+        "tokenizer": "standard",
+        "filter": ["lowercase"]
+      }
+    },
+    "tokenizer": {
+      "playlist_ngram_tokenizer": {
+        "type": "ngram",
+        "min_gram": 2,
+        "max_gram": 10
+      }
+    }
+  }
+}

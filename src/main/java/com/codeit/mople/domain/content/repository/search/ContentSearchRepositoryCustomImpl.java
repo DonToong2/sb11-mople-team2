@@ -30,10 +30,9 @@ public class ContentSearchRepositoryCustomImpl
     while (true) {
       NativeQuery query = NativeQuery.builder()
           .withQuery(q -> q
-              .wildcard(w -> w
+              .match(m -> m
                   .field("title")
-                  .value("*" + escapeWildcard(title) + "*")
-                  .caseInsensitive(true)
+                  .query(title)
               )
           )
           .withPageable(PageRequest.of(0, BATCH_SIZE))
@@ -73,12 +72,5 @@ public class ContentSearchRepositoryCustomImpl
     }
 
     return contentIds;
-  }
-
-  private String escapeWildcard(String value) {
-    return value
-        .replace("\\", "\\\\")
-        .replace("*", "\\*")
-        .replace("?", "\\?");
   }
 }

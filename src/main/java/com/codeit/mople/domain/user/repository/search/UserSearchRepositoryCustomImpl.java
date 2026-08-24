@@ -30,10 +30,9 @@ public class UserSearchRepositoryCustomImpl
     while (true) {
       NativeQuery query = NativeQuery.builder()
           .withQuery(q -> q
-              .wildcard(w -> w
+              .match(m -> m
                   .field("email")
-                  .value("*" + escapeWildcard(email) + "*")
-                  .caseInsensitive(true)
+                  .query(email)
               )
           )
           .withPageable(PageRequest.of(0, BATCH_SIZE))
@@ -76,12 +75,5 @@ public class UserSearchRepositoryCustomImpl
     }
 
     return userIds;
-  }
-
-  private String escapeWildcard(String value) {
-    return value
-        .replace("\\", "\\\\")
-        .replace("*", "\\*")
-        .replace("?", "\\?");
   }
 }
