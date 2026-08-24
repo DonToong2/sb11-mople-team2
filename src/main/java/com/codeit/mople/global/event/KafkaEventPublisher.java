@@ -1,18 +1,14 @@
 package com.codeit.mople.global.event;
 
 import com.codeit.mople.global.config.KafkaProperties;
+import com.codeit.mople.global.event.failure.FailedEvent;
+import com.codeit.mople.global.event.failure.FailedEventStore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Duration;
-import java.util.Map;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.errors.SerializationException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions;
-import org.springframework.data.redis.connection.stream.RecordId;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -22,95 +18,50 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(prefix = KafkaProperties.PREFIX, name = "enabled", havingValue = "true")
 public class KafkaEventPublisher {
 
-  private static final String FAILED_STREAM_KEY = "kafka:events:failed";
-  private static final Duration FAILED_STREAM_RETENTION = Duration.ofDays(7);
-
   private final KafkaTemplate<String, Object> kafkaTemplate;
-
-  private final StringRedisTemplate redisTemplate;
+  private final FailedEventStore failedEventStore;
   private final ObjectMapper objectMapper;
 
 
   public void publish(String topic, PublishableEvent event) {
-    UUID eventId = event.eventId();
-    String eventType = event.getClass().getSimpleName();
-    try {
-      kafkaTemplate.send(topic, event)
-          .whenComplete((result, ex) -> {
-            if (ex != null) {
-              saveFailedEvent(topic, null, event, ex);
-              log.error("Kafka 이벤트 발행 최종 실패: topic={}, eventId={}, eventType={}",
-                  topic, eventId, eventType, ex);
-            }
-          });
-    } catch (SerializationException e) {
-      saveFailedEvent(topic, null, event, e);
-      log.error("Kafka 이벤트 직렬화 실패(재시도 불가): topic={}, eventId={}, eventType={}",
-          topic, eventId, eventType, e);
-    } catch (Exception e) {
-      saveFailedEvent(topic, null, event, e);
-      log.error("Kafka 이벤트 발행 시도 실패: topic={}, eventId={}, eventType={}",
-          topic, eventId, eventType, e);
-    }
+    publish(topic, null, event);
   }
 
   public void publish(String topic, String key, PublishableEvent event) {
-    UUID eventId = event.eventId();
-    String eventType = event.getClass().getSimpleName();
     try {
       kafkaTemplate.send(topic, key, event)
           .whenComplete((result, ex) -> {
             if (ex != null) {
-              saveFailedEvent(topic, key, event, ex);
-              log.error("Kafka 이벤트 발행 최종 실패: topic={}, key={}, eventId={}, eventType={}",
-                  topic, key, eventId, eventType, ex);
+              handleFailure(topic, key, event, ex, "Kafka 이벤트 발행 최종 실패");
             }
           });
     } catch (SerializationException e) {
-      saveFailedEvent(topic, key, event, e);
-      log.error("Kafka 이벤트 직렬화 실패(재시도 불가): topic={}, key={}, eventId={}, eventType={}",
-          topic, key, eventId, eventType, e);
+      handleFailure(topic, key, event, e, "Kafka 이벤트 직렬화 실패");
     } catch (Exception e) {
-      saveFailedEvent(topic, key, event, e);
-      log.error("Kafka 이벤트 발행 시도 실패: topic={}, key={}, eventId={}, eventType={}",
-          topic, key, eventId, eventType, e);
+      handleFailure(topic, key, event, e, "Kafka 이벤트 발행 시도 실패");
     }
   }
 
-  private void saveFailedEvent(String topic, String key, PublishableEvent event, Throwable ex) {
-    UUID eventId = event.eventId();
-    String eventType = event.getClass().getSimpleName();
+  private void handleFailure(
+      String topic,
+      String key,
+      PublishableEvent event,
+      Throwable cause,
+      String message
+  ) {
+    failedEventStore.save(FailedEvent.of(topic, key, event, serialize(topic, key, event), cause));
 
-    String data;
+    log.error("{}: topic={}, key={}, eventId={}, eventType={}",
+        message, topic, key, event.eventId(), event.getClass().getSimpleName(), cause);
+  }
+
+  private String serialize(String topic, String key, PublishableEvent event) {
     try {
-      data = objectMapper.writeValueAsString(event);
+      return objectMapper.writeValueAsString(event);
     } catch (JsonProcessingException e) {
-      data = "";
-      log.error("kafka Producer 실패 이벤트 본문 직렬화 실패: topic={}, key={}, eventId={}, eventType={}",
-          topic, key, eventId, eventType, e);
-    }
-
-    try {
-      RecordId retainFrom =
-          RecordId.of(System.currentTimeMillis() - FAILED_STREAM_RETENTION.toMillis(), 0);
-
-      redisTemplate.opsForStream().add(
-          FAILED_STREAM_KEY,
-          Map.of(
-              "type", "PRODUCER",
-              "topic", topic,
-              "key", key == null ? "" : key,
-              "eventId", String.valueOf(eventId),
-              "eventType", eventType,
-              "data", data,
-              "error", ex == null ? "Unknown" : String.valueOf(ex.getMessage())
-          ),
-          XAddOptions.none().minId(retainFrom)
-      );
-    } catch (Exception e) {
-      log.error("Kafka Producer 최종 실패 이벤트 Redis 저장 실패: topic={}, key={}",
-          topic, key, e);
+      log.error("Kafka Producer 실패 이벤트 본문 직렬화 실패: topic={}, key={}, eventId={}, eventType={}",
+          topic, key, event.eventId(), event.getClass().getSimpleName(), e);
+      return "";
     }
   }
-
 }
