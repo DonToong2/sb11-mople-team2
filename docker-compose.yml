@@ -75,7 +75,10 @@ services:
     healthcheck:
       test: [
         "CMD-SHELL",
-        "curl -fs --cacert /usr/share/elasticsearch/config/certs/ca/ca.crt -u \"elastic:$${ELASTIC_PASSWORD}\" https://localhost:9200/_cluster/health || exit 1"
+        "test -f /usr/share/elasticsearch/config/certs/ca/ca.crt &&
+         test -f /usr/share/elasticsearch/config/certs/mople-elasticsearch/mople-elasticsearch.crt &&
+         test -f /usr/share/elasticsearch/config/certs/mople-elasticsearch/mople-elasticsearch.key &&
+         curl -fs --cacert /usr/share/elasticsearch/config/certs/ca/ca.crt -u \"elastic:$${ELASTIC_PASSWORD}\" https://localhost:9200/_cluster/health || exit 1"
       ]
       interval: 10s
       timeout: 5s
