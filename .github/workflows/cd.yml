@@ -87,7 +87,7 @@ jobs:
             docker run -d --name "$CANDIDATE_NAME" -p 127.0.0.1:${CANDIDATE_PORT}:8080 --memory=320m --env-file /home/ubuntu/mople.env -e SPRING_PROFILES_ACTIVE=prod,probe -e KAFKA_ENABLED=false "$IMAGE"
 
             READY=false
-            for i in $(seq 1 30); do
+            for i in $(seq 1 50); do
               if curl -fs "http://localhost:${CANDIDATE_PORT}/actuator/health" | grep -q '"status":"UP"'; then
                 READY=true
                 break
@@ -134,7 +134,7 @@ jobs:
             fi
 
             READY=false
-            for i in $(seq 1 30); do
+            for i in $(seq 1 50); do
               if curl -fs "http://localhost:8080/actuator/health" | grep -q '"status":"UP"'; then
                 READY=true
                 break
