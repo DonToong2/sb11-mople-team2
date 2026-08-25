@@ -17,7 +17,7 @@ import org.springframework.data.elasticsearch.annotations.Setting;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Document(indexName = "direct_messages")
-@Setting(settingPath = "elastic-ngram-settings.json")
+@Setting(settingPath = "elasticsearch/dm-settings.json")
 public class DirectMessageDocument {
 
   @Id
@@ -30,7 +30,7 @@ public class DirectMessageDocument {
   @Field(type = FieldType.Keyword)
   private UUID senderId;
 
-  @Field(type = FieldType.Text, analyzer = "ngram_analyzer")
+  @Field(type = FieldType.Text, analyzer = "dm_ngram_analyzer")
   private String content;
 
   @Field(type = FieldType.Date)
