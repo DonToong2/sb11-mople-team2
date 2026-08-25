@@ -57,10 +57,14 @@ public class ContentService{
       ContentRepository contentRepository,
       ContentQueryRepository contentQueryRepository,
       FileStorageService fileStorageService,
+      ContentSearchRepository searchRepository,
+      ApplicationEventPublisher eventPublisher,
       MeterRegistry meterRegistry) {
     this.contentRepository = contentRepository;
     this.contentQueryRepository = contentQueryRepository;
     this.fileStorageService = fileStorageService;
+    this.searchRepository = searchRepository;
+    this.eventPublisher = eventPublisher;
 
     this.contentCreateCounter = Counter.builder("mople.content.create.count")
         .description("콘텐츠 생성 성공 횟수")
