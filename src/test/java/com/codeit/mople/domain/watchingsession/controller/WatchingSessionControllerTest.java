@@ -11,6 +11,8 @@ import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.watchingsession.dto.CursorResponseWatchingSessionDto;
 import com.codeit.mople.domain.watchingsession.service.WatchingSessionService;
+import com.codeit.mople.global.error.DiscordWebhookService;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -31,6 +33,12 @@ class WatchingSessionControllerTest {
 
   @MockitoBean
   private WatchingSessionService watchingSessionService;
+
+  @MockitoBean
+  private MeterRegistry meterRegistry;
+
+  @MockitoBean
+  private DiscordWebhookService discordWebhookService;
 
   @Test
   @DisplayName("특정 유저 시청 중인 콘텐츠 ID 조회 성공 - 200 OK")

@@ -30,7 +30,9 @@ import com.codeit.mople.domain.notification.NotificationLevel;
 import com.codeit.mople.domain.notification.service.NotificationService;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.global.config.SecurityConfig;
+import com.codeit.mople.global.error.DiscordWebhookService;
 import com.codeit.mople.global.jwt.JwtProvider;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -72,6 +74,12 @@ class NotificationControllerTest {
 
     @MockitoBean
     private SessionTokenRepository sessionTokenRepository;
+
+    @MockitoBean
+    private MeterRegistry meterRegistry;
+
+    @MockitoBean
+    private DiscordWebhookService discordWebhookService;
 
     CustomUserDetails principal;
 

@@ -57,6 +57,9 @@ dependencies {
     // Kafka
     implementation 'org.springframework.kafka:spring-kafka'
 
+    // Elasticsearch
+    implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
+
     // Batch & 모니터링
     implementation 'org.springframework.boot:spring-boot-starter-batch'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
@@ -77,6 +80,9 @@ dependencies {
 
     // AWS S3 스타터 의존성
     implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3:3.4.2'
+
+    // Prometheus 메트릭 수집 및 노출용
+    implementation 'io.micrometer:micrometer-registry-prometheus'
 
     // Utility
     compileOnly 'org.projectlombok:lombok'

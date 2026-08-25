@@ -26,6 +26,8 @@ import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -38,6 +40,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -65,6 +68,9 @@ public class AuthServiceTest {
   @Mock
   private PasswordResetRateLimiterRepository passwordResetRateLimiterRepository;
 
+  @Spy
+  private MeterRegistry meterRegistry = new SimpleMeterRegistry();
+
   @InjectMocks
   private AuthService authService;
 
@@ -75,6 +81,9 @@ public class AuthServiceTest {
 
   @BeforeEach
   void setUp() {
+    //수동으로 카운터 초기화
+    authService.initMetrics();
+
     user = User.createUser("test@test.com", "encodedPassword", "testUser");
     lenient().when(jwtProvider.getRefreshTokenExpiration()).thenReturn(REFRESH_TOKEN_EXPIRATION_MS);
     lenient().when(passwordResetRateLimiterRepository.tryAcquireGlobal(anyInt(), any())).thenReturn(true);

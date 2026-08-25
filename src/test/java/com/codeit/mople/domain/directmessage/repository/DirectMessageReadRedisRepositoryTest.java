@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
@@ -20,6 +21,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.script.RedisScript;
 
@@ -45,7 +47,10 @@ class DirectMessageReadRedisRepositoryTest {
     // 밀리초 단위까지만 있는 시각을 생성 (예: 2026-08-20T12:00:00.123Z)
     Instant readTime = Instant.now().truncatedTo(ChronoUnit.MILLIS);
 
-    given(redisTemplate.execute(any(RedisScript.class), anyList(), any(), any()))
+    SetOperations<String, Object> setOperations = mock(SetOperations.class);
+    given(redisTemplate.opsForSet()).willReturn(setOperations);
+
+    given(redisTemplate.execute(any(RedisScript.class), anyList(), any()))
         .willReturn(1L);
 
     // when
@@ -53,10 +58,10 @@ class DirectMessageReadRedisRepositoryTest {
 
     // then
     ArgumentCaptor<Object> argsCaptor = ArgumentCaptor.forClass(Object.class);
-    verify(redisTemplate).execute(any(RedisScript.class), anyList(), argsCaptor.capture(), argsCaptor.capture());
+    verify(redisTemplate).execute(any(RedisScript.class), anyList(), argsCaptor.capture());
 
     // 첫 번째 ARGV 인자가 포맷팅된 시각 문자열
-    String formattedTime = (String) argsCaptor.getAllValues().get(0);
+    String formattedTime = (String) argsCaptor.getValue();
 
     // 9자리 나노초 정규식 패턴과 정확히 일치하는지 확인
     assertThat(formattedTime)
@@ -65,6 +70,9 @@ class DirectMessageReadRedisRepositoryTest {
         .endsWith("Z")
         .contains("T");
     assertThat(Instant.parse(formattedTime)).isEqualTo(readTime);
+
+    String expectedDirtyMember = convId + ":" + userId;
+    verify(setOperations).add("dm:read:dirty", expectedDirtyMember);
   }
 
   @Test

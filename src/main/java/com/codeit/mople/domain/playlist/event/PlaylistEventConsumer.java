@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = KafkaProperties.PREFIX, name = "enabled", havingValue = "true")
-@KafkaListener(topics = "playlist-events")
+@KafkaListener(topics = "${spring.kafka.topics.playlist-events}")
 public class PlaylistEventConsumer {
 
   private final PlaylistRepository playlistRepository;
@@ -26,6 +26,9 @@ public class PlaylistEventConsumer {
   @KafkaHandler
   @Transactional
   public void handle(PlaylistSubscribedEvent event) {
+    log.debug("플레이리스트 구독자 수 증가 시도: playlistId={}",
+        event.playlistId());
+    
     if (checkAndRecordProcessedEvent(event.eventId())) {
       return;
     }
@@ -39,6 +42,9 @@ public class PlaylistEventConsumer {
   @KafkaHandler
   @Transactional
   public void handle(PlaylistUnsubscribedEvent event) {
+    log.debug("플레이리스트 구독자 수 감소 시도: playlistId={}",
+        event.playlistId());
+    
     if (checkAndRecordProcessedEvent(event.eventId())) {
       return;
     }

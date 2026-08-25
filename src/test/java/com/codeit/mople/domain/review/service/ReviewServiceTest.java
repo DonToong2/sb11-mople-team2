@@ -36,6 +36,8 @@ import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.SortDirection;
 import com.codeit.mople.global.dto.UserSummary;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,6 +49,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -67,6 +70,9 @@ public class ReviewServiceTest {
 
   @Mock
   private ApplicationEventPublisher eventPublisher;
+
+  @Spy
+  private MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
   @InjectMocks
   private ReviewService reviewService;
@@ -89,6 +95,9 @@ public class ReviewServiceTest {
 
   @BeforeEach
   void setUp() {
+    //수동으로 카운트 초기화
+    reviewService.initMetrics();
+
     authorId = UUID.randomUUID();
     contentId = UUID.randomUUID();
     author = mock(User.class);

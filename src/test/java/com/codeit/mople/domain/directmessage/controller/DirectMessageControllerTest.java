@@ -19,6 +19,8 @@ import com.codeit.mople.domain.directmessage.service.DirectMessageService;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.dto.UserSummary;
+import com.codeit.mople.global.error.DiscordWebhookService;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -43,6 +45,12 @@ public class DirectMessageControllerTest {
 
   @MockitoBean
   private SimpMessagingTemplate messagingTemplate;
+
+  @MockitoBean
+  private MeterRegistry meterRegistry;
+
+  @MockitoBean
+  private DiscordWebhookService discordWebhookService;
 
   private UsernamePasswordAuthenticationToken authToken;
   private UUID myUserId;
