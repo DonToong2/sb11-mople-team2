@@ -12,12 +12,12 @@ import com.codeit.mople.global.dto.SortDirection;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +30,7 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
   private final JPAQueryFactory queryFactory;
 
   @Override
-  public List<Playlist> findAll(PlaylistQueryCondition condition) {
+  public List<Playlist> findAll(PlaylistQueryCondition condition, List<UUID> playlistIds) {
 
     // select * from Playlist
     JPAQuery<Playlist> query = queryFactory
@@ -47,7 +47,7 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
 
     return query
         .where(
-            keywordLike(condition.keywordLike()), // 제목(키워드 검색)
+            idCondition(playlistIds), // 검색된 Playlist ID 필터
             ownerIdEqual(condition.ownerIdEqual()), // 소유자 ID
             subscriberIdEqual(condition.subscriberIdEqual()), // 구독자 ID
             cursorCondition(condition) // 커서 조건(정렬 조건, 정렬 방향)
@@ -58,7 +58,7 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
   }
 
   @Override
-  public long count(PlaylistQueryCondition condition) {
+  public long count(PlaylistQueryCondition condition, List<UUID> playlistIds) {
     JPAQuery<Long> query = queryFactory.select(playlist.count())
         .from(playlist);
 
@@ -68,7 +68,7 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
 
     Long count = query
         .where(
-            keywordLike(condition.keywordLike()),
+            idCondition(playlistIds),
             ownerIdEqual(condition.ownerIdEqual()),
             subscriberIdEqual(condition.subscriberIdEqual())
         )
@@ -77,22 +77,47 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
     return count == null ? 0L : count;
   }
 
+  // Elasticsearch 검색 결과 ID로 실제 Playlist 조회
+  @Override
+  public List<Playlist> findPlaylistsByIds(
+      List<UUID> playlistIds,
+      PlaylistQueryCondition condition
+  ) {
+    if (playlistIds == null || playlistIds.isEmpty()) {
+      return List.of();
+    }
+
+    JPAQuery<Playlist> query = queryFactory
+        .selectFrom(playlist)
+        .join(playlist.owner)
+        .fetchJoin();
+
+    if (condition.subscriberIdEqual() != null) {
+      query.join(playlistSubscription)
+          .on(playlistSubscription.playlist.eq(playlist));
+    }
+
+    return query
+        .where(
+            playlist.id.in(playlistIds),
+            ownerIdEqual(condition.ownerIdEqual()),
+            subscriberIdEqual(condition.subscriberIdEqual())
+        )
+        .fetch();
+  }
+
   // WHERE 절
   // 제목(키워드)
-  private BooleanExpression keywordLike(String keywordLike) {
-    // Nullable
-    if (keywordLike == null || keywordLike.isBlank()) {
+  private BooleanExpression idCondition(List<UUID> playlistIds) {
+    if (playlistIds == null) {
       return null;
     }
 
-    String escaped = keywordLike
-        .toLowerCase(Locale.ROOT)
-        .replace(".", "..")
-        .replace("%", ".%")
-        .replace("_", "._");
+    if (playlistIds.isEmpty()) {
+      return Expressions.FALSE;
+    }
 
-    // keywordLike과 일치하는 제목을 반환
-    return playlist.title.lower().like("%" + escaped + "%", '.');
+    return playlist.id.in(playlistIds);
   }
 
   // 소유자 ID
@@ -198,11 +223,6 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
             PlaylistErrorCode.PLAYLIST_INVALID_CURSOR,
             Map.of("cursor", condition.cursor())
         );
-      }
-
-      // 구독자 수는 0 이상(음수가 들어올 경우 예외 처리)
-      if (cursor < 0) {
-        throw new PlaylistException(PlaylistErrorCode.PLAYLIST_INVALID_CURSOR);
       }
 
       // 경우 3 : 구독순 오름차순

@@ -6,6 +6,10 @@ public final class CacheNames {
   public static final String FOLLOW_COUNT = "follow:count";
   public static final String TMDB_GENRES = "tmdb:genres";
   public static final String USERS = "users:v1";
+  public static final String USER_LIST = "users:lists:v1";
+  public static final String CONTENTS = "contents:v1";
+  public static final String CONTENT_LIST = "contents:lists:v1";
+  public static final String PLAYLIST_LIST = "playlists:lists:v1";
 
   private CacheNames() {
   }

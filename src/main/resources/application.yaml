@@ -37,9 +37,13 @@ spring:
 
     topics:
       follow-created: mople.follow.created.v1
+      playlist-events: playlist-events.v1
       playlist-content-added: mople.playlist.content-added.v1
       direct-message-created: mople.direct-message.created.v1
       notification-created: mople.notification.created.v1
+      content-search-index: content-search-index-events.v1
+      user-search-index: user-search-index-events.v1
+      playlist-search-index: playlist-search-index-events.v1
 
     producer:
       acks: all
