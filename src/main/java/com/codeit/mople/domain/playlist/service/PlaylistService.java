@@ -13,6 +13,8 @@ import com.codeit.mople.domain.playlist.entity.PlaylistContent;
 import com.codeit.mople.domain.playlist.entity.PlaylistSubscription;
 import com.codeit.mople.domain.playlist.event.PlaylistContentAddedEvent;
 import com.codeit.mople.domain.playlist.event.PlaylistCreatedEvent;
+import com.codeit.mople.domain.playlist.event.PlaylistSearchIndexDeleteEvent;
+import com.codeit.mople.domain.playlist.event.PlaylistSearchIndexEvent;
 import com.codeit.mople.domain.playlist.event.PlaylistSubscribedEvent;
 import com.codeit.mople.domain.playlist.event.PlaylistUnsubscribedEvent;
 import com.codeit.mople.domain.playlist.exception.PlaylistErrorCode;
@@ -20,23 +22,32 @@ import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistSubscriptionRepository;
+import com.codeit.mople.domain.playlist.repository.search.PlaylistSearchRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import com.codeit.mople.global.config.CacheNames;
 import com.codeit.mople.global.dto.CursorResponse;
+import com.codeit.mople.global.dto.SearchResult;
 import com.codeit.mople.global.dto.UserSummary;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +63,7 @@ public class PlaylistService {
   private final ContentRepository contentRepository;
   private final PlaylistSubscriptionRepository playlistSubscriptionRepository;
   private final ApplicationEventPublisher publisher;
+  private final PlaylistSearchRepository searchRepository;
 
   private final MeterRegistry meterRegistry;
   private Counter playlistCreateCounter;
@@ -65,6 +77,7 @@ public class PlaylistService {
     this.playlistContentAddCounter = Counter.builder("mople.playlist.content.add.count").register(meterRegistry);
   }
 
+  @CacheEvict(value = CacheNames.PLAYLIST_LIST, allEntries = true)
   @Transactional
   public PlaylistResponse create(PlaylistCreateRequest request, UUID ownerId) {
 
@@ -93,7 +106,19 @@ public class PlaylistService {
     log.info("플레이리스트 생성 완료: playlistId={}, ownerId={}",
         savedPlaylist.getId(), owner.getId());
 
-    publisher.publishEvent(new PlaylistCreatedEvent(ownerId, owner.getName(), savedPlaylist.getTitle()));
+    publisher.publishEvent(
+        new PlaylistCreatedEvent(ownerId, owner.getName(), savedPlaylist.getTitle())
+    );
+
+    publisher.publishEvent(
+        new PlaylistSearchIndexEvent(
+            UUID.randomUUID(),
+            savedPlaylist.getId(),
+            savedPlaylist.getTitle(),
+            savedPlaylist.getUpdatedAt(),
+            savedPlaylist.getSubscriberCount()
+        )
+    );
 
     //생성 완료 후 카운트
     playlistCreateCounter.increment();
@@ -139,8 +164,23 @@ public class PlaylistService {
   }
 
   // 플레이리스트 목록 조회
+  @Cacheable(
+      cacheNames = CacheNames.PLAYLIST_LIST,
+      key = "{"
+          + "#condition.keywordLike(),"
+          + "#condition.ownerIdEqual(),"
+          + "#condition.subscriberIdEqual(), "
+          + "#condition.cursor(),"
+          + "#condition.idAfter(),"
+          + "#condition.limit(), "
+          + "#condition.sortBy(),"
+          + "#condition.sortDirection(),"
+          + "#requesterId"
+          + "}"
+  )
   @Transactional(readOnly = true)
-  public CursorResponse<PlaylistResponse> findAll(PlaylistQueryCondition condition, UUID requesterId) {
+  public CursorResponse<PlaylistResponse> findAll(PlaylistQueryCondition condition,
+      UUID requesterId) {
 
     log.debug("플레이리스트 목록 조회 시도: requesterId={}, keywordLike={}, ownerId={}, subscriberId={},"
             + " cursor={}, idAfter={}, limit={}, sortBy={}, sortDirection={}",
@@ -155,14 +195,54 @@ public class PlaylistService {
         condition.sortDirection()
     );
 
+    SearchResult searchResult = null;
+
+    // 검색 키워드가 있을 경우 Elasticsearch에서 커서 페이지네이션
+    if (condition.keywordLike() != null && !condition.keywordLike().isBlank()) {
+      searchResult =
+          searchRepository.findAllByTitleContainingIgnoreCase(
+              condition.keywordLike(),
+              condition.idAfter(),
+              parseCursor(condition.cursor(), condition.sortBy()),
+              condition.limit(),
+              condition.sortBy(),
+              condition.sortDirection()
+          );
+    }
+
     // 목록 조회(limit + 1까지)
-    List<Playlist> playlists = playlistRepository.findAll(condition);
+    List<Playlist> playlists =
+        searchResult == null
+            ? playlistRepository.findAll(condition, null)
+            : playlistRepository.findPlaylistsByIds(
+                searchResult.ids(),
+                condition
+            );
 
     // 목록 조회된 Playlist의 총 개수
-    long totalCount = playlistRepository.count(condition);
+    long totalCount =
+        searchResult == null
+            ? playlistRepository.count(condition, null)
+            : searchResult.totalCount();
+
+    // Elasticsearch 검색 결과 순서 유지
+    if (searchResult != null) {
+      Map<UUID, Playlist> playlistMap = playlists.stream()
+          .collect(Collectors.toMap(
+              Playlist::getId,
+              Function.identity()
+          ));
+
+      playlists = searchResult.ids().stream()
+          .map(playlistMap::get)
+          .filter(Objects::nonNull)
+          .toList();
+    }
 
     // 조회된 플레이리스트 ID
-    List<UUID> playlistIds = playlists.stream().map(Playlist::getId).toList();
+    List<UUID> playlistIds = playlists.stream()
+        .map(Playlist::getId)
+        .toList();
 
     // 플레이리스트 별 콘텐츠 조회
     Map<UUID, List<PlaylistContentResponse>> contentsByPlaylistId =
@@ -195,24 +275,38 @@ public class PlaylistService {
         ))
         .toList();
 
-    CursorResponse<PlaylistResponse> response = CursorResponse.of(
-        data,
-        condition.limit(),
-        totalCount,
-        condition.sortBy().name(),
-        condition.sortDirection().name(),
-        playlist -> {
-          // 정렬조건
-          if (condition.sortBy() == PlaylistSortBy.UPDATED_AT) {
-            return String.valueOf(playlist.updatedAt());
-          } else if (condition.sortBy() == PlaylistSortBy.SUBSCRIBE_COUNT) {
-            return String.valueOf(playlist.subscriberCount());
-          }
+    CursorResponse<PlaylistResponse> response;
 
-          return null;
-        },
-        PlaylistResponse::id
-    );
+    if (searchResult != null) {
+      response = CursorResponse.ofSearchResult(
+          data,
+          searchResult.nextCursor(),
+          searchResult.nextIdAfter(),
+          searchResult.hasNext(),
+          searchResult.totalCount(),
+          condition.sortBy().getValue(),
+          condition.sortDirection().name()
+      );
+    } else {
+      response = CursorResponse.of(
+          data,
+          condition.limit(),
+          totalCount,
+          condition.sortBy().getValue(),
+          condition.sortDirection().name(),
+          playlist -> {
+            // 정렬조건
+            if (condition.sortBy() == PlaylistSortBy.UPDATED_AT) {
+              return String.valueOf(playlist.updatedAt());
+            } else if (condition.sortBy() == PlaylistSortBy.SUBSCRIBE_COUNT) {
+              return String.valueOf(playlist.subscriberCount());
+            }
+
+            return null;
+          },
+          PlaylistResponse::id
+      );
+    }
 
     log.info("플레이리스트 목록 조회 완료: size={}, totalCount={}, hasNext={}",
         data.size(), response.totalCount(), response.hasNext());
@@ -220,6 +314,8 @@ public class PlaylistService {
     return response;
   }
 
+  // 플레이리스트 수정
+  @CacheEvict(cacheNames = CacheNames.PLAYLIST_LIST, allEntries = true)
   @Transactional
   public PlaylistResponse update(
       UUID playlistId,
@@ -259,9 +355,21 @@ public class PlaylistService {
     log.info("플레이리스트 수정 완료: playlistId={}, ownerId={}",
         playlistId, ownerId);
 
+    publisher.publishEvent(
+        new PlaylistSearchIndexEvent(
+            UUID.randomUUID(),
+            playlist.getId(),
+            playlist.getTitle(),
+            playlist.getUpdatedAt(),
+            playlist.getSubscriberCount()
+        )
+    );
+
     return response;
   }
 
+  // 플레이리스트 삭제
+  @CacheEvict(cacheNames = CacheNames.PLAYLIST_LIST, allEntries = true)
   @Transactional
   public void delete(UUID playlistId, UUID ownerId) {
 
@@ -285,8 +393,16 @@ public class PlaylistService {
     log.info("플레이리스트 삭제 완료: playlistId={}, ownerId={}",
         playlistId, ownerId);
 
+    publisher.publishEvent(
+        new PlaylistSearchIndexDeleteEvent(
+            UUID.randomUUID(),
+            playlistId
+        )
+    );
+
   }
 
+  @CacheEvict(cacheNames = CacheNames.PLAYLIST_LIST, allEntries = true)
   @Transactional
   public void subscribe(UUID playlistId, UUID subscriberId) {
 
@@ -337,6 +453,7 @@ public class PlaylistService {
     playlistSubscribeCounter.increment();
   }
 
+  @CacheEvict(cacheNames = CacheNames.PLAYLIST_LIST, allEntries = true)
   @Transactional
   public void unSubscribe(UUID playlistId, UUID subscriberId) {
     log.debug("플레이리스트 구독 취소 시도: playlistId={}, subscriberId={}",
@@ -360,6 +477,7 @@ public class PlaylistService {
         playlistId, subscriberId);
   }
 
+  @CacheEvict(cacheNames = CacheNames.PLAYLIST_LIST, allEntries = true)
   @Transactional
   public void addContent(UUID playlistId, UUID contentId, UUID requesterId) {
     log.debug("플레이리스트에 콘텐츠 추가 시도: playlistId={}, contentId={}, requesterId={}",
@@ -402,6 +520,7 @@ public class PlaylistService {
     playlistContentAddCounter.increment();
   }
 
+  @CacheEvict(cacheNames = CacheNames.PLAYLIST_LIST, allEntries = true)
   @Transactional
   public void removeContent(UUID playlistId, UUID contentId, UUID requesterId) {
     log.debug("플레이리스트에 콘텐츠 삭제 시도: playlistId={}, contentId={}, requesterId={}",
@@ -445,6 +564,43 @@ public class PlaylistService {
       throw new PlaylistException(
           PlaylistErrorCode.PLAYLIST_FORBIDDEN,
           Map.of("ownerId", ownerId, "requesterId", requesterId)
+      );
+    }
+  }
+
+  private Object parseCursor(String cursor, PlaylistSortBy sortBy) {
+    if (cursor == null) {
+      return null;
+    }
+
+    if (cursor.isBlank()) {
+      throw new PlaylistException(
+          PlaylistErrorCode.PLAYLIST_INVALID_CURSOR,
+          Map.of("cursor", cursor)
+      );
+    }
+
+    try {
+      return switch (sortBy) {
+        case UPDATED_AT -> Instant.parse(cursor);
+
+        case SUBSCRIBE_COUNT -> {
+          long parsed = Long.parseLong(cursor);
+
+          if (parsed < 0) {
+            throw new PlaylistException(
+                PlaylistErrorCode.PLAYLIST_INVALID_CURSOR,
+                Map.of("cursor", cursor)
+            );
+          }
+
+          yield parsed;
+        }
+      };
+    } catch (DateTimeParseException | NumberFormatException e) {
+      throw new PlaylistException(
+          PlaylistErrorCode.PLAYLIST_INVALID_CURSOR,
+          Map.of("cursor", cursor)
       );
     }
   }

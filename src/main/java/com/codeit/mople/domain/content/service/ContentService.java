@@ -7,18 +7,31 @@ import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentSortBy;
 import com.codeit.mople.domain.content.entity.ContentType;
+import com.codeit.mople.domain.content.event.ContentSearchIndexDeleteEvent;
+import com.codeit.mople.domain.content.event.ContentSearchIndexEvent;
 import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.repository.ContentQueryRepository;
 import com.codeit.mople.domain.content.repository.ContentRepository;
+import com.codeit.mople.domain.content.repository.search.ContentSearchRepository;
+import com.codeit.mople.global.config.CacheNames;
 import com.codeit.mople.global.dto.CursorResponse;
+import com.codeit.mople.global.dto.SearchResult;
 import com.codeit.mople.global.storage.FileStorageService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -32,6 +45,9 @@ public class ContentService{
   private final ContentRepository contentRepository;
   private final ContentQueryRepository contentQueryRepository;
   private final FileStorageService fileStorageService;
+  private final ContentSearchRepository searchRepository;
+
+  private final ApplicationEventPublisher eventPublisher;
 
   private final Counter contentCreateCounter;
   private final Counter contentGetCounter;
@@ -65,6 +81,7 @@ public class ContentService{
 
   //콘텐츠 생성
   @Transactional
+  @CacheEvict(cacheNames = CacheNames.CONTENT_LIST, allEntries = true)
   public ContentResponse createContent(ContentCreateRequest request, MultipartFile thumbnail) {
     log.debug("콘텐트 생성 시작 - type: {}, title: {}", request.type(), request.title());
 
@@ -94,6 +111,18 @@ public class ContentService{
 
     log.info("콘텐츠 생성 완료 - contentId: {}, title: {}", savedContent.getId(), savedContent.getTitle());
 
+    eventPublisher.publishEvent(
+        new ContentSearchIndexEvent(
+            UUID.randomUUID(),
+            savedContent.getId(),
+            savedContent.getTitle(),
+            savedContent.getType(),
+            savedContent.calculateAverageRating(),
+            savedContent.getWatcherCount(),
+            savedContent.getCreatedAt()
+        )
+    );
+
     return new ContentResponse(
         savedContent.getId(),
         savedContent.getType().getValue(),
@@ -108,6 +137,9 @@ public class ContentService{
   }
 
   //콘텐츠 목록 조회
+  @Cacheable(cacheNames = CacheNames.CONTENT_LIST,
+      key = "{#cursorId, #cursorValue, #limit, #typeEqual, #keywordLike, #sortBy}"
+  )
   @Transactional(readOnly = true)
   public CursorResponseContentDto getContents(
       UUID cursorId, String cursorValue, int limit, String typeEqual, String keywordLike, String sortBy) {
@@ -142,20 +174,55 @@ public class ContentService{
       }
     }
 
-    //데이터 조회 및 카운트
-    List<Content> contents = contentQueryRepository
-        .findContentByCursor(cursorId, parsedCursorValue, limit, parsedType, keywordLike, contentSortBy);
-    long totalCount = contentQueryRepository.countContentsByTypeAndKeyword(parsedType, keywordLike);
+    CursorResponse<Content> cursorResponse;
 
-    CursorResponse<Content> cursorResponse = CursorResponse.of(
-        contents,
-        limit,
-        totalCount,
-        contentSortBy.getValue(),
-        "DESCENDING",
-        contentSortBy::extractCursorValue,
-        Content::getId
-    );
+    // 검색 키워드가 있을 경우 Elasticsearch에서 커서 페이지네이션
+    if (keywordLike != null && !keywordLike.isBlank()) {
+      SearchResult searchResult =
+          searchRepository.findAllByTitleContainingIgnoreCase(
+              keywordLike,
+              cursorId,
+              parsedCursorValue,
+              limit,
+              parsedType,
+              contentSortBy
+          );
+
+      List<Content> contents = contentQueryRepository.findContentsByIds(searchResult.ids());
+
+      Map<UUID, Content> contentMap = contents.stream()
+          .collect(Collectors.toMap(Content::getId, Function.identity()));
+
+      List<Content> orderedContents = searchResult.ids().stream()
+          .map(contentMap::get)
+          .filter(Objects::nonNull)
+          .toList();
+
+      cursorResponse = CursorResponse.ofSearchResult(
+          orderedContents,
+          searchResult.nextCursor(),
+          searchResult.nextIdAfter(),
+          searchResult.hasNext(),
+          searchResult.totalCount(),
+          contentSortBy.getValue(),
+          "DESCENDING"
+      );
+    } else { // 검색 키워드가 없을 경우 DB에서 커서 페이지네이션
+      //데이터 조회 및 카운트
+      List<Content> contents = contentQueryRepository
+          .findContentByCursor(cursorId, parsedCursorValue, limit, parsedType, null, contentSortBy);
+      long totalCount = contentQueryRepository.countContentsByTypeAndIds(parsedType, null);
+
+      cursorResponse = CursorResponse.of(
+          contents,
+          limit,
+          totalCount,
+          contentSortBy.getValue(),
+          "DESCENDING",
+          contentSortBy::extractCursorValue,
+          Content::getId
+      );
+    }
 
     List<ContentResponse> contentResponses = cursorResponse.data().stream()
         .map(content -> new ContentResponse(
@@ -198,6 +265,7 @@ public class ContentService{
   }
 
   //콘텐츠 단건 조회
+  @Cacheable(cacheNames = CacheNames.CONTENTS, key = "#contentId")
   @Transactional(readOnly = true)
   public ContentResponse getContent(UUID contentId) {
     log.debug("콘텐츠 단건 조회 시작 - contentId: {}", contentId);
@@ -228,6 +296,12 @@ public class ContentService{
   }
 
   //콘텐츠 수정
+  @Caching(
+      evict = {
+          @CacheEvict(value = CacheNames.CONTENTS, key = "#contentId"),
+          @CacheEvict(value = CacheNames.CONTENT_LIST, allEntries = true)
+      }
+  )
   @Transactional
   public ContentResponse updateContent(UUID contentId, ContentUpdateRequest request, MultipartFile thumbnail) {
     log.debug("콘텐츠 수정 시작 - contentId: {}, updateTitle: {}", contentId, request.title());
@@ -269,6 +343,18 @@ public class ContentService{
 
     log.info("콘텐츠 수정 완료 - contentId: {}", content.getId());
 
+    eventPublisher.publishEvent(
+        new ContentSearchIndexEvent(
+            UUID.randomUUID(),
+            content.getId(),
+            content.getTitle(),
+            content.getType(),
+            content.calculateAverageRating(),
+            content.getWatcherCount(),
+            content.getCreatedAt()
+        )
+    );
+
     return new ContentResponse(
         content.getId(),
         content.getType().getValue(),
@@ -283,6 +369,12 @@ public class ContentService{
   }
 
   //콘텐츠 삭제
+  @Caching(
+      evict = {
+          @CacheEvict(value = CacheNames.CONTENTS, key = "#contentId"),
+          @CacheEvict(value = CacheNames.CONTENT_LIST, allEntries = true)
+      }
+  )
   @Transactional
   public void deleteContent(UUID contentId) {
     log.debug("콘텐츠 삭제 시작 - contentId: {}", contentId);
@@ -309,6 +401,8 @@ public class ContentService{
     }
 
     log.info("콘텐츠 삭제 완료 - contentId: {}", contentId);
+
+    eventPublisher.publishEvent(new ContentSearchIndexDeleteEvent(UUID.randomUUID(), contentId));
   }
 
   //썸네일 검증 및 파일 시스템 저장 메서드

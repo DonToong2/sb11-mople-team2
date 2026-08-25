@@ -1,11 +1,13 @@
 import http from 'k6/http';
 import {check, sleep} from 'k6';
 import {Rate, Trend} from 'k6/metrics';
+import {textSummary} from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
 
 // 커스텀 Metrics 추가
 
 // 에러율
 const errorRate = new Rate('error_rate');
+const writeErrorRate = new Rate('write_error_rate');
 
 // 로그인
 const loginTrend = new Trend('login_duration');
@@ -25,6 +27,9 @@ const playlistCreateTrend = new Trend('playlist_create_duration');
 
 // Test Options
 export const options = {
+  setupTimeout: '10m',
+  summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(95)', 'p(99)'],
+
   scenarios: {
 
     // 조회 부하
@@ -44,14 +49,51 @@ export const options = {
       exec: 'readLoad',
     },
 
+    // 로그인 부하
+    login_load: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        {duration: '1m', target: 10},
+        {duration: '2m', target: 30},
+        {duration: '3m', target: 50},
+        {duration: '3m', target: 50},
+        {duration: '3m', target: 30},
+        {duration: '2m', target: 10},
+        {duration: '1m', target: 0},
+      ],
+      exec: 'loginLoad',
+    },
+
     // 쓰기 부하
-    write_load: {
+    write_1: {
       executor: 'shared-iterations',
+      startTime: '4m',
       vus: 1,
       iterations: 1,
-      maxDuration: '20m',
+      maxDuration: '5m',
       gracefulStop: '2m',
-      exec: 'writeLoad',
+      exec: 'writeLoad1',
+    },
+
+    write_2: {
+      executor: 'shared-iterations',
+      startTime: '7m',
+      vus: 1,
+      iterations: 1,
+      maxDuration: '5m',
+      gracefulStop: '2m',
+      exec: 'writeLoad2',
+    },
+
+    write_3: {
+      executor: 'shared-iterations',
+      startTime: '10m',
+      vus: 1,
+      iterations: 1,
+      maxDuration: '5m',
+      gracefulStop: '2m',
+      exec: 'writeLoad3',
     },
   },
 
@@ -65,6 +107,7 @@ export const options = {
 const BASE_URL = 'http://localhost:8080/api';
 
 const PASSWORD = '12345678';
+const LOAD_TEST_USER_COUNT = 10000;
 
 const ADMIN_EMAIL = 'admin@mople.com';
 const ADMIN_PASSWORD = 'Admin1234!';
@@ -76,7 +119,7 @@ const SAMPLE_CONTENT_IDS = [
   'cb0222bf-80a7-4081-80f8-87e45f7c6cce',
 ];
 
-// 검색 키워드
+// 검색 키워드(load_test_seed_data.sql 시드 데이터 크기에 맞춤)
 const CONTENT_KEYWORDS = [
   '1',
   '10',
@@ -113,8 +156,11 @@ let loadTestContentIds = [];
 // 부하 테스트에서 생성한 Playlist ID
 let loadTestPlaylistIds = [];
 
-// 수정한 사용자 ID
-let loadTestUserId = null;
+// 조회 부하에서 랜덤 사용자 1명을 선택하고 최초 1회 로그인 후 토큰 재사용
+const sharedUser = {
+  email: null,
+  accessToken: null,
+};
 
 // Utility
 
@@ -134,6 +180,7 @@ function randomUser() {
 // ADMIN 인증 + CSRF 토큰 발급
 export function setup() {
 
+  // ADMIN 인증
   const adminLoginRes = http.post(
       `${BASE_URL}/auth/sign-in`,
       {
@@ -154,10 +201,9 @@ export function setup() {
 
   const adminAccessToken = adminLoginRes.json('accessToken');
 
-  /*
-   * CookieCsrfTokenRepository가 XSRF-TOKEN 쿠키를 발급하도록
-   * 인증된 GET 요청을 한 번 호출한다.
-   */
+
+
+  // CSRF token 발급
   const csrfRes = http.get(
       `${BASE_URL}/contents?limit=1&sortDirection=DESCENDING&sortBy=createdAt`,
       {
@@ -172,7 +218,8 @@ export function setup() {
 
   if (!csrfCookie) {
     throw new Error(
-        `CSRF token not found: status=${csrfRes.status}, cookies=${JSON.stringify(csrfRes.cookies)}`
+        `CSRF token not found: status=${csrfRes.status}, ` +
+        `cookies=${JSON.stringify(csrfRes.cookies)}`
     );
   }
 
@@ -184,8 +231,7 @@ export function setup() {
   };
 }
 
-// 테스트 시나리오
-export function readLoad(data) {
+export function loginLoad() {
 
   // 1. 사용자 로그인
   const user = randomUser();
@@ -205,14 +251,57 @@ export function readLoad(data) {
   errorRate.add(!loginSuccess);
   loginTrend.add(loginRes.timings.duration);
 
-  if (!loginSuccess) {
-    return;
+  sleep(0.1);
+}
+
+// 테스트 시나리오
+export function readLoad(data) {
+
+// 조회 부하에서 사용할 랜덤 사용자 1명 선택
+  if (!sharedUser.email) {
+    const userNumber =
+        Math.floor(Math.random() * LOAD_TEST_USER_COUNT) + 1;
+
+    sharedUser.email = `test${userNumber}@test.com`;
   }
 
-  const accessToken = loginRes.json('accessToken');
+// 랜덤 선택된 사용자가 최초 요청할 때만 로그인
+  if (!sharedUser.accessToken) {
+    const loginRes = http.post(
+        `${BASE_URL}/auth/sign-in`,
+        {
+          username: sharedUser.email,
+          password: PASSWORD,
+        }
+    );
+
+    const loginSuccess = check(loginRes, {
+      'read load user login status is 200': (r) => r.status === 200,
+    });
+
+    errorRate.add(!loginSuccess);
+    loginTrend.add(loginRes.timings.duration);
+
+    if (!loginSuccess) {
+      throw new Error(
+          `Read load user login failed: email=${sharedUser.email}, ` +
+          `status=${loginRes.status}, body=${loginRes.body}`
+      );
+    }
+
+    const accessToken = loginRes.json('accessToken');
+
+    if (!accessToken) {
+      throw new Error(
+          `Read load user access token not found: email=${sharedUser.email}`
+      );
+    }
+
+    sharedUser.accessToken = accessToken;
+  }
 
   const authHeaders = {
-    Authorization: `Bearer ${accessToken}`,
+    Authorization: `Bearer ${sharedUser.accessToken}`,
   };
 
   sleep(0.1);
@@ -229,6 +318,10 @@ export function readLoad(data) {
 
   const detailSuccess = check(detailRes, {
     'content detail status is 200': (r) => r.status === 200,
+    'content detail has result': (r) => {
+      const body = r.json();
+      return body != null && body.id != null;
+    },
   });
 
   errorRate.add(!detailSuccess);
@@ -246,6 +339,7 @@ export function readLoad(data) {
 
   const contentListSuccess = check(contentListRes, {
     'content list status is 200': (r) => r.status === 200,
+    'content list has result': (r) => extractItems(r).length > 0,
   });
 
   errorRate.add(!contentListSuccess);
@@ -266,6 +360,7 @@ export function readLoad(data) {
 
   const contentSearchSuccess = check(contentSearchRes, {
     'content search status is 200': (r) => r.status === 200,
+    'content search has result': (r) => extractItems(r).length > 0,
   });
 
   errorRate.add(!contentSearchSuccess);
@@ -286,6 +381,7 @@ export function readLoad(data) {
 
   const playlistSearchSuccess = check(playlistSearchRes, {
     'playlist search status is 200': (r) => r.status === 200,
+    'playlist search has result': (r) => extractItems(r).length > 0,
   });
 
   errorRate.add(!playlistSearchSuccess);
@@ -310,6 +406,7 @@ export function readLoad(data) {
 
   const userSearchSuccess = check(userSearchRes, {
     'user search status is 200': (r) => r.status === 200,
+    'user search has result': (r) => extractItems(r).length > 0,
   });
 
   errorRate.add(!userSearchSuccess);
@@ -318,11 +415,7 @@ export function readLoad(data) {
   sleep(0.2);
 }
 
-export function writeLoad(data) {
-
-  // 5분 시점
-  sleep(5 * 60);
-
+export function writeLoad1(data) {
   console.log('[WRITE 1 START]');
 
   executeWriteScenario(
@@ -337,11 +430,9 @@ export function writeLoad(data) {
       `[WRITE 1 END] contentIds=${JSON.stringify(loadTestContentIds)}, ` +
       `playlistIds=${JSON.stringify(loadTestPlaylistIds)}`
   );
+}
 
-
-  // 9분 시점
-  sleep(4 * 60);
-
+export function writeLoad2(data) {
   console.log('[WRITE 2 START]');
 
   executeWriteScenario(
@@ -363,11 +454,9 @@ export function writeLoad(data) {
   );
 
   console.log('[WRITE 2 END]');
+}
 
-
-  // 13분 시점
-  sleep(4 * 60);
-
+export function writeLoad3(data) {
   console.log('[WRITE 3 START]');
 
   const cleanupErrors = [];
@@ -389,6 +478,38 @@ export function writeLoad(data) {
   if (cleanupErrors.length > 0) {
     throw new Error(`정리 실패: ${JSON.stringify(cleanupErrors)}`);
   }
+}
+
+// 비정상 종료/중간 실패 등에 대비한 최종 원복
+export function teardown(data) {
+  console.log('[TEARDOWN START]');
+
+  const cleanupErrors = [];
+
+  for (const cleanup of [
+    cleanupLoadTestContents,
+    cleanupLoadTestPlaylists,
+    restoreLoadTestUser,
+  ]) {
+    try {
+      cleanup(
+          data.adminAccessToken,
+          data.csrfToken
+      );
+    } catch (e) {
+      cleanupErrors.push(e.message);
+      console.log(`[TEARDOWN CLEANUP FAIL] ${e.message}`);
+    }
+  }
+
+  console.log('[TEARDOWN END]');
+
+  if (cleanupErrors.length > 0) {
+    throw new Error(
+        `Teardown 원복 실패: ${JSON.stringify(cleanupErrors)}`
+    );
+  }
+}
 
 // 콘텐츠, 플레이리스트 추가
 function executeWriteScenario(
@@ -432,6 +553,7 @@ function executeWriteScenario(
     });
 
     errorRate.add(!contentCreateSuccess);
+    writeErrorRate.add(!contentCreateSuccess);
     contentCreateTrend.add(contentRes.timings.duration);
 
     if (!contentCreateSuccess) {
@@ -475,6 +597,7 @@ function executeWriteScenario(
     });
 
     errorRate.add(!playlistCreateSuccess);
+    writeErrorRate.add(!playlistCreateSuccess);
     playlistCreateTrend.add(playlistRes.timings.duration);
 
     if (!playlistCreateSuccess) {
@@ -517,6 +640,7 @@ function updateLoadTestContent(adminAccessToken, csrfToken) {
   });
 
   errorRate.add(!detailSuccess);
+  writeErrorRate.add(!detailSuccess);
 
   if (!detailSuccess) {
     console.log(
@@ -551,6 +675,7 @@ function updateLoadTestContent(adminAccessToken, csrfToken) {
   });
 
   errorRate.add(!updateSuccess);
+  writeErrorRate.add(!updateSuccess);
 
   if (!updateSuccess) {
     console.log(
@@ -582,6 +707,7 @@ function updateLoadTestUser(adminAccessToken, csrfToken) {
   });
 
   errorRate.add(!searchSuccess);
+  writeErrorRate.add(!searchSuccess);
 
   if (!searchSuccess) {
     return;
@@ -600,10 +726,8 @@ function updateLoadTestUser(adminAccessToken, csrfToken) {
     return;
   }
 
-  loadTestUserId = user.id;
-
   const updateRes = http.patch(
-      `${BASE_URL}/users/${loadTestUserId}`,
+      `${BASE_URL}/users/${user.id}`,
       {
         request: http.file(
             JSON.stringify({
@@ -612,7 +736,6 @@ function updateLoadTestUser(adminAccessToken, csrfToken) {
             'request.json',
             'application/json'
         ),
-        image: http.file('', 'empty'),
       },
       {
         headers: {
@@ -628,6 +751,7 @@ function updateLoadTestUser(adminAccessToken, csrfToken) {
   });
 
   errorRate.add(!updateSuccess);
+  writeErrorRate.add(!updateSuccess);
 
   if (!updateSuccess) {
     console.log(
@@ -660,6 +784,7 @@ function deleteLoadTestContents(adminAccessToken, csrfToken) {
     });
 
     errorRate.add(!deleteSuccess);
+    writeErrorRate.add(!deleteSuccess);
 
     if (!deleteSuccess) {
       failedContentIds.push(contentId);
@@ -706,6 +831,7 @@ function deleteLoadTestPlaylists(adminAccessToken, csrfToken) {
     });
 
     errorRate.add(!deleteSuccess);
+    writeErrorRate.add(!deleteSuccess);
 
     if (!deleteSuccess) {
       failedPlaylistIds.push(playlistId);
@@ -728,15 +854,166 @@ function deleteLoadTestPlaylists(adminAccessToken, csrfToken) {
   loadTestPlaylistIds = [];
 }
 
+// 부하 테스트로 생성된 콘텐츠 삭제
+function cleanupLoadTestContents(adminAccessToken, csrfToken) {
+
+  const response = http.get(
+      `${BASE_URL}/contents?keywordLike=${encodeURIComponent(
+          '부하테스트 콘텐츠'
+      )}&limit=100&sortDirection=DESCENDING&sortBy=createdAt`,
+      {
+        headers: {
+          Authorization: `Bearer ${adminAccessToken}`,
+        },
+      }
+  );
+
+  const searchSuccess = check(response, {
+    'cleanup content search status is 200': (r) => r.status === 200,
+  });
+
+  if (!searchSuccess) {
+    throw new Error(
+        `콘텐츠 정리 대상 조회 실패: status=${response.status}`
+    );
+  }
+
+  const contents = extractItems(response);
+
+  console.log(
+      `[TEARDOWN CONTENT] 정리 대상 ${contents.length}건`
+  );
+
+  for (const content of contents) {
+
+    if (!content.id) {
+      continue;
+    }
+
+    const deleteRes = http.del(
+        `${BASE_URL}/contents/${content.id}`,
+        null,
+        {
+          headers: {
+            Authorization: `Bearer ${adminAccessToken}`,
+            'X-XSRF-TOKEN': csrfToken,
+            Cookie: `XSRF-TOKEN=${encodeURIComponent(csrfToken)}`,
+          },
+        }
+    );
+
+    const deleteSuccess = check(deleteRes, {
+      'cleanup content delete status is 204': (r) => r.status === 204,
+    });
+
+    if (!deleteSuccess) {
+      throw new Error(
+          `콘텐츠 삭제 실패: id=${content.id}, ` +
+          `status=${deleteRes.status}`
+      );
+    }
+  }
+}
+
+// 부하 테스트로 생성된 플레이리스트 삭제
+function cleanupLoadTestPlaylists(adminAccessToken, csrfToken) {
+
+  const response = http.get(
+      `${BASE_URL}/playlists?keywordLike=${encodeURIComponent(
+          '부하테스트 플레이리스트'
+      )}&limit=100&sortDirection=DESCENDING&sortBy=updatedAt`,
+      {
+        headers: {
+          Authorization: `Bearer ${adminAccessToken}`,
+        },
+      }
+  );
+
+  const searchSuccess = check(response, {
+    'cleanup playlist search status is 200': (r) => r.status === 200,
+  });
+
+  if (!searchSuccess) {
+    throw new Error(
+        `플레이리스트 정리 대상 조회 실패: status=${response.status}`
+    );
+  }
+
+  const playlists = extractItems(response);
+
+  console.log(
+      `[TEARDOWN PLAYLIST] 정리 대상 ${playlists.length}건`
+  );
+
+  for (const playlist of playlists) {
+
+    if (!playlist.id) {
+      continue;
+    }
+
+    const deleteRes = http.del(
+        `${BASE_URL}/playlists/${playlist.id}`,
+        null,
+        {
+          headers: {
+            Authorization: `Bearer ${adminAccessToken}`,
+            'X-XSRF-TOKEN': csrfToken,
+            Cookie: `XSRF-TOKEN=${encodeURIComponent(csrfToken)}`,
+          },
+        }
+    );
+
+    const deleteSuccess = check(deleteRes, {
+      'cleanup playlist delete status is 204': (r) => r.status === 204,
+    });
+
+    if (!deleteSuccess) {
+      throw new Error(
+          `플레이리스트 삭제 실패: id=${playlist.id}, ` +
+          `status=${deleteRes.status}`
+      );
+    }
+  }
+}
+
 // 수정했던 사용자 원복
 function restoreLoadTestUser(adminAccessToken, csrfToken) {
 
-  if (!loadTestUserId) {
-    return;
+  const userSearchRes = http.get(
+      `${BASE_URL}/users?emailLike=${encodeURIComponent(
+          LOAD_TEST_USER_EMAIL
+      )}&limit=20&sortDirection=DESCENDING&sortBy=email`,
+      {
+        headers: {
+          Authorization: `Bearer ${adminAccessToken}`,
+        },
+      }
+  );
+
+  const searchSuccess = check(userSearchRes, {
+    'restore user search status is 200': (r) => r.status === 200,
+  });
+
+  if (!searchSuccess) {
+    throw new Error(
+        `사용자 원복 대상 조회 실패: status=${userSearchRes.status}`
+    );
+  }
+
+  const users = extractItems(userSearchRes);
+
+  const user = users.find(
+      (item) => item.email === LOAD_TEST_USER_EMAIL
+  );
+
+  if (!user) {
+    throw new Error(
+        `사용자 원복 대상 없음: email=${LOAD_TEST_USER_EMAIL}`
+    );
   }
 
   const updateRes = http.patch(
-      `${BASE_URL}/users/${loadTestUserId}`,
+      `${BASE_URL}/users/${user.id}`,
       {
         request: http.file(
             JSON.stringify({
@@ -745,7 +1022,6 @@ function restoreLoadTestUser(adminAccessToken, csrfToken) {
             'request.json',
             'application/json'
         ),
-        image: http.file('', 'empty'),
       },
       {
         headers: {
@@ -757,23 +1033,19 @@ function restoreLoadTestUser(adminAccessToken, csrfToken) {
   );
 
   const restoreSuccess = check(updateRes, {
-    'load test user restore status is 200': (r) => r.status === 200,
+    'restore user status is 200': (r) => r.status === 200,
   });
 
-  errorRate.add(!restoreSuccess);
-
   if (!restoreSuccess) {
-    console.log(
-        `[USER RESTORE FAIL] status=${updateRes.status}, body=${updateRes.body}`
-    );
-
     throw new Error(
-        `사용자 원복 실패: userId=${loadTestUserId}, status=${updateRes.status}`
+        `사용자 원복 실패: userId=${user.id}, ` +
+        `status=${updateRes.status}, body=${updateRes.body}`
     );
   }
 
-// 복원 성공한 경우에만 상태 초기화
-  loadTestUserId = null;
+  console.log(
+      `[TEARDOWN USER] 사용자 원복 성공: userId=${user.id}`
+  );
 }
 
 // 목록 응답에서 실제 데이터 배열 추출
@@ -798,4 +1070,43 @@ function extractItems(response) {
   }
 
   return [];
+}
+
+export function handleSummary(data) {
+  const metrics = [
+    'login_duration',
+    'content_detail_duration',
+    'content_list_duration',
+    'content_search_duration',
+    'playlist_search_duration',
+    'user_search_duration',
+    'content_create_duration',
+    'playlist_create_duration',
+  ];
+
+  let output = '\n===== LOAD TEST RESULT =====\n';
+
+  for (const name of metrics) {
+    const metric = data.metrics[name];
+
+    if (!metric) {
+      continue;
+    }
+
+    output += `
+${name}
+  avg : ${metric.values.avg.toFixed(2)} ms
+  min : ${metric.values.min.toFixed(2)} ms
+  med : ${metric.values.med.toFixed(2)} ms
+  max : ${metric.values.max.toFixed(2)} ms
+  p95 : ${metric.values['p(95)'].toFixed(2)} ms
+  p99 : ${metric.values['p(99)'].toFixed(2)} ms
+`;
+  }
+
+  return {
+    stdout:
+        textSummary(data, {indent: ' ', enableColors: true}) +
+        output,
+  };
 }

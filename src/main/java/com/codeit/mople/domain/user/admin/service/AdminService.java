@@ -5,6 +5,7 @@ import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.auth.security.SecurityUtils;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
+import com.codeit.mople.domain.user.event.UserSearchIndexEvent;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.domain.user.exception.UserException;
@@ -15,6 +16,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +32,12 @@ public class AdminService {
   private final SessionTokenRepository sessionTokenRepository;
   private final RefreshTokenRepository refreshTokenRepository;
 
-  @CacheEvict(value = CacheNames.USERS, key = "#userId")
+  @Caching(
+      evict = {
+          @CacheEvict(value = CacheNames.USERS, key = "#userId"),
+          @CacheEvict(value = CacheNames.USER_LIST, allEntries = true)
+      }
+  )
   @Transactional
   public void changeUserRole(UUID userId, String roleStr) {
     validateNotSelf(userId);
@@ -44,11 +51,28 @@ public class AdminService {
       sessionTokenRepository.invalidate(userId);
       refreshTokenRepository.invalidate(userId);
       eventPublisher.publishEvent(new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ROLE_CHANGE, true));
+
+      eventPublisher.publishEvent(
+          new UserSearchIndexEvent(
+              UUID.randomUUID(),
+              user.getId(),
+              user.getEmail(),
+              user.getName(),
+              user.getCreatedAt(),
+              user.isLocked(),
+              user.getRole().name()
+          )
+      );
     }
     log.info("권한 변경 완료 - userId: {}, role: {}", userId, role);
   }
 
-  @CacheEvict(value = CacheNames.USERS, key = "#userId")
+  @Caching(
+      evict = {
+          @CacheEvict(value = CacheNames.USERS, key = "#userId"),
+          @CacheEvict(value = CacheNames.USER_LIST, allEntries = true)
+      }
+  )
   @Transactional
   public void changeUserLocked(UUID userId, boolean locked) {
     validateNotSelf(userId);
@@ -64,6 +88,18 @@ public class AdminService {
     if (previousLocked != locked) {
       ForceLogoutReason reason = locked ? ForceLogoutReason.ACCOUNT_LOCKED : ForceLogoutReason.ACCOUNT_UNLOCKED;
       eventPublisher.publishEvent(new UserAccountStatusChangedEvent(userId, reason, locked));
+
+      eventPublisher.publishEvent(
+          new UserSearchIndexEvent(
+              UUID.randomUUID(),
+              user.getId(),
+              user.getEmail(),
+              user.getName(),
+              user.getCreatedAt(),
+              user.isLocked(),
+              user.getRole().name()
+          )
+      );
     }
     log.info("계정 잠금 변경 완료 - userId: {}, locked: {}", userId, locked);
   }
