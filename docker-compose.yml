@@ -61,25 +61,36 @@ services:
     environment:
       discovery.type: single-node
 
-      xpack.security.enabled: "true"
+      ELASTICSEARCH_SSL_ENABLED: ${ELASTICSEARCH_SSL_ENABLED:-false}
 
-      xpack.security.http.ssl.enabled: "true"
+      xpack.security.enabled: ${ELASTICSEARCH_SECURITY_ENABLED:-false}
+      xpack.security.http.ssl.enabled: ${ELASTICSEARCH_SSL_ENABLED:-false}
+
       xpack.security.http.ssl.certificate: /usr/share/elasticsearch/config/certs/mople-elasticsearch/mople-elasticsearch.crt
       xpack.security.http.ssl.key: /usr/share/elasticsearch/config/certs/mople-elasticsearch/mople-elasticsearch.key
       xpack.security.http.ssl.certificate_authorities: /usr/share/elasticsearch/config/certs/ca/ca.crt
 
       ES_JAVA_OPTS: "-Xms512m -Xmx512m"
 
-      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?ELASTIC_PASSWORD must be set}
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
 
     healthcheck:
-      test: [
-        "CMD-SHELL",
-        "test -f /usr/share/elasticsearch/config/certs/ca/ca.crt &&
-         test -f /usr/share/elasticsearch/config/certs/mople-elasticsearch/mople-elasticsearch.crt &&
-         test -f /usr/share/elasticsearch/config/certs/mople-elasticsearch/mople-elasticsearch.key &&
-         curl -fs --cacert /usr/share/elasticsearch/config/certs/ca/ca.crt -u \"elastic:$${ELASTIC_PASSWORD}\" https://localhost:9200/_cluster/health || exit 1"
-      ]
+      test:
+        [
+          "CMD-SHELL",
+          "if [ \"$${ELASTICSEARCH_SSL_ENABLED}\" = \"true\" ]; then
+            test -f /usr/share/elasticsearch/config/certs/ca/ca.crt &&
+            test -f /usr/share/elasticsearch/config/certs/mople-elasticsearch/mople-elasticsearch.crt &&
+            test -f /usr/share/elasticsearch/config/certs/mople-elasticsearch/mople-elasticsearch.key &&
+            openssl x509 -in /usr/share/elasticsearch/config/certs/mople-elasticsearch/mople-elasticsearch.crt -noout -checkend 0 &&
+            curl -fs
+            --cacert /usr/share/elasticsearch/config/certs/ca/ca.crt
+            -u \"elastic:$${ELASTIC_PASSWORD}\"
+            https://localhost:9200/_cluster/health;
+          else
+            curl -fs http://localhost:9200/_cluster/health;
+          fi || exit 1"
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
