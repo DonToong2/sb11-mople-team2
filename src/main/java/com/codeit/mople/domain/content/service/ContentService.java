@@ -18,6 +18,8 @@ import com.codeit.mople.global.config.CacheNames;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.dto.SearchResult;
 import com.codeit.mople.global.storage.FileStorageService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -38,7 +40,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ContentService{
 
   private final ContentRepository contentRepository;
@@ -47,6 +48,32 @@ public class ContentService{
   private final ContentSearchRepository searchRepository;
 
   private final ApplicationEventPublisher eventPublisher;
+
+  private final Counter contentCreateCounter;
+  private final Counter contentGetCounter;
+
+  //MeterRegistry를 통한 카운터 등록
+  public ContentService(
+      ContentRepository contentRepository,
+      ContentQueryRepository contentQueryRepository,
+      FileStorageService fileStorageService,
+      ContentSearchRepository searchRepository,
+      ApplicationEventPublisher eventPublisher,
+      MeterRegistry meterRegistry) {
+    this.contentRepository = contentRepository;
+    this.contentQueryRepository = contentQueryRepository;
+    this.fileStorageService = fileStorageService;
+    this.searchRepository = searchRepository;
+    this.eventPublisher = eventPublisher;
+
+    this.contentCreateCounter = Counter.builder("mople.content.create.count")
+        .description("콘텐츠 생성 성공 횟수")
+        .register(meterRegistry);
+
+    this.contentGetCounter = Counter.builder("mople.content.get.count")
+        .description("콘텐츠 단건 조회 횟수")
+        .register(meterRegistry);
+  }
 
   //허용할 이미지 MIME 타입 및 확장자 정의
   private static final List<String> ALLOWED_MIME_TYPES = List.of(
@@ -82,6 +109,9 @@ public class ContentService{
 
     //DB에 엔티티 저장
     Content savedContent = contentRepository.save(content);
+
+    //콘텐츠 생성 성공 시 카운터 증가
+    contentCreateCounter.increment();
 
     log.info("콘텐츠 생성 완료 - contentId: {}, title: {}", savedContent.getId(), savedContent.getTitle());
 
@@ -250,6 +280,9 @@ public class ContentService{
           log.warn("콘텐츠 단건 조회 실패(존재하지 않는 ID) - contentId: {}", contentId);
           return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
         });
+
+    //콘텐츠 단건 조회 성공 시 카운터 증가
+    contentGetCounter.increment();
 
     log.debug("콘텐츠 단건 조회 완료 - contentId: {}", content.getId());
 

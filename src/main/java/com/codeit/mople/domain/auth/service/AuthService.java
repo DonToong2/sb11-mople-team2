@@ -15,6 +15,9 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.jwt.JwtProvider;
 import io.jsonwebtoken.JwtException;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
@@ -47,6 +50,10 @@ public class AuthService {
   private final AuthMailService authMailService;
   private final PasswordResetRateLimiterRepository passwordResetRateLimiterRepository;
 
+  private final MeterRegistry meterRegistry;
+  private Counter loginSuccessCounter;
+  private Counter loginFailureCounter;
+
   @Value("${password-reset.rate-limit.ip.max-requests:5}")
   private int ipMaxRequests;
 
@@ -59,16 +66,35 @@ public class AuthService {
   @Value("${password-reset.rate-limit.global.window-minutes:1440}")
   private long globalWindowMinutes;
 
+  @PostConstruct
+  public void initMetrics() {
+    this.loginSuccessCounter = Counter.builder("mople.auth.login.success.count")
+        .description("로그인 성공 횟수")
+        .register(meterRegistry);
+
+    this.loginFailureCounter = Counter.builder("mople.auth.login.failure.count")
+        .description("로그인 실패 횟수(비밀번호 불일치, 계정 잠김 등)")
+        .register(meterRegistry);
+  }
+
   @Transactional(readOnly = true)
   public AuthTokens signIn(SignInRequest request) {
     User user = userRepository.findByEmail(request.username().toLowerCase(Locale.ROOT))
-        .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
+        .orElseThrow(() -> {
+          //존재하지 않는 이메일로 로그인 시도 시 실패 카운트 증가
+          loginFailureCounter.increment();
+          return new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
+        });
 
     if(!isPasswordValid(request.password(), user)) {
+      //비밀번호 불일치 시 실패 카운트 증가
+      loginFailureCounter.increment();
       throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
     }
 
     if(user.isLocked()) {
+      //잠긴계정 접근 시 실패 카운트 증가
+      loginFailureCounter.increment();
       throw new AuthException(AuthErrorCode.LOCKED_ACCOUNT);
     }
 
@@ -76,7 +102,12 @@ public class AuthService {
     String accessToken = jwtProvider.createAccessToken(user.getId(), jti, user.getRole());
     sessionTokenRepository.save(user.getId(), jti, sessionTtl());
 
-    return issueRefreshToken(user, accessToken);
+    AuthTokens authTokens = issueRefreshToken(user, accessToken);
+    
+    //검증 통과 후 토큰 발급 전 성공 카운트 증가
+    loginSuccessCounter.increment();
+
+    return authTokens;
   }
 
   @Transactional(readOnly = true)

@@ -22,6 +22,8 @@ import com.codeit.mople.domain.directmessage.entity.DirectMessage;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.dto.UserSummary;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -33,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -48,6 +51,9 @@ public class ConversationServiceTest {
   @Mock
   private ConversationMapper conversationMapper;
 
+  @Spy
+  private MeterRegistry meterRegistry = new SimpleMeterRegistry();
+
   @InjectMocks
   private ConversationService conversationService;
 
@@ -58,6 +64,9 @@ public class ConversationServiceTest {
 
   @BeforeEach
   void setUp() {
+    //테스트 시작 전에 수동으로 카운터 초기화 메서드 실행(NPE 방지)
+    conversationService.initMetrics();
+
     userAId = UUID.fromString("00000000-0000-0000-0000-000000000001");
     userBId = UUID.fromString("00000000-0000-0000-0000-000000000002");
 

@@ -31,8 +31,10 @@ import com.codeit.mople.domain.content.service.ContentService;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.watchingsession.service.WatchingSessionService;
 import com.codeit.mople.global.config.SecurityConfig;
+import com.codeit.mople.global.error.DiscordWebhookService;
 import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
@@ -86,6 +88,12 @@ public class ContentControllerTest {
 
   @MockitoBean
   private SessionTokenRepository sessionTokenRepository;
+
+  @MockitoBean
+  private MeterRegistry meterRegistry;
+
+  @MockitoBean
+  private DiscordWebhookService discordWebhookService;
 
   private RequestPostProcessor mockAuth(UUID userId, Role role) {
     CustomUserDetails mockUser = new CustomUserDetails(userId, role);

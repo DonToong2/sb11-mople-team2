@@ -24,6 +24,8 @@ import com.codeit.mople.domain.content.repository.ContentRepository;
 import com.codeit.mople.domain.content.repository.search.ContentDocument;
 import com.codeit.mople.domain.content.repository.search.ContentSearchRepository;
 import com.codeit.mople.global.storage.FileStorageService;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
@@ -55,6 +58,8 @@ public class ContentServiceTest {
   @Mock
   private FileStorageService fileStorageService;
 
+  @Spy
+  private MeterRegistry meterRegistry = new SimpleMeterRegistry();
   @Mock
   private ContentSearchRepository searchRepository;
 

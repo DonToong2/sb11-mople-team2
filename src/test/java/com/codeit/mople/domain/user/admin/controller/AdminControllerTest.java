@@ -24,8 +24,10 @@ import com.codeit.mople.domain.user.admin.service.AdminService;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.global.config.SecurityConfig;
 import com.codeit.mople.global.error.CustomException;
+import com.codeit.mople.global.error.DiscordWebhookService;
 import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -68,6 +70,12 @@ class AdminControllerTest {
 
   @MockitoBean
   private SessionTokenRepository sessionTokenRepository;
+
+  @MockitoBean
+  private MeterRegistry meterRegistry;
+
+  @MockitoBean
+  private DiscordWebhookService discordWebhookService;
 
   UUID userId;
 
