@@ -48,8 +48,8 @@ spring:
       properties:
         enable.idempotence: true
         max.block.ms: 1000
+        request.timeout.ms: 10000
         delivery.timeout.ms: 30000
-        retries: 3
         retry.backoff.ms: 1000
         retry.backoff.max.ms: 4000
     consumer:
