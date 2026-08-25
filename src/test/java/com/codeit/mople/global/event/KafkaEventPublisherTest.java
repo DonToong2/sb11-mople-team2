@@ -91,7 +91,7 @@ class KafkaEventPublisherTest {
       assertThat(saved.topic()).isEqualTo(TOPIC);
       assertThat(saved.key()).isEqualTo(KEY);
       assertThat(saved.eventId()).isEqualTo(event.eventId());
-      assertThat(saved.eventType()).isEqualTo("TestEvent");
+      assertThat(saved.eventType()).isEqualTo(TestEvent.class.getName());
       assertThat(saved.data()).isEqualTo("{\"eventId\":\"test\"}");
       assertThat(saved.error()).isEqualTo("broker down");
     }
@@ -115,7 +115,7 @@ class KafkaEventPublisherTest {
       FailedEvent saved = failedEventCaptor.getValue();
       assertThat(saved.data()).isEmpty();
       assertThat(saved.eventId()).isEqualTo(event.eventId());
-      assertThat(saved.eventType()).isEqualTo("TestEvent");
+      assertThat(saved.eventType()).isEqualTo(TestEvent.class.getName());
     }
 
     @Test

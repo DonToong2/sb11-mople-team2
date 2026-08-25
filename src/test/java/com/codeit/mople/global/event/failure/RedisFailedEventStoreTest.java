@@ -30,6 +30,7 @@ class RedisFailedEventStoreTest {
   static final String NAMESPACE = "mople:test";
   static final String STREAM_KEY = "mople:test:kafka:events:failed";
   static final long MAX_ENTRIES = 10_000L;
+  static final String EVENT_TYPE = "com.codeit.mople.domain.follow.event.FollowCreatedMessage";
 
   @Mock
   StringRedisTemplate redisTemplate;
@@ -51,10 +52,11 @@ class RedisFailedEventStoreTest {
     store = new RedisFailedEventStore(redisTemplate, NAMESPACE);
     eventId = UUID.randomUUID();
     event = new FailedEvent(
+        null,
         "mople.follow.created.v1",
         "followee-key",
         eventId,
-        "FollowCreatedMessage",
+        EVENT_TYPE,
         "{\"followId\":\"test\"}",
         "broker down"
     );
@@ -81,7 +83,7 @@ class RedisFailedEventStoreTest {
               "topic", "mople.follow.created.v1",
               "key", "followee-key",
               "eventId", eventId.toString(),
-              "eventType", "FollowCreatedMessage",
+              "eventType", EVENT_TYPE,
               "data", "{\"followId\":\"test\"}",
               "error", "broker down"
           )),
@@ -114,10 +116,11 @@ class RedisFailedEventStoreTest {
       // given
       given(redisTemplate.opsForStream()).willReturn(streamOperations);
       FailedEvent noKey = new FailedEvent(
+          null,
           "mople.notification.created.v1",
           "",
           eventId,
-          "NotificationCreatedEvent",
+          EVENT_TYPE,
           "{}",
           "broker down"
       );
