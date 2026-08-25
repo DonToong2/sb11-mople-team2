@@ -18,6 +18,8 @@ spring:
 
   elasticsearch:
     uris: http://localhost:19201
+    username: ""
+    password: ""
 
   jpa:
     hibernate:
