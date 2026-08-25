@@ -8,7 +8,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
-import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +29,7 @@ class RedisFailedEventStoreTest {
 
   static final String NAMESPACE = "mople:test";
   static final String STREAM_KEY = "mople:test:kafka:events:failed";
-  static final Duration RETENTION = Duration.ofDays(7);
+  static final long MAX_ENTRIES = 10_000L;
 
   @Mock
   StringRedisTemplate redisTemplate;
@@ -91,11 +90,10 @@ class RedisFailedEventStoreTest {
     }
 
     @Test
-    @DisplayName("적재할 때마다 7일 이전 항목을 잘라내는 보존 옵션을 함께 전달")
-    void saveWithRetentionOption() {
+    @DisplayName("적재할 때마다 근사 크기 상한 옵션만 함께 전달")
+    void saveWithSizeLimitOption() {
       // given
       given(redisTemplate.opsForStream()).willReturn(streamOperations);
-      long expectedFloor = System.currentTimeMillis() - RETENTION.toMillis();
 
       // when
       store.save(event);
@@ -104,9 +102,10 @@ class RedisFailedEventStoreTest {
       verify(streamOperations).add(eq(STREAM_KEY), anyMap(), optionsCaptor.capture());
 
       XAddOptions options = optionsCaptor.getValue();
-      assertThat(options.hasMinId()).isTrue();
-      assertThat(options.getMinId().getTimestamp())
-          .isBetween(expectedFloor - 5_000L, expectedFloor + 5_000L);
+      assertThat(options.hasMaxlen()).isTrue();
+      assertThat(options.getMaxlen()).isEqualTo(MAX_ENTRIES);
+      assertThat(options.isApproximateTrimming()).isTrue();
+      assertThat(options.hasMinId()).isFalse();
     }
 
     @Test

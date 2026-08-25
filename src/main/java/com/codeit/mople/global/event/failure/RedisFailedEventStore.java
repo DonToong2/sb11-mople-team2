@@ -1,13 +1,11 @@
 package com.codeit.mople.global.event.failure;
 
 import com.codeit.mople.global.config.KafkaProperties;
-import java.time.Duration;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions;
-import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -19,8 +17,8 @@ public class RedisFailedEventStore implements FailedEventStore {
 
   // Redis 키 뒷부분
   private static final String KEY_SUFFIX = ":kafka:events:failed";
-  // 보존 기간 7일
-  private static final Duration RETENTION = Duration.ofDays(7);
+  // 최대 보관 건수
+  private static final long MAX_ENTRIES = 10_000L;
   // 발행 실패 타입
   private static final String TYPE_PRODUCER = "PRODUCER";
   // redis 서버에 보내주는 통로
@@ -39,8 +37,8 @@ public class RedisFailedEventStore implements FailedEventStore {
     try {
       // streamKey: 해당스트림에
       // toFields: 뭘 저장할지
-      // retentionOptions(): 저장하면서 적용할 옵션
-      redisTemplate.opsForStream().add(streamKey, toFields(event), retentionOptions());
+      // sizeLimitOptions(): 저장하면서 적용할 옵션
+      redisTemplate.opsForStream().add(streamKey, toFields(event), sizeLimitOptions());
     } catch (Exception e) {
       log.error("실패 이벤트 적재 실패: topic={}, eventId={}, eventType={}",
           event.topic(), event.eventId(), event.eventType(), e);
@@ -60,11 +58,8 @@ public class RedisFailedEventStore implements FailedEventStore {
     );
   }
 
-  // 지금 시각 - 7일 = 7일전 시각
-  private XAddOptions retentionOptions() {
-    RecordId retainFrom = RecordId.of(System.currentTimeMillis() - RETENTION.toMillis(), 0);
-
-    // redisStream에 넣을 비어있는 옵션 객체.이 시각/id보다 오래된건 지워라
-    return XAddOptions.none().minId(retainFrom);
+  // 최대 보관 건수를 넘으면 오래된 것부터 잘라라.(대략 근사치로 잘라라)
+  private XAddOptions sizeLimitOptions() {
+    return XAddOptions.maxlen(MAX_ENTRIES).approximateTrimming(true);
   }
 }
