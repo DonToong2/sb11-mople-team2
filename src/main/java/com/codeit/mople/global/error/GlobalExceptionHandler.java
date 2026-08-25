@@ -132,12 +132,13 @@ public class GlobalExceptionHandler {
   // DB 제약 위반 (동시 요청으로 사전 검증을 통과한 경우 등)
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
-      DataIntegrityViolationException e
+      DataIntegrityViolationException e, HttpServletRequest request
   ) {
     ErrorCode errorCode = resolveConstraint(e);
 
     if (errorCode == null) {
       log.error("[Unhandled DataIntegrityViolation] Message: {}", e.getMessage(), e);
+      discordWebhookService.sendErrorAlert(e, request);
       errorCode = CommonErrorCode.INTERNAL_SERVER_ERROR;
     } else {
       log.warn("[DataIntegrityViolation] Code: {}, Message: {}", errorCode.getCode(), errorCode.getMessage());

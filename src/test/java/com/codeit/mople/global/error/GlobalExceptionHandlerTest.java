@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.codeit.mople.domain.follow.exception.FollowConstraintErrorCodes;
 import com.codeit.mople.global.response.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import java.sql.SQLException;
 import java.util.List;
 import org.hibernate.exception.ConstraintViolationException;
@@ -39,9 +40,10 @@ class GlobalExceptionHandlerTest {
     void resolveConstraintSuccess() {
       // given
       DataIntegrityViolationException exception = violationOf("uk_follows_followee_follower");
+      HttpServletRequest request = mock(HttpServletRequest.class);
 
       // when
-      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception);
+      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception, request);
 
       // then
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -55,9 +57,10 @@ class GlobalExceptionHandlerTest {
     void resolveConstraintSuccessWhenUpperCaseName() {
       // given
       DataIntegrityViolationException exception = violationOf("UK_FOLLOWS_FOLLOWEE_FOLLOWER");
+      HttpServletRequest request = mock(HttpServletRequest.class);
 
       // when
-      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception);
+      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception, request);
 
       // then
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -70,9 +73,10 @@ class GlobalExceptionHandlerTest {
     void resolveConstraintFailWhenNotRegistered() {
       // given
       DataIntegrityViolationException exception = violationOf("uk_something_else");
+      HttpServletRequest request = mock(HttpServletRequest.class);
 
       // when
-      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception);
+      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception, request);
 
       // then
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -84,9 +88,10 @@ class GlobalExceptionHandlerTest {
       // given
       DataIntegrityViolationException exception =
           new DataIntegrityViolationException("could not execute statement");
+      HttpServletRequest request = mock(HttpServletRequest.class);
 
       // when
-      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception);
+      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception, request);
 
       // then
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
