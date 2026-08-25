@@ -6,6 +6,8 @@ import feign.Response;
 import feign.RetryableException;
 import feign.Util;
 import feign.codec.ErrorDecoder;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Collection;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -17,10 +19,21 @@ public class TmdbErrorDecoder implements ErrorDecoder {
   private static final int MAX_BODY_LOG_LENGTH = 500;
   private static final String RETRY_AFTER_HEADER = "retry-after";
 
+  private final Counter errorCounter;
+
+  public TmdbErrorDecoder(MeterRegistry meterRegistry) {
+    this.errorCounter = Counter.builder("mople.external.api.error.count")
+        .tag("provider", "tmdb")
+        .description("TMDB API 호출 실패 횟수")
+        .register(meterRegistry);
+  }
+
   // methodKey: 어떤 Feign 인터페이스의 어떤 메서드가 호출되다가 에러가 났는지 식별
   // response: 외부 API의 실제 Http 응답(status, body, headers 등)
   @Override
   public Exception decode(String methodKey, Response response) {
+    errorCounter.increment();
+
     int status = response.status();
     String body = readBody(response);
 

@@ -16,6 +16,9 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +39,21 @@ public class ConversationService {
   private final ConversationRepository conversationRepository;
   private final ConversationMapper conversationMapper;
   private final DirectMessageSearchRepository directMessageSearchRepository;
+
+  private final MeterRegistry meterRegistry;
+  private Counter conversationCreateCounter;
+  private Counter conversationGetCounter;
+
+  @PostConstruct
+  public void initMetrics() {
+    this.conversationCreateCounter = Counter.builder("mople.conversation.create.count")
+        .description("새로운 대화방 생성 횟수")
+        .register(meterRegistry);
+
+    this.conversationGetCounter = Counter.builder("mople.conversation.get.count")
+        .description("대화방 목록 및 단건 조회 횟수")
+        .register(meterRegistry);
+  }
 
   @Transactional
   public ConversationDto findOrCreateConversation(UUID requesterId, UUID targetUserId) {
@@ -59,7 +77,10 @@ public class ConversationService {
       conversation = conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)
           .orElseGet(() -> {
             log.info("기존 대화방 없음, 새 대화방 생성 - userAId: {}, userBId: {}", userAId, userBId);
-            return conversationRepository.saveAndFlush(Conversation.createConversation(userA, userB));
+            Conversation created = conversationRepository.saveAndFlush(Conversation.createConversation(userA, userB));
+            //저장이 성공한 뒤 카운트 증가
+            conversationCreateCounter.increment();
+            return created;
           });
     } catch (DataIntegrityViolationException e) {
       log.info("동시 대화방 생성 충돌 발생, 기존 방 재조회 시도 - userAId: {}, userBId: {}", userAId, userBId);
@@ -79,6 +100,8 @@ public class ConversationService {
 
     validateParticipant(conversation, requesterId);
 
+    conversationGetCounter.increment(); //성공적으로 조회된 후 카운트 증가
+
     return conversationMapper.toDto(conversation, requesterId);
   }
 
@@ -96,6 +119,8 @@ public class ConversationService {
 
     Conversation conversation = conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)
         .orElseThrow(() -> new ConversationException(ConversationErrorCode.CONVERSATION_NOT_FOUND, Map.of("userAId", userAId, "userBId", userBId)));
+
+    conversationGetCounter.increment(); //성공적으로 조회된 후 카운트 증가
 
     return conversationMapper.toDto(conversation, requesterId);
   }
@@ -150,6 +175,9 @@ public class ConversationService {
         nextIdAfter = lastItem.getId();
       }
     }
+
+    //목록 조회 시 카운트 증가
+    conversationGetCounter.increment();
 
     return new CursorResponseConversationDto(
         conversationDtos,

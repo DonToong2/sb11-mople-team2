@@ -25,6 +25,8 @@ import com.codeit.mople.domain.directmessage.repository.DirectMessageReadRedisRe
 import com.codeit.mople.domain.directmessage.repository.DirectMessageRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.dto.CursorResponse;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +39,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import com.codeit.mople.domain.directmessage.event.DirectMessageReceivedEvent;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -58,6 +61,9 @@ public class DirectMessageServiceTest {
   @Mock
   private DirectMessageReadRedisRepository readRedisRepository;
 
+  @Spy
+  private MeterRegistry meterRegistry = new SimpleMeterRegistry();
+
   private UUID userAId;
   private UUID userBId;
   private UUID strangerId;
@@ -72,6 +78,9 @@ public class DirectMessageServiceTest {
 
   @BeforeEach
   void setUp() {
+    //수동으로 카운터 초기화
+    directMessageService.initMetrics();
+
     userAId = UUID.randomUUID();
     userBId = UUID.randomUUID();
     strangerId = UUID.randomUUID();

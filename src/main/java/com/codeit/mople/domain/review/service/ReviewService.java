@@ -23,6 +23,9 @@ import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +47,18 @@ public class ReviewService {
   private final ContentRepository contentRepository;
 
   private final ApplicationEventPublisher eventPublisher;
+
+  private final MeterRegistry meterRegistry;
+  private Counter reviewCreateCounter;
+  private Counter reviewUpdateCounter;
+  private Counter reviewDeleteCounter;
+
+  @PostConstruct
+  public void initMetrics() {
+    this.reviewCreateCounter = Counter.builder("mople.review.create.count").register(meterRegistry);
+    this.reviewUpdateCounter = Counter.builder("mople.review.update.count").register(meterRegistry);
+    this.reviewDeleteCounter = Counter.builder("mople.review.delete.count").register(meterRegistry);
+  }
 
   @Transactional
   public ReviewResponse create(UUID authorId, ReviewCreateRequest request) {
@@ -80,6 +95,9 @@ public class ReviewService {
     ReviewResponse response = ReviewResponse.from(savedReview);
     log.info("리뷰 생성 완료: reviewId={}, authorId={}, contentId={}",
         savedReview.getId(), authorId, request.contentId());
+
+    //생성 완료 후 카운트
+    reviewCreateCounter.increment();
 
     return response;
   }
@@ -188,6 +206,9 @@ public class ReviewService {
     log.info("리뷰 수정 완료: reviewId={}, requesterId={}, contentId={}, rating={}",
         reviewId, requesterId, content.getId(), request.rating());
 
+    //수정 완료 후 카운트
+    reviewUpdateCounter.increment();
+
     return response;
   }
 
@@ -222,6 +243,9 @@ public class ReviewService {
     log.info(
         "리뷰 삭제 완료: reviewId={}, requesterId={}, contentId={}",
         reviewId, requesterId, content.getId());
+
+    //삭제 완료 후 카운트
+    reviewDeleteCounter.increment();
   }
 
   private void validateRequesterIsAuthor(Review review, UUID requesterId) {

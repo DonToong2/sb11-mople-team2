@@ -20,7 +20,9 @@ import com.codeit.mople.domain.conversation.service.ConversationService;
 import com.codeit.mople.domain.directmessage.dto.response.DirectMessageDto;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.global.dto.UserSummary;
+import com.codeit.mople.global.error.DiscordWebhookService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -45,6 +47,12 @@ public class ConversationControllerTest {
 
   @MockitoBean
   private ConversationService conversationService;
+
+  @MockitoBean
+  private MeterRegistry meterRegistry;
+
+  @MockitoBean
+  private DiscordWebhookService discordWebhookService;
 
   private UsernamePasswordAuthenticationToken authToken;
   private UUID myUserId;

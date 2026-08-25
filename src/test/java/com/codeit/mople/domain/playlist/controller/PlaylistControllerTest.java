@@ -36,8 +36,10 @@ import com.codeit.mople.global.config.SecurityConfig;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.dto.SortDirection;
 import com.codeit.mople.global.dto.UserSummary;
+import com.codeit.mople.global.error.DiscordWebhookService;
 import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -83,6 +85,12 @@ public class PlaylistControllerTest {
 
   @MockitoBean
   private OAuth2FailureHandler oAuth2FailureHandler;
+
+  @MockitoBean
+  private MeterRegistry meterRegistry;
+
+  @MockitoBean
+  private DiscordWebhookService discordWebhookService;
 
   private CustomUserDetails userDetails;
   private User owner;

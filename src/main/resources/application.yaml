@@ -102,7 +102,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, metrics
+        include: health, info, metrics, prometheus
 external-api:
   tmdb:
     image-base-url: https://image.tmdb.org/t/p/w500
@@ -128,3 +128,7 @@ mople:
   kafka:
     consumer:
       es-sync-group-id: mople-dm-es-sync-group
+      
+discord:
+  webhook:
+    url: ${DISCORD_WEBHOOK_URL:}

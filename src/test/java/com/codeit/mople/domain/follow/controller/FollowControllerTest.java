@@ -29,8 +29,10 @@ import com.codeit.mople.domain.follow.exception.FollowException;
 import com.codeit.mople.domain.follow.service.FollowService;
 import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.global.config.SecurityConfig;
+import com.codeit.mople.global.error.DiscordWebhookService;
 import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -73,6 +75,12 @@ class FollowControllerTest {
 
   @MockitoBean
   OAuth2FailureHandler oAuth2FailureHandler;
+
+  @MockitoBean
+  private MeterRegistry meterRegistry;
+
+  @MockitoBean
+  private DiscordWebhookService discordWebhookService;
 
   CustomUserDetails principal;
   UUID followeeId;
