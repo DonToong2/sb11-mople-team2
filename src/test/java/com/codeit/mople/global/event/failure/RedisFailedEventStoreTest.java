@@ -137,7 +137,7 @@ class RedisFailedEventStoreTest {
     @Test
     @DisplayName("Redis 적재에 실패해도 예외를 전파하지 않음")
     void saveWhenRedisDown() {
-      // given: 적재 실패가 이미 커밋된 발행 요청까지 깨뜨리면 안 됨
+      // given
       given(redisTemplate.opsForStream())
           .willThrow(new RedisConnectionFailureException("redis down"));
 

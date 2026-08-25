@@ -10,8 +10,6 @@ import org.springframework.core.NestedExceptionUtils;
 import org.springframework.kafka.listener.RetryListener;
 import org.springframework.stereotype.Component;
 
-// 소비 최종 실패는 Kafka 클라이언트 메트릭에 대응물이 없어(애플리케이션 레벨 사건) 직접 센다.
-// 발행 실패는 빌트인 kafka.producer.record.error.total 로 본다.
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = KafkaProperties.PREFIX, name = "enabled", havingValue = "true")
@@ -52,8 +50,6 @@ public class ConsumeFailureMetricsListener implements RetryListener {
         .increment();
   }
 
-  // 예외 메시지를 태그로 쓰면 시계열이 무한히 늘어나므로 클래스 이름만 쓴다.
-  // ListenerExecutionFailedException 으로 감싸여 오므로 가장 안쪽 원인까지 벗긴다
   private String reasonOf(Throwable cause) {
     if (cause == null) {
       return UNKNOWN_REASON;

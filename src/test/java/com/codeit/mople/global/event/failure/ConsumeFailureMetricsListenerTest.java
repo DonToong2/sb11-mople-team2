@@ -67,7 +67,7 @@ class ConsumeFailureMetricsListenerTest {
     @Test
     @DisplayName("감싸인 예외는 가장 안쪽 원인의 클래스 이름으로 집계")
     void unwrapNestedCause() {
-      // given: ListenerExecutionFailedException 으로 감싸여 오면 전부 한 값으로 뭉친다
+      // given
       Exception wrapped = new ListenerExecutionFailedException(
           "리스너 실행 실패", new IllegalArgumentException("잘못된 수신자"));
 
