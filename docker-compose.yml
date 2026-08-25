@@ -67,7 +67,7 @@ services:
       timeout: 5s
       retries: 10
     ports:
-      - "${ELASTICSEARCH_PORT:-19201}:9200"
+      - "127.0.0.1:${ELASTICSEARCH_PORT:-19201}:9200"
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
 

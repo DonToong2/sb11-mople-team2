@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ConversationRepositoryCustom {
-  List<Conversation> findConversationByCursor(UUID requesterId, ConversationCursorRequest request, Instant cursorTime);
+  List<Conversation> findConversationByCursor(UUID requesterId, ConversationCursorRequest request, Instant cursorTime, List<UUID> esMatchingIds);
 
-  long countByParticipantIdAndKeyword(UUID requesterId, String keyword);
+  long countByParticipantIdAndKeyword(UUID requesterId, String keyword, List<UUID> esMatchingIds);
 
 }
