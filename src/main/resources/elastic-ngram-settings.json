@@ -3,15 +3,14 @@
     "analyzer": {
       "ngram_analyzer": {
         "type": "custom",
-        "tokenizer": "standard",
+        "tokenizer": "ngram_tokenizer",
         "filter": [
-          "lowercase",
-          "ngram_filter"
+          "lowercase"
         ]
       }
     },
-    "filter": {
-      "ngram_filter": {
+    "tokenizer": {
+      "ngram_tokenizer": {
         "type": "ngram",
         "min_gram": 2,
         "max_gram": 3
