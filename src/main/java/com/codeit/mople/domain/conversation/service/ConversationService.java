@@ -123,9 +123,6 @@ public class ConversationService {
   public CursorResponseConversationDto getMyConversations(UUID requesterId, ConversationCursorRequest request) {
     log.debug("내 대화방 목록 조회 요청 - requesterId: {}, limit: {}, cursor: {}", requesterId, request.limit(), request.cursor());
 
-    //목록 조회 시 카운트 증가
-    conversationGetCounter.increment();
-
     userRepository.findById(requesterId)
         .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", requesterId)));
 
@@ -155,6 +152,9 @@ public class ConversationService {
         nextIdAfter = lastItem.getId();
       }
     }
+
+    //목록 조회 시 카운트 증가
+    conversationGetCounter.increment();
 
     return new CursorResponseConversationDto(
         conversationDtos,
