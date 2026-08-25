@@ -2,6 +2,7 @@ package com.codeit.mople.global.config;
 
 import com.codeit.mople.domain.directmessage.exception.DirectMessageException;
 import com.codeit.mople.domain.notification.exception.NotificationException;
+import com.codeit.mople.global.event.failure.ConsumeFailureMetricsListener;
 import java.util.function.BiFunction;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -34,7 +35,10 @@ public class KafkaConfig {
   }
 
   @Bean
-  public DefaultErrorHandler kafkaErrorHandler(KafkaTemplate<String, Object> kafkaTemplate) {
+  public DefaultErrorHandler kafkaErrorHandler(
+      KafkaTemplate<String, Object> kafkaTemplate,
+      ConsumeFailureMetricsListener consumeFailureMetricsListener
+  ) {
     // Consumer가 실패했을 때 그 메세지를 (원래토픽명 + .dlt)로 재발행
     DeadLetterPublishingRecoverer recoverer =
         new DeadLetterPublishingRecoverer(kafkaTemplate, DLT_DESTINATION_RESOLVER);
@@ -54,6 +58,8 @@ public class KafkaConfig {
         DirectMessageException.class,
         NotificationException.class
     );
+
+    errorHandler.setRetryListeners(consumeFailureMetricsListener);
 
     return errorHandler;
   }
