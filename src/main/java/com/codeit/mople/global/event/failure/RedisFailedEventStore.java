@@ -60,7 +60,7 @@ public class RedisFailedEventStore implements FailedEventStore {
     }
   }
 
-  // 기간을 넘긴 항목은 애초에 조회되지 않게 해서, 오래된 이벤트를 되살리는 실수를 막는다
+  // 기간을 넘긴 항목은 애초에 조회되지 않게 해서, 오래된 이벤트를 되살리는 실수를 막음
   @Override
   public List<FailedEvent> findRecent(Duration within, int limit) {
     String fromId = (System.currentTimeMillis() - within.toMillis()) + "-0";

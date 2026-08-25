@@ -26,7 +26,7 @@ public class ConsumeFailureMetricsListener implements RetryListener {
 
   private final MeterRegistry meterRegistry;
 
-  // 재시도 중인 실패는 세지 않는다. 정상 동작이라 세면 수치가 부풀려진다
+  // 아무런 기능 없음
   @Override
   public void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt) {
   }
