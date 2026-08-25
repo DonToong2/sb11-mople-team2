@@ -6,11 +6,6 @@ spring:
 
   kafka:
     bootstrap-servers: localhost:9093
-    topics:
-      follow-created: mople.follow.created.v1
-      playlist-content-added: mople.playlist.content-added.v1
-      direct-message-created: mople.direct-message.created.v1
-      notification-created: mople.notification.created.v1
     enabled: false
 
   data:
@@ -20,6 +15,9 @@ spring:
       # 커맨드 타임아웃, 이게 없으면 응답 없는 Redis에 요청 스레드가 묶임
       timeout: 2s
       connect-timeout: 1s
+
+  elasticsearch:
+    uris: http://localhost:19201
 
   jpa:
     hibernate:
