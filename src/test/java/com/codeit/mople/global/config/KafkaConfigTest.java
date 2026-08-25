@@ -1,142 +1,51 @@
 package com.codeit.mople.global.config;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions;
-import org.springframework.data.redis.core.StreamOperations;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.test.util.ReflectionTestUtils;
 
-@ExtendWith(MockitoExtension.class)
-public class KafkaConfigTest {
+class KafkaConfigTest {
 
-  private static final String FAILED_STREAM_KEY = "kafka:events:failed";
+  static final String TOPIC = "mople.follow.created.v1";
 
-  @Mock
-  private StringRedisTemplate redisTemplate;
-
-  @Mock
-  private ObjectMapper objectMapper;
-
-  @Mock
-  private StreamOperations<String, Object, Object> streamOperations;
-
-  private KafkaConfig kafkaConfig;
+  ConsumerRecord<String, Object> record;
+  RuntimeException exception;
 
   @BeforeEach
   void setUp() {
-    kafkaConfig = new KafkaConfig(
-        redisTemplate,
-        objectMapper,
-        new KafkaProperties(true, "test", null)
-    );
+    record = new ConsumerRecord<>(TOPIC, 2, 100L, "followee-key", new Object());
+    exception = new RuntimeException("알림 생성 실패");
   }
 
   @Nested
-  @DisplayName("Kafka Consumer 최종 실패 이벤트 저장")
-  class SaveFailedEvent {
+  @DisplayName("DLT 목적지 해석")
+  class DeadLetterDestination {
 
     @Test
-    @DisplayName("최종 실패 이벤트를 Redis Stream에 저장")
-    void saveFailedEvent_success() throws Exception {
-      // given
-      ConsumerRecord<String, Object> record = new ConsumerRecord<>(
-          "review-created",
-          1,
-          100L,
-          "content-key",
-          new Object()
-      );
-
-      RuntimeException exception = new RuntimeException("리뷰 통계 업데이트 실패");
-
-      given(redisTemplate.opsForStream())
-          .willReturn(streamOperations);
-
-      given(objectMapper.writeValueAsString(record.value()))
-          .willReturn("{\"contentId\":\"test\"}");
-
+    @DisplayName("원 토픽 이름 뒤에 .dlt 를 붙인 토픽으로 보냄")
+    void resolveDltTopic() {
       // when
-      ReflectionTestUtils.invokeMethod(
-          kafkaConfig,
-          "saveFailedEvent",
-          record,
-          exception
-      );
+      TopicPartition destination =
+          KafkaConfig.DLT_DESTINATION_RESOLVER.apply(record, exception);
 
       // then
-      verify(streamOperations).add(
-          eq(FAILED_STREAM_KEY),
-          eq(Map.of(
-              "type", "CONSUMER",
-              "topic", "review-created",
-              "key", "content-key",
-              "partition", "1",
-              "offset", "100",
-              "data", "{\"contentId\":\"test\"}",
-              "error", "리뷰 통계 업데이트 실패"
-          )),
-          any(XAddOptions.class)
-      );
+      assertThat(destination.topic()).isEqualTo("mople.follow.created.v1.dlt");
     }
 
     @Test
-    @DisplayName("최종 실패 이벤트의 key가 null이면 빈 문자열로 저장")
-    void saveFailedEvent_nullKey() throws Exception {
-      // given
-      ConsumerRecord<String, Object> record = new ConsumerRecord<>(
-          "review-created",
-          0,
-          10L,
-          null,
-          new Object()
-      );
-
-      RuntimeException exception =
-          new RuntimeException("처리 실패");
-
-      given(redisTemplate.opsForStream())
-          .willReturn(streamOperations);
-
-      given(objectMapper.writeValueAsString(record.value()))
-          .willReturn("{\"test\":\"data\"}");
-
+    @DisplayName("파티션을 지정하지 않아 DLT 파티션 수가 원 토픽보다 적어도 발행이 실패하지 않음")
+    void resolveAnyPartition() {
       // when
-      ReflectionTestUtils.invokeMethod(
-          kafkaConfig,
-          "saveFailedEvent",
-          record,
-          exception
-      );
+      TopicPartition destination =
+          KafkaConfig.DLT_DESTINATION_RESOLVER.apply(record, exception);
 
       // then
-      verify(streamOperations).add(
-          eq(FAILED_STREAM_KEY),
-          eq(Map.of(
-              "type", "CONSUMER",
-              "topic", "review-created",
-              "key", "",
-              "partition", "0",
-              "offset", "10",
-              "data", "{\"test\":\"data\"}",
-              "error", "처리 실패"
-          )),
-          any(XAddOptions.class)
-      );
+      assertThat(destination.partition()).isEqualTo(-1);
     }
   }
-
 }

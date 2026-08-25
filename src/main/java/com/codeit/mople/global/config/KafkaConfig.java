@@ -2,19 +2,15 @@ package com.codeit.mople.global.config;
 
 import com.codeit.mople.domain.directmessage.exception.DirectMessageException;
 import com.codeit.mople.domain.notification.exception.NotificationException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Duration;
-import java.util.Map;
+import java.util.function.BiFunction;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions;
-import org.springframework.data.redis.connection.stream.RecordId;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.kafka.listener.ConsumerRecordRecoverer;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.util.Assert;
@@ -25,28 +21,23 @@ import org.springframework.util.StringUtils;
 @ConditionalOnProperty(prefix = KafkaProperties.PREFIX, name = "enabled", havingValue = "true")
 public class KafkaConfig {
 
-  private static final String FAILED_STREAM_KEY = "kafka:events:failed";
-  private static final Duration FAILED_STREAM_RETENTION = Duration.ofDays(7);
+  private static final String DLT_SUFFIX = ".dlt";
+  private static final int ANY_PARTITION = -1;
 
-  private final StringRedisTemplate redisTemplate;
-  private final ObjectMapper objectMapper;
+  static final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> DLT_DESTINATION_RESOLVER =
+      (record, exception) -> new TopicPartition(record.topic() + DLT_SUFFIX, ANY_PARTITION);
 
-  public KafkaConfig(
-      StringRedisTemplate redisTemplate,
-      ObjectMapper objectMapper,
-      KafkaProperties kafkaProperties
-  ) {
+  public KafkaConfig(KafkaProperties kafkaProperties) {
     Assert.state(StringUtils.hasText(kafkaProperties.bootstrapServers()),
         "spring.kafka.enabled=true 이지만 spring.kafka.bootstrap-servers 가 비어있습니다. KAFKA_BOOTSTRAP_SERVERS 를 설정하세요.");
     log.info("Kafka 이벤트 발행 활성화: bootstrapServers={}", kafkaProperties.bootstrapServers());
-
-    this.redisTemplate = redisTemplate;
-    this.objectMapper = objectMapper;
   }
 
   @Bean
-  public DefaultErrorHandler kafkaErrorHandler() {
-    ConsumerRecordRecoverer recoverer = this::saveFailedEvent;
+  public DefaultErrorHandler kafkaErrorHandler(KafkaTemplate<String, Object> kafkaTemplate) {
+    // Consumer가 실패했을 때 그 메세지를 (원래토픽명 + .dlt)로 재발행
+    DeadLetterPublishingRecoverer recoverer =
+        new DeadLetterPublishingRecoverer(kafkaTemplate, DLT_DESTINATION_RESOLVER);
 
     // Exponential : 지수
     // 지수백오프 구현을 위한 객체 생성
@@ -65,47 +56,6 @@ public class KafkaConfig {
     );
 
     return errorHandler;
-  }
-
-  private void saveFailedEvent(
-      ConsumerRecord<?, ?> record,
-      Exception ex
-  ) {
-    try {
-      String data = objectMapper.writeValueAsString(record.value());
-
-      RecordId retainFrom =
-          RecordId.of(System.currentTimeMillis() - FAILED_STREAM_RETENTION.toMillis(), 0);
-
-      // record(Consumer)는 partition, offest 등도 같이 제공해줌
-      // StringRedisTemplate을 통해 Redis Stream에 넣어줌
-      redisTemplate.opsForStream().add(
-          FAILED_STREAM_KEY,
-          Map.of(
-              "type", "CONSUMER",
-              "topic", record.topic(),
-              "key", record.key() == null ? "" : record.key().toString(),
-              "data", data,
-              "partition", String.valueOf(record.partition()),
-              "offset", String.valueOf(record.offset()),
-              "error", ex == null ? "Unknown" : String.valueOf(ex.getMessage())
-          ),
-          XAddOptions.none().minId(retainFrom)
-      );
-
-      log.error("Kafka Consumer 이벤트 최종 실패: topic={}, partition={}, offset={}, key{}",
-          record.topic(), record.partition(), record.offset(), record.key(), ex);
-    } catch (JsonProcessingException e) {
-      log.error("Kafka Consumer 최종 실패 이벤트 직렬화 실패: topic={}, key={}",
-          record.topic(), record.key(), e);
-
-      throw new IllegalStateException("Kafka 최종 실패 이벤트 직렬화 실패", e);
-    } catch (Exception e) {
-      log.error("Kafka Consumer 최종 실패 이벤트 Redis 저장 실패: topic={}, partition={}, offset={}, key={}",
-          record.topic(), record.partition(), record.offset(), record.key(), e);
-
-      throw new IllegalStateException("Kafka 최종 실패 이벤트 Redis 저장 실패", e);
-    }
   }
 
 }
