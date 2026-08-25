@@ -1,7 +1,9 @@
 package com.codeit.mople.global.error;
 
+import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,7 +17,15 @@ public class DiscordWebhookService {
   @Value("${discord.webhook.url}")
   private String webhookUrl;
 
-  private final RestTemplate restTemplate = new RestTemplate();
+  private final RestTemplate restTemplate;
+
+  //연결(2초) 및 응답(3초) 타임아웃을 설정
+  public DiscordWebhookService(RestTemplateBuilder restTemplateBuilder) {
+    this.restTemplate = restTemplateBuilder
+        .connectTimeout(Duration.ofSeconds(2))
+        .readTimeout(Duration.ofSeconds(3))
+        .build();
+  }
 
   public void sendErrorAlert(Exception e, HttpServletRequest request) {
     if (webhookUrl == null || webhookUrl.isEmpty()) {
