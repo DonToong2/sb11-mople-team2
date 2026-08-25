@@ -37,9 +37,11 @@ public class ElasticsearchConfig extends ElasticsearchConfiguration {
             .connectedTo(removeProtocol(elasticsearchUri));
 
     if (sslEnabled) {
-      builder
-          .usingSsl(createSslContext())
-          .withBasicAuth(elasticUsername, elasticPassword);
+      builder.usingSsl(createSslContext());
+    }
+
+    if (!elasticUsername.isBlank() && !elasticPassword.isBlank()) {
+      builder.withBasicAuth(elasticUsername, elasticPassword);
     }
 
     return builder.build();
