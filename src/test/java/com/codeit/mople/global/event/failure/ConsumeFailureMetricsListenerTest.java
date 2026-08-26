@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 
+@DisplayName("ConsumeFailureMetricsListener 테스트")
 class ConsumeFailureMetricsListenerTest {
 
   static final String COUNTER = "kafka.event.consume.failure";
@@ -45,7 +46,7 @@ class ConsumeFailureMetricsListenerTest {
   class Recovered {
 
     @Test
-    @DisplayName("DLT 로 보내진 레코드를 토픽과 실패 원인으로 집계")
+    @DisplayName("DLT로 보내진 레코드를 토픽과 실패 원인별로 잘 세는지")
     void recoveredSuccess() {
       // when
       listener.recovered(record, exception);
@@ -55,7 +56,7 @@ class ConsumeFailureMetricsListenerTest {
     }
 
     @Test
-    @DisplayName("DLT 발행까지 실패하면 그 실패 원인으로 집계")
+    @DisplayName("DLT 발행까지 실패하면 그 실패 원인으로 세는지")
     void recoveryFailedSuccess() {
       // when
       listener.recoveryFailed(record, exception, new IllegalArgumentException("DLT 발행 실패"));
@@ -65,7 +66,7 @@ class ConsumeFailureMetricsListenerTest {
     }
 
     @Test
-    @DisplayName("감싸인 예외는 가장 안쪽 원인의 클래스 이름으로 집계")
+    @DisplayName("예외가 감싸여 오면 가장 안쪽 원인의 클래스 이름으로 세는지")
     void unwrapNestedCause() {
       // given
       Exception wrapped = new ListenerExecutionFailedException(
@@ -79,7 +80,7 @@ class ConsumeFailureMetricsListenerTest {
     }
 
     @Test
-    @DisplayName("같은 토픽과 원인이면 하나의 시계열에 누적")
+    @DisplayName("토픽과 원인이 같으면 하나의 시계열에 쌓이는지")
     void incrementSameSeries() {
       // when
       listener.recovered(record, exception);
@@ -90,7 +91,7 @@ class ConsumeFailureMetricsListenerTest {
     }
 
     @Test
-    @DisplayName("재시도 중인 실패는 집계하지 않음")
+    @DisplayName("아직 재시도 중인 실패는 세지 않는지")
     void failedDeliveryIsNotCounted() {
       // when
       listener.failedDelivery(record, exception, 1);

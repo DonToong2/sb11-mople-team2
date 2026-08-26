@@ -3,17 +3,23 @@ package com.codeit.mople.global.config;
 import com.codeit.mople.domain.directmessage.exception.DirectMessageException;
 import com.codeit.mople.domain.notification.exception.NotificationException;
 import com.codeit.mople.global.event.failure.ConsumeFailureMetricsListener;
+import java.util.Map;
 import java.util.function.BiFunction;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.kafka.DefaultKafkaProducerFactoryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
+import org.springframework.kafka.support.serializer.DelegatingByTypeSerializer;
+import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -39,7 +45,7 @@ public class KafkaConfig {
       KafkaTemplate<String, Object> kafkaTemplate,
       ConsumeFailureMetricsListener consumeFailureMetricsListener
   ) {
-    // Consumer가 실패했을 때 그 메세지를 (원래토픽명 + .dlt)로 재발행
+    // DLT로 메세지 보내주는 객체: Consumer가 실패했을 때 그 메세지를 (원래토픽명 + .dlt)로 재발행
     DeadLetterPublishingRecoverer recoverer =
         new DeadLetterPublishingRecoverer(kafkaTemplate, DLT_DESTINATION_RESOLVER);
 
@@ -51,6 +57,7 @@ public class KafkaConfig {
     backOff.setMultiplier(2.0); // 다음 재시도에 곱해지는 시간(2배)
     backOff.setMaxInterval(4000L); // 최대 재시도 대기 시간(4초)
 
+    // 재시도 recoverer 이것을 재시도
     DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, backOff);
 
     // SSE 관련 도메인 객체(DM, 알림) 예외 발생 시 재시도 하지 않음(not found 에러 등)
@@ -62,6 +69,27 @@ public class KafkaConfig {
     errorHandler.setRetryListeners(consumeFailureMetricsListener);
 
     return errorHandler;
+  }
+
+  // 프로듀서 메세지 직렬화 하는 방식
+  @Bean
+  public DefaultKafkaProducerFactoryCustomizer kafkaValueSerializerCustomizer() {
+    return KafkaConfig::applyValueSerializer;
+  }
+
+  // 프로듀서가 브로커로 메세지를 전송하기 전에 직렬화방식 설정
+  // 값이 byte[]면 바이트 그대로 전송, 그 외 일반 객체면 JSON으로 변환해서 전송
+  @SuppressWarnings("unchecked")
+  private static void applyValueSerializer(DefaultKafkaProducerFactory<?, ?> producerFactory) {
+    ((DefaultKafkaProducerFactory<Object, Object>) producerFactory).setValueSerializer(
+        new DelegatingByTypeSerializer(
+            Map.of(
+                byte[].class, new ByteArraySerializer(),
+                Object.class, new JsonSerializer<>()
+            ),
+            true
+        )
+    );
   }
 
 }

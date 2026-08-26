@@ -26,6 +26,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("KafkaEventPublisher 테스트")
 class KafkaEventPublisherTest {
 
   static final String TOPIC = "mople.follow.created.v1";
@@ -58,7 +59,7 @@ class KafkaEventPublisherTest {
   class Publish {
 
     @Test
-    @DisplayName("발행에 성공하면 실패 이벤트를 적재하지 않음")
+    @DisplayName("발행에 성공하면 실패 이벤트를 쌓지 않는지")
     void publishSuccess() {
       // given
       CompletableFuture<SendResult<String, Object>> sent =
@@ -73,7 +74,7 @@ class KafkaEventPublisherTest {
     }
 
     @Test
-    @DisplayName("발행에 실패하면 토픽, 키, 이벤트 정보를 담아 실패 이벤트를 적재")
+    @DisplayName("발행에 실패하면 토픽과 키와 이벤트 정보를 담아서 잘 쌓는지")
     void publishFailWhenSendFails() throws Exception {
       // given
       CompletableFuture<SendResult<String, Object>> failed =
@@ -97,7 +98,7 @@ class KafkaEventPublisherTest {
     }
 
     @Test
-    @DisplayName("본문 직렬화에 실패해도 본문 없이 실패 이벤트를 적재")
+    @DisplayName("본문 직렬화가 깨져도 본문만 비운 채로 실패 이벤트를 쌓는지")
     void publishFailWhenSerializeFails() throws Exception {
       // given
       CompletableFuture<SendResult<String, Object>> failed =
@@ -119,7 +120,7 @@ class KafkaEventPublisherTest {
     }
 
     @Test
-    @DisplayName("발행을 시도하다 예외가 발생해도 실패 이벤트를 적재")
+    @DisplayName("발행을 시도하다 예외가 터져도 실패 이벤트를 쌓는지")
     void publishFailWhenSendThrows() throws Exception {
       // given
       given(kafkaTemplate.send(TOPIC, KEY, event))
@@ -135,7 +136,7 @@ class KafkaEventPublisherTest {
     }
 
     @Test
-    @DisplayName("키 없이 발행하면 키를 null로 전달")
+    @DisplayName("키 없이 발행하면 키가 null로 넘어가는지")
     void publishWithoutKey() {
       // given
       CompletableFuture<SendResult<String, Object>> sent =

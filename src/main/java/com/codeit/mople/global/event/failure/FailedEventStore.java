@@ -1,13 +1,12 @@
 package com.codeit.mople.global.event.failure;
 
-import java.time.Duration;
 import java.util.List;
 
 public interface FailedEventStore {
 
   void save(FailedEvent event);
 
-  List<FailedEvent> findRecent(Duration within, int limit);
+  List<FailedEvent> find(FailedEventQuery query);
 
   void delete(String recordId);
 

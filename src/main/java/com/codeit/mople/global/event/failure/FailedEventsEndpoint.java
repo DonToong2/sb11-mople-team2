@@ -19,12 +19,13 @@ import org.springframework.stereotype.Component;
 public class FailedEventsEndpoint {
 
   private static final int DEFAULT_WITHIN_HOURS = 24;
+  private static final int MAX_WITHIN_HOURS = 24 * 7;
   private static final int DEFAULT_LIMIT = 100;
   private static final int MAX_LIMIT = 1000;
 
   private final FailedEventStore failedEventStore;
   private final FailedEventReplayer replayer;
-  
+
   public record FailedEventSummary(
       String recordId,
       String topic,
@@ -49,9 +50,13 @@ public class FailedEventsEndpoint {
   @ReadOperation
   public List<FailedEventSummary> list(
       @Nullable Integer withinHours,
+      @Nullable String topic,
       @Nullable Integer limit
   ) {
-    return failedEventStore.findRecent(within(withinHours), limit(limit)).stream()
+    FailedEventQuery query =
+        FailedEventQuery.newestFirst(within(withinHours), topic, limit(limit));
+
+    return failedEventStore.find(query).stream()
         .map(FailedEventSummary::from)
         .toList();
   }
@@ -59,13 +64,19 @@ public class FailedEventsEndpoint {
   @WriteOperation
   public FailedEventReplayResult replay(
       @Nullable Integer withinHours,
+      @Nullable String topic,
       @Nullable Integer limit
   ) {
-    return replayer.replay(within(withinHours), limit(limit));
+    return replayer.replay(
+        FailedEventQuery.oldestFirst(within(withinHours), topic, limit(limit)));
   }
 
   private Duration within(Integer withinHours) {
-    return Duration.ofHours(withinHours == null ? DEFAULT_WITHIN_HOURS : withinHours);
+    if (withinHours == null) {
+      return Duration.ofHours(DEFAULT_WITHIN_HOURS);
+    }
+
+    return Duration.ofHours(clamp(withinHours, 1, MAX_WITHIN_HOURS));
   }
 
   private int limit(Integer limit) {
@@ -73,6 +84,10 @@ public class FailedEventsEndpoint {
       return DEFAULT_LIMIT;
     }
 
-    return Math.min(limit, MAX_LIMIT);
+    return clamp(limit, 1, MAX_LIMIT);
+  }
+
+  private int clamp(int value, int min, int max) {
+    return Math.min(Math.max(value, min), max);
   }
 }
