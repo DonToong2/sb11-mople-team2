@@ -74,7 +74,7 @@ spring:
   elasticsearch:
     uris: ${ELASTICSEARCH_URI}:9200
     username: elastic
-    password: ${ELASTIC_PASSWORD}
+    password: ${ELASTIC_PASSWORD:}
 
 server:
   port: 8080

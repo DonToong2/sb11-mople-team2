@@ -85,6 +85,7 @@ jobs:
 
             docker rm -f "$CANDIDATE_NAME" 2>/dev/null || true
             docker run -d --name "$CANDIDATE_NAME" \
+              --network ubuntu_default \
               -p 127.0.0.1:${CANDIDATE_PORT}:8080 \
               --memory=320m \
               --env-file /home/ubuntu/mople.env \
@@ -139,6 +140,7 @@ jobs:
             if ! docker run -d \
               --name "$CONTAINER_NAME" \
               --restart unless-stopped \
+              --network ubuntu_default \
               -p 8080:8080 \
               --memory=320m \
               --env-file /home/ubuntu/mople.env \
