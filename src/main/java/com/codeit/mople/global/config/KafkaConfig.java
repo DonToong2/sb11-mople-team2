@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions;
 import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.kafka.listener.ConsumerRecordRecoverer;
+import org.springframework.kafka.listener.ConsumerAwareRecordRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.util.Assert;
@@ -46,7 +46,19 @@ public class KafkaConfig {
 
   @Bean
   public DefaultErrorHandler kafkaErrorHandler() {
-    ConsumerRecordRecoverer recoverer = this::saveFailedEvent;
+    ConsumerAwareRecordRecoverer recoverer = (record, consumer, exception) -> {
+      String groupId = "UNKNOWN"; // 기본값 (추출 실패 시 방어용)
+
+      if (consumer != null) {
+        try {
+          groupId = consumer.groupMetadata().groupId();
+        } catch (Exception e) {
+          log.warn("Kafka Consumer 그룹 ID 추출 실패 - 기본값(UNKNOWN)으로 DLQ에 저장", e);
+        }
+      }
+
+      saveFailedEvent(record, groupId, exception);
+    };
 
     // Exponential : 지수
     // 지수백오프 구현을 위한 객체 생성
@@ -69,6 +81,7 @@ public class KafkaConfig {
 
   private void saveFailedEvent(
       ConsumerRecord<?, ?> record,
+      String groupId,
       Exception ex
   ) {
     try {
@@ -83,6 +96,7 @@ public class KafkaConfig {
           FAILED_STREAM_KEY,
           Map.of(
               "type", "CONSUMER",
+              "groupId", groupId,
               "topic", record.topic(),
               "key", record.key() == null ? "" : record.key().toString(),
               "data", data,
@@ -93,8 +107,8 @@ public class KafkaConfig {
           XAddOptions.none().minId(retainFrom)
       );
 
-      log.error("Kafka Consumer 이벤트 최종 실패: topic={}, partition={}, offset={}, key{}",
-          record.topic(), record.partition(), record.offset(), record.key(), ex);
+      log.error("Kafka Consumer 이벤트 최종 실패: groupId={}, topic={}, partition={}, offset={}, key{}",
+          groupId, record.topic(), record.partition(), record.offset(), record.key(), ex);
     } catch (JsonProcessingException e) {
       log.error("Kafka Consumer 최종 실패 이벤트 직렬화 실패: topic={}, key={}",
           record.topic(), record.key(), e);
