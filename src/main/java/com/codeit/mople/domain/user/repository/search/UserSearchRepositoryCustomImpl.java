@@ -125,13 +125,7 @@ public class UserSearchRepositoryCustomImpl
 
     return Query.of(q -> q.bool(
         b -> {
-          b.must(
-              m -> m.match(
-                  match -> match
-                      .field("email")
-                      .query(email)
-              )
-          );
+          b.must(createEmailQuery(email));
 
           if (!filters.isEmpty()) {
             b.filter(filters);
@@ -188,20 +182,34 @@ public class UserSearchRepositoryCustomImpl
 
     return switch (sortBy) {
 
-      case NAME ->
-          user.getName();
+      case NAME -> user.getName();
 
-      case EMAIL ->
-          user.getEmail();
+      case EMAIL -> user.getEmail();
 
-      case CREATED_AT ->
-          user.getCreatedAt().toString();
+      case CREATED_AT -> user.getCreatedAt().toString();
 
-      case IS_LOCKED ->
-          String.valueOf(user.getLocked());
+      case IS_LOCKED -> String.valueOf(user.getLocked());
 
-      case ROLE ->
-          user.getRole();
+      case ROLE -> user.getRole();
     };
+  }
+
+  // n-gram 범위를 벗어날 경우 fallback 처리
+  private Query createEmailQuery(String email) {
+    if (email.length() < 2 || email.length() > 10) {
+      return Query.of(q -> q
+          .wildcard(w -> w
+              .field("email.keyword")
+              .value("*" + email + "*") // 회원가입 시 이메일에 lowercase 적용시키기 때문에 toLowerCase로 호출X
+          )
+      );
+    }
+
+    return Query.of(q -> q
+        .match(m -> m
+            .field("email")
+            .query(email)
+        )
+    );
   }
 }
