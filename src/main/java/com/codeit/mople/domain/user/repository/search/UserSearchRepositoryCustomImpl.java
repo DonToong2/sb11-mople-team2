@@ -5,6 +5,7 @@ import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.global.dto.SearchResult;
 import com.codeit.mople.global.dto.SortDirection;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -46,7 +47,7 @@ public class UserSearchRepositoryCustomImpl
     if (cursorId != null && cursorValue != null) {
       query.setSearchAfter(
           List.of(
-              cursorValue,
+              cursorValue instanceof Instant i ? i.toString() : cursorValue,
               cursorId.toString()
           )
       );
@@ -150,27 +151,27 @@ public class UserSearchRepositoryCustomImpl
 
       case NAME -> Sort.by(
           new Sort.Order(direction, "name"),
-          new Sort.Order(Sort.Direction.ASC, "id.keyword")
+          new Sort.Order(Sort.Direction.ASC, "id")
       );
 
       case EMAIL -> Sort.by(
           new Sort.Order(direction, "email.keyword"),
-          new Sort.Order(Sort.Direction.ASC, "id.keyword")
+          new Sort.Order(Sort.Direction.ASC, "id")
       );
 
       case CREATED_AT -> Sort.by(
           new Sort.Order(direction, "createdAt"),
-          new Sort.Order(Sort.Direction.ASC, "id.keyword")
+          new Sort.Order(Sort.Direction.ASC, "id")
       );
 
       case IS_LOCKED -> Sort.by(
           new Sort.Order(direction, "locked"),
-          new Sort.Order(Sort.Direction.ASC, "id.keyword")
+          new Sort.Order(Sort.Direction.ASC, "id")
       );
 
       case ROLE -> Sort.by(
           new Sort.Order(direction, "role"),
-          new Sort.Order(Sort.Direction.ASC, "id.keyword")
+          new Sort.Order(Sort.Direction.ASC, "id")
       );
     };
   }

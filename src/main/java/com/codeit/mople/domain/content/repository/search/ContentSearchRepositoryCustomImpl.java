@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import com.codeit.mople.domain.content.entity.ContentSortBy;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.global.dto.SearchResult;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -54,7 +55,8 @@ public class ContentSearchRepositoryCustomImpl
 
     if (cursorId != null && cursorValue != null) {
       query.setSearchAfter(
-          List.of(cursorValue, cursorId.toString())
+          List.of(cursorValue instanceof Instant i ? i.toString() : cursorValue,
+              cursorId.toString())
       );
     }
 
@@ -105,17 +107,17 @@ public class ContentSearchRepositoryCustomImpl
     return switch (sortBy) {
       case RATING -> Sort.by(
           Sort.Order.desc("rating"),
-          Sort.Order.asc("id.keyword")
+          Sort.Order.asc("id")
       );
 
       case WATCHER_COUNT -> Sort.by(
           Sort.Order.desc("watcherCount"),
-          Sort.Order.asc("id.keyword")
+          Sort.Order.asc("id")
       );
 
       case CREATED_AT -> Sort.by(
           Sort.Order.desc("createdAt"),
-          Sort.Order.asc("id.keyword")
+          Sort.Order.asc("id")
       );
     };
   }

@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import com.codeit.mople.domain.playlist.dto.request.PlaylistQueryCondition.PlaylistSortBy;
 import com.codeit.mople.global.dto.SearchResult;
 import com.codeit.mople.global.dto.SortDirection;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +41,8 @@ public class PlaylistSearchRepositoryCustomImpl
 
     if (cursorId != null && cursorValue != null) {
       query.setSearchAfter(
-          List.of(cursorValue, cursorId.toString())
+          List.of(cursorValue instanceof Instant i ? i.toString() : cursorValue,
+              cursorId.toString())
       );
     }
 
@@ -99,12 +101,12 @@ public class PlaylistSearchRepositoryCustomImpl
     return switch (sortBy) {
       case UPDATED_AT -> Sort.by(
           new Sort.Order(direction, "updatedAt"),
-          new Sort.Order(Sort.Direction.ASC, "id.keyword")
+          new Sort.Order(Sort.Direction.ASC, "id")
       );
 
       case SUBSCRIBE_COUNT -> Sort.by(
           new Sort.Order(direction, "subscribeCount"),
-          new Sort.Order(Sort.Direction.ASC, "id.keyword")
+          new Sort.Order(Sort.Direction.ASC, "id")
       );
     };
   }
