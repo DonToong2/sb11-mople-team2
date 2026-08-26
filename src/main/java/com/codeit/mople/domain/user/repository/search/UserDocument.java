@@ -18,6 +18,7 @@ import org.springframework.data.elasticsearch.annotations.Setting;
 public class UserDocument {
 
   @Id
+  @Field(type = FieldType.Keyword)
   private UUID id;
 
   // 검색어는 이메일만 사용

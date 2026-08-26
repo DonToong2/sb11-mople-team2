@@ -18,6 +18,7 @@ import org.springframework.data.elasticsearch.annotations.Setting;
 public class ContentDocument {
 
   @Id
+  @Field(type = FieldType.Keyword)
   private UUID id;
 
   @Field(

@@ -17,6 +17,7 @@ import org.springframework.data.elasticsearch.annotations.Setting;
 public class PlaylistDocument {
 
   @Id
+  @Field(type = FieldType.Keyword)
   private UUID id;
 
   @Field(
