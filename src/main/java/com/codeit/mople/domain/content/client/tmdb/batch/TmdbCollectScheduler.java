@@ -35,7 +35,10 @@ public class TmdbCollectScheduler {
   // 1. Asia Seoul시간 기준 cron 설정 값에 맞춰서 메서드를 자동 실행해라
   // 2. 분산락 적용(이름, 락 최대 시간 제한, 최소 락 유지시간)
   @Scheduled(cron = "${batch.tmdb.collect.cron}", zone = "Asia/Seoul")
-  @SchedulerLock(name = "tmdb-collect", lockAtMostFor = "PT10M", lockAtLeastFor = "PT1M")
+  @SchedulerLock(
+      name = "tmdb-collect",
+      lockAtMostFor = "${batch.tmdb.collect.lock-at-most-for}",
+      lockAtLeastFor = "${batch.tmdb.collect.lock-at-least-for}")
   public void collect() {
     tmdbCollectJobRunner.run();
   }

@@ -114,6 +114,9 @@ batch:
     collect:
       max-pages: 5
       skip-limit: 10
+      # max-pages 를 올리면 이 값도 함께 올려야함
+      lock-at-most-for: PT10M
+      lock-at-least-for: PT1M
 
 dm:
   read-sync:

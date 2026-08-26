@@ -7,9 +7,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 
-// EnableSchedulerLock -> ShedLock 기능을 활성화, lock을 최대 10분까지 제한
+// EnableSchedulerLock -> ShedLock 기능을 활성화, lock을 최대 설정 시간 까지 제한
 @Configuration
-@EnableSchedulerLock(defaultLockAtMostFor = "PT10M")
+@EnableSchedulerLock(defaultLockAtMostFor = "PT30S")
 public class SchedulerLockConfig {
 
   private static final String LOCK_SEGMENT = "lock";
