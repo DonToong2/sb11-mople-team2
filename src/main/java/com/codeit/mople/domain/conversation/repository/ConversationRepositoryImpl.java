@@ -1,14 +1,12 @@
 package com.codeit.mople.domain.conversation.repository;
 
 import static com.codeit.mople.domain.conversation.entity.QConversation.conversation;
-import static com.codeit.mople.domain.directmessage.entity.QDirectMessage.directMessage;
 
 import com.codeit.mople.domain.conversation.dto.request.ConversationCursorRequest;
 import com.codeit.mople.domain.conversation.entity.Conversation;
 import com.codeit.mople.domain.directmessage.entity.QDirectMessage;
 import com.codeit.mople.domain.user.entity.QUser;
 import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.Instant;
 import java.util.List;
@@ -25,7 +23,8 @@ public class ConversationRepositoryImpl implements ConversationRepositoryCustom{
   public List<Conversation> findConversationByCursor(
       UUID requesterId,
       ConversationCursorRequest request,
-      Instant cursorTime) {
+      Instant cursorTime,
+      List<UUID> esMatchingIds) {
 
     // 묵시적 INNER JOIN 방지를 위한 명시적 Q 클래스 별칭 생성
     QDirectMessage lastMessage = new QDirectMessage("lastMessage");
@@ -41,7 +40,7 @@ public class ConversationRepositoryImpl implements ConversationRepositoryCustom{
         .leftJoin(lastMessage.sender, sender).fetchJoin()
         .where(
             isMyConversation(requesterId),
-            containsKeyword(requesterId, request.keywordLike()),
+            containsKeyword(requesterId, request.keywordLike(), esMatchingIds),
             cursorCondition(cursorTime, request.idAfter())
         )
         .limit(request.limit() + 1)
@@ -55,7 +54,7 @@ public class ConversationRepositoryImpl implements ConversationRepositoryCustom{
   }
 
   @Override
-  public long countByParticipantIdAndKeyword(UUID requesterId, String keyword) {
+  public long countByParticipantIdAndKeyword(UUID requesterId, String keyword, List<UUID> esMatchingIds) {
     Long count = queryFactory
         .select(conversation.count())
         .from(conversation)
@@ -63,7 +62,7 @@ public class ConversationRepositoryImpl implements ConversationRepositoryCustom{
         .leftJoin(conversation.userB)
         .where(
             isMyConversation(requesterId),
-            containsKeyword(requesterId, keyword)
+            containsKeyword(requesterId, keyword, esMatchingIds)
         )
         .fetchOne();
 
@@ -77,7 +76,7 @@ public class ConversationRepositoryImpl implements ConversationRepositoryCustom{
   }
 
   // 상대방의 닉네임 OR 대화 내용 검색
-  private BooleanExpression containsKeyword(UUID requesterId, String keywordLike) {
+  private BooleanExpression containsKeyword(UUID requesterId, String keywordLike, List<UUID> esMatchingIds) {
     // 문자열이 null인지, 빈 문자열인지 공백만 있는지를 한 번에 체크해서 false이면 해당 조건을 무시하도록 구현
     if (!StringUtils.hasText(keywordLike)) {
       return null;
@@ -92,16 +91,14 @@ public class ConversationRepositoryImpl implements ConversationRepositoryCustom{
         .and(conversation.userB.name.containsIgnoreCase(keywordLike));
 
     // 조건3. 메시지 내용 중에 키워드 포함 여부
-    // EXISTS 서브 쿼리를 태워 쿼리 성능 최적화
-    BooleanExpression containsMessage = JPAExpressions
-        .selectOne()
-        .from(directMessage)
-        .where(
-            directMessage.conversation.eq(conversation),
-            directMessage.content.containsIgnoreCase(keywordLike)
-        ).exists();
+    BooleanExpression containsMessage = (esMatchingIds != null && !esMatchingIds.isEmpty())
+      ? conversation.id.in(esMatchingIds) : null;
 
-    return searchUserA.or(searchUserB).or(containsMessage);
+    if (containsMessage != null) {
+      return searchUserA.or(searchUserB).or(containsMessage);
+    } else {
+      return searchUserA.or(searchUserB);
+    }
   }
 
   private BooleanExpression cursorCondition(Instant cursorTime, UUID idAfter) {

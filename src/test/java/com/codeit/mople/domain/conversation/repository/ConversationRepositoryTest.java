@@ -106,7 +106,7 @@ public class ConversationRepositoryTest {
     given(request.keywordLike()).willReturn(null);
 
     // when
-    List<Conversation> result = conversationRepository.findConversationByCursor(me.getId(), request, null);
+    List<Conversation> result = conversationRepository.findConversationByCursor(me.getId(), request, null, null);
 
     // then
     assertThat(result).hasSize(2);
@@ -124,7 +124,7 @@ public class ConversationRepositoryTest {
     given(request.keywordLike()).willReturn("1");
 
     // when
-    List<Conversation> result = conversationRepository.findConversationByCursor(me.getId(), request, null);
+    List<Conversation> result = conversationRepository.findConversationByCursor(me.getId(), request, null, null);
 
     // then
     assertThat(result).hasSize(1);
@@ -139,8 +139,10 @@ public class ConversationRepositoryTest {
     given(request.limit()).willReturn(10);
     given(request.keywordLike()).willReturn("문자");
 
+    List<UUID> esMatchingIds = List.of(myConvWithUser2.getId());
+
     // when
-    List<Conversation> result = conversationRepository.findConversationByCursor(me.getId(), request, null);
+    List<Conversation> result = conversationRepository.findConversationByCursor(me.getId(), request, null, esMatchingIds);
 
     // then
     assertThat(result).hasSize(1);
@@ -157,7 +159,7 @@ public class ConversationRepositoryTest {
     given(firstRequest.limit()).willReturn(1);
     given(firstRequest.keywordLike()).willReturn(null);
 
-    List<Conversation> firstPage = conversationRepository.findConversationByCursor(me.getId(), firstRequest, null);
+    List<Conversation> firstPage = conversationRepository.findConversationByCursor(me.getId(), firstRequest, null, null);
     Conversation lastItem = firstPage.get(0);
 
     Instant cursorTime = lastItem.getLastMessageAt();
@@ -170,7 +172,7 @@ public class ConversationRepositoryTest {
     given(nextRequest.idAfter()).willReturn(idAfter);
 
     // when
-    List<Conversation> result = conversationRepository.findConversationByCursor(me.getId(), nextRequest, cursorTime);
+    List<Conversation> result = conversationRepository.findConversationByCursor(me.getId(), nextRequest, cursorTime, null);
 
     // then
     assertThat(result).hasSize(1);
@@ -181,7 +183,7 @@ public class ConversationRepositoryTest {
   @Test
   @DisplayName("countByParticipantIdAndKeyword: 검색어가 없을 때 내가 참여한 모든 대화방의 총 개수를 반환한다.")
   void countByParticipantIdAndKeyword_no_keyword() {
-    long count = conversationRepository.countByParticipantIdAndKeyword(me.getId(), null);
+    long count = conversationRepository.countByParticipantIdAndKeyword(me.getId(), null, null);
 
     assertThat(count).isEqualTo(2L);
   }
@@ -189,7 +191,7 @@ public class ConversationRepositoryTest {
   @Test
   @DisplayName("countByParticipantIdAndKeyword: [상대방 닉네임 검색] 일치하는 방의 개수만 반환한다.")
   void countByParticipantIdAndKeyword_search_by_partner_name() {
-    long count = conversationRepository.countByParticipantIdAndKeyword(me.getId(), "1");
+    long count = conversationRepository.countByParticipantIdAndKeyword(me.getId(), "1", null);
 
     assertThat(count).isEqualTo(1L);
   }
@@ -197,7 +199,9 @@ public class ConversationRepositoryTest {
   @Test
   @DisplayName("countByParticipantIdAndKeyword: [메시지 내용 검색] 상대방 닉네임이 달라도 메시지에 키워드가 있으면 카운트한다.")
   void countByParticipantIdAndKeyword_search_by_message_content() {
-    long count = conversationRepository.countByParticipantIdAndKeyword(me.getId(), "문자");
+    List<UUID> esMatchingIds = List.of(myConvWithUser2.getId());
+
+    long count = conversationRepository.countByParticipantIdAndKeyword(me.getId(), "문자", esMatchingIds);
 
     assertThat(count).isEqualTo(1L);
   }

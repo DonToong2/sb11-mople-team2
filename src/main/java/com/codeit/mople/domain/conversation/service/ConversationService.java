@@ -1,5 +1,7 @@
 package com.codeit.mople.domain.conversation.service;
 
+import static org.springframework.util.StringUtils.hasText;
+
 import com.codeit.mople.domain.conversation.dto.request.ConversationCursorRequest;
 import com.codeit.mople.domain.conversation.dto.response.ConversationDto;
 import com.codeit.mople.domain.conversation.dto.response.CursorResponseConversationDto;
@@ -8,6 +10,8 @@ import com.codeit.mople.domain.conversation.exception.ConversationErrorCode;
 import com.codeit.mople.domain.conversation.exception.ConversationException;
 import com.codeit.mople.domain.conversation.mapper.ConversationMapper;
 import com.codeit.mople.domain.conversation.repository.ConversationRepository;
+import com.codeit.mople.domain.directmessage.document.DirectMessageDocument;
+import com.codeit.mople.domain.directmessage.repository.DirectMessageSearchRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
@@ -34,6 +38,7 @@ public class ConversationService {
   private final UserRepository userRepository;
   private final ConversationRepository conversationRepository;
   private final ConversationMapper conversationMapper;
+  private final DirectMessageSearchRepository directMessageSearchRepository;
 
   private final MeterRegistry meterRegistry;
   private Counter conversationCreateCounter;
@@ -126,10 +131,28 @@ public class ConversationService {
     userRepository.findById(requesterId)
         .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", requesterId)));
 
-    long totalCount = conversationRepository.countByParticipantIdAndKeyword(requesterId, request.keywordLike());
+    // 엘라스틱 서치 검색 로직
+    List<UUID> esMatchingIds = null;
+    String keyword = request.keywordLike();
+
+    if (hasText(keyword)) {
+      try {
+        log.info("대화방 검색: Elasticsearch 내용 검색 시작 - keyword: '{}'", request.keywordLike());
+        esMatchingIds = directMessageSearchRepository.findByContentMatches(keyword)
+            .stream()
+            .map(DirectMessageDocument::getConversationId)
+            .distinct()
+            .toList();
+        log.info("대화방 검색: Elasticsearch 매칭 완료 - 찾은 대화방 개수: {}건", esMatchingIds.size());
+      } catch (Exception e) {
+        log.error("대화방 검색: Elasticsearch 장애 감지 - 내용 검색 스킵, DB 닉네임 검색 진행", e);
+      }
+    }
+
+    long totalCount = conversationRepository.countByParticipantIdAndKeyword(requesterId, keyword, esMatchingIds);
     Instant cursorTime = request.parseCursorToInstant();
 
-    List<Conversation> conversations = conversationRepository.findConversationByCursor(requesterId, request, cursorTime);
+    List<Conversation> conversations = conversationRepository.findConversationByCursor(requesterId, request, cursorTime, esMatchingIds);
 
     boolean hasNext = conversations.size() > request.limit();
     List<Conversation> slicedConversations = hasNext ? conversations.subList(0, request.limit()) : conversations;

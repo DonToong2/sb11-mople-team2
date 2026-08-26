@@ -74,6 +74,8 @@ spring:
 
   elasticsearch:
     uris: ${ELASTICSEARCH_URI}:9200
+    username: elastic
+    password: ${ELASTIC_PASSWORD}
 
 server:
   port: 8080
@@ -125,6 +127,11 @@ sse:
 mail:
   from: ${MAIL_FROM:moplaylist0727@gmail.com}
 
+mople:
+  kafka:
+    consumer:
+      es-sync-group-id: mople-dm-es-sync-group
+      
 discord:
   webhook:
     url: ${DISCORD_WEBHOOK_URL:}

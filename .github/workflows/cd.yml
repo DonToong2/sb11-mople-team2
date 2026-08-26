@@ -84,10 +84,17 @@ jobs:
             echo "현재 서비스 중인 이미지: $PREV_IMAGE (교체 실패 시 그대로 유지됨)"
 
             docker rm -f "$CANDIDATE_NAME" 2>/dev/null || true
-            docker run -d --name "$CANDIDATE_NAME" -p 127.0.0.1:${CANDIDATE_PORT}:8080 --memory=320m --env-file /home/ubuntu/mople.env -e SPRING_PROFILES_ACTIVE=prod,probe -e KAFKA_ENABLED=false "$IMAGE"
+            docker run -d --name "$CANDIDATE_NAME" \
+              -p 127.0.0.1:${CANDIDATE_PORT}:8080 \
+              --memory=320m \
+              --env-file /home/ubuntu/mople.env \
+              -e SPRING_PROFILES_ACTIVE=prod,probe \
+              -e KAFKA_ENABLED=false \
+              -v /home/ubuntu/elasticsearch/certs/ca/ca.crt:/app/certs/ca.crt:ro \
+              "$IMAGE"
 
             READY=false
-            for i in $(seq 1 30); do
+            for i in $(seq 1 100); do
               if curl -fs "http://localhost:${CANDIDATE_PORT}/actuator/health" | grep -q '"status":"UP"'; then
                 READY=true
                 break
@@ -129,12 +136,19 @@ jobs:
               trap rollback ERR
             fi
 
-            if ! docker run -d --name "$CONTAINER_NAME" --restart unless-stopped -p 8080:8080 --memory=320m --env-file /home/ubuntu/mople.env "$IMAGE"; then
+            if ! docker run -d \
+              --name "$CONTAINER_NAME" \
+              --restart unless-stopped \
+              -p 8080:8080 \
+              --memory=320m \
+              --env-file /home/ubuntu/mople.env \
+              -v /home/ubuntu/elasticsearch/certs/ca/ca.crt:/app/certs/ca.crt:ro \
+              "$IMAGE"; then
               rollback
             fi
 
             READY=false
-            for i in $(seq 1 30); do
+            for i in $(seq 1 100); do
               if curl -fs "http://localhost:8080/actuator/health" | grep -q '"status":"UP"'; then
                 READY=true
                 break
