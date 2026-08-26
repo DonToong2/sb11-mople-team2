@@ -96,6 +96,14 @@ jobs:
           reporter: java-junit
           fail-on-error: false
 
+      - name: 테스트 리포트 업로드
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: build/reports/tests/test/
+          retention-days: 1
+
       - name: JaCoCo 커버리지 리포트 코멘트
         if: github.event_name == 'pull_request'
         uses: madrapps/jacoco-report@v1.7.1
