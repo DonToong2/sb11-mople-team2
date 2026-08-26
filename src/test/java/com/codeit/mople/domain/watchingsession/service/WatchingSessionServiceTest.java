@@ -400,6 +400,23 @@ public class WatchingSessionServiceTest {
   }
 
   @Test
+  @DisplayName("특정 유저가 시청 중인 콘텐츠 ID 조회 시 시청 중인 영상이 없으면 null을 반환")
+  void getWatchingContentId_ReturnsNullWhenNotWatching() {
+    UUID userId = UUID.randomUUID();
+    String userKey = "user:watching:" + userId;
+    User mockUser = mock(User.class);
+
+    //유저는 존재
+    given(userRepository.findById(userId)).willReturn(Optional.of(mockUser));
+    //Redis에 시청 중인 콘텐츠 기록이 없는 상황(null 반환)
+    given(valueOperations.get(userKey)).willReturn(null);
+
+    //예외가 터지지 않고 null이 반환되어야 함
+    UUID result = watchingSessionService.getWatchingContentId(userId);
+    org.junit.jupiter.api.Assertions.assertNull(result);
+  }
+
+  @Test
   @DisplayName("시청 세션 목록 조회 실패 - limit 범위 초과 검증")
   void getWatchingSessions_Fail_InvalidLimit() {
     UUID contentId = UUID.randomUUID();

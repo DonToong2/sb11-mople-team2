@@ -499,11 +499,8 @@ public class WatchingSessionService {
     String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
     String contentIdStr = (String) redisTemplate.opsForValue().get(userKey);
 
-    if (contentIdStr == null) {
-      throw new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("watcherId", userId));
-    }
-
-    return UUID.fromString(contentIdStr);
+    //404 예외를 던지는 대신 삼항 연산자로 null 반환
+    return (contentIdStr != null) ? UUID.fromString(contentIdStr) : null;
   }
 
   //실시간 채팅 메시지 처리 및 브로드캐스팅

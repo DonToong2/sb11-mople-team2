@@ -96,5 +96,23 @@ class GlobalExceptionHandlerTest {
       // then
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    @Test
+    @DisplayName("NoResourceFoundException 발생 시 404를 반환")
+    void handleNoResourceFoundException() {
+      // given
+      org.springframework.web.servlet.resource.NoResourceFoundException exception =
+          new org.springframework.web.servlet.resource.NoResourceFoundException(org.springframework.http.HttpMethod.GET, "/wrong-path");
+
+      // when
+      ResponseEntity<com.codeit.mople.global.response.ApiResponse<Void>> response = handler.handleNoResourceFoundException(exception);
+
+      // then
+      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+      assertThat(response.getBody()).isNotNull();
+      assertThat(response.getBody().isSuccess()).isFalse();
+      assertThat(response.getBody().getError().code()).isEqualTo("NOT_FOUND");
+      assertThat(response.getBody().getError().message()).isEqualTo("요청한 경로를 찾을 수 없습니다.");
+    }
   }
 }
