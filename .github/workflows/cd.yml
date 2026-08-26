@@ -142,7 +142,7 @@ jobs:
               --restart unless-stopped \
               --network ubuntu_default \
               -p 8080:8080 \
-              --memory=520m \
+              --memory=1024m \
               --env-file /home/ubuntu/mople.env \
               -v /home/ubuntu/elasticsearch/certs/ca/ca.crt:/app/certs/ca.crt:ro \
               "$IMAGE"; then
