@@ -16,7 +16,7 @@ import org.springframework.data.elasticsearch.annotations.Setting;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Document(indexName = "direct_messages")
+@Document(indexName = "direct_messages_v1")
 @Setting(settingPath = "elasticsearch/dm-settings.json")
 public class DirectMessageDocument {
 
