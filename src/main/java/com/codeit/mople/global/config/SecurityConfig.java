@@ -74,7 +74,6 @@ public class SecurityConfig {
             .requestMatchers("/actuator/health", "/actuator/info").permitAll()
             .requestMatchers("/actuator/**").hasRole("ADMIN")
             .requestMatchers("/actuator/metrics/**").hasRole("ADMIN")
-            .requestMatchers("/actuator/failedevents/**").hasRole("ADMIN")
             .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
             .requestMatchers(HttpMethod.PATCH, "/api/users/*/role").hasRole("ADMIN")
             .requestMatchers(HttpMethod.PATCH, "/api/users/*/locked").hasRole("ADMIN")

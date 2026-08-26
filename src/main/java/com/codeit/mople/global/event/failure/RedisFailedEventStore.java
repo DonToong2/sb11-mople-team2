@@ -1,18 +1,11 @@
 package com.codeit.mople.global.event.failure;
 
 import com.codeit.mople.global.config.KafkaProperties;
-import java.time.Duration;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.data.domain.Range;
-import org.springframework.data.redis.connection.Limit;
 import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions;
-import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -24,12 +17,6 @@ public class RedisFailedEventStore implements FailedEventStore {
 
   // Redis 키 뒷부분
   private static final String KEY_SUFFIX = ":kafka:events:failed";
-  // 최대 보관 건수
-  private static final int MAX_ENTRIES = 10_000;
-  // 발행 실패 타입
-  private static final String TYPE_PRODUCER = "PRODUCER";
-
-  private static final String FIELD_TYPE = "type";
   private static final String FIELD_TOPIC = "topic";
   private static final String FIELD_KEY = "key";
   private static final String FIELD_EVENT_ID = "eventId";
@@ -40,12 +27,15 @@ public class RedisFailedEventStore implements FailedEventStore {
   // redis 서버에 보내주는 통로
   private final StringRedisTemplate redisTemplate;
   private final String streamKey;
+  private final long maxEntries;
 
   public RedisFailedEventStore(
       StringRedisTemplate redisTemplate,
-      @Value("${redis.namespace}") String namespace) {
+      @Value("${redis.namespace}") String namespace,
+      @Value("${mople.kafka.failed-events.max-entries}") long maxEntries) {
     this.redisTemplate = redisTemplate;
     this.streamKey = namespace + KEY_SUFFIX;
+    this.maxEntries = maxEntries;
   }
 
   @Override
@@ -61,38 +51,9 @@ public class RedisFailedEventStore implements FailedEventStore {
     }
   }
 
-  // 기간을 넘긴 항목은 애초에 조회되지 않게 해서, 오래된 이벤트를 되살리는 실수를 막음
-  @Override
-  public List<FailedEvent> find(FailedEventQuery query) {
-    Range<String> range = Range.rightUnbounded(Range.Bound.inclusive(fromId(query.within())));
-    Limit scanLimit = Limit.limit().count(scanCount(query));
-
-    List<MapRecord<String, Object, Object>> records =
-        query.order() == FailedEventQuery.Order.NEWEST_FIRST
-            ? redisTemplate.opsForStream().reverseRange(streamKey, range, scanLimit)
-            : redisTemplate.opsForStream().range(streamKey, range, scanLimit);
-
-    if (records == null) {
-      return List.of();
-    }
-
-    return records.stream()
-        .map(this::toFailedEvent)
-        .flatMap(Optional::stream)
-        .filter(query::matches)
-        .limit(query.limit())
-        .toList();
-  }
-
-  @Override
-  public void delete(String recordId) {
-    redisTemplate.opsForStream().delete(streamKey, recordId);
-  }
-
   // stream에 저장할 내용
   private Map<String, String> toFields(FailedEvent event) {
     return Map.of(
-        FIELD_TYPE, TYPE_PRODUCER,
         FIELD_TOPIC, event.topic(),
         FIELD_KEY, event.key(),
         FIELD_EVENT_ID, String.valueOf(event.eventId()),
@@ -102,42 +63,8 @@ public class RedisFailedEventStore implements FailedEventStore {
     );
   }
   
-  private Optional<FailedEvent> toFailedEvent(MapRecord<String, Object, Object> record) {
-    Map<Object, Object> fields = record.getValue();
-
-    try {
-      return Optional.of(new FailedEvent(
-          record.getId().getValue(),
-          valueOf(fields, FIELD_TOPIC),
-          valueOf(fields, FIELD_KEY),
-          UUID.fromString(valueOf(fields, FIELD_EVENT_ID)),
-          valueOf(fields, FIELD_EVENT_TYPE),
-          valueOf(fields, FIELD_DATA),
-          valueOf(fields, FIELD_ERROR)
-      ));
-    } catch (Exception e) {
-      log.warn("형태가 맞지 않는 실패 이벤트를 건너뜀: recordId={}", record.getId().getValue(), e);
-
-      return Optional.empty();
-    }
-  }
-
-  private String valueOf(Map<Object, Object> fields, String field) {
-    Object value = fields.get(field);
-
-    return value == null ? "" : value.toString();
-  }
-
-  private String fromId(Duration within) {
-    return (System.currentTimeMillis() - within.toMillis()) + "-0";
-  }
-
-  private int scanCount(FailedEventQuery query) {
-    return query.hasTopicFilter() ? MAX_ENTRIES : query.limit();
-  }
-
   // 최대 보관 건수를 넘으면 오래된 것부터 잘라라.(대략 근사치로 잘라라)
   private XAddOptions sizeLimitOptions() {
-    return XAddOptions.maxlen(MAX_ENTRIES).approximateTrimming(true);
+    return XAddOptions.maxlen(maxEntries).approximateTrimming(true);
   }
 }

@@ -3,23 +3,24 @@ package com.codeit.mople.global.config;
 import com.codeit.mople.domain.directmessage.exception.DirectMessageException;
 import com.codeit.mople.domain.notification.exception.NotificationException;
 import com.codeit.mople.global.event.failure.ConsumeFailureMetricsListener;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.autoconfigure.kafka.DefaultKafkaProducerFactoryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
-import org.springframework.kafka.support.serializer.DelegatingByTypeSerializer;
-import org.springframework.kafka.support.serializer.JsonSerializer;
+import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -40,14 +41,39 @@ public class KafkaConfig {
     log.info("Kafka 이벤트 발행 활성화: bootstrapServers={}", kafkaProperties.bootstrapServers());
   }
 
+  // 일반 이벤트를 JSON으로 직렬화해서 브로커로 보내는 템플릿
+  @Bean
+  public KafkaTemplate<String, Object> kafkaTemplate(
+      ProducerFactory<String, Object> producerFactory
+  ) {
+    KafkaTemplate<String, Object> kafkaTemplate = new KafkaTemplate<>(producerFactory);
+
+    kafkaTemplate.setProducerListener(new LoggingProducerListener<>());
+
+    return kafkaTemplate;
+  }
+  
+  // 역직렬화가 깨진 레코드의 원본 byte[]를 그대로 DLT로 보내는 템플릿
+  // JSON 템플릿으로 보내면 Jackson이 base64 문자열로 한 겹 더 감싸버리기 때문임
+  @Bean
+  @SuppressWarnings("unchecked")
+  public KafkaTemplate<String, byte[]> bytesKafkaTemplate(ProducerFactory<?, ?> producerFactory) {
+    return new KafkaTemplate<>(
+        (ProducerFactory<String, byte[]>) producerFactory,
+        Map.of(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class)
+    );
+  }
+
   @Bean
   public DefaultErrorHandler kafkaErrorHandler(
       KafkaTemplate<String, Object> kafkaTemplate,
+      KafkaTemplate<String, byte[]> bytesKafkaTemplate,
       ConsumeFailureMetricsListener consumeFailureMetricsListener
   ) {
-    // DLT로 메세지 보내주는 객체: Consumer가 실패했을 때 그 메세지를 (원래토픽명 + .dlt)로 재발행
-    DeadLetterPublishingRecoverer recoverer =
-        new DeadLetterPublishingRecoverer(kafkaTemplate, DLT_DESTINATION_RESOLVER);
+    // DeadLetterPublishingRecoverer -> 실패 전용 토픽에 던져넣는 기능(DLT로 메세지 보내줌)
+    // Consumer가 실패했을 때 그 메세지를 (원래토픽명 + .dlt)로 재발행
+    DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
+        dltTemplates(kafkaTemplate, bytesKafkaTemplate), DLT_DESTINATION_RESOLVER);
 
     // Exponential : 지수
     // 지수백오프 구현을 위한 객체 생성
@@ -71,25 +97,17 @@ public class KafkaConfig {
     return errorHandler;
   }
 
-  // 프로듀서 메세지 직렬화 하는 방식
-  @Bean
-  public DefaultKafkaProducerFactoryCustomizer kafkaValueSerializerCustomizer() {
-    return KafkaConfig::applyValueSerializer;
-  }
+  // 값 타입을 findFirst로 고르기 때문에 byte[]를 Object보다 앞에 넣어두는 맵
+  static Map<Class<?>, KafkaOperations<?, ?>> dltTemplates(
+      KafkaTemplate<String, Object> kafkaTemplate,
+      KafkaTemplate<String, byte[]> bytesKafkaTemplate
+  ) {
+    Map<Class<?>, KafkaOperations<?, ?>> templates = new LinkedHashMap<>();
 
-  // 프로듀서가 브로커로 메세지를 전송하기 전에 직렬화방식 설정
-  // 값이 byte[]면 바이트 그대로 전송, 그 외 일반 객체면 JSON으로 변환해서 전송
-  @SuppressWarnings("unchecked")
-  private static void applyValueSerializer(DefaultKafkaProducerFactory<?, ?> producerFactory) {
-    ((DefaultKafkaProducerFactory<Object, Object>) producerFactory).setValueSerializer(
-        new DelegatingByTypeSerializer(
-            Map.of(
-                byte[].class, new ByteArraySerializer(),
-                Object.class, new JsonSerializer<>()
-            ),
-            true
-        )
-    );
+    templates.put(byte[].class, bytesKafkaTemplate);
+    templates.put(Object.class, kafkaTemplate);
+
+    return templates;
   }
 
 }

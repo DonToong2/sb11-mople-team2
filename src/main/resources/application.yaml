@@ -105,7 +105,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, metrics, failedevents, prometheus
+        include: health, info, metrics, prometheus
 external-api:
   tmdb:
     image-base-url: https://image.tmdb.org/t/p/w500
@@ -131,7 +131,9 @@ mople:
   kafka:
     consumer:
       es-sync-group-id: mople-dm-es-sync-group
-      
+    failed-events:
+      max-entries: 1000 # 스트림 보관 상한(근사). Redis를 캐시,분산 락,SSE와 같이 쓰고 있어서 상한을 둠
+
 discord:
   webhook:
     url: ${DISCORD_WEBHOOK_URL:}

@@ -10,6 +10,8 @@ import com.codeit.mople.global.event.failure.FailedEvent;
 import com.codeit.mople.global.event.failure.FailedEventStore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -34,9 +35,6 @@ class KafkaEventPublisherTest {
 
   record TestEvent(UUID eventId) implements PublishableEvent {}
 
-  @InjectMocks
-  KafkaEventPublisher publisher;
-
   @Mock
   KafkaTemplate<String, Object> kafkaTemplate;
   @Mock
@@ -48,10 +46,15 @@ class KafkaEventPublisherTest {
   ArgumentCaptor<FailedEvent> failedEventCaptor;
 
   TestEvent event;
+  MeterRegistry meterRegistry;
+  KafkaEventPublisher publisher;
 
   @BeforeEach
   void setUp() {
     event = new TestEvent(UUID.randomUUID());
+    meterRegistry = new SimpleMeterRegistry();
+    publisher =
+        new KafkaEventPublisher(kafkaTemplate, failedEventStore, objectMapper, meterRegistry);
   }
 
   @Nested
@@ -149,6 +152,43 @@ class KafkaEventPublisherTest {
       // then
       verify(kafkaTemplate).send(TOPIC, (String) null, event);
       verify(failedEventStore, never()).save(any());
+    }
+  }
+
+  @Nested
+  @DisplayName("발행 실패 집계")
+  class FailureMetrics {
+
+    @Test
+    @DisplayName("발행에 실패하면 토픽과 실패 원인을 태그로 달아 세는지")
+    void countsFailureByTopicAndReason() throws Exception {
+      // given
+      given(kafkaTemplate.send(TOPIC, KEY, event))
+          .willReturn(CompletableFuture.failedFuture(new IllegalStateException("broker down")));
+      given(objectMapper.writeValueAsString(event)).willReturn("{}");
+
+      // when
+      publisher.publish(TOPIC, KEY, event);
+
+      // then
+      assertThat(meterRegistry.get("kafka.event.publish.failure")
+          .tag("topic", TOPIC)
+          .tag("reason", "IllegalStateException")
+          .counter().count()).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("발행에 성공하면 아무것도 세지 않는지")
+    void countsNothingOnSuccess() {
+      // given
+      given(kafkaTemplate.send(TOPIC, KEY, event))
+          .willReturn(CompletableFuture.completedFuture(null));
+
+      // when
+      publisher.publish(TOPIC, KEY, event);
+
+      // then
+      assertThat(meterRegistry.find("kafka.event.publish.failure").counter()).isNull();
     }
   }
 }

@@ -5,11 +5,14 @@ import com.codeit.mople.global.event.failure.FailedEvent;
 import com.codeit.mople.global.event.failure.FailedEventStore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.errors.SerializationException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.NestedExceptionUtils;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
@@ -20,9 +23,17 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(prefix = KafkaProperties.PREFIX, name = "enabled", havingValue = "true")
 public class KafkaEventPublisher {
 
+  private static final String FAILURE_COUNTER = "kafka.event.publish.failure";
+  private static final String DESCRIPTION = "발행 최종 실패로 Redis 에 적재된 이벤트 수";
+
+  private static final String TAG_TOPIC = "topic";
+  private static final String TAG_REASON = "reason";
+  private static final String UNKNOWN_REASON = "Unknown";
+
   private final KafkaTemplate<String, Object> kafkaTemplate;
   private final FailedEventStore failedEventStore;
   private final ObjectMapper objectMapper;
+  private final MeterRegistry meterRegistry;
 
 
   public void publish(String topic, PublishableEvent event) {
@@ -55,9 +66,29 @@ public class KafkaEventPublisher {
   // 프로듀서 최종 실패를 하나의 객채로 생성 및 로그 기록(여기서 만들어진 객체는 redis에 저장할 객체임)
   private void handleFailure(String topic, String key, PublishableEvent event, Throwable cause) {
     failedEventStore.save(FailedEvent.of(topic, key, event, serialize(topic, key, event), cause));
+    countFailure(topic, cause);
 
     log.error("{}: topic={}, key={}, eventId={}, eventType={}",
         reasonOf(cause), topic, key, event.eventId(), event.getClass().getSimpleName(), cause);
+  }
+
+  // 예외 메시지를 태그로 쓰면 값이 무한히 늘어나므로 클래스 이름만 쓰는 집계
+  private void countFailure(String topic, Throwable cause) {
+    Counter.builder(FAILURE_COUNTER)
+        .description(DESCRIPTION)
+        .tag(TAG_TOPIC, topic)
+        .tag(TAG_REASON, reasonTagOf(cause))
+        .register(meterRegistry)
+        .increment();
+  }
+
+  // 소비 쪽 ConsumeFailureMetricsListener 와 같은 규칙으로 원인 태그를 뽑음
+  private String reasonTagOf(Throwable cause) {
+    if (cause == null) {
+      return UNKNOWN_REASON;
+    }
+
+    return NestedExceptionUtils.getMostSpecificCause(cause).getClass().getSimpleName();
   }
 
   // cause가 serializationException타입이면 "Kafka 이벤트 직렬화 실패" 아니면 "Kafka 이벤트 발행 최종 실패"
