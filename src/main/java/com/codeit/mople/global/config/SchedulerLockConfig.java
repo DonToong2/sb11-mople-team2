@@ -3,7 +3,6 @@ package com.codeit.mople.global.config;
 import net.javacrumbs.shedlock.core.LockProvider;
 import net.javacrumbs.shedlock.provider.redis.spring.RedisLockProvider;
 import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -17,9 +16,9 @@ public class SchedulerLockConfig {
   @Bean
   public LockProvider lockProvider(
       RedisConnectionFactory connectionFactory,
-      @Value("${redis.namespace}") String namespace) {
+      RedisNamespaceProperties properties) {
 
     // Redis에 락을 쓰고 지우는 역할
-    return new RedisLockProvider(connectionFactory, namespace);
+    return new RedisLockProvider(connectionFactory, properties.namespace());
   }
 }

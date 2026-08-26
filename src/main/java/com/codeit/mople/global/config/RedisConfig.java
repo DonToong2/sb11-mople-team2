@@ -5,7 +5,6 @@ import jakarta.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
@@ -58,7 +57,7 @@ public class RedisConfig implements CachingConfigurer {
   @Bean
   public CacheManager cacheManager(
       RedisConnectionFactory connectionFactory,
-      @Value("${redis.namespace}") String namespace) {
+      RedisNamespaceProperties properties) {
 
     // 기존 로직에 namespace만 추가
     RedisCacheConfiguration defaultConfiguration = RedisCacheConfiguration.defaultCacheConfig()
@@ -67,7 +66,7 @@ public class RedisConfig implements CachingConfigurer {
         .serializeValuesWith(RedisSerializationContext.SerializationPair
             .fromSerializer(jsonSerializer()))
         .entryTtl(DEFAULT_TTL)
-        .prefixCacheNameWith(namespace + ":cache:");
+        .prefixCacheNameWith(properties.cacheKeyPrefix());
 
     // followCont 값 타입을 고정하지 않으면 long이 Integer로 되돌아와 캐시 히트에서 터짐 그래서 long으로 고정
     RedisCacheConfiguration followCountConfiguration = defaultConfiguration
