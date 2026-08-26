@@ -130,6 +130,8 @@ mople:
   kafka:
     consumer:
       es-sync-group-id: mople-dm-es-sync-group
+  elasticsearch:
+    dm-retention-days: 365
       
 discord:
   webhook:
