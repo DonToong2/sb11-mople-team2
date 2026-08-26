@@ -106,11 +106,7 @@ class TmdbCollectSchedulerLockTest {
       scheduler.collect();
 
       // then
-      Set<String> keys = lockKeys();
-      assertThat(keys).hasSize(1);
-      assertThat(keys.iterator().next())
-          .contains("mople:test")
-          .endsWith("tmdb-collect");
+      assertThat(lockKeys()).containsExactly("mople:test:lock:tmdb-collect");
     }
   }
 

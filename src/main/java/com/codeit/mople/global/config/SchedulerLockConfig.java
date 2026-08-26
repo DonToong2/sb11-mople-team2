@@ -12,6 +12,8 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 @EnableSchedulerLock(defaultLockAtMostFor = "PT10M")
 public class SchedulerLockConfig {
 
+  private static final String LOCK_SEGMENT = "lock";
+
   // (RedisConnectionFactory: redis서버 접속 통로 / redis 저장소 이름)
   @Bean
   public LockProvider lockProvider(
@@ -19,6 +21,10 @@ public class SchedulerLockConfig {
       RedisNamespaceProperties properties) {
 
     // Redis에 락을 쓰고 지우는 역할
-    return new RedisLockProvider(connectionFactory, properties.namespace());
+    return new RedisLockProvider.Builder(connectionFactory)
+        .keyPrefix(properties.namespace())
+        .environment(LOCK_SEGMENT)
+        .safeUpdate(true)
+        .build();
   }
 }
