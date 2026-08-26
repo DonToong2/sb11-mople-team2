@@ -58,96 +58,100 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+    env:
+      IMAGE: ${{ needs.build-and-push.outputs.image }}
 
     steps:
-      - name: SSH로 EC2에 배포
-        uses: appleboy/ssh-action@v1
-        env:
-          IMAGE: ${{ needs.build-and-push.outputs.image }}
-          AWS_REGION: ${{ env.AWS_REGION }}
-          CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          envs: IMAGE,AWS_REGION,CONTAINER_NAME
-          script: |
-            set -e
+          persist-credentials: false
 
-            CANDIDATE_NAME="${CONTAINER_NAME}_candidate"
-            CANDIDATE_PORT=18080
+      - name: AWS 자격 증명 설정
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${IMAGE%%/*}
-            docker pull $IMAGE
+      - name: Task definition에 계정 ID 채우기
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+        run: |
+          sed -i "s/ACCOUNT_ID_PLACEHOLDER/${AWS_ACCOUNT_ID}/g" task-definition.json
 
-            PREV_IMAGE=$(docker inspect --format='{{.Config.Image}}' "$CONTAINER_NAME" 2>/dev/null || echo "none")
-            echo "현재 서비스 중인 이미지: $PREV_IMAGE (교체 실패 시 그대로 유지됨)"
+      - name: Render task definition
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ env.IMAGE }}
 
-            docker rm -f "$CANDIDATE_NAME" 2>/dev/null || true
-            docker run -d --name "$CANDIDATE_NAME" -p 127.0.0.1:${CANDIDATE_PORT}:8080 --memory=320m --env-file /home/ubuntu/mople.env -e SPRING_PROFILES_ACTIVE=prod,probe -e KAFKA_ENABLED=false "$IMAGE"
+      - name: Fill in env vars
+        id: fill-env
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          DOMAIN_HOST: ${{ secrets.DOMAIN_HOST }}
+          FRONTEND_ORIGIN: ${{ secrets.FRONTEND_ORIGIN }}
+          CORS_ALLOWED_ORIGIN: ${{ secrets.CORS_ALLOWED_ORIGIN }}
+          COOKIE_SECURE: ${{ secrets.COOKIE_SECURE }}
+          SSE_SERVER_ID: ${{ secrets.SSE_SERVER_ID }}
+          KAFKA_ENABLED: ${{ secrets.KAFKA_ENABLED }}
+          KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+          ELASTICSEARCH_URI: ${{ secrets.ELASTICSEARCH_URI }}
+          ELASTICSEARCH_PORT: ${{ secrets.ELASTICSEARCH_PORT }}
+          ELASTICSEARCH_SECURITY_ENABLED: ${{ secrets.ELASTICSEARCH_SECURITY_ENABLED }}
+          ELASTICSEARCH_SSL_ENABLED: ${{ secrets.ELASTICSEARCH_SSL_ENABLED }}
+          ELASTICSEARCH_CA_PATH: ${{ secrets.ELASTICSEARCH_CA_PATH }}
+          TMDB_COLLECT_ENABLED: ${{ secrets.TMDB_COLLECT_ENABLED }}
+        run: |
+          jq \
+            --arg CONTAINER_NAME "$CONTAINER_NAME" \
+            --arg DB_URL "$DB_URL" \
+            --arg REDIS_HOST "$REDIS_HOST" \
+            --arg REDIS_PORT "$REDIS_PORT" \
+            --arg DOMAIN_HOST "$DOMAIN_HOST" \
+            --arg FRONTEND_ORIGIN "$FRONTEND_ORIGIN" \
+            --arg CORS_ALLOWED_ORIGIN "$CORS_ALLOWED_ORIGIN" \
+            --arg COOKIE_SECURE "$COOKIE_SECURE" \
+            --arg SSE_SERVER_ID "$SSE_SERVER_ID" \
+            --arg KAFKA_ENABLED "$KAFKA_ENABLED" \
+            --arg KAFKA_BOOTSTRAP_SERVERS "$KAFKA_BOOTSTRAP_SERVERS" \
+            --arg ELASTICSEARCH_URI "$ELASTICSEARCH_URI" \
+            --arg ELASTICSEARCH_PORT "$ELASTICSEARCH_PORT" \
+            --arg ELASTICSEARCH_SECURITY_ENABLED "$ELASTICSEARCH_SECURITY_ENABLED" \
+            --arg ELASTICSEARCH_SSL_ENABLED "$ELASTICSEARCH_SSL_ENABLED" \
+            --arg ELASTICSEARCH_CA_PATH "$ELASTICSEARCH_CA_PATH" \
+            --arg TMDB_COLLECT_ENABLED "$TMDB_COLLECT_ENABLED" \
+            '(.containerDefinitions[] | select(.name == $CONTAINER_NAME) | .environment) =
+              [
+                {name:"DB_URL", value:$DB_URL},
+                {name:"REDIS_HOST", value:$REDIS_HOST},
+                {name:"REDIS_PORT", value:$REDIS_PORT},
+                {name:"DOMAIN_HOST", value:$DOMAIN_HOST},
+                {name:"FRONTEND_ORIGIN", value:$FRONTEND_ORIGIN},
+                {name:"CORS_ALLOWED_ORIGIN", value:$CORS_ALLOWED_ORIGIN},
+                {name:"COOKIE_SECURE", value:$COOKIE_SECURE},
+                {name:"SSE_SERVER_ID", value:$SSE_SERVER_ID},
+                {name:"KAFKA_ENABLED", value:$KAFKA_ENABLED},
+                {name:"KAFKA_BOOTSTRAP_SERVERS", value:$KAFKA_BOOTSTRAP_SERVERS},
+                {name:"ELASTICSEARCH_URI", value:$ELASTICSEARCH_URI},
+                {name:"ELASTICSEARCH_PORT", value:$ELASTICSEARCH_PORT},
+                {name:"ELASTICSEARCH_SECURITY_ENABLED", value:$ELASTICSEARCH_SECURITY_ENABLED},
+                {name:"ELASTICSEARCH_SSL_ENABLED", value:$ELASTICSEARCH_SSL_ENABLED},
+                {name:"ELASTICSEARCH_CA_PATH", value:$ELASTICSEARCH_CA_PATH},
+                {name:"TMDB_COLLECT_ENABLED", value:$TMDB_COLLECT_ENABLED}
+              ]' \
+            "${{ steps.render.outputs.task-definition }}" > filled-task-def.json
+          echo "task-definition=filled-task-def.json" >> "$GITHUB_OUTPUT"
 
-            READY=false
-            for i in $(seq 1 30); do
-              if curl -fs "http://localhost:${CANDIDATE_PORT}/actuator/health" | grep -q '"status":"UP"'; then
-                READY=true
-                break
-              fi
-              sleep 2
-            done
-
-            if [ "$READY" != true ]; then
-              echo "새 컨테이너 readiness 실패 — 배포 중단, 기존 컨테이너($PREV_IMAGE) 그대로 유지"
-              docker logs "$CANDIDATE_NAME" --tail 100 || true
-              docker rm -f "$CANDIDATE_NAME" || true
-              exit 1
-            fi
-
-            echo "새 컨테이너 readiness 확인 완료, 기존 컨테이너 교체 시작"
-            docker rm -f "$CANDIDATE_NAME"
-
-            ROLLBACK_NAME="${CONTAINER_NAME}_rollback"
-
-            rollback() {
-              trap - ERR
-              echo "새 컨테이너 기동/readiness 실패 — 이전 컨테이너($PREV_IMAGE)로 즉시 롤백"
-              docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
-              if docker inspect "$ROLLBACK_NAME" >/dev/null 2>&1; then
-                docker rename "$ROLLBACK_NAME" "$CONTAINER_NAME"
-                docker start "$CONTAINER_NAME"
-              fi
-              exit 1
-            }
-            
-            if docker inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
-              docker stop "$CONTAINER_NAME" 2>/dev/null || true
-              docker rm -f "$ROLLBACK_NAME" 2>/dev/null || true
-              if ! docker rename "$CONTAINER_NAME" "$ROLLBACK_NAME"; then
-                echo "기존 컨테이너 rename 실패 - 원래 이름으로 재시작 시도"
-                docker start "$CONTAINER_NAME" || true
-                exit 1
-              fi
-              trap rollback ERR
-            fi
-
-            if ! docker run -d --name "$CONTAINER_NAME" --restart unless-stopped -p 8080:8080 --memory=320m --env-file /home/ubuntu/mople.env "$IMAGE"; then
-              rollback
-            fi
-
-            READY=false
-            for i in $(seq 1 30); do
-              if curl -fs "http://localhost:8080/actuator/health" | grep -q '"status":"UP"'; then
-                READY=true
-                break
-              fi
-              sleep 2
-            done
-
-            if [ "$READY" != true ]; then
-              docker logs "$CONTAINER_NAME" --tail 100 || true
-              rollback
-            fi
-
-            trap - ERR
-            echo "배포 완료 — 이전 컨테이너 정리"
-            docker rm -f "$ROLLBACK_NAME" 2>/dev/null || true
-            docker image prune -f
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.fill-env.outputs.task-definition }}
+          service: mople-app-service
+          cluster: mople-cluster
+          wait-for-service-stability: true
