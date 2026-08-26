@@ -48,7 +48,7 @@ class WatchingSessionControllerTest {
 
     given(watchingSessionService.getWatchingContentId(watcherId)).willReturn(contentId);
 
-    mockMvc.perform(get("/api/users/{watcherId}/watching-session", watcherId))
+    mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", watcherId))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.contentId").value(contentId.toString()));
   }
@@ -61,8 +61,8 @@ class WatchingSessionControllerTest {
     given(watchingSessionService.getWatchingContentId(watcherId))
         .willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("watcherId", watcherId)));
 
-    //단수형 경로로 요청하고 404 상태를 기대
-    mockMvc.perform(get("/api/users/{watcherId}/watching-session", watcherId))
+    //복수형 경로로 요청하고 404 상태를 기대
+    mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", watcherId))
         .andExpect(status().isNotFound());
   }
 
