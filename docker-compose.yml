@@ -37,7 +37,7 @@ services:
       - kafka-data:/var/lib/kafka/data
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.18.8
     container_name: mople-elasticsearch
 
     environment:
