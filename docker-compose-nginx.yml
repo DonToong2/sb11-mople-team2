@@ -1,0 +1,34 @@
+name: mople-load-test
+
+# docker-compose-test.yml 위에 nginx 리버스 프록시만 추가하는 오버라이드 파일
+# 실행: docker compose -f docker-compose-test.yml -f docker-compose-nginx.yml up -d
+services:
+  # docker-compose-test.yml에는 없는 ELASTIC_PASSWORD 기본값 보강
+  # (ElasticsearchConfig가 필수로 요구하는데, elasticsearch-test는 보안 비활성화라 빈 값으로 충분)
+  #
+  # container_name/ports도 초기화(!reset) - 둘 다 고정값이면 --scale로 여러 대 띄울 때
+  # "포트 중복"/"컨테이너 이름 중복" 에러가 나서 레플리카 테스트가 안 됨.
+  # nginx는 컨테이너 이름이 아니라 서비스 이름(app-test)으로 접근하므로 포트 노출 불필요.
+  #
+  # entrypoint/command는 SSE_SERVER_ID를 컨테이너마다 다른 $HOSTNAME 기반으로 만들기 위한
+  # ECS 태스크 정의(ecs/task-def-app.json)와 동일한 트릭 - 여러 대로 스케일했을 때
+  # SseService의 Redis 기반 서버 라우팅이 제대로 되는지 로컬에서 먼저 검증하기 위함.
+  app-test:
+    container_name: !reset null
+    ports: !reset []
+    environment:
+      ELASTIC_PASSWORD: ""
+    entrypoint: ["sh", "-c"]
+    command:
+      - "export SSE_SERVER_ID=\"app-$$HOSTNAME\" && exec java -XX:MaxRAMPercentage=65.0 -XX:+ExitOnOutOfMemoryError -jar app.jar"
+
+  # nginx.conf가 mople-load-test-app-test-1/2/3 컨테이너 이름을 직접 참조하므로
+  # (로컬 부하테스트 전용, 실제 배포는 ALB로 대체 예정), app-test는 항상 정확히
+  # 3대(--scale app-test=3)로 띄워야 한다.
+  nginx:
+    build: ./nginx
+    container_name: mople-nginx
+    ports:
+      - "8081:80"
+    depends_on:
+      - app-test
