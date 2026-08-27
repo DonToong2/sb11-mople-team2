@@ -13,12 +13,6 @@
       "portMappings": [
         { "containerPort": 8080, "protocol": "tcp" }
       ],
-      "extraHosts": [
-        {
-          "hostname": "mople-elasticsearch",
-          "ipAddress": "172.31.35.142"
-        }
-      ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
