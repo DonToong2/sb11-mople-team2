@@ -120,10 +120,12 @@ services:
   # 로컬 부하테스트 전용 nginx 리버스 프록시 (실제 배포는 ALB로 대체 예정).
   # app-test의 deploy.replicas: 3 설정에 의해 항상 3대가 뜨는 것을 전제로 라운드로빈 구성.
   nginx:
-    build: ./nginx
+    image: nginx:1.27-alpine
     container_name: mople-nginx
     ports:
       - "8081:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - app-test
 
