@@ -96,13 +96,39 @@ public class WatchingSessionService {
     String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentId.toString();
     boolean isDesc = "DESCENDING".equalsIgnoreCase(sortDirection);
 
-    //검색 조건이 있으면 넉넉히(100개) 스캔, 없으면 요청한 limit에 여유분만 추가 스캔
-    int fetchSize = (watcherNameLike != null && !watcherNameLike.trim().isEmpty()) ? 100 : limit + 10;
+    //전체 카운트는 별도로 ZCard를 통해 가져옴
+    Long totalCountObj = redisTemplate.opsForZSet().zCard(contentKey);
+    long totalCount = totalCountObj != null ? totalCountObj : 0L;
 
-    //Redis ZSet에서 입장 시각과 함께 정렬된 상태로 조회
-    Set<TypedTuple<Object>> tuples = isDesc
-        ? redisTemplate.opsForZSet().reverseRangeWithScores(contentKey, 0, fetchSize)
-        : redisTemplate.opsForZSet().rangeWithScores(contentKey, 0, fetchSize);
+    Set<TypedTuple<Object>> tuples;
+
+    if (watcherNameLike != null && !watcherNameLike.trim().isEmpty()) {
+      //이름 검색이 있으면 넉넉하게 스캔
+      int fetchSize = 1000;
+      tuples = isDesc
+          ? redisTemplate.opsForZSet().reverseRangeWithScores(contentKey, 0, fetchSize)
+          : redisTemplate.opsForZSet().rangeWithScores(contentKey, 0, fetchSize);
+    } else {
+      //이름 검색이 없을 때: 커서(시간) 기반으로 Redis ZSet 페이징 기능을 직접 활용
+      long startScore = 0;
+      long endScore = System.currentTimeMillis();
+
+      if (cursor != null) {
+        try {
+          long cursorTime = Long.parseLong(cursor);
+          if (isDesc) {
+            endScore = cursorTime; //커서 시간 이전 것만 조회
+          } else {
+            startScore = cursorTime; //커서 시간 이후 것만 조회
+          }
+        } catch (NumberFormatException ignored) {}
+      }
+
+      //Redis 자체적으로 score(시간) 범위 내에서 offset(0)부터 limit(+1: hasNext 확인용)만큼만 가져옴
+      tuples = isDesc
+          ? redisTemplate.opsForZSet().reverseRangeByScoreWithScores(contentKey, startScore, endScore, 0, limit + 1)
+          : redisTemplate.opsForZSet().rangeByScoreWithScores(contentKey, startScore, endScore, 0, limit + 1);
+    }
 
     if (tuples == null) {
       tuples = Collections.emptySet();
@@ -128,7 +154,6 @@ public class WatchingSessionService {
           .toList();
     }
 
-    long totalCount = watcherDataList.size();
     int startIndex = 0;
 
     //커서 위치 탐색(idAfter 기준)
