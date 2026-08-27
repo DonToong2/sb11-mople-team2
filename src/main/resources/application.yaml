@@ -51,7 +51,7 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         enable.idempotence: true
-        max.block.ms: 1000
+        max.block.ms: 3000          # Producer가 send() 호출하고 버퍼에 메세지를 집어넣기까지 최대시간, 기본은 60초
         request.timeout.ms: 10000
         delivery.timeout.ms: 30000
         retry.backoff.ms: 1000
