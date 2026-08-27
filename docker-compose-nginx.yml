@@ -1,7 +1,7 @@
 name: mople-load-test
 
 # docker-compose-test.yml 위에 nginx 리버스 프록시만 추가하는 오버라이드 파일
-# 실행: docker compose -f docker-compose-test.yml -f docker-compose-nginx.yml up -d
+# 실행: docker compose -f docker-compose-test.yml -f docker-compose-nginx.yml up -d --scale app-test=3
 services:
   # docker-compose-test.yml에는 없는 ELASTIC_PASSWORD 기본값 보강
   # (ElasticsearchConfig가 필수로 요구하는데, elasticsearch-test는 보안 비활성화라 빈 값으로 충분)
