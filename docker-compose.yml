@@ -1,22 +1,4 @@
 services:
-  # 로컬 개발용 DB
-  postgres-dev:
-    image: postgres:16-alpine
-    container_name: mople-postgres-dev
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_USER=mople
-      - POSTGRES_PASSWORD=mople1234
-      - POSTGRES_DB=mople_db
-
-  # 로컬 개발 및 테스트용 Redis
-  redis:
-    image: redis:7-alpine
-    container_name: mople-redis
-    ports:
-      - "127.0.0.1:6380:6379"
-
   # Kafka
   broker:
     image: apache/kafka:3.9.0
