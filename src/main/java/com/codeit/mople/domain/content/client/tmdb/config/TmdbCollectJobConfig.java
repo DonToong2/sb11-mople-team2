@@ -55,7 +55,7 @@ public class TmdbCollectJobConfig {
 
   @Bean
   public TmdbCollectJobListener tmdbCollectJobListener() {
-    return new TmdbCollectJobListener(meterRegistry);
+    return new TmdbCollectJobListener(meterRegistry, tmdbGenreProvider);
   }
 
   @Bean
