@@ -65,7 +65,30 @@ jobs:
       - name: 저장소 체크아웃
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
+
+      - name: 필수 Secret 검증
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          DB_URL: ${{ secrets.DB_URL }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          ELASTICSEARCH_URI: ${{ secrets.ELASTICSEARCH_URI }}
+          SSE_SERVER_ID: ${{ secrets.SSE_SERVER_ID }}
+          CORS_ALLOWED_ORIGIN: ${{ secrets.CORS_ALLOWED_ORIGIN }}
+        run: |
+          missing=()
+          for name in AWS_ACCOUNT_ID DB_URL REDIS_HOST REDIS_PORT ELASTICSEARCH_URI SSE_SERVER_ID CORS_ALLOWED_ORIGIN; do
+            value="${!name}"
+            if [ -z "$value" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::필수 Secret이 누락되었습니다: ${missing[*]}"
+            exit 1
+          fi
 
       - name: AWS 자격 증명 설정
         uses: aws-actions/configure-aws-credentials@v4
