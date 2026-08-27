@@ -2,6 +2,7 @@ package com.codeit.mople.domain.conversation.repository;
 
 import com.codeit.mople.domain.conversation.entity.Conversation;
 import com.codeit.mople.domain.user.entity.User;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -35,4 +36,8 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
       + "WHERE c.id = :conversationId AND (c.userA.id = :userId OR c.userB.id = :userId)")
   boolean existsByIdAndParticipantId(@Param("conversationId") UUID conversationId,
       @Param("userId") UUID userId);
+
+  @Query("SELECT c.id FROM Conversation c "
+      + "WHERE (c.userA.id = :userId OR c.userB.id = :userId)")
+  List<UUID> findConversationIdsByUserId(@Param("userId") UUID userId);
 }
