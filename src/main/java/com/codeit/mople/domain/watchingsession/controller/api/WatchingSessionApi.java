@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -34,7 +35,7 @@ public interface WatchingSessionApi {
           description = "시청 중인 콘텐츠가 없음 (본문 없음)"
       )
   })
-  ResponseEntity<?> getWatchingSessionForUser(
+  ResponseEntity<Map<String, UUID>> getWatchingSessionForUser(
       @PathVariable UUID watcherId
   );
 
