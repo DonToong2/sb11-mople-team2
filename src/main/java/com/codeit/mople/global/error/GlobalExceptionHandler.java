@@ -19,6 +19,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
@@ -185,6 +186,15 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(NoResourceFoundException.class)
   public ResponseEntity<ApiResponse<Void>> handleNoResourceFoundException(NoResourceFoundException e) {
     log.warn("[NoResourceFound] URL: {}", e.getResourcePath());
+    return ResponseEntity
+        .status(HttpStatus.NOT_FOUND)
+        .body(ApiResponse.error("NOT_FOUND", "요청한 경로를 찾을 수 없습니다."));
+  }
+
+  //잘못된 경로 요청 시 디스코드 알림을 생략하고 404 응답만 반환
+  @ExceptionHandler(NoHandlerFoundException.class)
+  public ResponseEntity<ApiResponse<Void>> handleNoHandlerFoundException(NoHandlerFoundException e) {
+    log.warn("[NoHandlerFound] URL: {}", e.getRequestURL());
     return ResponseEntity
         .status(HttpStatus.NOT_FOUND)
         .body(ApiResponse.error("NOT_FOUND", "요청한 경로를 찾을 수 없습니다."));
