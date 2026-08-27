@@ -6,6 +6,7 @@ import com.codeit.mople.global.event.failure.ConsumeFailureMetricsListener;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -22,6 +23,7 @@ import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.kafka.support.LoggingProducerListener;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -52,6 +54,22 @@ public class KafkaConfig {
     kafkaTemplate.setProducerListener(new LoggingProducerListener<>());
 
     return kafkaTemplate;
+  }
+
+  // send 실패에 대한 후처리를 비동기로
+  @Bean
+  public Executor kafkaPublishFailureExecutor() {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+
+    executor.setCorePoolSize(1);
+    executor.setMaxPoolSize(1);
+    executor.setQueueCapacity(1000);
+    executor.setThreadNamePrefix("kafka-publish-failure-");
+    executor.setWaitForTasksToCompleteOnShutdown(true);
+    executor.setAwaitTerminationSeconds(10);
+    executor.initialize();
+
+    return executor;
   }
 
   // 역직렬화가 깨진 레코드의 원본 byte[]를 그대로 DLT로 보내는 템플릿
