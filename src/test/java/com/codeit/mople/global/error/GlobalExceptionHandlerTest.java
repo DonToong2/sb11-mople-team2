@@ -13,8 +13,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @DisplayName("GlobalExceptionHandler 테스트")
 class GlobalExceptionHandlerTest {
@@ -95,6 +98,42 @@ class GlobalExceptionHandlerTest {
 
       // then
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    @DisplayName("NoResourceFoundException 발생 시 404를 반환")
+    void handleNoResourceFoundException() {
+      // given
+      NoResourceFoundException exception =
+          new NoResourceFoundException(HttpMethod.GET, "/wrong-path");
+
+      // when
+      ResponseEntity<ApiResponse<Void>> response = handler.handleNoResourceFoundException(exception);
+
+      // then
+      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+      assertThat(response.getBody()).isNotNull();
+      assertThat(response.getBody().isSuccess()).isFalse();
+      assertThat(response.getBody().getError().code()).isEqualTo("NOT_FOUND");
+      assertThat(response.getBody().getError().message()).isEqualTo("요청한 경로를 찾을 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("NoHandlerFoundException 발생 시 404를 반환")
+    void handleNoHandlerFoundException() {
+      // given
+      NoHandlerFoundException exception =
+          new NoHandlerFoundException("GET", "/wrong-path", null);
+
+      // when
+      ResponseEntity<ApiResponse<Void>> response = handler.handleNoHandlerFoundException(exception);
+
+      // then
+      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+      assertThat(response.getBody()).isNotNull();
+      assertThat(response.getBody().isSuccess()).isFalse();
+      assertThat(response.getBody().getError().code()).isEqualTo("NOT_FOUND");
+      assertThat(response.getBody().getError().message()).isEqualTo("요청한 경로를 찾을 수 없습니다.");
     }
   }
 }

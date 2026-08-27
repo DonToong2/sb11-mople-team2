@@ -27,6 +27,14 @@ public class WatchingSessionController implements WatchingSessionApi {
   public ResponseEntity<Map<String, UUID>> getWatchingSessionForUser(
       @PathVariable UUID watcherId) {
     UUID contentId = watchingSessionService.getWatchingContentId(watcherId);
+
+    //만약 시청 중인 콘텐츠가 없다면(null이라면)
+    if (contentId == null) {
+      //204 No Content 반환
+      return ResponseEntity.noContent().build();
+    }
+
+    //시청 중인 콘텐츠가 있다면 정상적으로 200 OK + 데이터 반환
     return ResponseEntity.ok(Map.of("contentId", contentId));
   }
 
