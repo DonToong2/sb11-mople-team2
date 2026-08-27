@@ -128,7 +128,6 @@ jobs:
           ELASTICSEARCH_PORT: ${{ secrets.ELASTICSEARCH_PORT }}
           ELASTICSEARCH_SECURITY_ENABLED: ${{ secrets.ELASTICSEARCH_SECURITY_ENABLED }}
           ELASTICSEARCH_SSL_ENABLED: ${{ secrets.ELASTICSEARCH_SSL_ENABLED }}
-          ELASTICSEARCH_CA_PATH: ${{ secrets.ELASTICSEARCH_CA_PATH }}
           TMDB_COLLECT_ENABLED: ${{ secrets.TMDB_COLLECT_ENABLED }}
         run: |
           jq \
@@ -147,7 +146,6 @@ jobs:
             --arg ELASTICSEARCH_PORT "$ELASTICSEARCH_PORT" \
             --arg ELASTICSEARCH_SECURITY_ENABLED "$ELASTICSEARCH_SECURITY_ENABLED" \
             --arg ELASTICSEARCH_SSL_ENABLED "$ELASTICSEARCH_SSL_ENABLED" \
-            --arg ELASTICSEARCH_CA_PATH "$ELASTICSEARCH_CA_PATH" \
             --arg TMDB_COLLECT_ENABLED "$TMDB_COLLECT_ENABLED" \
             '(.containerDefinitions[] | select(.name == $CONTAINER_NAME) | .environment) =
               [
@@ -165,7 +163,6 @@ jobs:
                 {name:"ELASTICSEARCH_PORT", value:$ELASTICSEARCH_PORT},
                 {name:"ELASTICSEARCH_SECURITY_ENABLED", value:$ELASTICSEARCH_SECURITY_ENABLED},
                 {name:"ELASTICSEARCH_SSL_ENABLED", value:$ELASTICSEARCH_SSL_ENABLED},
-                {name:"ELASTICSEARCH_CA_PATH", value:$ELASTICSEARCH_CA_PATH},
                 {name:"TMDB_COLLECT_ENABLED", value:$TMDB_COLLECT_ENABLED}
               ]' \
             "${{ steps.render.outputs.task-definition }}" > filled-task-def.json
