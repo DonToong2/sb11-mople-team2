@@ -74,6 +74,7 @@ public class KafkaConfigTest {
           kafkaConfig,
           "saveFailedEvent",
           record,
+          "test-group",
           exception
       );
 
@@ -82,6 +83,7 @@ public class KafkaConfigTest {
           eq(FAILED_STREAM_KEY),
           eq(Map.of(
               "type", "CONSUMER",
+              "groupId", "test-group",
               "topic", "review-created",
               "key", "content-key",
               "partition", "1",
@@ -119,6 +121,7 @@ public class KafkaConfigTest {
           kafkaConfig,
           "saveFailedEvent",
           record,
+          "test-group",
           exception
       );
 
@@ -127,6 +130,7 @@ public class KafkaConfigTest {
           eq(FAILED_STREAM_KEY),
           eq(Map.of(
               "type", "CONSUMER",
+              "groupId", "test-group",
               "topic", "review-created",
               "key", "",
               "partition", "0",

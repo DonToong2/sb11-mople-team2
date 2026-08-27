@@ -25,9 +25,12 @@ public class DirectMessageDeleteScheduler {
   @Scheduled(cron = "0 0 5 * * *", zone = "Asia/Seoul")
   @SchedulerLock(name = "dm-es-document-cleanup", lockAtMostFor = "PT10M", lockAtLeastFor = "PT1M")
   public void  cleanupOldSearchData() {
-    log.info("ES 대화방 검색 데이터 만료: 정리 배치 시작 (보관 주기: {}일)", retentionDays);
+    if (retentionDays < 1) {
+      log.warn("잘못된 삭제 보관 주기 설정값({}): 기본값(365일)으로 강제 조정", retentionDays);
+      retentionDays = 365;
+    }
 
-    // 1년 전 시간 계산
+    log.info("ES 대화방 검색 데이터 만료: 정리 배치 시작 (보관 주기: {}일)", retentionDays);
     Instant cutoffDate = Instant.now().minus(retentionDays, ChronoUnit.DAYS);
 
     try {
