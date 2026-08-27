@@ -132,7 +132,7 @@ public class ConversationRepositoryTest {
   }
 
   @Test
-  @DisplayName("findConversationByCursor: [메시지 내용 검색] 상대방 닉네임이 달라도 메시지 내용에 키워드가 있으면 조회된다.")
+  @DisplayName("findConversationByCursor: [ES 매칭 ID로 필터링] 상대방 닉네임이 달라도 메시지 내용에 키워드가 있으면 조회된다.")
   void findConversationByCursor_search_by_message_content() {
     // given
     ConversationCursorRequest request = mock(ConversationCursorRequest.class);
@@ -197,7 +197,7 @@ public class ConversationRepositoryTest {
   }
 
   @Test
-  @DisplayName("countByParticipantIdAndKeyword: [메시지 내용 검색] 상대방 닉네임이 달라도 메시지에 키워드가 있으면 카운트한다.")
+  @DisplayName("countByParticipantIdAndKeyword: [ES 매칭 ID로 필터링] 상대방 닉네임이 달라도 메시지에 키워드가 있으면 카운트한다.")
   void countByParticipantIdAndKeyword_search_by_message_content() {
     List<UUID> esMatchingIds = List.of(myConvWithUser2.getId());
 

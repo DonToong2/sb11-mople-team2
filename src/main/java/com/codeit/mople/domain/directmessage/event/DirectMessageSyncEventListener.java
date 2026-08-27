@@ -9,19 +9,19 @@ import com.codeit.mople.domain.directmessage.repository.DirectMessageSearchRepos
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "spring.kafka.enabled", havingValue = "true")
 public class DirectMessageSyncEventListener {
 
   private final DirectMessageSearchRepository directMessageSearchRepository;
   private final DirectMessageRepository directMessageRepository;
 
-  @Transactional(readOnly = true)
   @KafkaListener(
       topics = "${spring.kafka.topics.direct-message-created:mople.direct-message.created.v1}",
       groupId = "${mople.kafka.consumer.es-sync-group-id}"
@@ -34,8 +34,8 @@ public class DirectMessageSyncEventListener {
           .orElseThrow(() -> new DirectMessageException(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND, Map.of("directMessageId", event.directMessageId())));
 
       DirectMessageDocument document = DirectMessageDocument.from(message);
-
       directMessageSearchRepository.save(document);
+
       log.info("Elasticsearch 메시지 저장 완료 - directMessageId: {}", event.directMessageId());
     } catch (Exception e){
       log.error("Elasticsearch 메시지 저장 중 에러 발생 (Kafka) - directMessageId: {}", event.directMessageId(), e);

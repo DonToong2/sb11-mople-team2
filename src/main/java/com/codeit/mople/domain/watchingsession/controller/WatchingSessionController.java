@@ -23,7 +23,7 @@ public class WatchingSessionController implements WatchingSessionApi {
   private final WatchingSessionService watchingSessionService;
 
   //특정 유저가 시청 중인 콘텐츠 ID 조회
-  @GetMapping("/users/{watcherId}/watching-session")
+  @GetMapping("/users/{watcherId}/watching-sessions")
   public ResponseEntity<Map<String, UUID>> getWatchingSessionForUser(
       @PathVariable UUID watcherId) {
     UUID contentId = watchingSessionService.getWatchingContentId(watcherId);

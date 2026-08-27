@@ -80,6 +80,12 @@ public class ReviewService {
         )
     );
 
+    if (reviewRepository.existsByContentIdAndAuthorId(request.contentId(), authorId)) {
+      throw new ReviewException(ReviewErrorCode.REVIEW_ALREADY_EXISTS,
+          Map.of("contentId", request.contentId(), "authorId", authorId)
+      );
+    }
+
     Review review = Review.create(content, author, request.text(), request.rating());
 
     Review savedReview = reviewRepository.save(review);

@@ -135,7 +135,7 @@ public class ReviewServiceTest {
     void create_success() {
       // given
 
-      // BeforeEach에서 author, authorId, content, contentId, Review Create Request 초기화
+      // BeforeEach에서 author, authorId, content, contentId, Review Create Request를 초기화
 
       // Content
       given(content.getId())
@@ -234,6 +234,34 @@ public class ReviewServiceTest {
       verify(userRepository).findById(authorId);
       verify(contentRepository).findById(contentId);
       verifyNoInteractions(reviewRepository);
+    }
+
+    @Test
+    @DisplayName("리뷰 생성 실패 - 콘텐츠에 이미 리뷰를 작성함")
+    void create_fail_conflict() {
+      // given
+
+      // BeforeEach에서 author, authorId, content, contentId, ReviewCreateRequest를 초기화
+
+      given(contentRepository.findById(contentId))
+          .willReturn(Optional.of(content));
+
+      given(userRepository.findById(authorId))
+          .willReturn(Optional.of(author));
+
+      given(reviewRepository.existsByContentIdAndAuthorId(contentId, authorId))
+          .willReturn(true);
+
+      // when & then
+      assertThatThrownBy(() ->
+          reviewService.create(authorId, createRequest))
+          .isInstanceOf(ReviewException.class)
+          .extracting("errorCode")
+          .isEqualTo(ReviewErrorCode.REVIEW_ALREADY_EXISTS);
+
+      verify(userRepository).findById(authorId);
+      verify(contentRepository).findById(contentId);
+
     }
 
   }
@@ -460,7 +488,7 @@ public class ReviewServiceTest {
     void update_success() {
       // given
 
-      // BeforeEach에서 reviewId, review, authorId, contentId, updateRequest 초기화
+      // BeforeEach에서 reviewId, review, authorId, contentId, updateRequest를 초기화
 
       // Content
       given(content.getId())
@@ -511,7 +539,7 @@ public class ReviewServiceTest {
     void update_fail_notFoundReview() {
       // given
 
-      // BeforeEach에서 reviewId, authorId, updateRequest 초기화
+      // BeforeEach에서 reviewId, authorId, updateRequest를 초기화
 
       given(reviewRepository.findById(review1Id))
           .willReturn(Optional.empty());
