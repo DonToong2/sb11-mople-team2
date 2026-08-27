@@ -174,6 +174,7 @@ public class ContentSearchRepositoryCustomImpl
       return Query.of(q -> q
           .wildcard(w -> w
               .field("title.keyword")
+              .value("*" + title + "*")
               .caseInsensitive(true)
           )
       );

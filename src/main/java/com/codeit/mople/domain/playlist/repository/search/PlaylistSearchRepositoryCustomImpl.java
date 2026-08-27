@@ -143,6 +143,7 @@ public class PlaylistSearchRepositoryCustomImpl
       return Query.of(q -> q
           .wildcard(w -> w
               .field("title.keyword")
+              .value("*" + title + "*")
               .caseInsensitive(true)
           )
       );
