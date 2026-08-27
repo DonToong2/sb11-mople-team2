@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.lettuce.core.RedisBusyException;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +32,7 @@ import org.springframework.data.redis.connection.stream.PendingMessages;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.connection.stream.StreamReadOptions;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StreamOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -97,7 +99,7 @@ public class SseStreamConsumer {
     String streamKey = STREAM_KEY + serverId;
 
     // Consumer Group 없으면 생성
-    createGroupIfNotExists(streamOperations, streamKey);
+    createGroupIfNotExists(streamKey);
 
     // 1초
     long backOffMs = INITIAL_BACKOFF_MS;
@@ -164,12 +166,20 @@ public class SseStreamConsumer {
   }
 
   // 서버 시작 시 Consumer Group이 없으면 생성
-  private void createGroupIfNotExists(
-      StreamOperations<String, String, String> streamOperations,
-      String streamKey
-  ) {
+  // MKSTREAM을 명시해야 스트림 키가 아직 존재하지 않아도(=아직 아무도 이 serverId로
+  // 이벤트를 보낸 적 없는 상태) 그룹 생성이 실패하지 않는다. StreamOperations의
+  // createGroup(key, readOffset, group)은 MKSTREAM을 넘길 방법이 없어서 커넥션
+  // 레벨 API를 직접 사용한다.
+  private void createGroupIfNotExists(String streamKey) {
     try {
-      streamOperations.createGroup(streamKey, ReadOffset.from("0"), GROUP_NAME);
+      redisTemplate.execute((RedisCallback<String>) connection ->
+          connection.streamCommands().xGroupCreate(
+              streamKey.getBytes(StandardCharsets.UTF_8),
+              GROUP_NAME,
+              ReadOffset.from("0"),
+              true
+          )
+      );
     } catch (RedisSystemException e) {
       // 이미 생성된 Consumer Group일 경우 예외 발생
       if (e.getCause() instanceof RedisBusyException) {
