@@ -73,7 +73,7 @@ spring:
       mail.smtp.writetimeout: 5000
 
   elasticsearch:
-    uris: ${ELASTICSEARCH_URI}:9200
+    uris: ${ELASTICSEARCH_URI}:${ELASTICSEARCH_PORT:9200}
     username: elastic
     password: ${ELASTIC_PASSWORD:}
 
