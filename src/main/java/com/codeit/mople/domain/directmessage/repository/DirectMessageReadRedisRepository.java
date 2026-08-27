@@ -103,8 +103,6 @@ public class DirectMessageReadRedisRepository {
     return members != null ? new HashSet<>(members) : Collections.emptySet();
   }
 
-
-
   // [조회 전용] 오직 레디스 캐시만 확인하여 반환
   public Optional<Instant> getCachedLastReadAt(UUID conversationId, UUID userId) {
     String valueKey = READ_KEY_PREFIX + conversationId + ":" + userId;
