@@ -21,10 +21,12 @@ public class SchedulerLockConfig {
       RedisNamespaceProperties properties) {
 
     // Redis에 락을 쓰고 지우는 역할
-    return new RedisLockProvider.Builder(connectionFactory)
+    RedisLockProvider redisLockProvider = new RedisLockProvider.Builder(connectionFactory)
         .keyPrefix(properties.namespace())
         .environment(LOCK_SEGMENT)
         .safeUpdate(true)
         .build();
+
+    return new LoggingLockProvider(redisLockProvider);
   }
 }
