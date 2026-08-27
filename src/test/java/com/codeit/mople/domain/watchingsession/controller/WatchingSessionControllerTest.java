@@ -54,16 +54,14 @@ class WatchingSessionControllerTest {
   }
 
   @Test
-  @DisplayName("특정 유저 시청 중인 콘텐츠 ID 조회 실패 (시청 중 아님) - 404 Not Found")
-  void getWatchingSessionForUser_NotFound() throws Exception {
+  @DisplayName("특정 유저 시청 중인 콘텐츠 ID 조회 (시청 중 아님) - 204 No Content")
+  void getWatchingSessionForUser_NoContent() throws Exception {
     UUID watcherId = UUID.randomUUID();
 
-    given(watchingSessionService.getWatchingContentId(watcherId))
-        .willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("watcherId", watcherId)));
+    given(watchingSessionService.getWatchingContentId(watcherId)).willReturn(null);
 
-    //복수형 경로로 요청하고 404 상태를 기대
     mockMvc.perform(get("/api/users/{watcherId}/watching-sessions", watcherId))
-        .andExpect(status().isNotFound());
+        .andExpect(status().isNoContent());
   }
 
   @Test

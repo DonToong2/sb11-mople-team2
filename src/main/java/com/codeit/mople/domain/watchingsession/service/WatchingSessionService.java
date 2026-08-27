@@ -96,10 +96,39 @@ public class WatchingSessionService {
     String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentId.toString();
     boolean isDesc = "DESCENDING".equalsIgnoreCase(sortDirection);
 
-    //Redis ZSet에서 점수(입장 시각)와 함께 정렬된 상태로 조회
-    Set<TypedTuple<Object>> tuples = isDesc
-        ? redisTemplate.opsForZSet().reverseRangeWithScores(contentKey, 0, -1)
-        : redisTemplate.opsForZSet().rangeWithScores(contentKey, 0, -1);
+    //전체 카운트는 별도로 ZCard를 통해 가져옴
+    Long totalCountObj = redisTemplate.opsForZSet().zCard(contentKey);
+    long totalCount = totalCountObj != null ? totalCountObj : 0L;
+
+    Set<TypedTuple<Object>> tuples;
+
+    if (watcherNameLike != null && !watcherNameLike.trim().isEmpty()) {
+      //이름 검색이 있으면 넉넉하게 스캔
+      int fetchSize = 1000;
+      tuples = isDesc
+          ? redisTemplate.opsForZSet().reverseRangeWithScores(contentKey, 0, fetchSize)
+          : redisTemplate.opsForZSet().rangeWithScores(contentKey, 0, fetchSize);
+    } else {
+      //이름 검색이 없을 때: 커서(시간) 기반으로 Redis ZSet 페이징 기능을 직접 활용
+      long startScore = 0;
+      long endScore = System.currentTimeMillis();
+
+      if (cursor != null) {
+        try {
+          long cursorTime = Long.parseLong(cursor);
+          if (isDesc) {
+            endScore = cursorTime; //커서 시간 이전 것만 조회
+          } else {
+            startScore = cursorTime; //커서 시간 이후 것만 조회
+          }
+        } catch (NumberFormatException ignored) {}
+      }
+
+      //Redis 자체적으로 score(시간) 범위 내에서 offset(0)부터 limit(+1: hasNext 확인용)만큼만 가져옴
+      tuples = isDesc
+          ? redisTemplate.opsForZSet().reverseRangeByScoreWithScores(contentKey, startScore, endScore, 0, limit + 1)
+          : redisTemplate.opsForZSet().rangeByScoreWithScores(contentKey, startScore, endScore, 0, limit + 1);
+    }
 
     if (tuples == null) {
       tuples = Collections.emptySet();
@@ -125,7 +154,6 @@ public class WatchingSessionService {
           .toList();
     }
 
-    long totalCount = watcherDataList.size();
     int startIndex = 0;
 
     //커서 위치 탐색(idAfter 기준)
@@ -499,11 +527,8 @@ public class WatchingSessionService {
     String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
     String contentIdStr = (String) redisTemplate.opsForValue().get(userKey);
 
-    if (contentIdStr == null) {
-      throw new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("watcherId", userId));
-    }
-
-    return UUID.fromString(contentIdStr);
+    //404 예외를 던지는 대신 삼항 연산자로 null 반환
+    return (contentIdStr != null) ? UUID.fromString(contentIdStr) : null;
   }
 
   //실시간 채팅 메시지 처리 및 브로드캐스팅

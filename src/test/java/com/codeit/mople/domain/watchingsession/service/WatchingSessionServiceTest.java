@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
@@ -110,7 +112,11 @@ public class WatchingSessionServiceTest {
     ZSetOperations.TypedTuple<Object> mockTuple = mock(ZSetOperations.TypedTuple.class);
     given(mockTuple.getValue()).willReturn(userId.toString());
     given(mockTuple.getScore()).willReturn((double) Instant.now().toEpochMilli());
-    given(zSetOperations.reverseRangeWithScores(contentKey, 0, -1)).willReturn(Set.of(mockTuple));
+
+    //zCard 및 커서 페이징 메서드 모킹 - 파라미터 타입 매칭 (double, double, long, long)
+    given(zSetOperations.zCard(contentKey)).willReturn(1L);
+    given(zSetOperations.reverseRangeByScoreWithScores(eq(contentKey), anyDouble(), anyDouble(), anyLong(), anyLong()))
+        .willReturn(Set.of(mockTuple));
 
     //DB에서 해당 유저 정보 조회 모킹
     given(userRepository.findAllById(anyList())).willReturn(List.of(mockUser));
@@ -155,8 +161,9 @@ public class WatchingSessionServiceTest {
     given(tuple2.getValue()).willReturn(user2Id.toString());
     given(tuple2.getScore()).willReturn((double) Instant.now().toEpochMilli());
 
-    given(zSetOperations.reverseRangeWithScores(contentKey, 0, -1)).willReturn(Set.of(tuple1, tuple2));
-
+    //검색어가 있을 때는 예외적으로 reverseRangeWithScores를 사용
+    given(zSetOperations.zCard(contentKey)).willReturn(1L);
+    given(zSetOperations.reverseRangeWithScores(eq(contentKey), eq(0L), anyLong())).willReturn(Set.of(tuple1, tuple2));
     given(userRepository.findAllById(any())).willReturn(List.of(user1, user2));
     given(valueOperations.multiGet(anyList())).willReturn(List.of(UUID.randomUUID().toString()));
 
@@ -191,7 +198,11 @@ public class WatchingSessionServiceTest {
     ZSetOperations.TypedTuple<Object> mockTuple = mock(ZSetOperations.TypedTuple.class);
     given(mockTuple.getValue()).willReturn(userId.toString());
     given(mockTuple.getScore()).willReturn((double) Instant.now().toEpochMilli());
-    given(zSetOperations.reverseRangeWithScores(contentKey, 0, -1)).willReturn(Set.of(mockTuple));
+
+    //zCard 및 커서 페이징 메서드 모킹 적용 - 파라미터 타입 매칭
+    given(zSetOperations.zCard(contentKey)).willReturn(1L);
+    given(zSetOperations.reverseRangeByScoreWithScores(eq(contentKey), anyDouble(), anyDouble(), anyLong(), anyLong()))
+        .willReturn(Set.of(mockTuple));
 
     //실제 Redis에 저장되어 있는 세션 ID를 모킹
     String expectedSessionUuid = UUID.randomUUID().toString();
@@ -240,7 +251,11 @@ public class WatchingSessionServiceTest {
     Set<ZSetOperations.TypedTuple<Object>> returnedSet = new java.util.LinkedHashSet<>();
     returnedSet.add(t2);
     returnedSet.add(t1);
-    given(zSetOperations.reverseRangeWithScores(contentKey, 0, -1)).willReturn(returnedSet);
+
+    //zCard 및 커서 페이징 메서드 모킹 적용 - 파라미터 타입 매칭
+    given(zSetOperations.zCard(contentKey)).willReturn(2L);
+    given(zSetOperations.reverseRangeByScoreWithScores(eq(contentKey), anyDouble(), anyDouble(), anyLong(), anyLong()))
+        .willReturn(returnedSet);
 
     //이전 페이지 마지막 항목이었던 user3 정보를 커서로 전달
     String cursorStr = String.valueOf(sameTime);
@@ -397,6 +412,23 @@ public class WatchingSessionServiceTest {
     UUID result = watchingSessionService.getWatchingContentId(userId);
 
     assertEquals(contentId, result);
+  }
+
+  @Test
+  @DisplayName("특정 유저가 시청 중인 콘텐츠 ID 조회 시 시청 중인 영상이 없으면 null을 반환")
+  void getWatchingContentId_ReturnsNullWhenNotWatching() {
+    UUID userId = UUID.randomUUID();
+    String userKey = "user:watching:" + userId;
+    User mockUser = mock(User.class);
+
+    //유저는 존재
+    given(userRepository.findById(userId)).willReturn(Optional.of(mockUser));
+    //Redis에 시청 중인 콘텐츠 기록이 없는 상황(null 반환)
+    given(valueOperations.get(userKey)).willReturn(null);
+
+    //예외가 터지지 않고 null이 반환되어야 함
+    UUID result = watchingSessionService.getWatchingContentId(userId);
+    org.junit.jupiter.api.Assertions.assertNull(result);
   }
 
   @Test

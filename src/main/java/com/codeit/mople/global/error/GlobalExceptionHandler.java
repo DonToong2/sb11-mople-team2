@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanInstantiationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -18,6 +19,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -177,5 +180,23 @@ public class GlobalExceptionHandler {
     return ResponseEntity
         .status(CommonErrorCode.INVALID_INPUT.getStatus())
         .body(ApiResponse.error(CommonErrorCode.INVALID_INPUT.getCode(), "파라미터 타입이 올바르지 않습니다."));
+  }
+
+  //잘못된 경로 요청 시 디스코드 알림을 생략하고 404 응답만 반환
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<ApiResponse<Void>> handleNoResourceFoundException(NoResourceFoundException e) {
+    log.warn("[NoResourceFound] URL: {}", e.getResourcePath());
+    return ResponseEntity
+        .status(HttpStatus.NOT_FOUND)
+        .body(ApiResponse.error("NOT_FOUND", "요청한 경로를 찾을 수 없습니다."));
+  }
+
+  //잘못된 경로 요청 시 디스코드 알림을 생략하고 404 응답만 반환
+  @ExceptionHandler(NoHandlerFoundException.class)
+  public ResponseEntity<ApiResponse<Void>> handleNoHandlerFoundException(NoHandlerFoundException e) {
+    log.warn("[NoHandlerFound] URL: {}", e.getRequestURL());
+    return ResponseEntity
+        .status(HttpStatus.NOT_FOUND)
+        .body(ApiResponse.error("NOT_FOUND", "요청한 경로를 찾을 수 없습니다."));
   }
 }
