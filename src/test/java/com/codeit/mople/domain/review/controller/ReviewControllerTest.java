@@ -42,6 +42,7 @@ import com.codeit.mople.global.jwt.JwtProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -130,7 +131,7 @@ public class ReviewControllerTest {
     void create_success() throws Exception {
       // given
 
-      // BeforeEach에서 authorId, contentId, reviewId, Review Create Request 초기화
+      // BeforeEach에서 authorId, contentId, reviewId, ReviewCreateRequest를 초기화
 
       ReviewResponse response = new ReviewResponse(
           reviewId,
@@ -276,6 +277,37 @@ public class ReviewControllerTest {
           .andExpect(status().isBadRequest());
 
       verifyNoInteractions(reviewService);
+    }
+
+    @Test
+    @DisplayName("리뷰 생성 실패 - 콘텐츠에 이미 리뷰를 작성함(409 에러)")
+    void create_fail_conflict() throws Exception {
+      // given
+
+      // BeforeEach에서 authorId, contentId, reviewId, ReviewCreateRequest를 초기화
+
+      given(reviewService.create(eq(authorId), any(ReviewCreateRequest.class)))
+          .willThrow(
+              new ReviewException(
+                  ReviewErrorCode.REVIEW_ALREADY_EXISTS,
+                  Map.of(
+                      "contentId", contentId,
+                      "authorId", authorId
+                  )
+              )
+          );
+
+      // when & then
+      mockMvc.perform(post("/api/reviews")
+              .with(user(userDetails))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(createRequest))
+          )
+          .andExpect(status().isConflict());
+
+      verify(reviewService).create(eq(authorId), any(ReviewCreateRequest.class));
+
     }
 
   }

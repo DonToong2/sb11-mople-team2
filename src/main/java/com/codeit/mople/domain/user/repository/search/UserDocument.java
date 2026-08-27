@@ -9,6 +9,8 @@ import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
+import org.springframework.data.elasticsearch.annotations.InnerField;
+import org.springframework.data.elasticsearch.annotations.MultiField;
 import org.springframework.data.elasticsearch.annotations.Setting;
 
 @Getter
@@ -18,13 +20,22 @@ import org.springframework.data.elasticsearch.annotations.Setting;
 public class UserDocument {
 
   @Id
+  @Field(type = FieldType.Keyword)
   private UUID id;
 
   // 검색어는 이메일만 사용
-  @Field(
-      type = FieldType.Text,
-      analyzer = "user_ngram_analyzer",
-      searchAnalyzer = "user_search_analyzer"
+  @MultiField(
+      mainField = @Field(
+          type = FieldType.Text,
+          analyzer = "user_ngram_analyzer",
+          searchAnalyzer = "user_search_analyzer"
+      ),
+      otherFields = {
+          @InnerField(
+              suffix = "keyword",
+              type = FieldType.Keyword
+          )
+      }
   )
   private String email;
 

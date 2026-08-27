@@ -1,13 +1,17 @@
 package com.codeit.mople.global.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -15,128 +19,131 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions;
-import org.springframework.data.redis.core.StreamOperations;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.kafka.core.KafkaOperations;
+import org.springframework.kafka.core.KafkaTemplate;
 
 @ExtendWith(MockitoExtension.class)
-public class KafkaConfigTest {
+@DisplayName("KafkaConfig 테스트")
+class KafkaConfigTest {
 
-  private static final String FAILED_STREAM_KEY = "kafka:events:failed";
+  static final String TOPIC = "mople.follow.created.v1";
 
-  @Mock
-  private StringRedisTemplate redisTemplate;
-
-  @Mock
-  private ObjectMapper objectMapper;
-
-  @Mock
-  private StreamOperations<String, Object, Object> streamOperations;
-
-  private KafkaConfig kafkaConfig;
+  ConsumerRecord<String, Object> record;
+  RuntimeException exception;
 
   @BeforeEach
   void setUp() {
-    kafkaConfig = new KafkaConfig(
-        redisTemplate,
-        objectMapper,
-        new KafkaProperties(true, "test", null)
-    );
+    record = new ConsumerRecord<>(TOPIC, 2, 100L, "followee-key", new Object());
+    exception = new RuntimeException("알림 생성 실패");
   }
 
   @Nested
-  @DisplayName("Kafka Consumer 최종 실패 이벤트 저장")
-  class SaveFailedEvent {
+  @DisplayName("DLT 목적지 해석")
+  class DeadLetterDestination {
 
     @Test
-    @DisplayName("최종 실패 이벤트를 Redis Stream에 저장")
-    void saveFailedEvent_success() throws Exception {
-      // given
-      ConsumerRecord<String, Object> record = new ConsumerRecord<>(
-          "review-created",
-          1,
-          100L,
-          "content-key",
-          new Object()
-      );
-
-      RuntimeException exception = new RuntimeException("리뷰 통계 업데이트 실패");
-
-      given(redisTemplate.opsForStream())
-          .willReturn(streamOperations);
-
-      given(objectMapper.writeValueAsString(record.value()))
-          .willReturn("{\"contentId\":\"test\"}");
-
+    @DisplayName("원 토픽 이름 뒤에 .dlt를 붙인 토픽으로 보내는지")
+    void resolveDltTopic() {
       // when
-      ReflectionTestUtils.invokeMethod(
-          kafkaConfig,
-          "saveFailedEvent",
-          record,
-          exception
-      );
+      TopicPartition destination =
+          KafkaConfig.DLT_DESTINATION_RESOLVER.apply(record, exception);
 
       // then
-      verify(streamOperations).add(
-          eq(FAILED_STREAM_KEY),
-          eq(Map.of(
-              "type", "CONSUMER",
-              "topic", "review-created",
-              "key", "content-key",
-              "partition", "1",
-              "offset", "100",
-              "data", "{\"contentId\":\"test\"}",
-              "error", "리뷰 통계 업데이트 실패"
-          )),
-          any(XAddOptions.class)
-      );
+      assertThat(destination.topic()).isEqualTo("mople.follow.created.v1.dlt");
     }
 
     @Test
-    @DisplayName("최종 실패 이벤트의 key가 null이면 빈 문자열로 저장")
-    void saveFailedEvent_nullKey() throws Exception {
-      // given
-      ConsumerRecord<String, Object> record = new ConsumerRecord<>(
-          "review-created",
-          0,
-          10L,
-          null,
-          new Object()
-      );
-
-      RuntimeException exception =
-          new RuntimeException("처리 실패");
-
-      given(redisTemplate.opsForStream())
-          .willReturn(streamOperations);
-
-      given(objectMapper.writeValueAsString(record.value()))
-          .willReturn("{\"test\":\"data\"}");
-
+    @DisplayName("파티션을 지정하지 않아서 DLT 파티션 수가 더 적어도 발행이 안 깨지는지")
+    void resolveAnyPartition() {
       // when
-      ReflectionTestUtils.invokeMethod(
-          kafkaConfig,
-          "saveFailedEvent",
-          record,
-          exception
-      );
+      TopicPartition destination =
+          KafkaConfig.DLT_DESTINATION_RESOLVER.apply(record, exception);
 
       // then
-      verify(streamOperations).add(
-          eq(FAILED_STREAM_KEY),
-          eq(Map.of(
-              "type", "CONSUMER",
-              "topic", "review-created",
-              "key", "",
-              "partition", "0",
-              "offset", "10",
-              "data", "{\"test\":\"data\"}",
-              "error", "처리 실패"
-          )),
-          any(XAddOptions.class)
-      );
+      assertThat(destination.partition()).isEqualTo(-1);
     }
   }
 
+  @Nested
+  @DisplayName("DLT 발행 템플릿 선택")
+  class DltTemplates {
+
+    @Mock
+    KafkaTemplate<String, Object> jsonTemplate;
+    @Mock
+    KafkaTemplate<String, byte[]> bytesTemplate;
+
+    @Test
+    @DisplayName("byte[] 가 Object 보다 먼저 와야 역직렬화 실패분이 바이트 템플릿으로 가는지")
+    void bytesTemplateComesFirst() {
+      // when
+      Map<Class<?>, KafkaOperations<?, ?>> templates =
+          KafkaConfig.dltTemplates(jsonTemplate, bytesTemplate);
+
+      // then
+      assertThat(templates.keySet()).containsExactly(byte[].class, Object.class);
+      assertThat(templates.get(byte[].class)).isSameAs(bytesTemplate);
+      assertThat(templates.get(Object.class)).isSameAs(jsonTemplate);
+    }
+  }
+
+  @Nested
+  @DisplayName("GroupAware 커스텀 리커버러 테스트")
+  class GroupAwareRecovererTest {
+
+    @Mock
+    KafkaOperations<Object, Object> template;
+
+    @Mock
+    Consumer<?, ?> consumer;
+
+    @Mock
+    ConsumerGroupMetadata groupMetadata;
+
+    @Test
+    @DisplayName("컨슈머 그룹 ID가 정상적으로 추출되어 레코드 헤더에 추가되는지 검증")
+    void addGroupIdHeaderSuccessfully() {
+      // given
+      Map<Class<?>, KafkaOperations<?, ?>> templates = Map.of(Object.class, template);
+      KafkaConfig.GroupAwareDeadLetterPublishingRecoverer recoverer =
+          new KafkaConfig.GroupAwareDeadLetterPublishingRecoverer(templates, KafkaConfig.DLT_DESTINATION_RESOLVER);
+
+      given(consumer.groupMetadata()).willReturn(groupMetadata);
+      given(groupMetadata.groupId()).willReturn("mople-dm-es-sync-group");
+
+      // 부모 클래스(super.accept)가 내부적으로 template.send()를 호출하므로 에러 방지용 Mocking
+      given(template.send(any(ProducerRecord.class)))
+          .willReturn(CompletableFuture.completedFuture(null));
+
+      // when
+      recoverer.accept(record, consumer, exception);
+
+      // then
+      byte[] headerValue = record.headers().lastHeader("x-original-group-id").value();
+      String extractedGroupId = new String(headerValue, StandardCharsets.UTF_8);
+
+      assertThat(extractedGroupId).isEqualTo("mople-dm-es-sync-group");
+    }
+
+    @Test
+    @DisplayName("Consumer가 null이거나 예외 발생 시 헤더에 UNKNOWN이 세팅되는지 검증")
+    void addUnknownGroupIdHeaderWhenConsumerIsNull() {
+      // given
+      Map<Class<?>, KafkaOperations<?, ?>> templates = Map.of(Object.class, template);
+      KafkaConfig.GroupAwareDeadLetterPublishingRecoverer recoverer =
+          new KafkaConfig.GroupAwareDeadLetterPublishingRecoverer(templates, KafkaConfig.DLT_DESTINATION_RESOLVER);
+
+      given(template.send(any(ProducerRecord.class)))
+          .willReturn(CompletableFuture.completedFuture(null));
+
+      // when (consumer를 null로 넘김)
+      recoverer.accept(record, null, exception);
+
+      // then
+      byte[] headerValue = record.headers().lastHeader("x-original-group-id").value();
+      String extractedGroupId = new String(headerValue, StandardCharsets.UTF_8);
+
+      assertThat(extractedGroupId).isEqualTo("UNKNOWN");
+    }
+  }
 }

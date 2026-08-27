@@ -55,7 +55,7 @@ public class UserService {
 
   private final ApplicationEventPublisher eventPublisher;
 
-  @CacheEvict(value = CacheNames.USERS, allEntries = true)
+  @CacheEvict(value = CacheNames.USER_LIST, allEntries = true)
   @Transactional
   public UserDto signUp(UserCreateRequest request) {
     String normalizedEmail = request.email().toLowerCase(Locale.ROOT);

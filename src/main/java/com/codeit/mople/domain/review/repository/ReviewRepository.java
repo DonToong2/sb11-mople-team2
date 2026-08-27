@@ -22,4 +22,6 @@ public interface ReviewRepository extends
       where r.content.id = :contentId
       """)
   Double findAverageRatingByContentId(@Param("contentId") UUID contentId);
+
+  boolean existsByContentIdAndAuthorId(UUID contentId, UUID authorId);
 }

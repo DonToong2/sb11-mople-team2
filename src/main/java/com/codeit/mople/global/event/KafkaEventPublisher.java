@@ -1,19 +1,20 @@
 package com.codeit.mople.global.event;
 
 import com.codeit.mople.global.config.KafkaProperties;
+import com.codeit.mople.global.event.failure.FailedEvent;
+import com.codeit.mople.global.event.failure.FailedEventStore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Duration;
-import java.util.Map;
-import java.util.UUID;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.errors.SerializationException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions;
-import org.springframework.data.redis.connection.stream.RecordId;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.core.NestedExceptionUtils;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -22,95 +23,90 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(prefix = KafkaProperties.PREFIX, name = "enabled", havingValue = "true")
 public class KafkaEventPublisher {
 
-  private static final String FAILED_STREAM_KEY = "kafka:events:failed";
-  private static final Duration FAILED_STREAM_RETENTION = Duration.ofDays(7);
+  private static final String FAILURE_COUNTER = "kafka.event.publish.failure";
+  private static final String DESCRIPTION = "발행 최종 실패로 Redis 에 적재된 이벤트 수";
+
+  private static final String TAG_TOPIC = "topic";
+  private static final String TAG_REASON = "reason";
+  private static final String UNKNOWN_REASON = "Unknown";
 
   private final KafkaTemplate<String, Object> kafkaTemplate;
-
-  private final StringRedisTemplate redisTemplate;
+  private final FailedEventStore failedEventStore;
   private final ObjectMapper objectMapper;
+  private final MeterRegistry meterRegistry;
 
 
   public void publish(String topic, PublishableEvent event) {
-    UUID eventId = event.eventId();
-    String eventType = event.getClass().getSimpleName();
-    try {
-      kafkaTemplate.send(topic, event)
-          .whenComplete((result, ex) -> {
-            if (ex != null) {
-              saveFailedEvent(topic, null, event, ex);
-              log.error("Kafka 이벤트 발행 최종 실패: topic={}, eventId={}, eventType={}",
-                  topic, eventId, eventType, ex);
-            }
-          });
-    } catch (SerializationException e) {
-      saveFailedEvent(topic, null, event, e);
-      log.error("Kafka 이벤트 직렬화 실패(재시도 불가): topic={}, eventId={}, eventType={}",
-          topic, eventId, eventType, e);
-    } catch (Exception e) {
-      saveFailedEvent(topic, null, event, e);
-      log.error("Kafka 이벤트 발행 시도 실패: topic={}, eventId={}, eventType={}",
-          topic, eventId, eventType, e);
-    }
+    publish(topic, null, event);
   }
 
   public void publish(String topic, String key, PublishableEvent event) {
-    UUID eventId = event.eventId();
-    String eventType = event.getClass().getSimpleName();
+    send(topic, key, event).whenComplete((result, cause) -> {
+      if (cause != null) {
+        // 실패를 하나의 객체로 생성
+        handleFailure(topic, key, event, cause);
+      }
+    });
+  }
+
+  // 브로커에 발행 시도
+  // CompletableFuture: 이것을 사용하여 미리 결과를 기다리지 않고 즉시 리턴, 리턴값은 비동기로 채워짐
+  private CompletableFuture<SendResult<String, Object>> send(
+      String topic,
+      String key,
+      PublishableEvent event
+  ) {
     try {
-      kafkaTemplate.send(topic, key, event)
-          .whenComplete((result, ex) -> {
-            if (ex != null) {
-              saveFailedEvent(topic, key, event, ex);
-              log.error("Kafka 이벤트 발행 최종 실패: topic={}, key={}, eventId={}, eventType={}",
-                  topic, key, eventId, eventType, ex);
-            }
-          });
-    } catch (SerializationException e) {
-      saveFailedEvent(topic, key, event, e);
-      log.error("Kafka 이벤트 직렬화 실패(재시도 불가): topic={}, key={}, eventId={}, eventType={}",
-          topic, key, eventId, eventType, e);
+      return kafkaTemplate.send(topic, key, event);
     } catch (Exception e) {
-      saveFailedEvent(topic, key, event, e);
-      log.error("Kafka 이벤트 발행 시도 실패: topic={}, key={}, eventId={}, eventType={}",
-          topic, key, eventId, eventType, e);
+      return CompletableFuture.failedFuture(e);
     }
   }
 
-  private void saveFailedEvent(String topic, String key, PublishableEvent event, Throwable ex) {
-    UUID eventId = event.eventId();
-    String eventType = event.getClass().getSimpleName();
+  // 프로듀서 최종 실패를 하나의 객채로 생성 및 로그 기록(여기서 만들어진 객체는 redis에 저장할 객체임)
+  private void handleFailure(String topic, String key, PublishableEvent event, Throwable cause) {
+    failedEventStore.save(FailedEvent.of(topic, key, event, serialize(topic, key, event), cause));
+    countFailure(topic, cause);
 
-    String data;
+    log.error("{}: topic={}, key={}, eventId={}, eventType={}",
+        reasonOf(cause), topic, key, event.eventId(), event.getClass().getSimpleName(), cause);
+  }
+
+  // 예외 메시지를 태그로 쓰면 값이 무한히 늘어나므로 클래스 이름만 쓰는 집계
+  private void countFailure(String topic, Throwable cause) {
+    Counter.builder(FAILURE_COUNTER)
+        .description(DESCRIPTION)
+        .tag(TAG_TOPIC, topic)
+        .tag(TAG_REASON, reasonTagOf(cause))
+        .register(meterRegistry)
+        .increment();
+  }
+
+  // 소비 쪽 ConsumeFailureMetricsListener 와 같은 규칙으로 원인 태그를 뽑음
+  private String reasonTagOf(Throwable cause) {
+    if (cause == null) {
+      return UNKNOWN_REASON;
+    }
+
+    return NestedExceptionUtils.getMostSpecificCause(cause).getClass().getSimpleName();
+  }
+
+  // cause가 serializationException타입이면 "Kafka 이벤트 직렬화 실패" 아니면 "Kafka 이벤트 발행 최종 실패"
+  private String reasonOf(Throwable cause) {
+    return cause instanceof SerializationException
+        ? "Kafka 이벤트 직렬화 실패"
+        : "Kafka 이벤트 발행 최종 실패";
+  }
+
+  // event를 JSON 문자열로 직렬화 Redis Stream은 문자열 값만 저장 가능해서 변환 필요
+  // 변환 도중 문제가 생기면 로그 기록
+  private String serialize(String topic, String key, PublishableEvent event) {
     try {
-      data = objectMapper.writeValueAsString(event);
+      return objectMapper.writeValueAsString(event);
     } catch (JsonProcessingException e) {
-      data = "";
-      log.error("kafka Producer 실패 이벤트 본문 직렬화 실패: topic={}, key={}, eventId={}, eventType={}",
-          topic, key, eventId, eventType, e);
-    }
-
-    try {
-      RecordId retainFrom =
-          RecordId.of(System.currentTimeMillis() - FAILED_STREAM_RETENTION.toMillis(), 0);
-
-      redisTemplate.opsForStream().add(
-          FAILED_STREAM_KEY,
-          Map.of(
-              "type", "PRODUCER",
-              "topic", topic,
-              "key", key == null ? "" : key,
-              "eventId", String.valueOf(eventId),
-              "eventType", eventType,
-              "data", data,
-              "error", ex == null ? "Unknown" : String.valueOf(ex.getMessage())
-          ),
-          XAddOptions.none().minId(retainFrom)
-      );
-    } catch (Exception e) {
-      log.error("Kafka Producer 최종 실패 이벤트 Redis 저장 실패: topic={}, key={}",
-          topic, key, e);
+      log.error("Kafka Producer 실패 이벤트 본문 직렬화 실패: topic={}, key={}, eventId={}, eventType={}",
+          topic, key, event.eventId(), event.getClass().getSimpleName(), e);
+      return "";
     }
   }
-
 }

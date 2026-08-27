@@ -533,4 +533,51 @@ public class ReviewRepositoryTest {
 
   }
 
+  @Nested
+  @DisplayName("existsByContentIdAndAuthorId 테스트")
+  class ExistsByContentIdAndAuthorId {
+
+    @Test
+    @DisplayName("콘텐츠 ID와 사용자 ID로 리뷰 존재여부 조회 성공")
+    void existsByContentIdAndAuthorId_success() {
+      // given
+
+      // BeforeEach에서 content1, author, review1를 초기화 및 저장
+
+      entityManager.persist(review1);
+
+      entityManager.flush();
+      entityManager.clear();
+
+      // when
+      boolean result = reviewRepository.existsByContentIdAndAuthorId(content1.getId(), author.getId());
+
+      // then
+      assertThat(result).isTrue();
+    }
+
+    @Test
+    @DisplayName("콘텐츠 ID와 사용자 ID로 리뷰 존재여부 조회 실패 - 조회 결과 없음")
+    void existsByContentIdAndAuthorId_fail_notFound() {
+      // given
+
+      // BeforeEach에서 content1, author, review1를 초기화 및 저장
+
+      entityManager.persist(review1);
+
+      entityManager.flush();
+      entityManager.clear();
+
+      UUID anotherContentId = UUID.randomUUID();
+      UUID anotherAuthorId = UUID.randomUUID();
+
+      // when
+      boolean result = reviewRepository.existsByContentIdAndAuthorId(anotherContentId, anotherAuthorId);
+
+      // then
+      assertThat(result).isFalse();
+    }
+
+  }
+
 }

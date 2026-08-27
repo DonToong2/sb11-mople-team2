@@ -53,7 +53,7 @@ jobs:
           CLUSTER_ID: MkU30EVBNTcwNTJENDM2Qk
 
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.18.8
         ports:
           - 19201:9200
         env:
@@ -95,6 +95,14 @@ jobs:
           path: '**/build/test-results/test/*.xml'
           reporter: java-junit
           fail-on-error: false
+
+      - name: 테스트 리포트 업로드
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: build/reports/tests/test/
+          retention-days: 1
 
       - name: JaCoCo 커버리지 리포트 코멘트
         if: github.event_name == 'pull_request'
