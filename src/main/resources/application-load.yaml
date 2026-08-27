@@ -126,4 +126,4 @@ app:
 sse:
   server-id: "test"
   stream-consumer:
-    enabled: true
+    enabled: false
