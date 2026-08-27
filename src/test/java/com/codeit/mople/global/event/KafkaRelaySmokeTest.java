@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -55,7 +56,7 @@ class KafkaRelaySmokeTest {
         KafkaTestUtils.consumerProps("smoke-" + UUID.randomUUID(), "true", embeddedKafka);
     Consumer<String, String> consumer = new DefaultKafkaConsumerFactory<>(
         props, new StringDeserializer(), new StringDeserializer()).createConsumer();
-    embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic);
+    embeddedKafka.consumeFromAnEmbeddedTopic(consumer, true, topic);
 
     return consumer;
   }
@@ -111,6 +112,61 @@ class KafkaRelaySmokeTest {
         assertThat(record.key()).isEqualTo(playlistId.toString());
         assertThat(record.value()).contains(
             playlistContentId.toString(), playlistId.toString(), contentId.toString(), "테스트 플레이리스트");
+      }
+    }
+  }
+
+  @Nested
+  @DisplayName("롤백 이후 미발행")
+  class NoPublishOnRollback {
+
+    @Test
+    @DisplayName("팔로우 생성 이벤트가 롤백되면 토픽에 아무것도 안 나가는지")
+    void doesNotPublishFollowCreated() {
+      // given
+      UUID followId = UUID.randomUUID();
+      UUID followeeId = UUID.randomUUID();
+      UUID followerId = UUID.randomUUID();
+
+      try (Consumer<String, String> consumer = consumerFor(FOLLOW_TOPIC)) {
+        // when
+        transactionTemplate.executeWithoutResult(status -> {
+          eventPublisher.publishEvent(
+              new FollowCreatedEvent(
+                  UUID.randomUUID(), Instant.now(), followId, followeeId, followerId, "아메리카노좋아"));
+          status.setRollbackOnly();
+        });
+
+        // then
+        ConsumerRecords<String, String> records =
+            KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(2));
+
+        assertThat(records.count()).isZero();
+      }
+    }
+
+    @Test
+    @DisplayName("콘텐츠 추가 이벤트가 롤백되면 토픽에 아무것도 안 나가는지")
+    void doesNotPublishPlaylistContentAdded() {
+      // given
+      UUID playlistContentId = UUID.randomUUID();
+      UUID playlistId = UUID.randomUUID();
+      UUID contentId = UUID.randomUUID();
+
+      try (Consumer<String, String> consumer = consumerFor(PLAYLIST_CONTENT_TOPIC)) {
+        // when
+        transactionTemplate.executeWithoutResult(status -> {
+          eventPublisher.publishEvent(
+              new PlaylistContentAddedEvent(
+                  UUID.randomUUID(), Instant.now(), playlistContentId, playlistId, contentId, "테스트 플레이리스트"));
+          status.setRollbackOnly();
+        });
+
+        // then
+        ConsumerRecords<String, String> records =
+            KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(2));
+
+        assertThat(records.count()).isZero();
       }
     }
   }
