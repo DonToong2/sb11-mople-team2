@@ -71,7 +71,7 @@ public class PlaylistController implements PlaylistApi {
   @PatchMapping("/{playlistId}")
   public ResponseEntity<PlaylistResponse> update(
       @PathVariable UUID playlistId,
-      @RequestBody PlaylistUpdateRequest request,
+      @Valid @RequestBody PlaylistUpdateRequest request,
       @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails
   ) {
     PlaylistResponse response =

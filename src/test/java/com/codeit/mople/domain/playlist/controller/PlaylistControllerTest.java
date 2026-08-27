@@ -210,6 +210,49 @@ public class PlaylistControllerTest {
       verifyNoInteractions(playlistService);
     }
 
+    @Test
+    @DisplayName("플레이리스트 생성 실패 - 제목이 200자 초과(400 에러)")
+    void create_fail_overMaxTitle() throws Exception {
+      // given
+      String overTitle = "a".repeat(201);
+      PlaylistCreateRequest invalidRequest = new PlaylistCreateRequest(overTitle, description);
+
+      // BeforeEach에서 description, ownerId를 초기화
+
+      // when & then
+      mockMvc.perform(post("/api/playlists")
+              .with(user(userDetails))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(invalidRequest))
+          )
+          .andExpect(status().isBadRequest());
+
+      verifyNoInteractions(playlistService);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 생성 실패 - 설명이 200자 초과(400 에러)")
+    void create_fail_overMaxDescription() throws Exception {
+      // given
+
+      // BeforeEach에서 title, ownerId를 초기화
+
+      String overDescription = "a".repeat(201);
+      PlaylistCreateRequest invalidRequest = new PlaylistCreateRequest(title, overDescription);
+
+      // when & then
+      mockMvc.perform(post("/api/playlists")
+              .with(user(userDetails))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(invalidRequest))
+          )
+          .andExpect(status().isBadRequest());
+
+      verifyNoInteractions(playlistService);
+    }
+
   }
 
   @Nested
@@ -496,6 +539,50 @@ public class PlaylistControllerTest {
           .andExpect(jsonPath("$.description").value(description));
 
       verify(playlistService).update(eq(playlistId), any(PlaylistUpdateRequest.class), eq(ownerId));
+    }
+
+    @Test
+    @DisplayName("플레이리스트 수정 실패 - 제목이 200자 초과(400 에러)")
+    void update_fail_overMaxTitle() throws Exception {
+      // given
+
+      // BeforeEach에서 description, ownerId를 초기화
+
+      String overTitle = "a".repeat(201);
+      PlaylistUpdateRequest invalidRequest = new PlaylistUpdateRequest(overTitle, description);
+
+      // when & then
+      mockMvc.perform(patch("/api/playlists/{playlistId}", playlistId)
+              .with(user(userDetails))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(invalidRequest))
+          )
+          .andExpect(status().isBadRequest());
+
+      verifyNoInteractions(playlistService);
+    }
+
+    @Test
+    @DisplayName("플레이리스트 수정 실패 - 설명이 200자 초과(400 에러)")
+    void update_fail_overMaxDescription() throws Exception {
+      // given
+
+      // BeforeEach에서 title, ownerId를 초기화
+
+      String overDescription = "a".repeat(201);
+      PlaylistUpdateRequest invalidRequest = new PlaylistUpdateRequest(title, overDescription);
+
+      // when & then
+      mockMvc.perform(patch("/api/playlists/{playlistId}", playlistId)
+              .with(user(userDetails))
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(invalidRequest))
+          )
+          .andExpect(status().isBadRequest());
+
+      verifyNoInteractions(playlistService);
     }
 
     @Test

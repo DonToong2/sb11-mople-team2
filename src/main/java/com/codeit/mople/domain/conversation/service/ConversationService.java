@@ -2,6 +2,7 @@ package com.codeit.mople.domain.conversation.service;
 
 import static org.springframework.util.StringUtils.hasText;
 
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import com.codeit.mople.domain.conversation.dto.request.ConversationCursorRequest;
 import com.codeit.mople.domain.conversation.dto.response.ConversationDto;
 import com.codeit.mople.domain.conversation.dto.response.CursorResponseConversationDto;
@@ -25,7 +26,9 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +46,7 @@ public class ConversationService {
   private final MeterRegistry meterRegistry;
   private Counter conversationCreateCounter;
   private Counter conversationGetCounter;
+  private Counter esFallbackCounter;
 
   @PostConstruct
   public void initMetrics() {
@@ -52,6 +56,10 @@ public class ConversationService {
 
     this.conversationGetCounter = Counter.builder("mople.conversation.get.count")
         .description("대화방 목록 및 단건 조회 횟수")
+        .register(meterRegistry);
+
+    this.esFallbackCounter = Counter.builder("mople.conversation.search.es.fallback")
+        .description("ES 장애로 인한 대화방 내용 검색 우회(Fallback) 횟수")
         .register(meterRegistry);
   }
 
@@ -138,16 +146,30 @@ public class ConversationService {
     if (hasText(keyword)) {
       try {
         log.info("대화방 검색: Elasticsearch 내용 검색 시작 - keyword: '{}'", request.keywordLike());
-        esMatchingIds = directMessageSearchRepository.findByContentMatches(keyword)
-            .stream()
-            .map(DirectMessageDocument::getConversationId)
-            .distinct()
+
+        List<UUID> myConversationIds = conversationRepository.findConversationIdsByUserId(requesterId);
+        List<String> myConversationStringIds = myConversationIds.stream()
+            .map(UUID::toString)
             .toList();
-        log.info("대화방 검색: Elasticsearch 매칭 완료 - 찾은 대화방 개수: {}건", esMatchingIds.size());
-      } catch (Exception e) {
+
+        if (!myConversationIds.isEmpty()) {
+          esMatchingIds = directMessageSearchRepository.findByContentMatchesAndConversationIdIn(
+              keyword, myConversationStringIds, PageRequest.of(0, 500))
+              .stream()
+              .map(DirectMessageDocument::getConversationId)
+              .distinct()
+              .toList();
+
+          log.info("대화방 검색: Elasticsearch 매칭 완료 - 찾은 대화방 개수: {}건", esMatchingIds.size());
+        } else {
+          esMatchingIds = List.of();
+        }
+      } catch (DataAccessResourceFailureException | ElasticsearchException e) {
         log.error("대화방 검색: Elasticsearch 장애 감지 - 내용 검색 스킵, DB 닉네임 검색 진행", e);
+        esFallbackCounter.increment();
       }
     }
+
 
     long totalCount = conversationRepository.countByParticipantIdAndKeyword(requesterId, keyword, esMatchingIds);
     Instant cursorTime = request.parseCursorToInstant();
