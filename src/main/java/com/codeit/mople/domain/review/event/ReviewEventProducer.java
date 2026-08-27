@@ -1,5 +1,6 @@
 package com.codeit.mople.domain.review.event;
 
+import com.codeit.mople.global.config.KafkaProperties;
 import com.codeit.mople.global.event.KafkaEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -9,7 +10,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "spring.kafka", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = KafkaProperties.PREFIX, name = "enabled", havingValue = "true")
 public class ReviewEventProducer {
 
   private final KafkaEventPublisher kafkaEventPublisher;
