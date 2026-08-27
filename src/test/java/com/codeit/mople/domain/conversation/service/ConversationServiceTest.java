@@ -39,6 +39,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -324,10 +325,14 @@ public class ConversationServiceTest {
       given(mockRequest.keywordLike()).willReturn(searchKeyword);
 
       UUID matchedConvId = UUID.randomUUID();
+      given(conversationRepository.findConversationIdsByUserId(userAId))
+          .willReturn(List.of(matchedConvId));
+
       DirectMessageDocument mockDoc = mock(DirectMessageDocument.class);
       given(mockDoc.getConversationId()).willReturn(matchedConvId);
 
-       given(directMessageSearchRepository.findByContentMatches(searchKeyword))
+      given(directMessageSearchRepository.findByContentMatchesAndConversationIdIn(
+          eq(searchKeyword), eq(List.of(matchedConvId.toString())), any()))
           .willReturn(List.of(mockDoc));
 
       Conversation conversation = Conversation.createConversation(userA, userB);
@@ -347,7 +352,8 @@ public class ConversationServiceTest {
       assertThat(result).isNotNull();
       assertThat(result.data()).hasSize(1);
 
-      verify(directMessageSearchRepository, times(1)).findByContentMatches(searchKeyword);
+      verify(directMessageSearchRepository, times(1))
+          .findByContentMatchesAndConversationIdIn(eq(searchKeyword), eq(List.of(matchedConvId.toString())), any());
     }
 
     @Test
@@ -364,7 +370,12 @@ public class ConversationServiceTest {
       given(mockRequest.parseCursorToInstant()).willReturn(null);
       given(mockRequest.keywordLike()).willReturn(searchKeyword);
 
-      given(directMessageSearchRepository.findByContentMatches(searchKeyword))
+      UUID myConvId = UUID.randomUUID();
+      given(conversationRepository.findConversationIdsByUserId(userAId))
+          .willReturn(List.of(myConvId));
+
+      given(directMessageSearchRepository.findByContentMatchesAndConversationIdIn(
+          eq(searchKeyword), eq(List.of(myConvId.toString())), any()))
           .willReturn(List.of());
 
       given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(), eq(List.of())))
@@ -376,7 +387,8 @@ public class ConversationServiceTest {
       // then
       assertThat(result).isNotNull();
       assertThat(result.data()).isEmpty();
-      verify(directMessageSearchRepository, times(1)).findByContentMatches(searchKeyword);
+      verify(directMessageSearchRepository, times(1))
+          .findByContentMatchesAndConversationIdIn(eq(searchKeyword), eq(List.of(myConvId.toString())), any());
     }
 
     @Test
@@ -393,8 +405,13 @@ public class ConversationServiceTest {
       given(mockRequest.parseCursorToInstant()).willReturn(null);
       given(mockRequest.keywordLike()).willReturn(searchKeyword);
 
-      given(directMessageSearchRepository.findByContentMatches(searchKeyword))
-          .willThrow(new RuntimeException("Elasticsearch Connection Refused"));
+      UUID myConvId = UUID.randomUUID();
+      given(conversationRepository.findConversationIdsByUserId(userAId))
+          .willReturn(List.of(myConvId));
+
+      given(directMessageSearchRepository.findByContentMatchesAndConversationIdIn(
+          eq(searchKeyword), eq(List.of(myConvId.toString())), any()))
+          .willThrow(new DataAccessResourceFailureException("Elasticsearch Connection Refused"));
 
       Conversation conversation = Conversation.createConversation(userA, userB);
       DirectMessage mockMessage = mock(DirectMessage.class);
@@ -414,8 +431,10 @@ public class ConversationServiceTest {
       assertThat(result.data()).hasSize(1);
 
       // ES 호출은 시도했지만 에러가 났고, 우회해서 DB를 조회했음을 증명
-      verify(directMessageSearchRepository, times(1)).findByContentMatches(searchKeyword);
-      verify(conversationRepository, times(1)).findConversationByCursor(eq(userAId), eq(mockRequest), any(), eq(null));
+      verify(directMessageSearchRepository, times(1))
+          .findByContentMatchesAndConversationIdIn(eq(searchKeyword), eq(List.of(myConvId.toString())), any());
+      verify(conversationRepository, times(1))
+          .findConversationByCursor(eq(userAId), eq(mockRequest), any(), eq(null));
     }
   }
 }

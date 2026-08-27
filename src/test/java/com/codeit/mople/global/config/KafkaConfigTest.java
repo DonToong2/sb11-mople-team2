@@ -1,9 +1,16 @@
 package com.codeit.mople.global.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -77,6 +84,66 @@ class KafkaConfigTest {
       assertThat(templates.keySet()).containsExactly(byte[].class, Object.class);
       assertThat(templates.get(byte[].class)).isSameAs(bytesTemplate);
       assertThat(templates.get(Object.class)).isSameAs(jsonTemplate);
+    }
+  }
+
+  @Nested
+  @DisplayName("GroupAware 커스텀 리커버러 테스트")
+  class GroupAwareRecovererTest {
+
+    @Mock
+    KafkaOperations<Object, Object> template;
+
+    @Mock
+    Consumer<?, ?> consumer;
+
+    @Mock
+    ConsumerGroupMetadata groupMetadata;
+
+    @Test
+    @DisplayName("컨슈머 그룹 ID가 정상적으로 추출되어 레코드 헤더에 추가되는지 검증")
+    void addGroupIdHeaderSuccessfully() {
+      // given
+      Map<Class<?>, KafkaOperations<?, ?>> templates = Map.of(Object.class, template);
+      KafkaConfig.GroupAwareDeadLetterPublishingRecoverer recoverer =
+          new KafkaConfig.GroupAwareDeadLetterPublishingRecoverer(templates, KafkaConfig.DLT_DESTINATION_RESOLVER);
+
+      given(consumer.groupMetadata()).willReturn(groupMetadata);
+      given(groupMetadata.groupId()).willReturn("mople-dm-es-sync-group");
+
+      // 부모 클래스(super.accept)가 내부적으로 template.send()를 호출하므로 에러 방지용 Mocking
+      given(template.send(any(ProducerRecord.class)))
+          .willReturn(CompletableFuture.completedFuture(null));
+
+      // when
+      recoverer.accept(record, consumer, exception);
+
+      // then
+      byte[] headerValue = record.headers().lastHeader("x-original-group-id").value();
+      String extractedGroupId = new String(headerValue, StandardCharsets.UTF_8);
+
+      assertThat(extractedGroupId).isEqualTo("mople-dm-es-sync-group");
+    }
+
+    @Test
+    @DisplayName("Consumer가 null이거나 예외 발생 시 헤더에 UNKNOWN이 세팅되는지 검증")
+    void addUnknownGroupIdHeaderWhenConsumerIsNull() {
+      // given
+      Map<Class<?>, KafkaOperations<?, ?>> templates = Map.of(Object.class, template);
+      KafkaConfig.GroupAwareDeadLetterPublishingRecoverer recoverer =
+          new KafkaConfig.GroupAwareDeadLetterPublishingRecoverer(templates, KafkaConfig.DLT_DESTINATION_RESOLVER);
+
+      given(template.send(any(ProducerRecord.class)))
+          .willReturn(CompletableFuture.completedFuture(null));
+
+      // when (consumer를 null로 넘김)
+      recoverer.accept(record, null, exception);
+
+      // then
+      byte[] headerValue = record.headers().lastHeader("x-original-group-id").value();
+      String extractedGroupId = new String(headerValue, StandardCharsets.UTF_8);
+
+      assertThat(extractedGroupId).isEqualTo("UNKNOWN");
     }
   }
 }

@@ -3,6 +3,7 @@ package com.codeit.mople.global.config;
 import com.codeit.mople.domain.directmessage.exception.DirectMessageException;
 import com.codeit.mople.domain.notification.exception.NotificationException;
 import com.codeit.mople.global.event.failure.ConsumeFailureMetricsListener;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
@@ -52,7 +53,7 @@ public class KafkaConfig {
 
     return kafkaTemplate;
   }
-  
+
   // 역직렬화가 깨진 레코드의 원본 byte[]를 그대로 DLT로 보내는 템플릿
   // JSON 템플릿으로 보내면 Jackson이 base64 문자열로 한 겹 더 감싸버리기 때문임
   @Bean
@@ -70,9 +71,10 @@ public class KafkaConfig {
       KafkaTemplate<String, byte[]> bytesKafkaTemplate,
       ConsumeFailureMetricsListener consumeFailureMetricsListener
   ) {
+
     // DeadLetterPublishingRecoverer -> 실패 전용 토픽에 던져넣는 기능(DLT로 메세지 보내줌)
     // Consumer가 실패했을 때 그 메세지를 (원래토픽명 + .dlt)로 재발행
-    DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
+    DeadLetterPublishingRecoverer recoverer = new GroupAwareDeadLetterPublishingRecoverer(
         dltTemplates(kafkaTemplate, bytesKafkaTemplate), DLT_DESTINATION_RESOLVER);
 
     // Exponential : 지수
@@ -110,4 +112,31 @@ public class KafkaConfig {
     return templates;
   }
 
+  // GroupId를 헤더에 추가하는 커스텀 DLT 리커버러
+  static class GroupAwareDeadLetterPublishingRecoverer extends DeadLetterPublishingRecoverer {
+
+    public GroupAwareDeadLetterPublishingRecoverer(
+        Map<Class<?>, KafkaOperations<?, ?>> templates,
+        BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+      super(templates, destinationResolver);
+    }
+
+    @Override
+    public void accept(ConsumerRecord<?, ?> record, org.apache.kafka.clients.consumer.Consumer<?, ?> consumer, Exception exception) {
+      String groupId = "UNKNOWN";
+
+      if (consumer != null) {
+        try {
+          groupId = consumer.groupMetadata().groupId();
+        } catch (Exception e) {
+          log.warn("Kafka Consumer 그룹 ID 추출 실패 - 기본값(UNKNOWN)으로 세팅", e);
+        }
+      }
+
+      // DLT로 가기 전 헤더에 안전하게 주입
+      record.headers().add("x-original-group-id", groupId.getBytes(StandardCharsets.UTF_8));
+
+      super.accept(record, consumer, exception);
+    }
+  }
 }
