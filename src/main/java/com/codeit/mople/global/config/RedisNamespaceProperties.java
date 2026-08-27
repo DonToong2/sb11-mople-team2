@@ -12,7 +12,13 @@ public record RedisNamespaceProperties(
     String namespace
 ) {
 
+  public static final String LOCK_SEGMENT = "lock";
+
   public String cacheKeyPrefix() {
     return namespace + ":cache:";
+  }
+
+  public String lockKey(String lockName) {
+    return namespace + ":" + LOCK_SEGMENT + ":" + lockName;
   }
 }

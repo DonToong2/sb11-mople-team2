@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -30,6 +31,8 @@ public class RedisCacheErrorHandler implements CacheErrorHandler {
   private static final int MAX_PENDING = 10_000;
   // 이 시간 안에 다시 실패하면 스택트레이스 없이 debug로만 남김
   private static final long SUPPRESS_WINDOW_MILLIS = Duration.ofSeconds(30).toMillis();
+  // 종료 시 진행 중인 재시도를 기다려 줄 시간
+  private static final long SHUTDOWN_WAIT_SECONDS = 5L;
 
   // 비동기로 재시도 수행하기 위한 캐시 무효화 재시도 전용 스레드 풀
   private final ScheduledExecutorService retryScheduler =
@@ -117,7 +120,15 @@ public class RedisCacheErrorHandler implements CacheErrorHandler {
 
   @PreDestroy
   void shutdown() {
-    retryScheduler.shutdownNow();
+    retryScheduler.shutdown();
+    try {
+      if (!retryScheduler.awaitTermination(SHUTDOWN_WAIT_SECONDS, TimeUnit.SECONDS)) {
+        retryScheduler.shutdownNow();
+      }
+    } catch (InterruptedException e) {
+      retryScheduler.shutdownNow();
+      Thread.currentThread().interrupt();
+    }
 
     Set<String> remaining = Set.copyOf(pending);
     if (!remaining.isEmpty()) {
@@ -142,20 +153,26 @@ public class RedisCacheErrorHandler implements CacheErrorHandler {
 
   // 캐시 무효화 재시도 로직
   private void retryEvict(Cache cache, Object key, String pendingKey, int attempt, long delaySeconds) {
-    retryScheduler.schedule(() -> {
-      try {
-        cache.evict(key);
-        pending.remove(pendingKey);
-        log.info("캐시 무효화 재시도 성공: cache={}, key={}, attempt={}", cache.getName(), key, attempt);
-      } catch (RuntimeException e) {
-        if (attempt < MAX_ATTEMPTS) {
-          retryEvict(cache, key, pendingKey, attempt + 1, delaySeconds * BACKOFF_MULTIPLIER);
-        } else {
+    try {
+      retryScheduler.schedule(() -> {
+        try {
+          cache.evict(key);
           pending.remove(pendingKey);
-          log.error("캐시 무효화 재시도를 모두 실패했습니다. TTL 만료까지 값이 남습니다: cache={}, key={}, cause={}",
-              cache.getName(), key, e.getMessage());
+          log.info("캐시 무효화 재시도 성공: cache={}, key={}, attempt={}", cache.getName(), key, attempt);
+        } catch (RuntimeException e) {
+          if (attempt < MAX_ATTEMPTS) {
+            retryEvict(cache, key, pendingKey, attempt + 1, delaySeconds * BACKOFF_MULTIPLIER);
+          } else {
+            pending.remove(pendingKey);
+            log.error("캐시 무효화 재시도를 모두 실패했습니다. TTL 만료까지 값이 남습니다: cache={}, key={}, cause={}",
+                cache.getName(), key, e.getMessage());
+          }
         }
-      }
-    }, delaySeconds, TimeUnit.SECONDS);
+      }, delaySeconds, TimeUnit.SECONDS);
+    } catch (RejectedExecutionException e) {
+      pending.remove(pendingKey);
+      log.warn("종료 중이라 캐시 무효화 재시도를 등록하지 못했습니다. TTL 만료까지 옛 값이 남습니다: cache={}, key={}, attempt={}",
+          cache.getName(), key, attempt);
+    }
   }
 }

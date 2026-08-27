@@ -7,12 +7,14 @@ import com.codeit.mople.domain.content.client.tmdb.batch.TmdbContentItemProcesso
 import com.codeit.mople.domain.content.client.tmdb.batch.TmdbContentItemWriter;
 import com.codeit.mople.domain.content.client.tmdb.batch.TmdbPageItemReader;
 import com.codeit.mople.domain.content.client.tmdb.dto.TmdbContentItem;
+import com.codeit.mople.domain.content.client.tmdb.dto.TmdbGenreCatalog;
 import com.codeit.mople.domain.content.client.tmdb.listener.TmdbCollectJobListener;
 import com.codeit.mople.domain.content.entity.Content;
 import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.repository.ContentRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -20,6 +22,7 @@ import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -27,6 +30,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.PlatformTransactionManager;
 
+@Slf4j
 @Configuration
 @RequiredArgsConstructor
 public class TmdbCollectJobConfig {
@@ -43,19 +47,40 @@ public class TmdbCollectJobConfig {
   public Job tmdbCollectJob(
       JobRepository jobRepository,
       TmdbCollectJobListener listener,
+      @Qualifier("tmdbGenreCheckStep") Step tmdbGenreCheckStep,
       @Qualifier("tmdbMovieStep") Step tmdbMovieStep,
       @Qualifier("tmdbTvStep") Step tmdbTvStep
   ) {
     return new JobBuilder("tmdbCollectJob", jobRepository)
         .listener(listener)
-        .start(tmdbMovieStep)
+        .start(tmdbGenreCheckStep)
+        .next(tmdbMovieStep)
         .next(tmdbTvStep)
         .build();
   }
 
   @Bean
   public TmdbCollectJobListener tmdbCollectJobListener() {
-    return new TmdbCollectJobListener(meterRegistry, tmdbGenreProvider);
+    return new TmdbCollectJobListener(meterRegistry);
+  }
+
+  @Bean
+  public Step tmdbGenreCheckStep(
+      JobRepository jobRepository,
+      PlatformTransactionManager transactionManager) {
+    return new StepBuilder("tmdbGenreCheckStep", jobRepository)
+        .tasklet((contribution, chunkContext) -> {
+          TmdbGenreCatalog catalog = tmdbGenreProvider.get();
+
+          if (catalog.isEmpty()) {
+            throw new IllegalStateException(
+                "TMDB 장르 카탈로그가 비어 있어 수집을 중단합니다. 태그 없는 콘텐츠 저장을 막습니다.");
+          }
+          log.info("TMDB 장르 카탈로그 {}건을 확인했습니다.", catalog.size());
+          return RepeatStatus.FINISHED;
+        }, transactionManager)
+        .allowStartIfComplete(true)
+        .build();
   }
 
   @Bean

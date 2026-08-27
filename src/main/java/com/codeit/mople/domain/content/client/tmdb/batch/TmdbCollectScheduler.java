@@ -16,6 +16,8 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "batch.tmdb.collect.enabled", havingValue = "true")
 public class TmdbCollectScheduler {
 
+  public static final String LOCK_NAME = "tmdb-collect";
+
   private final TmdbCollectJobRunner tmdbCollectJobRunner;
   private final String cron;
 
@@ -36,7 +38,7 @@ public class TmdbCollectScheduler {
   // 2. 분산락 적용(이름, 락 최대 시간 제한, 최소 락 유지시간)
   @Scheduled(cron = "${batch.tmdb.collect.cron}", zone = "Asia/Seoul")
   @SchedulerLock(
-      name = "tmdb-collect",
+      name = LOCK_NAME,
       lockAtMostFor = "${batch.tmdb.collect.lock-at-most-for}",
       lockAtLeastFor = "${batch.tmdb.collect.lock-at-least-for}")
   public void collect() {

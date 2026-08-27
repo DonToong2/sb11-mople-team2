@@ -3,8 +3,8 @@ package com.codeit.mople.domain.content.client.tmdb.batch;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.willAnswer;
 
+import com.codeit.mople.global.config.RedisNamespaceProperties;
 import java.time.Duration;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,7 +28,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @DisplayName("TMDB 수집 스케줄러 락 만료 통합 테스트")
 class TmdbCollectSchedulerLockExpiryTest {
 
-  private static final String LOCK_KEY_PATTERN = "*tmdb-collect*";
   private static final Duration EXPIRY_WAIT = Duration.ofSeconds(10);
 
   @Autowired
@@ -37,17 +36,23 @@ class TmdbCollectSchedulerLockExpiryTest {
   @Autowired
   private StringRedisTemplate stringRedisTemplate;
 
+  @Autowired
+  private RedisNamespaceProperties redisNamespaceProperties;
+
   @MockitoBean
   private TmdbCollectJobRunner runner;
 
+  private String lockKey;
+
   @BeforeEach
   void setUp() {
-    deleteLockKeys();
+    lockKey = redisNamespaceProperties.lockKey(TmdbCollectScheduler.LOCK_NAME);
+    stringRedisTemplate.delete(lockKey);
   }
 
   @AfterEach
   void tearDown() {
-    deleteLockKeys();
+    stringRedisTemplate.delete(lockKey);
   }
 
   @Test
@@ -107,28 +112,15 @@ class TmdbCollectSchedulerLockExpiryTest {
   private void awaitLockExpired() throws InterruptedException {
     long deadline = System.nanoTime() + EXPIRY_WAIT.toNanos();
     while (System.nanoTime() < deadline) {
-      if (lockKeys().isEmpty()) {
+      if (!Boolean.TRUE.equals(stringRedisTemplate.hasKey(lockKey))) {
         return;
       }
       Thread.sleep(50);
     }
-    throw new AssertionError("lockAtMostFor가 지났는데도 락 키가 남아 있습니다.");
+    throw new AssertionError("lockAtMostFor가 지났는데도 락 키가 남아 있습니다: key=" + lockKey);
   }
 
   private String lockValue() {
-    Set<String> keys = lockKeys();
-    return keys.isEmpty() ? null : stringRedisTemplate.opsForValue().get(keys.iterator().next());
-  }
-
-  private Set<String> lockKeys() {
-    Set<String> keys = stringRedisTemplate.keys(LOCK_KEY_PATTERN);
-    return keys == null ? Set.of() : keys;
-  }
-
-  private void deleteLockKeys() {
-    Set<String> keys = lockKeys();
-    if (!keys.isEmpty()) {
-      stringRedisTemplate.delete(keys);
-    }
+    return stringRedisTemplate.opsForValue().get(lockKey);
   }
 }

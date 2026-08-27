@@ -1,6 +1,5 @@
 package com.codeit.mople.domain.content.client.tmdb.listener;
 
-import com.codeit.mople.domain.content.client.tmdb.TmdbGenreProvider;
 import com.codeit.mople.domain.content.client.tmdb.batch.TmdbContentItemWriter;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -18,14 +17,12 @@ import org.springframework.batch.item.ExecutionContext;
 @Slf4j
 public class TmdbCollectJobListener implements JobExecutionListener {
 
-  private final TmdbGenreProvider tmdbGenreProvider;
   private final Counter successCounter;
   private final Counter failureCounter;
   private final Counter skipCounter;
   private final Timer durationTimer;
 
-  public TmdbCollectJobListener(MeterRegistry meterRegistry, TmdbGenreProvider tmdbGenreProvider) {
-    this.tmdbGenreProvider = tmdbGenreProvider;
+  public TmdbCollectJobListener(MeterRegistry meterRegistry) {
     this.skipCounter = Counter.builder("batch.tmdb.skip")
         .description("TMDB 수집 배치 skip 건수")
         .register(meterRegistry);
@@ -38,13 +35,6 @@ public class TmdbCollectJobListener implements JobExecutionListener {
     this.durationTimer = Timer.builder("batch.tmdb.duration")
         .description("TMDB 수집 배치 소요 시간")
         .register(meterRegistry);
-  }
-
-  @Override
-  public void beforeJob(JobExecution jobExecution) {
-    if (tmdbGenreProvider.get().isEmpty()) {
-      log.error("TMDB 장르 카탈로그가 비어 이번 회차 콘텐츠가 태그 없이 저장됩니다.");
-    }
   }
 
   @Override
