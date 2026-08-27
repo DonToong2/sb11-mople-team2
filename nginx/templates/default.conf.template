@@ -1,7 +1,6 @@
 # 이 nginx는 실제 배포에는 안 쓰이고, 로컬 부하테스트 전용이다.
 # 그래서 로컬 컨테이너 이름을 upstream{}에 직접 고정해서 진짜 라운드로빈 +
-# max_fails/fail_timeout 패시브 헬스체크를 쓴다. (실제 배포에 쓸 게 아니므로
-# "환경마다 이름이 다르다"는 문제가 더 이상 신경 쓸 부분이 아님)
+# max_fails/fail_timeout 을 쓴다
 upstream app_server {
     server mople-load-test-app-test-1:8080 max_fails=3 fail_timeout=5s;
     server mople-load-test-app-test-2:8080 max_fails=3 fail_timeout=5s;
