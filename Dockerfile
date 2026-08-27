@@ -18,14 +18,18 @@ WORKDIR /app
 # non-root 사용자로 실행
 RUN useradd -r -u 1001 appuser
 
-# Logback 로그 디렉터리 생성 및 appuser 권한 설정
-RUN mkdir -p /app/.logs \ && chown -R appuser:appuser /app
-
-USER appuser
+# 로그 디렉터리 + 인증서 디렉터리 생성 및 appuser 권한 설정
+RUN mkdir -p /app/.logs /app/certs \
+    && chown -R appuser:appuser /app
 
 COPY --from=build /app/build/libs/mople-0.0.1-SNAPSHOT.jar app.jar
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && chown appuser:appuser /app/entrypoint.sh
+
+USER appuser
 
 EXPOSE 8080
 ENV SPRING_PROFILES_ACTIVE=prod
 
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=65.0", "-XX:+ExitOnOutOfMemoryError", "-jar", "app.jar"]
+# 기존 값들 entrypoint.sh로 이동
+ENTRYPOINT ["/app/entrypoint.sh"]
