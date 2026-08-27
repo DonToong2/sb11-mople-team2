@@ -96,10 +96,13 @@ public class WatchingSessionService {
     String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentId.toString();
     boolean isDesc = "DESCENDING".equalsIgnoreCase(sortDirection);
 
-    //Redis ZSet에서 점수(입장 시각)와 함께 정렬된 상태로 조회
+    //검색 조건이 있으면 넉넉히(100개) 스캔, 없으면 요청한 limit에 여유분만 추가 스캔
+    int fetchSize = (watcherNameLike != null && !watcherNameLike.trim().isEmpty()) ? 100 : limit + 10;
+
+    //Redis ZSet에서 입장 시각과 함께 정렬된 상태로 조회
     Set<TypedTuple<Object>> tuples = isDesc
-        ? redisTemplate.opsForZSet().reverseRangeWithScores(contentKey, 0, -1)
-        : redisTemplate.opsForZSet().rangeWithScores(contentKey, 0, -1);
+        ? redisTemplate.opsForZSet().reverseRangeWithScores(contentKey, 0, fetchSize)
+        : redisTemplate.opsForZSet().rangeWithScores(contentKey, 0, fetchSize);
 
     if (tuples == null) {
       tuples = Collections.emptySet();

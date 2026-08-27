@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
@@ -110,8 +111,7 @@ public class WatchingSessionServiceTest {
     ZSetOperations.TypedTuple<Object> mockTuple = mock(ZSetOperations.TypedTuple.class);
     given(mockTuple.getValue()).willReturn(userId.toString());
     given(mockTuple.getScore()).willReturn((double) Instant.now().toEpochMilli());
-    given(zSetOperations.reverseRangeWithScores(contentKey, 0, -1)).willReturn(Set.of(mockTuple));
-
+    given(zSetOperations.reverseRangeWithScores(eq(contentKey), eq(0L), anyLong())).willReturn(Set.of(mockTuple));
     //DB에서 해당 유저 정보 조회 모킹
     given(userRepository.findAllById(anyList())).willReturn(List.of(mockUser));
 
@@ -155,8 +155,7 @@ public class WatchingSessionServiceTest {
     given(tuple2.getValue()).willReturn(user2Id.toString());
     given(tuple2.getScore()).willReturn((double) Instant.now().toEpochMilli());
 
-    given(zSetOperations.reverseRangeWithScores(contentKey, 0, -1)).willReturn(Set.of(tuple1, tuple2));
-
+    given(zSetOperations.reverseRangeWithScores(eq(contentKey), eq(0L), anyLong())).willReturn(Set.of(tuple1, tuple2));
     given(userRepository.findAllById(any())).willReturn(List.of(user1, user2));
     given(valueOperations.multiGet(anyList())).willReturn(List.of(UUID.randomUUID().toString()));
 
@@ -191,8 +190,7 @@ public class WatchingSessionServiceTest {
     ZSetOperations.TypedTuple<Object> mockTuple = mock(ZSetOperations.TypedTuple.class);
     given(mockTuple.getValue()).willReturn(userId.toString());
     given(mockTuple.getScore()).willReturn((double) Instant.now().toEpochMilli());
-    given(zSetOperations.reverseRangeWithScores(contentKey, 0, -1)).willReturn(Set.of(mockTuple));
-
+    given(zSetOperations.reverseRangeWithScores(eq(contentKey), eq(0L), anyLong())).willReturn(Set.of(mockTuple));
     //실제 Redis에 저장되어 있는 세션 ID를 모킹
     String expectedSessionUuid = UUID.randomUUID().toString();
     given(valueOperations.multiGet(anyList())).willReturn(List.of(expectedSessionUuid));
@@ -240,7 +238,8 @@ public class WatchingSessionServiceTest {
     Set<ZSetOperations.TypedTuple<Object>> returnedSet = new java.util.LinkedHashSet<>();
     returnedSet.add(t2);
     returnedSet.add(t1);
-    given(zSetOperations.reverseRangeWithScores(contentKey, 0, -1)).willReturn(returnedSet);
+
+    given(zSetOperations.reverseRangeWithScores(eq(contentKey), eq(0L), anyLong())).willReturn(returnedSet);
 
     //이전 페이지 마지막 항목이었던 user3 정보를 커서로 전달
     String cursorStr = String.valueOf(sameTime);

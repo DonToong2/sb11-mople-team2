@@ -19,6 +19,10 @@ public class DiscordWebhookService {
 
   private final RestTemplate restTemplate;
 
+  //디스코드 웹훅 알림 쿨다운 시간 설정(1분)
+  private long lastSentTime = 0;
+  private static final long COOLDOWN_TIME = 60000;
+
   //연결(2초) 및 응답(3초) 타임아웃을 설정
   public DiscordWebhookService(RestTemplateBuilder restTemplateBuilder) {
     this.restTemplate = restTemplateBuilder
@@ -31,6 +35,14 @@ public class DiscordWebhookService {
     if (webhookUrl == null || webhookUrl.isEmpty()) {
       return;
     }
+
+    //1분 이내에 동일한 연속 에러 알림 요청 시 발송 생략
+    long currentTime = System.currentTimeMillis();
+    if (currentTime - lastSentTime < COOLDOWN_TIME) {
+      log.warn("디스코드 알림 쿨다운 중입니다. (에러: {})", e.getMessage());
+      return;
+    }
+    lastSentTime = currentTime;
 
     //디스코드로 전송할 메시지 내용 구성
     String content = " [서버 장애 발생 알림] \n" +

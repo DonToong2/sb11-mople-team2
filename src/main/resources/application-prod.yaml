@@ -12,8 +12,13 @@ spring:
       ssl:
         enabled: true
       # 커맨드 타임아웃, 이게 없으면 응답 없는 Redis에 요청 스레드가 묶임
-      timeout: 2s
-      connect-timeout: 1s
+      timeout: 5s
+      connect-timeout: 3s
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 10
+          min-idle: 2
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:}
