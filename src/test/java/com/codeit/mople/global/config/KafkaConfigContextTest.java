@@ -27,11 +27,15 @@ class KafkaConfigContextTest {
         "mople.follow.created.v1",
         "playlist-events.v1",
         "mople.playlist.content-added.v1",
+        "mople.review.created.v1",
+        "mople.review.updated.v1",
+        "mople.review.deleted.v1",
         "mople.direct-message.created.v1",
         "mople.notification.created.v1",
         "content-search-index-events.v1",
         "user-search-index-events.v1",
-        "playlist-search-index-events.v1"));
+        "playlist-search-index-events.v1"
+    ));
   }
 
   final ApplicationContextRunner runner = new ApplicationContextRunner()
