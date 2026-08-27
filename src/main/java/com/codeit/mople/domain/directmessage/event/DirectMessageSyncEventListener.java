@@ -24,7 +24,7 @@ public class DirectMessageSyncEventListener {
   private final DirectMessageRepository directMessageRepository;
 
   @KafkaListener(
-      topics = "${spring.kafka.topics.direct-message-created:mople.direct-message.created.v1}",
+      topics = "${spring.kafka.topics.direct-message-created}",
       groupId = "${mople.kafka.consumer.es-sync-group-id}"
   )
   public void handleDirectMessageCreatedForSearch(DirectMessageCreatedEvent event) {
