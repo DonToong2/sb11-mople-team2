@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -142,6 +143,50 @@ class KafkaEventPublisherTest {
       // then
       verify(failedEventStore).save(failedEventCaptor.capture());
       assertThat(failedEventCaptor.getValue().error()).isEqualTo("max.block.ms 만료");
+    }
+
+    @Test
+    @DisplayName("발행에 성공하면 실패 처리 executor 에 아무것도 제출하지 않는지")
+    void publishSuccessSubmitsNothing() {
+      // given
+      AtomicInteger submitted = new AtomicInteger();
+      KafkaEventPublisher counting = new KafkaEventPublisher(
+          kafkaTemplate, failedEventStore, objectMapper, meterRegistry,
+          command -> {
+            submitted.incrementAndGet();
+            command.run();
+          });
+      given(kafkaTemplate.send(TOPIC, KEY, event))
+          .willReturn(CompletableFuture.completedFuture(null));
+
+      // when
+      counting.publish(TOPIC, KEY, event);
+
+      // then
+      assertThat(submitted).hasValue(0);
+    }
+
+    @Test
+    @DisplayName("발행에 실패하면 실패 처리를 executor 에 한 번만 제출하는지")
+    void publishFailureSubmitsOnce() throws Exception {
+      // given
+      AtomicInteger submitted = new AtomicInteger();
+      KafkaEventPublisher counting = new KafkaEventPublisher(
+          kafkaTemplate, failedEventStore, objectMapper, meterRegistry,
+          command -> {
+            submitted.incrementAndGet();
+            command.run();
+          });
+      given(kafkaTemplate.send(TOPIC, KEY, event))
+          .willReturn(CompletableFuture.failedFuture(new RuntimeException("broker down")));
+      given(objectMapper.writeValueAsString(event)).willReturn("{}");
+
+      // when
+      counting.publish(TOPIC, KEY, event);
+
+      // then
+      assertThat(submitted).hasValue(1);
+      verify(failedEventStore).save(any());
     }
 
     @Test

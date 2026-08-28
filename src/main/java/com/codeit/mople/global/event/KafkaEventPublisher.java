@@ -55,12 +55,12 @@ public class KafkaEventPublisher {
   }
 
   public void publish(String topic, String key, PublishableEvent event) {
-    send(topic, key, event).whenCompleteAsync((result, cause) -> {
+    send(topic, key, event).whenComplete((result, cause) -> {
       if (cause != null) {
         // 실패를 하나의 객체로 생성
-        handleFailure(topic, key, event, cause);
+        failureExecutor.execute(() -> handleFailure(topic, key, event, cause));
       }
-    }, failureExecutor);
+    });
   }
 
   // 브로커에 발행 시도

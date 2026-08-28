@@ -6,7 +6,7 @@ import com.codeit.mople.global.event.failure.ConsumeFailureMetricsListener;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionHandler;
 import java.util.function.BiFunction;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -35,8 +35,17 @@ public class KafkaConfig {
   private static final String DLT_SUFFIX = ".dlt";
   private static final int ANY_PARTITION = -1;
 
+  static final int FAILURE_QUEUE_CAPACITY = 1000;
+
   static final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> DLT_DESTINATION_RESOLVER =
       (record, exception) -> new TopicPartition(record.topic() + DLT_SUFFIX, ANY_PARTITION);
+
+  // 큐 포화·종료 이후에도 실패 기록을 버리지 않고 호출 스레드에서 처리
+  static final RejectedExecutionHandler CALLER_RUNS_ALWAYS = (task, executor) -> {
+    log.warn("Kafka 발행 실패 처리 큐 포화 호출 스레드에서 동기 처리: queueSize={}, shutdown={}",
+        executor.getQueue().size(), executor.isShutdown());
+    task.run();
+  };
 
   public KafkaConfig(KafkaProperties kafkaProperties) {
     Assert.state(StringUtils.hasText(kafkaProperties.bootstrapServers()),
@@ -58,15 +67,17 @@ public class KafkaConfig {
 
   // send 실패에 대한 후처리를 비동기로
   @Bean
-  public Executor kafkaPublishFailureExecutor() {
+  public ThreadPoolTaskExecutor kafkaPublishFailureExecutor() {
     ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 
-    executor.setCorePoolSize(1);
-    executor.setMaxPoolSize(1);
-    executor.setQueueCapacity(1000);
-    executor.setThreadNamePrefix("kafka-publish-failure-");
-    executor.setWaitForTasksToCompleteOnShutdown(true);
-    executor.setAwaitTerminationSeconds(10);
+    executor.setCorePoolSize(1);  // 스레드 1개 고정
+    executor.setMaxPoolSize(1);   // 스레드 1개 고정
+    executor.setQueueCapacity(FAILURE_QUEUE_CAPACITY);  // 대기 큐 상한
+    executor.setThreadNamePrefix("kafka-publish-failure-"); // 로그 스레드 덤프에서 구분용
+    executor.setWaitForTasksToCompleteOnShutdown(true);     // 종료시 큐에 남은 작업 버리지 않음
+    executor.setAwaitTerminationSeconds(10);                // 버리지 않는대신 최대 10초 기다림
+    // 큐가 꽉 차거나 종류 후 들어온 작업은 호출 스레드에서 즉시 실행(유실 방지)
+    executor.setRejectedExecutionHandler(CALLER_RUNS_ALWAYS);
     executor.initialize();
 
     return executor;
