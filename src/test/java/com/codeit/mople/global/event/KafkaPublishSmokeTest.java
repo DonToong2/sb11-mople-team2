@@ -69,15 +69,15 @@ class KafkaPublishSmokeTest {
 
   static final String FOLLOW_TOPIC = "mople.follow.created.v1";
   static final String PLAYLIST_CONTENT_TOPIC = "mople.playlist.content-added.v1";
-  static final String PLAYLIST_EVENTS_TOPIC = "playlist-events.v1";
-  static final String PLAYLIST_SEARCH_INDEX_TOPIC = "playlist-search-index-events.v1";
-  static final String CONTENT_SEARCH_INDEX_TOPIC = "content-search-index-events.v1";
-  static final String USER_SEARCH_INDEX_TOPIC = "user-search-index-events.v1";
+  static final String PLAYLIST_EVENTS_TOPIC = "mople.playlist-events.v1";
+  static final String PLAYLIST_SEARCH_INDEX_TOPIC = "mople.playlist-search-index-events.v1";
+  static final String CONTENT_SEARCH_INDEX_TOPIC = "mople.content-search-index-events.v1";
+  static final String USER_SEARCH_INDEX_TOPIC = "mople.user-search-index-events.v1";
   static final String DIRECT_MESSAGE_TOPIC = "mople.direct-message.created.v1";
   static final String NOTIFICATION_TOPIC = "mople.notification.created.v1";
-  static final String REVIEW_CREATED_TOPIC = "review-created";
-  static final String REVIEW_UPDATED_TOPIC = "review-updated";
-  static final String REVIEW_DELETED_TOPIC = "review-deleted";
+  static final String REVIEW_CREATED_TOPIC = "mople.review.created.v1";
+  static final String REVIEW_UPDATED_TOPIC = "mople.review.updated.v1";
+  static final String REVIEW_DELETED_TOPIC = "mople.review.deleted.v1";
 
   static final String TYPE_ID_HEADER = "__TypeId__";
 
