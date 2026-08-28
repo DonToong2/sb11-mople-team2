@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 import lombok.Generated;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
@@ -53,6 +54,7 @@ public class WatchingSessionService {
   private final RedisTemplate<String, Object> redisTemplate;
   private final SimpMessagingTemplate messagingTemplate;
   private final ApplicationEventPublisher eventPublisher;
+  private final CacheManager cacheManager;
 
   private static final String USER_WATCHING_KEY_PREFIX = "user:watching:";
   private static final String CONTENT_WATCHERS_KEY_PREFIX = "content:watchers:";
@@ -369,9 +371,16 @@ public class WatchingSessionService {
       Long prevCount = redisTemplate.opsForZSet().zCard(prevContentKey);
       int prevWatcherCountInt = prevCount != null ? prevCount.intValue() : 0;
 
-      Content prevContentEntity = contentRepository.findById(UUID.fromString(previousContentId)).orElse(null);
+      UUID prevContentUuid = UUID.fromString(previousContentId);
+      Content prevContentEntity = contentRepository.findById(prevContentUuid).orElse(null);
       if (prevContentEntity != null) {
         prevContentEntity.updateWatcherCount((long) prevWatcherCountInt);
+      }
+
+      // 이동 전(이전) 콘텐츠의 단건 캐시 무효화 추가
+      org.springframework.cache.Cache contentCache = cacheManager.getCache(CacheNames.CONTENTS);
+      if (contentCache != null) {
+        contentCache.evict(prevContentUuid);
       }
 
       WatchingSessionContentDto prevContentDto = prevContentEntity != null ? new WatchingSessionContentDto(
