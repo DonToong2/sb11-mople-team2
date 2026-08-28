@@ -223,33 +223,29 @@ class KafkaPublishSmokeTest {
       UUID id = UUID.randomUUID();
 
       return Stream.of(
-          arguments(new PlaylistSubscribedEvent(
-                  UUID.randomUUID(), id, id, id, "구독자", "플리"),
+          arguments(new PlaylistSubscribedEvent(UUID.randomUUID(), Instant.now(), id, id, id, "구독자", "플리"),
               PLAYLIST_EVENTS_TOPIC, "playlist-subscribed.v1"),
-          arguments(new PlaylistUnsubscribedEvent(UUID.randomUUID(), id, id),
+          arguments(new PlaylistUnsubscribedEvent(UUID.randomUUID(), Instant.now(), id, id),
               PLAYLIST_EVENTS_TOPIC, "playlist-unsubscribed.v1"),
-          arguments(new PlaylistSearchIndexEvent(
-                  UUID.randomUUID(), id, "플리", Instant.now(), 3L),
+          arguments(new PlaylistSearchIndexEvent(UUID.randomUUID(), Instant.now(), id, "플리", Instant.now(), 3L),
               PLAYLIST_SEARCH_INDEX_TOPIC, "playlist-search-index.v1"),
-          arguments(new PlaylistSearchIndexDeleteEvent(UUID.randomUUID(), id),
+          arguments(new PlaylistSearchIndexDeleteEvent(UUID.randomUUID(), Instant.now(), id),
               PLAYLIST_SEARCH_INDEX_TOPIC, "playlist-search-index-delete.v1"),
-          arguments(new ContentSearchIndexEvent(
-                  UUID.randomUUID(), id, "콘텐츠", ContentType.MOVIE, 4.5, 10L, Instant.now()),
+          arguments(new ContentSearchIndexEvent(UUID.randomUUID(), Instant.now(), id, "콘텐츠", ContentType.MOVIE, 4.5, 10L, Instant.now()),
               CONTENT_SEARCH_INDEX_TOPIC, "content-search-index.v1"),
-          arguments(new ContentSearchIndexDeleteEvent(UUID.randomUUID(), id),
+          arguments(new ContentSearchIndexDeleteEvent(UUID.randomUUID(), Instant.now(), id),
               CONTENT_SEARCH_INDEX_TOPIC, "content-search-index-delete.v1"),
-          arguments(new UserSearchIndexEvent(
-                  UUID.randomUUID(), id, "a@mople.com", "이름", Instant.now(), false, "USER"),
+          arguments(new UserSearchIndexEvent(UUID.randomUUID(), Instant.now(), id, "a@mople.com", "이름", Instant.now(), false, "USER"),
               USER_SEARCH_INDEX_TOPIC, "user-search-index.v1"),
-          arguments(new ReviewCreatedEvent(UUID.randomUUID(), id, 4.5),
+          arguments(new ReviewCreatedEvent(UUID.randomUUID(), Instant.now(), id, 4.5),
               REVIEW_CREATED_TOPIC, "review-created.v1"),
-          arguments(new ReviewUpdatedEvent(UUID.randomUUID(), id, 3.0, 4.5),
+          arguments(new ReviewUpdatedEvent(UUID.randomUUID(), Instant.now(), id, 3.0, 4.5),
               REVIEW_UPDATED_TOPIC, "review-updated.v1"),
-          arguments(new ReviewDeletedEvent(UUID.randomUUID(), id, 4.5),
+          arguments(new ReviewDeletedEvent(UUID.randomUUID(), Instant.now(), id, 4.5),
               REVIEW_DELETED_TOPIC, "review-deleted.v1"),
-          arguments(new DirectMessageCreatedEvent(UUID.randomUUID(), id, id),
+          arguments(new DirectMessageCreatedEvent(UUID.randomUUID(), Instant.now(), id, id),
               DIRECT_MESSAGE_TOPIC, "direct-message-created.v1"),
-          arguments(new NotificationCreatedEvent(UUID.randomUUID(), id, id),
+          arguments(new NotificationCreatedEvent(UUID.randomUUID(), Instant.now(), id, id),
               NOTIFICATION_TOPIC, "notification-created.v1")
       );
     }

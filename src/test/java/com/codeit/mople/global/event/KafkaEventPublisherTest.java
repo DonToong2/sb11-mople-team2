@@ -12,6 +12,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -34,7 +35,7 @@ class KafkaEventPublisherTest {
   static final String TOPIC = "mople.follow.created.v1";
   static final String KEY = "followee-key";
 
-  record TestEvent(UUID eventId) implements PublishableEvent {}
+  record TestEvent(UUID eventId, Instant occurredAt) implements PublishableEvent {}
 
   @Mock
   KafkaTemplate<String, Object> kafkaTemplate;
@@ -56,7 +57,7 @@ class KafkaEventPublisherTest {
 
   @BeforeEach
   void setUp() {
-    event = new TestEvent(UUID.randomUUID());
+    event = new TestEvent(UUID.randomUUID(), Instant.now());
     meterRegistry = new SimpleMeterRegistry();
     publisher = new KafkaEventPublisher(
         kafkaTemplate, failedEventStore, objectMapper, meterRegistry, sameThreadExecutor);
