@@ -32,11 +32,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 })
 @ActiveProfiles("test")
 @EmbeddedKafka(partitions = 1, topics = {
-    KafkaRelaySmokeTest.FOLLOW_TOPIC,
-    KafkaRelaySmokeTest.PLAYLIST_CONTENT_TOPIC
+    KafkaPublishSmokeTest.FOLLOW_TOPIC,
+    KafkaPublishSmokeTest.PLAYLIST_CONTENT_TOPIC
 })
-@DisplayName("Kafka 릴레이 스모크 테스트")
-class KafkaRelaySmokeTest {
+@DisplayName("Kafka 발행 스모크 테스트")
+class KafkaPublishSmokeTest {
 
   static final String FOLLOW_TOPIC = "mople.follow.created.v1";
   static final String PLAYLIST_CONTENT_TOPIC = "mople.playlist.content-added.v1";
