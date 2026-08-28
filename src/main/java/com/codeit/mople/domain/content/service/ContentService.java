@@ -20,6 +20,7 @@ import com.codeit.mople.global.dto.SearchResult;
 import com.codeit.mople.global.storage.FileStorageService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -237,7 +238,7 @@ public class ContentService{
             content.getTitle(),
             content.getDescription(),
             content.getThumbnailUrl(),
-            content.getTags(),
+            new ArrayList<>(content.getTags()),
             content.calculateAverageRating(),
             content.getReviewCount(),
             content.getWatcherCount()
@@ -294,7 +295,7 @@ public class ContentService{
         content.getTitle(),
         content.getDescription(),
         content.getThumbnailUrl(),
-        content.getTags(),
+        new ArrayList<>(content.getTags()),
         content.calculateAverageRating(),
         content.getReviewCount(),
         content.getWatcherCount()

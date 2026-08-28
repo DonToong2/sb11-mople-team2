@@ -27,7 +27,7 @@ public class ElasticsearchConfig extends ElasticsearchConfiguration {
   @Value("${ELASTICSEARCH_SSL_ENABLED:false}")
   private boolean sslEnabled;
 
-  @Value("${ELASTICSEARCH_CA_PATH:}")
+  @Value("${ELASTICSEARCH_CA_PATH:file:/app/certs/ca.crt}")
   private Resource caCertificate;
 
   @Override
