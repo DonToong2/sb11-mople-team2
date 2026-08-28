@@ -16,6 +16,7 @@ import com.codeit.mople.domain.watchingsession.dto.WatchingSessionContentDto;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionDetailDto;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionEvent;
 import com.codeit.mople.domain.watchingsession.dto.WatchingSessionResponse;
+import com.codeit.mople.global.config.CacheNames;
 import com.codeit.mople.global.dto.UserSummary;
 import java.security.Principal;
 import java.time.Instant;
@@ -29,6 +30,8 @@ import java.util.stream.Collectors;
 import lombok.Generated;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -280,6 +283,12 @@ public class WatchingSessionService {
     );
   }
 
+  @Caching(
+      evict = {
+          @CacheEvict(cacheNames = CacheNames.CONTENTS, key = "#contentId"),
+          @CacheEvict(cacheNames = CacheNames.CONTENT_LIST, allEntries = true)
+      }
+  )
   //유저가 콘텐츠 시청을 시작(입장)할 때 실시간 세션을 Redis에 기록하고 DB 갱신
   @Transactional
   public Long enterSession(UUID userId, UUID contentId) {
@@ -415,6 +424,12 @@ public class WatchingSessionService {
   }
 
   //유저가 콘텐츠 시청을 종료(퇴장)할 때 Redis에서 세션을 제거하고 DB 갱신
+  @Caching(
+      evict = {
+          @CacheEvict(cacheNames = CacheNames.CONTENTS, key = "#contentId"),
+          @CacheEvict(cacheNames = CacheNames.CONTENT_LIST, allEntries = true)
+      }
+  )
   @Transactional
   public Long leaveSession(UUID userId, UUID contentId) {
     String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
