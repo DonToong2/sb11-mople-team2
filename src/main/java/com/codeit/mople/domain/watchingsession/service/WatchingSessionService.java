@@ -588,10 +588,15 @@ public class WatchingSessionService {
       return null;
     }
 
-    // 6. ZSet의 score(입장 시각)를 조회해 createdAt으로 사용 -> score가 없으면 현재 시각으로 대체
+    // 6. ZSet의 score(입장 시각)를 조회해 createdAt으로 사용
+    // score가 없으면 목록 조회에서도 빠지는 유저이므로 로그 + null 반환
     String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentIdStr;
     Double joinScore = redisTemplate.opsForZSet().score(contentKey, userId.toString());
-    Instant createdAt = (joinScore != null) ? Instant.ofEpochMilli(joinScore.longValue()) : Instant.now();
+    if (joinScore == null) {
+      log.warn("시청 기록은 존재하나 ZSet 입장 시각이 누락됨: userId={}, contentId={}", userId, contentId);
+      return null;
+    }
+    Instant createdAt = Instant.ofEpochMilli(joinScore.longValue());
 
     // 7. 1번에서 얻은 user로 시청자 정보 조립
     UserSummary watcher = new UserSummary(user.getId(), user.getName(), user.getProfileImageUrl());
