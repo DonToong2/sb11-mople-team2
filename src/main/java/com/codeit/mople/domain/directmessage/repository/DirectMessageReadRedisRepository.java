@@ -27,9 +27,9 @@ public class DirectMessageReadRedisRepository {
 
   private static final String READ_KEY_PREFIX = "dm:read:";
 
-  private static final String DIRTY_SET_KEY = "dm:read:dirty";
+  private static final String DIRTY_SET_KEY = "{dm:read:dirty}";
 
-  private static final String PROCESSING_SET_KEY = "dm:read:dirty:processing";
+  private static final String PROCESSING_SET_KEY = "{dm:read:dirty}:processing";
 
   @Value("${dm.read-sync.chunk-size}")
   private long chunkSize;
@@ -89,10 +89,15 @@ public class DirectMessageReadRedisRepository {
     Boolean hasProcessing = redisTemplate.hasKey(PROCESSING_SET_KEY);
 
     // 현재 처리 중인(processing) 대기열이 없으면, 원본(dirty)을 processing으로 가져옴
-    if (Boolean.FALSE.equals(hasProcessing)) {
+    if (Boolean.FALSE.equals(hasProcessing) || hasProcessing == null) {
       Boolean hasDirty = redisTemplate.hasKey(DIRTY_SET_KEY);
       if (Boolean.TRUE.equals(hasDirty)) {
-        redisTemplate.rename(DIRTY_SET_KEY, PROCESSING_SET_KEY);
+        try {
+          // RENAMENX(renameIfAbsent)를 사용하여 이미 다른 서버가 선점했다면 덮어쓰지 않음
+          redisTemplate.renameIfAbsent(DIRTY_SET_KEY, PROCESSING_SET_KEY);
+        } catch (Exception e) {
+          log.info("다른 서버가 먼저 대기열을 선점(Dirty 큐 비어있음) - processing 큐 처리 참여");
+        }
       } else {
         return Collections.emptySet();
       }
