@@ -40,6 +40,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SessionCallback;
@@ -68,6 +69,9 @@ public class WatchingSessionServiceTest {
 
   @Mock
   private ApplicationEventPublisher eventPublisher; //이벤트 발행 검증용
+
+  @Mock
+  private CacheManager cacheManager;
 
   @Mock
   private ValueOperations<String, Object> valueOperations;
