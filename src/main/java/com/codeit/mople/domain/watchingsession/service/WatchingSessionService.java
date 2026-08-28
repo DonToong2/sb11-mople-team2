@@ -555,6 +555,58 @@ public class WatchingSessionService {
     return (contentIdStr != null) ? UUID.fromString(contentIdStr) : null;
   }
 
+  // 특정 유저가 현재 시청 중인 세션을 콘텐츠 정보까지 포함해 조회
+  // 시청 중이 아니면 null 반환
+  @Transactional(readOnly = true)
+  public WatchingSessionResponse getWatchingSessionForUser(UUID userId) {
+    // 1. userId 받아서 user 존재 검증 + user객체 획득
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("userId", userId)));
+
+    // 2. redis에서 userKey를 조회 후 값을 받음 -> 비어있는 값이면 null 리턴
+    String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
+    String contentIdStr = (String) redisTemplate.opsForValue().get(userKey);
+    if (contentIdStr == null) {
+      return null;
+    }
+
+    // 3. redis에서 userKey 조회 후 받은 값을 UUID로 변환(목적:콘첸츠 조회하려고)
+    UUID contentId = UUID.fromString(contentIdStr);
+    // 4. 콘텐츠 조회 -> 콘텐츠 없으면 로그 + null 반환
+    Content content = contentRepository.findById(contentId).orElse(null);
+    if (content == null) {
+      log.warn("시청 중으로 기록된 콘텐츠가 DB에 없음: userId={}, contentId={}", userId, contentId);
+      return null;
+    }
+
+
+    // 5. redis에서 세션 ID 조회 -> 없으면 로그 + null 반환(목록 조회와 동일하게 시청 중이 아닌 것으로 처리)
+    String sessionIdKey = USER_SESSION_ID_KEY_PREFIX + userId.toString();
+    String sessionIdStr = (String) redisTemplate.opsForValue().get(sessionIdKey);
+    if (sessionIdStr == null) {
+      log.warn("시청 기록은 존재하나 활성 세션 ID가 누락됨: userId={}, contentId={}", userId, contentId);
+      return null;
+    }
+
+    // 6. ZSet의 score(입장 시각)를 조회해 createdAt으로 사용 -> score가 없으면 현재 시각으로 대체
+    String contentKey = CONTENT_WATCHERS_KEY_PREFIX + contentIdStr;
+    Double joinScore = redisTemplate.opsForZSet().score(contentKey, userId.toString());
+    Instant createdAt = (joinScore != null) ? Instant.ofEpochMilli(joinScore.longValue()) : Instant.now();
+
+    // 7. 1번에서 얻은 user로 시청자 정보 조립
+    UserSummary watcher = new UserSummary(user.getId(), user.getName(), user.getProfileImageUrl());
+
+    // 8. 4번에서 얻은 content로 콘텐츠 정보 조립(프론트가 제목,id를 여기서 꺼내 씀)
+    WatchingSessionContentDto contentDto = new WatchingSessionContentDto(
+        content.getId(), content.getType().name(), content.getTitle(),
+        content.getDescription(), content.getThumbnailUrl(), content.getTags(),
+        content.calculateAverageRating(), content.getReviewCount()
+    );
+
+    // 9. 세션 ID + 입장 시각 + 시청자 + 콘텐츠를 묶어 반환
+    return new WatchingSessionResponse(UUID.fromString(sessionIdStr), createdAt, watcher, contentDto);
+  }
+
   //실시간 채팅 메시지 처리 및 브로드캐스팅
   @Transactional(readOnly = true)
   public void broadcastChatMessage(String contentIdStr, ContentChatSendRequest request, Principal principal) {
