@@ -107,11 +107,11 @@ public class DirectMessageIntegrationTest {
           .andReturn().getResponse().getContentAsString();
 
       // 채팅방 목록 조회를 하는 순간, 가장 최신 메시지의 시간으로 Redis 대기열에 읽음 워터마크가 등록되어야 함
-      Boolean hasDirty = redisTemplate.hasKey("dm:read:dirty");
+      Boolean hasDirty = redisTemplate.hasKey("{dm:read:dirty}");
       assertThat(hasDirty).isTrue();
 
       String dirtyMember = testConversation.getId() + ":" + userB.getId();
-      Boolean isMember = redisTemplate.opsForSet().isMember("dm:read:dirty", dirtyMember);
+      Boolean isMember = redisTemplate.opsForSet().isMember("{dm:read:dirty}", dirtyMember);
       assertThat(isMember).isTrue();
 
       // when: 다음 페이지 요청
@@ -153,7 +153,7 @@ public class DirectMessageIntegrationTest {
 
       // then
       String dirtyMember = testConversation.getId() + ":" + userB.getId();
-      assertThat(redisTemplate.opsForSet().isMember("dm:read:dirty", dirtyMember)).isTrue();
+      assertThat(redisTemplate.opsForSet().isMember("{dm:read:dirty}", dirtyMember)).isTrue();
 
       String valueKey = "dm:read:" + dirtyMember;
       Object cachedValue = redisTemplate.opsForValue().get(valueKey);
@@ -179,7 +179,7 @@ public class DirectMessageIntegrationTest {
 
       // then
       String dirtyMember = testConversation.getId() + ":" + userA.getId();
-      assertThat(redisTemplate.opsForSet().isMember("dm:read:dirty", dirtyMember)).isFalse();
+      assertThat(redisTemplate.opsForSet().isMember("{dm:read:dirty}", dirtyMember)).isFalse();
       assertThat(redisTemplate.hasKey("dm:read:" + dirtyMember)).isFalse();
     }
   }

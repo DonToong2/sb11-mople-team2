@@ -83,7 +83,7 @@ class DirectMessageReadRedisRepositoryTest {
     assertThat(Instant.parse(formattedTime)).isEqualTo(readTime);
 
     String expectedDirtyMember = convId + ":" + userId;
-    verify(setOperations).add("dm:read:dirty", expectedDirtyMember);
+    verify(setOperations).add("{dm:read:dirty}", expectedDirtyMember);
   }
 
   @Test
@@ -233,51 +233,51 @@ class DirectMessageReadRedisRepositoryTest {
   }
 
   @Test
-  @DisplayName("성공: 처리 중인 대기열(processing)이 없을 때, 원본(dirty) 대기열을 rename하여 가져온다.")
+  @DisplayName("성공: 처리 중인 대기열(processing)이 없을 때, 원본(dirty) 대기열을 renameIfAbsent하여 가져온다.")
   void getDirtyMembersWithLimit_RenameDirtySetTest() {
     // given
     SetOperations<String, Object> setOperations = mock(SetOperations.class);
     given(redisTemplate.opsForSet()).willReturn(setOperations);
 
     // processing 키는 없고, dirty 키는 존재하는 상태
-    given(redisTemplate.hasKey("dm:read:dirty:processing")).willReturn(false);
-    given(redisTemplate.hasKey("dm:read:dirty")).willReturn(true);
+    given(redisTemplate.hasKey("{dm:read:dirty}:processing")).willReturn(false);
+    given(redisTemplate.hasKey("{dm:read:dirty}")).willReturn(true);
 
-    given(setOperations.randomMembers("dm:read:dirty:processing", 500L))
+    given(setOperations.randomMembers("{dm:read:dirty}:processing", 500L))
         .willReturn(List.of("convId:userId1", "convId:userId2"));
 
     // when
     Set<Object> result = repository.getDirtyMembersWithLimit();
 
     // then
-    // 1. rename 명령어가 정확히 호출되었는지 검증
-    verify(redisTemplate).rename("dm:read:dirty", "dm:read:dirty:processing");
+    // 1. renameIfAbsent 명령어가 정확히 호출되었는지 검증
+    verify(redisTemplate).renameIfAbsent("{dm:read:dirty}", "{dm:read:dirty}:processing");
     // 2. 500개를 읽어오는 명령어가 호출되었는지 검증
-    verify(setOperations).randomMembers("dm:read:dirty:processing", 500L);
+    verify(setOperations).randomMembers("{dm:read:dirty}:processing", 500L);
     // 3. 반환된 Set에 정상적으로 매핑되었는지 검증
     assertThat(result).hasSize(2).containsExactlyInAnyOrder("convId:userId1", "convId:userId2");
   }
 
   @Test
-  @DisplayName("성공: 이미 처리 중인 대기열(processing)이 있다면, rename을 건너뛰고 바로 조회한다.")
+  @DisplayName("성공: 이미 처리 중인 대기열(processing)이 있다면, renameIfAbsent을 건너뛰고 바로 조회한다.")
   void getDirtyMembersWithLimit_AlreadyProcessingTest() {
     // given
     SetOperations<String, Object> setOperations = mock(SetOperations.class);
     given(redisTemplate.opsForSet()).willReturn(setOperations);
 
     // 이미 누군가(다른 서버 등) processing 키를 만들어둔 상태
-    given(redisTemplate.hasKey("dm:read:dirty:processing")).willReturn(true);
+    given(redisTemplate.hasKey("{dm:read:dirty}:processing")).willReturn(true);
 
-    given(setOperations.randomMembers("dm:read:dirty:processing", 500L))
+    given(setOperations.randomMembers("{dm:read:dirty}:processing", 500L))
         .willReturn(List.of("convId:userId3"));
 
     // when
     Set<Object> result = repository.getDirtyMembersWithLimit();
 
     // then
-    // rename은 절대 호출되지 않아야 함 (이전 작업자가 만들어둔 걸 덮어쓰면 안 되므로)
-    verify(redisTemplate, never()).rename(any(), any());
-    verify(setOperations).randomMembers("dm:read:dirty:processing", 500L);
+    // renameIfAbsent은 절대 호출되지 않아야 함 (이전 작업자가 만들어둔 걸 덮어쓰면 안 되므로)
+    verify(redisTemplate, never()).renameIfAbsent(any(), any());
+    verify(setOperations).randomMembers("{dm:read:dirty}:processing", 500L);
     assertThat(result).hasSize(1).contains("convId:userId3");
   }
 
@@ -286,15 +286,39 @@ class DirectMessageReadRedisRepositoryTest {
   void getDirtyMembersWithLimit_EmptyTest() {
     // given
     // 둘 다 존재하지 않는 상태
-    given(redisTemplate.hasKey("dm:read:dirty:processing")).willReturn(false);
-    given(redisTemplate.hasKey("dm:read:dirty")).willReturn(false);
+    given(redisTemplate.hasKey("{dm:read:dirty}:processing")).willReturn(false);
+    given(redisTemplate.hasKey("{dm:read:dirty}")).willReturn(false);
 
     // when
     Set<Object> result = repository.getDirtyMembersWithLimit();
 
     // then
-    verify(redisTemplate, never()).rename(any(), any());
+    verify(redisTemplate, never()).renameIfAbsent(any(), any());
     assertThat(result).isEmpty();
+  }
+
+  @Test
+  @DisplayName("성공: renameIfAbsent 경합(예외) 발생 시, 찰나의 선점으로 간주하고 방어 로직(catch)을 거쳐 processing 대기열을 조회한다.")
+  void getDirtyMembersWithLimit_RenameExceptionTest() {
+    // given
+    SetOperations<String, Object> setOperations = mock(SetOperations.class);
+    given(redisTemplate.opsForSet()).willReturn(setOperations);
+
+    given(redisTemplate.hasKey("{dm:read:dirty}:processing")).willReturn(false);
+    given(redisTemplate.hasKey("{dm:read:dirty}")).willReturn(true);
+
+    given(redisTemplate.renameIfAbsent(any(), any())).willThrow(new RuntimeException("선점 경합 발생"));
+
+    given(setOperations.randomMembers("{dm:read:dirty}:processing", 500L))
+        .willReturn(List.of("convId:userId4"));
+
+    // when
+    Set<Object> result = repository.getDirtyMembersWithLimit();
+
+    // then
+    verify(redisTemplate).renameIfAbsent("{dm:read:dirty}", "{dm:read:dirty}:processing");
+    verify(setOperations).randomMembers("{dm:read:dirty}:processing", 500L);
+    assertThat(result).hasSize(1).contains("convId:userId4");
   }
 
   @Test
@@ -325,7 +349,7 @@ class DirectMessageReadRedisRepositoryTest {
     repository.getDirtyMembers();
 
     // then
-    verify(setOperations).members("dm:read:dirty");
+    verify(setOperations).members("{dm:read:dirty}");
   }
 
   @Test
@@ -341,7 +365,7 @@ class DirectMessageReadRedisRepositoryTest {
     repository.removeProcessedMembers(processedMembers);
 
     // then
-    verify(setOperations).remove("dm:read:dirty:processing", "convId:userId1", "convId:userId2");
+    verify(setOperations).remove("{dm:read:dirty}:processing", "convId:userId1", "convId:userId2");
   }
 
   @Test
