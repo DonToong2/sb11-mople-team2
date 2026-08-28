@@ -70,8 +70,8 @@ public class DirectMessageReadSyncScheduler {
 
         successfullyProcessed.add(memberObj);
 
-      } catch (DateTimeParseException e) {
-        log.error("Redis 읽음 시각 파싱 실패 (Dirty Set에서 삭제 처리) - member: {}, cachedValue: {}",
+      } catch (DateTimeParseException | IllegalArgumentException | IndexOutOfBoundsException e) {
+        log.error("Redis 대기열 데이터 포맷/파싱 에러 (Dirty Set에서 삭제 처리) - member: {}, cachedValue: {}",
             dirtyMember, cachedValue, e);
         successfullyProcessed.add(memberObj);
       } catch (Exception e) {
