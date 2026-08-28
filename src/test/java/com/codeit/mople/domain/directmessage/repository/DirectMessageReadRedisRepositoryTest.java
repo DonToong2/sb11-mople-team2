@@ -297,6 +297,7 @@ class DirectMessageReadRedisRepositoryTest {
     assertThat(result).isEmpty();
   }
 
+  @Test
   @DisplayName("성공: 스케줄러 전용 조회 시 값이 존재하면 문자열로, 없으면 null로 반환한다.")
   void getLastReadAtForScheduler_Test() {
     // given

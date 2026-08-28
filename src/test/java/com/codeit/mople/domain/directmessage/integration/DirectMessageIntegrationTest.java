@@ -18,9 +18,8 @@ import com.codeit.mople.domain.user.entity.Role;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.global.config.SecurityConfig;
+import com.jayway.jsonpath.JsonPath;
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -116,10 +115,8 @@ public class DirectMessageIntegrationTest {
       assertThat(isMember).isTrue();
 
       // when: 다음 페이지 요청
-      List<DirectMessage> allMessages = directMessageRepository.findAll();
-      DirectMessage cursorMessage = allMessages.get(5);
-      String cursorStr = DateTimeFormatter.ISO_INSTANT.format(cursorMessage.getCreatedAt());
-      String idAfterStr = cursorMessage.getId().toString();
+      String cursorStr = JsonPath.read(responseJson, "$.nextCursor");
+      String idAfterStr = JsonPath.read(responseJson, "$.nextIdAfter");
 
       mockMvc.perform(get("/api/conversations/{conversationId}/direct-messages", testConversation.getId())
               .with(user(userDetailsB))
