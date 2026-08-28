@@ -16,7 +16,7 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.type.filter.AssignableTypeFilter;
 
-@DisplayName("와이어 타입 별칭 매핑 테스트")
+@DisplayName("타입 이름 매핑 테스트")
 class PublishableEventTypeMappingTest {
 
   static final String DOMAIN_PACKAGE = "com.codeit.mople.domain";
@@ -58,7 +58,7 @@ class PublishableEventTypeMappingTest {
   }
 
   @Test
-  @DisplayName("발행 대상 이벤트가 별칭 매핑에 하나도 빠지지 않았는지")
+  @DisplayName("발행하는 이벤트가 매핑에 하나도 빠지지 않았는지")
   void mapsEveryPublishableEvent() {
     // given
     Set<String> mapped = entries.stream().map(this::classNameOf).collect(Collectors.toSet());
@@ -72,13 +72,25 @@ class PublishableEventTypeMappingTest {
   }
 
   @Test
-  @DisplayName("별칭이 중복되지 않는지")
+  @DisplayName("타입 이름이 겹치지 않는지")
   void hasNoDuplicateAlias() {
     // when
     List<String> aliases = entries.stream().map(this::aliasOf).toList();
 
     // then
     assertThat(aliases).doesNotHaveDuplicates();
+  }
+
+  @Test
+  @DisplayName("타입 이름 끝에 버전이 붙어 있는지")
+  void versionsEveryAlias() {
+    // when
+    List<String> aliases = entries.stream().map(this::aliasOf).toList();
+
+    // then
+    assertThat(aliases)
+        .as("끝에 버전이 있어야 나중에 .v2로 넘어갈 수 있음")
+        .allMatch(alias -> alias.matches(".+\\.v\\d+"));
   }
 
   @Test
