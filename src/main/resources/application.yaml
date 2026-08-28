@@ -125,6 +125,7 @@ batch:
 dm:
   read-sync:
     delay-ms: 10000 # 10초마다 Redis DM 워터마크 DB 반영 스케줄러 자동 실행
+    chunk-size: 500
 
 sse:
   stream-consumer:
