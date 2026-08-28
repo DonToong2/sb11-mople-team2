@@ -37,13 +37,16 @@ spring:
 
     topics:
       follow-created: mople.follow.created.v1
-      playlist-events: playlist-events.v1
+      playlist-events: mople.playlist-events.v1
       playlist-content-added: mople.playlist.content-added.v1
+      review-created: mople.review.created.v1
+      review-updated: mople.review.updated.v1
+      review-deleted: mople.review.deleted.v1
       direct-message-created: mople.direct-message.created.v1
       notification-created: mople.notification.created.v1
-      content-search-index: content-search-index-events.v1
-      user-search-index: user-search-index-events.v1
-      playlist-search-index: playlist-search-index-events.v1
+      content-search-index: mople.content-search-index-events.v1
+      user-search-index: mople.user-search-index-events.v1
+      playlist-search-index: mople.playlist-search-index-events.v1
 
     producer:
       acks: all
