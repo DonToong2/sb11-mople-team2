@@ -113,6 +113,7 @@ public class PlaylistService {
     publisher.publishEvent(
         new PlaylistSearchIndexEvent(
             UUID.randomUUID(),
+            savedPlaylist.getCreatedAt(),
             savedPlaylist.getId(),
             savedPlaylist.getTitle(),
             savedPlaylist.getUpdatedAt(),
@@ -358,6 +359,7 @@ public class PlaylistService {
     publisher.publishEvent(
         new PlaylistSearchIndexEvent(
             UUID.randomUUID(),
+            Instant.now(),
             playlist.getId(),
             playlist.getTitle(),
             playlist.getUpdatedAt(),
@@ -396,6 +398,7 @@ public class PlaylistService {
     publisher.publishEvent(
         new PlaylistSearchIndexDeleteEvent(
             UUID.randomUUID(),
+            Instant.now(),
             playlistId
         )
     );
@@ -442,6 +445,7 @@ public class PlaylistService {
 
     publisher.publishEvent(new PlaylistSubscribedEvent(
         UUID.randomUUID(),
+        saved.getCreatedAt(),
         ownerId,
         playlistId,
         subscriberId,
@@ -469,6 +473,7 @@ public class PlaylistService {
 
     publisher.publishEvent(new PlaylistUnsubscribedEvent(
         UUID.randomUUID(),
+        Instant.now(),
         playlistId,
         subscriberId
     ));
