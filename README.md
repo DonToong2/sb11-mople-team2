@@ -7,7 +7,7 @@
 영화·드라마·스포츠 등 다양한 콘텐츠를 큐레이팅하고 공유하며,
 실시간 같이 보기 기능까지 제공하는 소셜 콘텐츠 서비스입니다.
 
-[![Coverage](https://img.shields.io/badge/coverage-pending-lightgrey)](#)
+![Coverage](.github/badges/jacoco.svg)
 ![Java](https://img.shields.io/badge/Java-17-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-green)
 
