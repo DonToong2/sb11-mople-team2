@@ -135,3 +135,5 @@ jobs:
         with:
           commit_message: "chore: 커버리지 배지 갱신"
           file_pattern: .github/badges/*.svg
+          branch: badges
+          create_branch: true
