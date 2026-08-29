@@ -137,3 +137,4 @@ jobs:
           file_pattern: .github/badges/*.svg
           branch: badges
           create_branch: true
+          push_options: '--force'
