@@ -28,7 +28,8 @@ public enum ContentType {
       throw new IllegalArgumentException("지원하지 않는 ContentType: null");
     }
 
-    String normalizedInput = value.replace("_", "").replace("-", "").replaceAll("\\s+", "").toLowerCase();
+    String normalizedInput = value.replace("_", "").replace("-", "").replaceAll("\\s+", "")
+        .toLowerCase();
 
     //프론트엔드가 sports로 보내도 sport로 인식하도록 처리
     if ("sports".equals(normalizedInput)) {

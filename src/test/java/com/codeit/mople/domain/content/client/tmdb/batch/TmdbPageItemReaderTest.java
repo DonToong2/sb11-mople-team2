@@ -22,7 +22,7 @@ public class TmdbPageItemReaderTest {
 
   @Nested
   @DisplayName("페이지 순회")
-  class Paging{
+  class Paging {
 
     @Test
     @DisplayName("update가 저장한 커서를 open이 복원해 다음 페이지부터 읽는지 확인")

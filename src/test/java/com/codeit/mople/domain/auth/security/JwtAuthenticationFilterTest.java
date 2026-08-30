@@ -81,7 +81,8 @@ public class JwtAuthenticationFilterTest {
     jwtAuthenticationFilter.doFilter(request, response, filterChain);
 
     UsernamePasswordAuthenticationToken auth =
-        (UsernamePasswordAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        (UsernamePasswordAuthenticationToken) SecurityContextHolder.getContext()
+            .getAuthentication();
     assertThat(auth).isNotNull();
     CustomUserDetails principal = (CustomUserDetails) auth.getPrincipal();
     assertThat(principal.getUserId()).isEqualTo(userId);

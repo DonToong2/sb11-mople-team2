@@ -17,7 +17,8 @@ public class MdcLoggingFilter extends HttpFilter {
   private static final String URL = "url";
 
   @Override
-  protected void doFilter(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+  protected void doFilter(HttpServletRequest request, HttpServletResponse response,
+      FilterChain chain)
       throws IOException, ServletException {
     try {
       MDC.put(REQUEST_ID, UUID.randomUUID().toString().substring(0, 8));

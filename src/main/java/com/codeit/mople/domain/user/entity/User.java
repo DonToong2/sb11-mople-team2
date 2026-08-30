@@ -18,7 +18,8 @@ import org.hibernate.annotations.ColumnDefault;
 @Entity
 @Table(name = "users", uniqueConstraints = {
     @UniqueConstraint(name = "uq_users_email", columnNames = "email"),
-    @UniqueConstraint(name = "uq_users_provider_provider_id", columnNames = {"provider", "provider_id"})
+    @UniqueConstraint(name = "uq_users_provider_provider_id", columnNames = {"provider",
+        "provider_id"})
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -69,14 +70,16 @@ public class User extends BaseEntity {
     Objects.requireNonNull(password, "password");
     return new User(email, password, name, Role.USER, AuthProvider.LOCAL);
   }
-//어드민 계정 자동으로 초기화
+
+  //어드민 계정 자동으로 초기화
   public static User createAdmin(String email, String password, String name) {
     Objects.requireNonNull(password, "password");
     return new User(email, password, name, Role.ADMIN, AuthProvider.LOCAL);
   }
 
-  public static User createOAuthUser(String email, String name, String profileImageUrl, AuthProvider provider, String providerId) {
-    if(provider == AuthProvider.LOCAL) {
+  public static User createOAuthUser(String email, String name, String profileImageUrl,
+      AuthProvider provider, String providerId) {
+    if (provider == AuthProvider.LOCAL) {
       throw new IllegalArgumentException("OAuth provider must not be LOCAL");
     }
     User user = new User(email, null, name, Role.USER, provider);
@@ -87,10 +90,10 @@ public class User extends BaseEntity {
 
   // 프로필 변경
   public void updateProfile(String name, String profileImageUrl) {
-    if(name != null) {
+    if (name != null) {
       this.name = name;
     }
-    if(profileImageUrl != null) {
+    if (profileImageUrl != null) {
       this.profileImageUrl = profileImageUrl;
     }
   }
@@ -114,7 +117,8 @@ public class User extends BaseEntity {
   }
 
   public void issueTemporaryPassword(String encodedTemporaryPassword, Instant expiresAt) {
-    this.temporaryPassword = Objects.requireNonNull(encodedTemporaryPassword, "encodedTemporaryPassword");
+    this.temporaryPassword = Objects.requireNonNull(encodedTemporaryPassword,
+        "encodedTemporaryPassword");
     this.temporaryPasswordExpiresAt = Objects.requireNonNull(expiresAt, "expiresAt");
   }
 
@@ -124,6 +128,7 @@ public class User extends BaseEntity {
   }
 
   public boolean hasValidTemporaryPassword(Instant now) {
-    return temporaryPassword != null && temporaryPasswordExpiresAt != null && now.isBefore(temporaryPasswordExpiresAt);
+    return temporaryPassword != null && temporaryPasswordExpiresAt != null && now.isBefore(
+        temporaryPasswordExpiresAt);
   }
 }

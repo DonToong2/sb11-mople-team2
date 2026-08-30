@@ -34,7 +34,6 @@ import com.codeit.mople.domain.playlist.exception.PlaylistException;
 import com.codeit.mople.domain.playlist.repository.PlaylistContentRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistRepository;
 import com.codeit.mople.domain.playlist.repository.PlaylistSubscriptionRepository;
-import com.codeit.mople.domain.playlist.repository.search.PlaylistDocument;
 import com.codeit.mople.domain.playlist.repository.search.PlaylistSearchRepository;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
@@ -1122,7 +1121,8 @@ public class PlaylistServiceTest {
       // when then
       assertThatThrownBy(() -> playlistService.addContent(playlistId, contentId, ownerId))
           .isInstanceOf(PlaylistException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_CONTENT_PLAY_NOT_FOUND);
+          .hasFieldOrPropertyWithValue("errorCode",
+              PlaylistErrorCode.PLAYLIST_CONTENT_PLAY_NOT_FOUND);
 
       verify(eventPublisher, never()).publishEvent(any());
       verify(playlistContentRepository, never()).save(any());
@@ -1141,7 +1141,8 @@ public class PlaylistServiceTest {
       // when then
       assertThatThrownBy(() -> playlistService.addContent(playlistId, contentId, ownerId))
           .isInstanceOf(PlaylistException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_CONTENT_CONTENT_NOT_FOUND);
+          .hasFieldOrPropertyWithValue("errorCode",
+              PlaylistErrorCode.PLAYLIST_CONTENT_CONTENT_NOT_FOUND);
 
       verify(eventPublisher, never()).publishEvent(any());
       verify(playlistContentRepository, never()).save(any());
@@ -1229,7 +1230,8 @@ public class PlaylistServiceTest {
 
       assertThatThrownBy(() -> playlistService.removeContent(playlistId, contentId, ownerId))
           .isInstanceOf(PlaylistException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.PLAYLIST_CONTENT_PLAY_NOT_FOUND);
+          .hasFieldOrPropertyWithValue("errorCode",
+              PlaylistErrorCode.PLAYLIST_CONTENT_PLAY_NOT_FOUND);
 
       verify(playlistContentRepository, never()).findByPlaylistIdAndContentId(any(), any());
       verify(playlistContentRepository, never()).delete(any());
@@ -1270,7 +1272,8 @@ public class PlaylistServiceTest {
 
       assertThatThrownBy(() -> playlistService.removeContent(playlistId, contentId, ownerId))
           .isInstanceOf(PlaylistException.class)
-          .hasFieldOrPropertyWithValue("errorCode", PlaylistErrorCode.UN_PLAYLIST_CONTENT_NOT_FOUND);
+          .hasFieldOrPropertyWithValue("errorCode",
+              PlaylistErrorCode.UN_PLAYLIST_CONTENT_NOT_FOUND);
 
       verify(playlistContentRepository, never()).delete(any());
     }

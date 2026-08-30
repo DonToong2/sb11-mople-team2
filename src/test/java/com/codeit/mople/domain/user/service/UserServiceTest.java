@@ -20,7 +20,6 @@ import com.codeit.mople.domain.user.event.UserSearchIndexEvent;
 import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.domain.user.repository.UserRepository;
-import com.codeit.mople.domain.user.repository.search.UserDocument;
 import com.codeit.mople.domain.user.repository.search.UserSearchRepository;
 import com.codeit.mople.global.dto.CursorResponse;
 import com.codeit.mople.global.dto.SearchResult;
@@ -299,7 +298,8 @@ public class UserServiceTest {
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(fileStorageService.upload(any())).thenReturn("https://placeholder.mople.com/test.jpg");
 
-    MockMultipartFile image = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
+    MockMultipartFile image = new MockMultipartFile("image", "test.jpg", "image/jpeg",
+        "content".getBytes());
     UserUpdateRequest request = new UserUpdateRequest(null);
 
     UserDto response = userService.updateProfile(userId, request, image);
@@ -318,7 +318,8 @@ public class UserServiceTest {
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(fileStorageService.upload(any())).thenReturn("https://placeholder.mople.com/test.jpg");
 
-    MockMultipartFile image = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
+    MockMultipartFile image = new MockMultipartFile("image", "test.jpg", "image/jpeg",
+        "content".getBytes());
     UserUpdateRequest request = new UserUpdateRequest("newName");
 
     UserDto response = userService.updateProfile(userId, request, image);
@@ -327,7 +328,8 @@ public class UserServiceTest {
     assertThat(response.profileImageUrl()).isEqualTo("https://placeholder.mople.com/test.jpg");
 
     //트랜잭션 커밋 이벤트 강제 트리거
-    TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+    TransactionSynchronizationManager.getSynchronizations()
+        .forEach(TransactionSynchronization::afterCommit);
 
     //S3에서 기존 이미지를 삭제하는 로직이 정상 호출되었는지 검증
     verify(fileStorageService).delete("https://placeholder.mople.com/old.jpg");

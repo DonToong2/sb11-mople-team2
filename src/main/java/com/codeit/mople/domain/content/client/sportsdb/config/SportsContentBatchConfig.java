@@ -55,7 +55,8 @@ public class SportsContentBatchConfig {
 
   //기존 스포츠 데이터를 백업하는 Tasklet Step 추가
   @Bean
-  public Step backupOldSportsDataStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
+  public Step backupOldSportsDataStep(JobRepository jobRepository,
+      PlatformTransactionManager transactionManager) {
     return new StepBuilder("backupOldSportsDataStep", jobRepository)
         .tasklet((contribution, chunkContext) -> {
           //externalId가 있는 외부 배치 수집 데이터만 백업 대상으로 지정
@@ -101,7 +102,8 @@ public class SportsContentBatchConfig {
   //기존 스포츠 데이터를 일괄 삭제하는 Tasklet Step 추가
   @Bean
   @SuppressWarnings("unchecked")
-  public Step deleteOldSportsDataStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
+  public Step deleteOldSportsDataStep(JobRepository jobRepository,
+      PlatformTransactionManager transactionManager) {
     return new StepBuilder("deleteOldSportsDataStep", jobRepository)
         .tasklet((contribution, chunkContext) -> {
           // 안전하게 신규 데이터를 먼저 적재한 뒤 구버전 데이터를 정리하도록 순서 변경

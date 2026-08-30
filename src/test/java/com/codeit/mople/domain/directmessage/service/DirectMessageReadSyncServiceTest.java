@@ -35,7 +35,8 @@ public class DirectMessageReadSyncServiceTest {
     Instant lastReadAt = Instant.now();
 
     Conversation mockConversation = mock(Conversation.class);
-    given(conversationRepository.findById(conversationId)).willReturn(Optional.of(mockConversation));
+    given(conversationRepository.findById(conversationId)).willReturn(
+        Optional.of(mockConversation));
 
     // when
     directMessageReadSyncService.syncToDb(conversationId, userId, lastReadAt);

@@ -24,7 +24,7 @@ public class DirectMessageDeleteScheduler {
 
   @Scheduled(cron = "0 0 5 * * *", zone = "Asia/Seoul")
   @SchedulerLock(name = "dm-es-document-cleanup", lockAtMostFor = "PT10M", lockAtLeastFor = "PT1M")
-  public void  cleanupOldSearchData() {
+  public void cleanupOldSearchData() {
     if (retentionDays < 1) {
       log.warn("잘못된 삭제 보관 주기 설정값({}): 기본값(365일)으로 강제 조정", retentionDays);
       retentionDays = 365;

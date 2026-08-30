@@ -73,7 +73,8 @@ public class JwtChannelInterceptorTest {
       StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
       accessor.addNativeHeader("Authorization", "Bearer " + validToken);
       accessor.setLeaveMutable(true); // 인터셉터에서 수정 가능하도록 스프링 헤더 불변성 우회
-      Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+      Message<byte[]> message = MessageBuilder.createMessage(new byte[0],
+          accessor.getMessageHeaders());
 
       User user = User.createUser("test@test.com", "password", "테스트유저");
       ReflectionTestUtils.setField(user, "id", userId);
@@ -101,7 +102,8 @@ public class JwtChannelInterceptorTest {
     void connect_fail_missing_header() {
       // given
       StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
-      Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+      Message<byte[]> message = MessageBuilder.createMessage(new byte[0],
+          accessor.getMessageHeaders());
 
       // when & then
       assertThatThrownBy(() -> jwtChannelInterceptor.preSend(message, messageChannel))
@@ -116,7 +118,8 @@ public class JwtChannelInterceptorTest {
       // given
       StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
       accessor.addNativeHeader("Authorization", "Bearer " + validToken);
-      Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+      Message<byte[]> message = MessageBuilder.createMessage(new byte[0],
+          accessor.getMessageHeaders());
 
       given(jwtProvider.getUserId(validToken)).willThrow(ExpiredJwtException.class);
 
@@ -133,7 +136,8 @@ public class JwtChannelInterceptorTest {
       // given
       StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
       accessor.addNativeHeader("Authorization", "Bearer " + validToken);
-      Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+      Message<byte[]> message = MessageBuilder.createMessage(new byte[0],
+          accessor.getMessageHeaders());
 
       User user = User.createUser("test@test.com", "password", "테스트유저");
       ReflectionTestUtils.setField(user, "id", userId);
@@ -157,7 +161,8 @@ public class JwtChannelInterceptorTest {
       StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
       accessor.addNativeHeader("Authorization", "Bearer " + validToken);
       accessor.setLeaveMutable(true);
-      Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+      Message<byte[]> message = MessageBuilder.createMessage(new byte[0],
+          accessor.getMessageHeaders());
 
       User user = User.createUser("locked@test.com", "password", "잠긴유저");
       ReflectionTestUtils.setField(user, "id", userId);
@@ -192,12 +197,15 @@ public class JwtChannelInterceptorTest {
       accessor.setDestination(validDestination);
 
       CustomUserDetails principal = new CustomUserDetails(userId, Role.USER);
-      UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+      UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(principal,
+          null, principal.getAuthorities());
       accessor.setUser(auth);
 
-      Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+      Message<byte[]> message = MessageBuilder.createMessage(new byte[0],
+          accessor.getMessageHeaders());
 
-      given(conversationRepository.existsByIdAndParticipantId(conversationId, userId)).willReturn(true);
+      given(conversationRepository.existsByIdAndParticipantId(conversationId, userId)).willReturn(
+          true);
 
       // when
       Message<?> result = jwtChannelInterceptor.preSend(message, messageChannel);
@@ -213,7 +221,8 @@ public class JwtChannelInterceptorTest {
       // given
       StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
       accessor.setDestination("/sub/leak-path"); // 화이트리스트 외 경로
-      Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+      Message<byte[]> message = MessageBuilder.createMessage(new byte[0],
+          accessor.getMessageHeaders());
 
       // when & then
       assertThatThrownBy(() -> jwtChannelInterceptor.preSend(message, messageChannel))
@@ -229,12 +238,15 @@ public class JwtChannelInterceptorTest {
       accessor.setDestination(validDestination);
 
       CustomUserDetails principal = new CustomUserDetails(userId, Role.USER);
-      UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+      UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(principal,
+          null, principal.getAuthorities());
       accessor.setUser(auth);
 
-      Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+      Message<byte[]> message = MessageBuilder.createMessage(new byte[0],
+          accessor.getMessageHeaders());
 
-      given(conversationRepository.existsByIdAndParticipantId(conversationId, userId)).willReturn(false);
+      given(conversationRepository.existsByIdAndParticipantId(conversationId, userId)).willReturn(
+          false);
 
       // when & then
       assertThatThrownBy(() -> jwtChannelInterceptor.preSend(message, messageChannel))

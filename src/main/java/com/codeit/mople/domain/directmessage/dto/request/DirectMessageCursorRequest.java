@@ -40,7 +40,8 @@ public record DirectMessageCursorRequest(
 
     if (hasCursor != hasIdAfter) {
       throw new DirectMessageException(
-          DirectMessageErrorCode.INVALID_INPUT, Map.of("message", "커서 페이싱 시 cursor와 idAfter는 함께 제공해야 합니다."));
+          DirectMessageErrorCode.INVALID_INPUT,
+          Map.of("message", "커서 페이싱 시 cursor와 idAfter는 함께 제공해야 합니다."));
     }
   }
 

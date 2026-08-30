@@ -1,11 +1,10 @@
-package com.codeit.mople.domain.auth.event;
+package com.codeit.mople.domain.user.admin.event;
 
 import com.codeit.mople.domain.auth.repository.AccountLockRepository;
 import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
 import com.codeit.mople.domain.user.repository.UserRepository;
-import com.codeit.mople.global.event.ForceLogoutReason;
-import com.codeit.mople.global.event.UserAccountStatusChangedEvent;
+import com.codeit.mople.domain.user.admin.enums.ForceLogoutReason;
 import jakarta.annotation.PreDestroy;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -47,7 +46,8 @@ public class AccountLockRedisSyncListener {
   @Async
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void handle(UserAccountStatusChangedEvent event) {
-    if(event.reason() != ForceLogoutReason.ACCOUNT_LOCKED && event.reason() != ForceLogoutReason.ACCOUNT_UNLOCKED) {
+    if (event.reason() != ForceLogoutReason.ACCOUNT_LOCKED
+        && event.reason() != ForceLogoutReason.ACCOUNT_UNLOCKED) {
       return;
     }
     boolean locked = event.reason() == ForceLogoutReason.ACCOUNT_LOCKED;
@@ -55,12 +55,13 @@ public class AccountLockRedisSyncListener {
   }
 
   private void syncRedis(UUID userId, boolean locked, int attempt, long delaySeconds) {
-    if(attempt > 1 && !isStillCurrent(userId, locked)) {
-      log.info("계정 잠금 상태가 재시도 대기 중 변경되어 재적용을 건너뜁니다 - userId: {}, 예정된 작업: locked={}", userId, locked);
+    if (attempt > 1 && !isStillCurrent(userId, locked)) {
+      log.info("계정 잠금 상태가 재시도 대기 중 변경되어 재적용을 건너뜁니다 - userId: {}, 예정된 작업: locked={}", userId,
+          locked);
       return;
     }
     try {
-      if(locked) {
+      if (locked) {
         sessionTokenRepository.invalidate(userId);
         refreshTokenRepository.invalidate(userId);
         accountLockRepository.lock(userId);
@@ -69,12 +70,13 @@ public class AccountLockRedisSyncListener {
       }
       log.info("계정 잠금 Redis 동기화 성공 - userId: {}, locked: {}, attempt: {}", userId, locked, attempt);
     } catch (RuntimeException e) {
-      if(attempt < MAX_ATTEMPTS) {
+      if (attempt < MAX_ATTEMPTS) {
         retryScheduler.schedule(
             () -> syncRedis(userId, locked, attempt + 1, delaySeconds * BACKOFF_MULTIPLIER),
             delaySeconds, TimeUnit.SECONDS);
-        } else {
-        log.error("계정 잠금 Redis 동기화를 모두 실패했습니다 - userId: {}, locked: {} (DB와 불일치 상태로 남음)", userId, locked, e);
+      } else {
+        log.error("계정 잠금 Redis 동기화를 모두 실패했습니다 - userId: {}, locked: {} (DB와 불일치 상태로 남음)", userId,
+            locked, e);
       }
     }
   }

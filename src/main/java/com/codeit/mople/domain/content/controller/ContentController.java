@@ -6,9 +6,7 @@ import com.codeit.mople.domain.content.dto.ContentCreateRequest;
 import com.codeit.mople.domain.content.dto.ContentResponse;
 import com.codeit.mople.domain.content.dto.ContentUpdateRequest;
 import com.codeit.mople.domain.content.dto.CursorResponseContentDto;
-import com.codeit.mople.domain.content.entity.ContentType;
 import com.codeit.mople.domain.content.service.ContentService;
-import com.codeit.mople.domain.watchingsession.service.WatchingSessionService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +35,6 @@ import org.springframework.web.multipart.MultipartFile;
 public class ContentController implements ContentApi {
 
   private final ContentService contentService;
-  private final WatchingSessionService watchingSessionService;
 
   //콘텐츠 생성
   @Override
@@ -63,7 +60,8 @@ public class ContentController implements ContentApi {
       @RequestParam(name = "keywordLike", required = false) String keywordLike,
       @RequestParam(name = "sortBy", defaultValue = "createdAt") String sortBy) {
 
-    CursorResponseContentDto response = contentService.getContents(cursorId, cursorValue, limit, typeEqual, keywordLike, sortBy);
+    CursorResponseContentDto response = contentService.getContents(cursorId, cursorValue, limit,
+        typeEqual, keywordLike, sortBy);
     return ResponseEntity.ok(response);
   }
 

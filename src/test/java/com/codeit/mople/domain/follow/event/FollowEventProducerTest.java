@@ -90,7 +90,8 @@ class FollowEventProducerTest {
       producer.on(event);
 
       // then
-      verify(publisher).publish(eq(TOPIC), eq(followeeId.toString()), any(FollowCreatedEvent.class));
+      verify(publisher).publish(eq(TOPIC), eq(followeeId.toString()),
+          any(FollowCreatedEvent.class));
     }
 
     @Test

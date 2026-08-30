@@ -80,7 +80,7 @@ public class JwtProvider {
 
   public String getJti(String token) {
     String jti = parseClaims(token).getId();
-    if(jti == null) {
+    if (jti == null) {
       throw new JwtException("jti claim이 없는 토큰입니다.");
     }
     return jti;
@@ -88,7 +88,7 @@ public class JwtProvider {
 
   public Role getRole(String token) {
     String role = parseClaims(token).get("role", String.class);
-    if(role == null) {
+    if (role == null) {
       throw new JwtException("role claim이 없는 토큰 입니다.");
     }
     return Role.valueOf(role);

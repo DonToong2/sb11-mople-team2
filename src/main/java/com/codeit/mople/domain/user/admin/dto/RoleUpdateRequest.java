@@ -7,4 +7,6 @@ public record RoleUpdateRequest(
     @NotBlank(message = "권한은 필수입니다.")
     @Pattern(regexp = "ADMIN|USER", message = "허용된 역할은 ADMIN, USER입니다.")
     String role
-) {}
+) {
+
+}

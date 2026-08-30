@@ -55,8 +55,8 @@ public abstract class AbstractRedisCleanupTest {
       userRepository.deleteAll();
     }
 
-    Cache usersCache= cacheManager.getCache(CacheNames.USERS);
-    if(usersCache != null) {
+    Cache usersCache = cacheManager.getCache(CacheNames.USERS);
+    if (usersCache != null) {
       usersCache.clear();
     }
   }

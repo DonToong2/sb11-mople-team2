@@ -17,4 +17,5 @@ public record UserSearchIndexEvent(
     boolean locked,
     String role
 ) implements PublishableEvent {
+
 }

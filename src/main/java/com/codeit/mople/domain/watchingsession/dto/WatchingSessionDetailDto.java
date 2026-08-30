@@ -17,4 +17,5 @@ public record WatchingSessionDetailDto(
     @JsonProperty("content")
     WatchingSessionContentDto content
 ) {
+
 }

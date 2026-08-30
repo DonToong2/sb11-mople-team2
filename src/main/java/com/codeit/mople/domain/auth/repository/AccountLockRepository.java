@@ -27,11 +27,11 @@ public class AccountLockRepository {
 
   public boolean isLocked(UUID userId) {
     Object cached = redisTemplate.opsForValue().get(KEY_PREFIX + userId);
-    if(cached != null) {
+    if (cached != null) {
       return Boolean.TRUE.equals(cached);
     }
     boolean locked = userRepository.existsByIdAndLockedTrue(userId);
-    redisTemplate.opsForValue().set(KEY_PREFIX + userId, locked,CACHE_TTL);
+    redisTemplate.opsForValue().set(KEY_PREFIX + userId, locked, CACHE_TTL);
     return locked;
   }
 }

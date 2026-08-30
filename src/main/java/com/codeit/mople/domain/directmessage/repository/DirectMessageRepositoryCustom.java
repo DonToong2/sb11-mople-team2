@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.UUID;
 
 public interface DirectMessageRepositoryCustom {
-  List<DirectMessage> findDirectMessageByCursor(UUID conversationId, DirectMessageCursorRequest request, Instant cursorTime);
+
+  List<DirectMessage> findDirectMessageByCursor(UUID conversationId,
+      DirectMessageCursorRequest request, Instant cursorTime);
 
 }

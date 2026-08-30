@@ -8,4 +8,6 @@ public record AuthTokens(
     String refreshToken,
     Instant refreshTokenExpiresAt,
     UserDto userDto
-) {}
+) {
+
+}

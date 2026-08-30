@@ -75,7 +75,8 @@ public class RedisCacheErrorHandler implements CacheErrorHandler {
 
   // 저장 실패는 다음 조회가 미스로 원본을 보게 되므로 값이 틀리지 않음. 재시도x
   @Override
-  public void handleCachePutError(RuntimeException exception, Cache cache, Object key, Object value) {
+  public void handleCachePutError(RuntimeException exception, Cache cache, Object key,
+      Object value) {
     putErrorCounter.increment();
     report("캐시 저장에 실패했습니다", exception, cache.getName(), key);
   }
@@ -152,7 +153,8 @@ public class RedisCacheErrorHandler implements CacheErrorHandler {
   }
 
   // 캐시 무효화 재시도 로직
-  private void retryEvict(Cache cache, Object key, String pendingKey, int attempt, long delaySeconds) {
+  private void retryEvict(Cache cache, Object key, String pendingKey, int attempt,
+      long delaySeconds) {
     try {
       retryScheduler.schedule(() -> {
         try {

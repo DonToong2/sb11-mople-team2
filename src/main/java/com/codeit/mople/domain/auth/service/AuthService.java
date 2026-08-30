@@ -86,13 +86,13 @@ public class AuthService {
           return new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
         });
 
-    if(!isPasswordValid(request.password(), user)) {
+    if (!isPasswordValid(request.password(), user)) {
       //비밀번호 불일치 시 실패 카운트 증가
       loginFailureCounter.increment();
       throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
     }
 
-    if(user.isLocked()) {
+    if (user.isLocked()) {
       //잠긴계정 접근 시 실패 카운트 증가
       loginFailureCounter.increment();
       throw new AuthException(AuthErrorCode.LOCKED_ACCOUNT);
@@ -103,7 +103,7 @@ public class AuthService {
     sessionTokenRepository.save(user.getId(), jti, sessionTtl());
 
     AuthTokens authTokens = issueRefreshToken(user, accessToken);
-    
+
     //검증 통과 후 토큰 발급 전 성공 카운트 증가
     loginSuccessCounter.increment();
 
@@ -126,10 +126,10 @@ public class AuthService {
 
   private boolean isPasswordValid(String rawPassword, User user) {
     // 소셜 계정은 password가 null이라 matches 호출 자체가 위험
-    if(user.getProvider() != AuthProvider.LOCAL) {
+    if (user.getProvider() != AuthProvider.LOCAL) {
       return false;
     }
-    if(passwordEncoder.matches(rawPassword, user.getPassword())) {
+    if (passwordEncoder.matches(rawPassword, user.getPassword())) {
       return true;
     }
     return user.hasValidTemporaryPassword(Instant.now())
@@ -140,19 +140,20 @@ public class AuthService {
   public void resetPassword(ResetPasswordRequest request, String clientIp) {
     String email = request.email().toLowerCase(Locale.ROOT);
 
-    if(!passwordResetRateLimiterRepository.tryAcquireGlobal(
+    if (!passwordResetRateLimiterRepository.tryAcquireGlobal(
         globalMaxRequests, Duration.ofMinutes(globalWindowMinutes))) {
       log.warn("비밀번호 재설정 전체 발송 한도 초과");
       throw new AuthException(AuthErrorCode.TOO_MANY_RESET_PASSWORD_REQUEST);
     }
 
-    if(!passwordResetRateLimiterRepository.tryAcquireByIp(
+    if (!passwordResetRateLimiterRepository.tryAcquireByIp(
         clientIp, ipMaxRequests, Duration.ofMinutes(ipWindowMinutes))) {
       log.warn("비밀번호 재설정 IP 기준 요청 한도 초과 : {}", clientIp);
       throw new AuthException(AuthErrorCode.TOO_MANY_RESET_PASSWORD_REQUEST);
     }
 
-    if(!passwordResetRateLimiterRepository.tryAcquireByEmail(email, Duration.ofMinutes(TEMPORARY_PASSWORD_EXPIRATION_MINUTES))) {
+    if (!passwordResetRateLimiterRepository.tryAcquireByEmail(email,
+        Duration.ofMinutes(TEMPORARY_PASSWORD_EXPIRATION_MINUTES))) {
       throw new AuthException(AuthErrorCode.TOO_MANY_RESET_PASSWORD_REQUEST);
     }
 
@@ -160,7 +161,8 @@ public class AuthService {
         .filter(user -> user.getProvider() == AuthProvider.LOCAL)
         .ifPresent(user -> {
           String temporaryPassword = generateTemporaryPassword();
-          Instant expiresAt = Instant.now().plus(TEMPORARY_PASSWORD_EXPIRATION_MINUTES, ChronoUnit.MINUTES);
+          Instant expiresAt = Instant.now()
+              .plus(TEMPORARY_PASSWORD_EXPIRATION_MINUTES, ChronoUnit.MINUTES);
           user.issueTemporaryPassword(passwordEncoder.encode(temporaryPassword), expiresAt);
           authMailService.sendTemporaryPassword(user.getEmail(), temporaryPassword);
         });
@@ -177,7 +179,7 @@ public class AuthService {
   }
 
   public void signOut(String refreshToken) {
-    if(refreshToken == null) {
+    if (refreshToken == null) {
       return;
     }
 
@@ -188,7 +190,7 @@ public class AuthService {
       return;
     }
 
-    if(!refreshTokenRepository.isValid(userId, refreshToken)) {
+    if (!refreshTokenRepository.isValid(userId, refreshToken)) {
       return;
     }
     refreshTokenRepository.invalidate(userId);
@@ -207,12 +209,12 @@ public class AuthService {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_TOKEN));
 
-    if(user.isLocked()) {
+    if (user.isLocked()) {
       throw new AuthException(AuthErrorCode.LOCKED_ACCOUNT);
     }
 
     String newRefreshToken = jwtProvider.createRefreshToken(userId);
-    if(!refreshTokenRepository.rotate(userId, refreshToken, newRefreshToken, sessionTtl())) {
+    if (!refreshTokenRepository.rotate(userId, refreshToken, newRefreshToken, sessionTtl())) {
       throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
 

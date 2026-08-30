@@ -42,7 +42,8 @@ public record ConversationCursorRequest(
 
     if (hasCursor != hasIdAfter) {
       throw new ConversationException(
-          ConversationErrorCode.INVALID_INPUT, Map.of("message", "커서 페이싱 시 cursor와 idAfter는 함께 제공해야 합니다."));
+          ConversationErrorCode.INVALID_INPUT,
+          Map.of("message", "커서 페이싱 시 cursor와 idAfter는 함께 제공해야 합니다."));
     }
   }
 
@@ -54,7 +55,8 @@ public record ConversationCursorRequest(
     try {
       return Instant.parse(cursor);
     } catch (Exception e) {
-      throw new ConversationException(ConversationErrorCode.INVALID_INPUT, Map.of("invalidCursor", cursor));
+      throw new ConversationException(ConversationErrorCode.INVALID_INPUT,
+          Map.of("invalidCursor", cursor));
     }
   }
 }

@@ -28,7 +28,7 @@ public class PlaylistEventConsumer {
   public void handle(PlaylistSubscribedEvent event) {
     log.debug("플레이리스트 구독자 수 증가 시도: playlistId={}",
         event.playlistId());
-    
+
     if (checkAndRecordProcessedEvent(event.eventId())) {
       return;
     }
@@ -44,7 +44,7 @@ public class PlaylistEventConsumer {
   public void handle(PlaylistUnsubscribedEvent event) {
     log.debug("플레이리스트 구독자 수 감소 시도: playlistId={}",
         event.playlistId());
-    
+
     if (checkAndRecordProcessedEvent(event.eventId())) {
       return;
     }

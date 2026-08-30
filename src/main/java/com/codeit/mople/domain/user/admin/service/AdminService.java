@@ -10,8 +10,8 @@ import com.codeit.mople.domain.user.exception.UserErrorCode;
 import com.codeit.mople.domain.user.repository.UserRepository;
 import com.codeit.mople.domain.user.exception.UserException;
 import com.codeit.mople.global.config.CacheNames;
-import com.codeit.mople.global.event.ForceLogoutReason;
-import com.codeit.mople.global.event.UserAccountStatusChangedEvent;
+import com.codeit.mople.domain.user.admin.enums.ForceLogoutReason;
+import com.codeit.mople.domain.user.admin.event.UserAccountStatusChangedEvent;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -51,7 +51,8 @@ public class AdminService {
       user.changeRole(role);
       sessionTokenRepository.invalidate(userId);
       refreshTokenRepository.invalidate(userId);
-      eventPublisher.publishEvent(new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ROLE_CHANGE, true));
+      eventPublisher.publishEvent(
+          new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ROLE_CHANGE, true));
 
       eventPublisher.publishEvent(
           new UserSearchIndexEvent(
@@ -88,7 +89,8 @@ public class AdminService {
       user.unlock();
     }
     if (previousLocked != locked) {
-      ForceLogoutReason reason = locked ? ForceLogoutReason.ACCOUNT_LOCKED : ForceLogoutReason.ACCOUNT_UNLOCKED;
+      ForceLogoutReason reason =
+          locked ? ForceLogoutReason.ACCOUNT_LOCKED : ForceLogoutReason.ACCOUNT_UNLOCKED;
       eventPublisher.publishEvent(new UserAccountStatusChangedEvent(userId, reason, locked));
 
       eventPublisher.publishEvent(

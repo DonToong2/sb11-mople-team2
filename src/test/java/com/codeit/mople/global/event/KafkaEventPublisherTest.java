@@ -36,7 +36,9 @@ class KafkaEventPublisherTest {
   static final String TOPIC = "mople.follow.created.v1";
   static final String KEY = "followee-key";
 
-  record TestEvent(UUID eventId, Instant occurredAt) implements PublishableEvent {}
+  record TestEvent(UUID eventId, Instant occurredAt) implements PublishableEvent {
+
+  }
 
   @Mock
   KafkaTemplate<String, Object> kafkaTemplate;
@@ -115,7 +117,8 @@ class KafkaEventPublisherTest {
           CompletableFuture.failedFuture(new RuntimeException("broker down"));
       given(kafkaTemplate.send(TOPIC, KEY, event)).willReturn(failed);
       given(objectMapper.writeValueAsString(event))
-          .willThrow(new JsonProcessingException("직렬화 실패") {});
+          .willThrow(new JsonProcessingException("직렬화 실패") {
+          });
 
       // when
       publisher.publish(TOPIC, KEY, event);

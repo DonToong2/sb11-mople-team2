@@ -28,7 +28,7 @@ public class PlaylistContentRepositoryTest {
 
   @Autowired
   private PlaylistContentRepository playlistContentRepository;
-  
+
   private User author;
   private Playlist playlist;
   private Playlist otherPlaylist;
@@ -99,7 +99,7 @@ public class PlaylistContentRepositoryTest {
     @DisplayName("플레이리스트에 콘텐츠를 추가한 순서대로 조회 성공")
     void findAllByPlaylistIdOrderByCreatedAtAsc_success() throws InterruptedException {
       // given
-      
+
       // BeforeEach에서 author, playlist, content1, content2, playlistContent1, playlistContent2 초기화
 
       // author, playlist, content 저장

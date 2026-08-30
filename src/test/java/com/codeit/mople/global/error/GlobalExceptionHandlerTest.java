@@ -46,7 +46,8 @@ class GlobalExceptionHandlerTest {
       HttpServletRequest request = mock(HttpServletRequest.class);
 
       // when
-      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception, request);
+      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception,
+          request);
 
       // then
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -63,7 +64,8 @@ class GlobalExceptionHandlerTest {
       HttpServletRequest request = mock(HttpServletRequest.class);
 
       // when
-      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception, request);
+      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception,
+          request);
 
       // then
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -79,7 +81,8 @@ class GlobalExceptionHandlerTest {
       HttpServletRequest request = mock(HttpServletRequest.class);
 
       // when
-      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception, request);
+      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception,
+          request);
 
       // then
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -94,7 +97,8 @@ class GlobalExceptionHandlerTest {
       HttpServletRequest request = mock(HttpServletRequest.class);
 
       // when
-      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception, request);
+      ResponseEntity<ApiResponse<Void>> response = handler.handleDataIntegrityViolation(exception,
+          request);
 
       // then
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -108,7 +112,8 @@ class GlobalExceptionHandlerTest {
           new NoResourceFoundException(HttpMethod.GET, "/wrong-path");
 
       // when
-      ResponseEntity<ApiResponse<Void>> response = handler.handleNoResourceFoundException(exception);
+      ResponseEntity<ApiResponse<Void>> response = handler.handleNoResourceFoundException(
+          exception);
 
       // then
       assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);

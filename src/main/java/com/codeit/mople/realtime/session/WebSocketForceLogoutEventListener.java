@@ -1,6 +1,6 @@
 package com.codeit.mople.realtime.session;
 
-import com.codeit.mople.global.event.UserAccountStatusChangedEvent;
+import com.codeit.mople.domain.user.admin.event.UserAccountStatusChangedEvent;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

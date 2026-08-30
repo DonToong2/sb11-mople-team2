@@ -34,7 +34,7 @@ public class ContentTest {
       // given
 
       // BeforeEach에서 content를 초기화
-      
+
       // content에 대한 리뷰 총점을 9.0, 리뷰 개수를 2개로 가정
       ReflectionTestUtils.setField(content, "ratingSum", 9.0);
       ReflectionTestUtils.setField(content, "reviewCount", 2);
@@ -69,7 +69,8 @@ public class ContentTest {
     @Test
     @DisplayName("updateContentInfo 성공 - null 값이 들어오면 기존 데이터를 유지한다")
     void updateContentInfo_IgnoresNullValues() {
-      Content testContent = new Content(ContentType.MOVIE, "기존 제목", "기존 설명", "old.png", List.of("태그1"));
+      Content testContent = new Content(ContentType.MOVIE, "기존 제목", "기존 설명", "old.png",
+          List.of("태그1"));
 
       //모두 null 전달
       testContent.updateContentInfo(null, null, null, null);

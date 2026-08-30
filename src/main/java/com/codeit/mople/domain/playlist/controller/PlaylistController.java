@@ -62,7 +62,8 @@ public class PlaylistController implements PlaylistApi {
       @Valid @ModelAttribute PlaylistQueryCondition condition,
       @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails
   ) {
-    CursorResponse<PlaylistResponse> response = playlistService.findAll(condition, userDetails.getUserId());
+    CursorResponse<PlaylistResponse> response =
+        playlistService.findAll(condition, userDetails.getUserId());
 
     return ResponseEntity.ok(response);
   }

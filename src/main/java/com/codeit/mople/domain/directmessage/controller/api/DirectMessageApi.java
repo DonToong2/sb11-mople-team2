@@ -15,7 +15,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.security.Principal;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -30,19 +29,18 @@ public interface DirectMessageApi {
 
   /**
    * [WebSocket STOMP] 실시간 DM 발송 명세
-   *
+   * <p>
    * ※ 주의: 본 API는 HTTP REST가 아닌 WebSocket STOMP 프로토콜을 사용하므로 Swagger UI에 노출되지 않습니다.
-   *
-   * - 클라이언트 발송(PUB) 경로: SEND /pub/conversations/{conversationId}/direct-messages
-   * - 클라이언트 수신(SUB) 경로: SUBSCRIBE /sub/conversations/{conversationId}/direct-messages
-   *
-   * 프론트엔드에서 STOMP 클라이언트를 통해 위 PUB 경로로 JSON 데이터를 전송하면,
-   * 서버가 DB 영속화 및 읽음 워터마크 갱신 후 SUB 경로를 구독 중인 유저들에게
+   * <p>
+   * - 클라이언트 발송(PUB) 경로: SEND /pub/conversations/{conversationId}/direct-messages - 클라이언트 수신(SUB)
+   * 경로: SUBSCRIBE /sub/conversations/{conversationId}/direct-messages
+   * <p>
+   * 프론트엔드에서 STOMP 클라이언트를 통해 위 PUB 경로로 JSON 데이터를 전송하면, 서버가 DB 영속화 및 읽음 워터마크 갱신 후 SUB 경로를 구독 중인 유저들에게
    * DirectMessageDto 스펙으로 실시간 브로드캐스팅합니다.
    *
    * @param conversationId 메시지를 발송할 대화방의 고유 ID
    * @param request        메시지 내용
-   * @param userDetails      인증 객체
+   * @param userDetails    인증 객체
    */
   void sendDirectMessage(
       @Parameter(hidden = true) @DestinationVariable UUID conversationId,

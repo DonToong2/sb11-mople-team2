@@ -4,8 +4,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
-import com.codeit.mople.global.event.ForceLogoutReason;
-import com.codeit.mople.global.event.UserAccountStatusChangedEvent;
+import com.codeit.mople.domain.user.admin.enums.ForceLogoutReason;
+import com.codeit.mople.domain.user.admin.event.UserAccountStatusChangedEvent;
 import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;

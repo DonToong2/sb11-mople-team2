@@ -72,8 +72,9 @@ public class AuthController implements AuthApi {
   @Override
   @PostMapping("/reset-password")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void resetPassword(@Valid @RequestBody ResetPasswordRequest request, HttpServletRequest servletRequest) {
-    if(!passwordResetEnabled) {
+  public void resetPassword(@Valid @RequestBody ResetPasswordRequest request,
+      HttpServletRequest servletRequest) {
+    if (!passwordResetEnabled) {
       // 이메일 발송이 검증되기 전까지 비활성화. 엔드포인트 존재 자체를 숨기기 위해 404로 응답.
       throw new CustomException(CommonErrorCode.NOT_FOUND);
     }
@@ -84,7 +85,7 @@ public class AuthController implements AuthApi {
   @PostMapping("/refresh")
   public ResponseEntity<TokenResponse> refresh(
       @CookieValue(value = REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {
-    if(refreshToken == null) {
+    if (refreshToken == null) {
       throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
     AuthTokens tokens = authService.refresh(refreshToken);
@@ -99,7 +100,8 @@ public class AuthController implements AuthApi {
   }
 
   private ResponseEntity<TokenResponse> withRefreshTokenCookie(AuthTokens tokens) {
-    ResponseCookie cookie = buildRefreshTokenCookie(tokens.refreshToken(), tokens.refreshTokenExpiresAt());
+    ResponseCookie cookie = buildRefreshTokenCookie(tokens.refreshToken(),
+        tokens.refreshTokenExpiresAt());
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, cookie.toString())
         .body(new TokenResponse(tokens.accessToken(), tokens.userDto()));
@@ -128,7 +130,7 @@ public class AuthController implements AuthApi {
 
   private String resolveClientIp(HttpServletRequest request) {
     String forwardedFor = request.getHeader("X-Forwarded-For");
-    if(forwardedFor != null && !forwardedFor.isBlank()) {
+    if (forwardedFor != null && !forwardedFor.isBlank()) {
       return forwardedFor.split(",")[0].trim();
     }
     return request.getRemoteAddr();

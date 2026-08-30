@@ -86,7 +86,8 @@ class SportsContentBatchConfigTest {
     @DisplayName("기존 데이터 백업 -> 수집 완료 후 -> 백업된 구버전 데이터만 정상 삭제된다")
     void launchJob_CompletesAndSaves() throws Exception {
       //기존 데이터 1건이 DB에 이미 존재하는 상황 가정
-      Content oldContent = new Content(ContentType.SPORT, "구버전 경기", "설명", "thumb.png", new ArrayList<>(), "OLD-1");
+      Content oldContent = new Content(ContentType.SPORT, "구버전 경기", "설명", "thumb.png",
+          new ArrayList<>(), "OLD-1");
       contentRepository.save(oldContent);
 
       JobParameters parameters = jobParameters(RUN_DATE);
@@ -106,7 +107,8 @@ class SportsContentBatchConfigTest {
       //스텝 실행 순서와 처리량 검증 (3개 스텝이 순서대로 실행됨)
       assertThat(execution.getStepExecutions())
           .extracting(StepExecution::getStepName)
-          .containsExactly("backupOldSportsDataStep", "sportsContentStep", "deleteOldSportsDataStep");
+          .containsExactly("backupOldSportsDataStep", "sportsContentStep",
+              "deleteOldSportsDataStep");
     }
 
     @Test
@@ -133,7 +135,8 @@ class SportsContentBatchConfigTest {
 
       //2차 실행 시도 시 이미 성공한 인스턴스에 대한 예외 발생 검증
       assertThatThrownBy(() -> jobLauncherTestUtils.launchJob(jobParameters(RUN_DATE)))
-          .isInstanceOf(org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException.class);
+          .isInstanceOf(
+              org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException.class);
     }
   }
 
@@ -167,7 +170,8 @@ class SportsContentBatchConfigTest {
     @DisplayName("수집 실패 시 기존 데이터가 보존되고, 재시작 시 정상적으로 처리된다")
     void launchJob_FailsThenRestartsSuccessfully() throws Exception {
       //초기 상태: 기존 데이터 1건이 DB에 이미 존재하는 상황 가정
-      Content oldContent = new Content(ContentType.SPORT, "구버전 경기", "설명", "thumb.png", new java.util.ArrayList<>(), "OLD-1");
+      Content oldContent = new Content(ContentType.SPORT, "구버전 경기", "설명", "thumb.png",
+          new java.util.ArrayList<>(), "OLD-1");
       contentRepository.save(oldContent);
 
       JobParameters parameters = jobParameters(RUN_DATE);

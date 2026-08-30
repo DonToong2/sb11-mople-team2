@@ -73,7 +73,7 @@ public class TmdbPageItemReader extends ItemStreamSupport
     if (!buffer.isEmpty()) {
       throw new IllegalStateException(
           "chunk 경계와 TMDB 페이지 경계가 어긋났습니다. buffer 잔여=%d건, nextPage=%d"
-          .formatted(buffer.size(), nextPage));
+              .formatted(buffer.size(), nextPage));
     }
     executionContext.putInt(getExecutionContextKey(CURSOR_KEY), nextPage);
   }

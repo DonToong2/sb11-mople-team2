@@ -13,4 +13,5 @@ public record WatchingSessionContentDto(
     double averageRating,
     long reviewCount
 ) {
+
 }

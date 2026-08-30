@@ -12,10 +12,11 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import com.codeit.mople.domain.auth.repository.AccountLockRepository;
 import com.codeit.mople.domain.auth.repository.RefreshTokenRepository;
 import com.codeit.mople.domain.auth.repository.SessionTokenRepository;
+import com.codeit.mople.domain.user.admin.event.AccountLockRedisSyncListener;
+import com.codeit.mople.domain.user.admin.event.UserAccountStatusChangedEvent;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.domain.user.repository.UserRepository;
-import com.codeit.mople.global.event.ForceLogoutReason;
-import com.codeit.mople.global.event.UserAccountStatusChangedEvent;
+import com.codeit.mople.domain.user.admin.enums.ForceLogoutReason;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -49,7 +50,8 @@ public class AccountLockRedisSyncListenerTest {
   @DisplayName("ACCOUNT_LOCKED 이벤트일 경우 세션/리프레시 토큰을 무효화하고 Redis 잠금을 설정함")
   void handle_syncsAllRedisState_whenAccountLocked() {
     // when
-    listener.handle(new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ACCOUNT_LOCKED, true));
+    listener.handle(
+        new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ACCOUNT_LOCKED, true));
 
     // then
     verify(sessionTokenRepository).invalidate(userId);
@@ -61,7 +63,8 @@ public class AccountLockRedisSyncListenerTest {
   @DisplayName("ACCOUNT_UNLOCKED 이벤트일 경우 Redis 잠금만 해제하고 세션/리프레시는 건드리지 않음")
   void handle_onlyUnlocksRedis_whenAccountUnlocked() {
     // when
-    listener.handle(new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ACCOUNT_UNLOCKED, false));
+    listener.handle(
+        new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ACCOUNT_UNLOCKED, false));
 
     // then
     verify(accountLockRepository).unlock(userId);
@@ -91,7 +94,8 @@ public class AccountLockRedisSyncListenerTest {
     given(userRepository.findById(userId)).willReturn(Optional.of(lockedUser));
 
     // when
-    listener.handle(new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ACCOUNT_LOCKED, true));
+    listener.handle(
+        new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ACCOUNT_LOCKED, true));
 
     // then
     verify(accountLockRepository, timeout(2000).times(2)).lock(userId);
@@ -101,7 +105,8 @@ public class AccountLockRedisSyncListenerTest {
   @DisplayName("첫 시도에서는 DB 상태를 다시 확인하지 않고 바로 적용함")
   void handle_appliesImmediately_onFirstAttempt_withoutCheckingDb() {
     // when
-    listener.handle(new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ACCOUNT_LOCKED, true));
+    listener.handle(
+        new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ACCOUNT_LOCKED, true));
 
     // then
     verify(accountLockRepository).lock(userId);
@@ -117,7 +122,8 @@ public class AccountLockRedisSyncListenerTest {
     given(userRepository.findById(userId)).willReturn(Optional.of(unlockedUser));
 
     // when
-    listener.handle(new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ACCOUNT_LOCKED, true));
+    listener.handle(
+        new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ACCOUNT_LOCKED, true));
 
     // then - 재시도 시점에 DB가 이미 unlocked라 lock()이 다시 호출되지 않음(최초 1번뿐)
     verify(userRepository, timeout(2000)).findById(userId);
@@ -136,7 +142,8 @@ public class AccountLockRedisSyncListenerTest {
     given(userRepository.findById(userId)).willReturn(Optional.of(lockedUser));
 
     // when
-    listener.handle(new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ACCOUNT_LOCKED, true));
+    listener.handle(
+        new UserAccountStatusChangedEvent(userId, ForceLogoutReason.ACCOUNT_LOCKED, true));
 
     // then - DB 상태가 같으므로 재시도가 정상적으로 두 번째 호출까지 진행됨
     verify(accountLockRepository, timeout(2000).times(2)).lock(userId);

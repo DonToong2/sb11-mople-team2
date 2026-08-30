@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/follows")
@@ -33,7 +32,8 @@ public class FollowController implements FollowApi {
   public ResponseEntity<FollowResponse> createFollow(
       @AuthenticationPrincipal CustomUserDetails principal,
       @Valid @RequestBody FollowRequest followRequest) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(followService.follow(followRequest, principal.getUserId()));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(followService.follow(followRequest, principal.getUserId()));
   }
 
   @Override

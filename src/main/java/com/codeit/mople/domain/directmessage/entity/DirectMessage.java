@@ -34,7 +34,8 @@ public class DirectMessage extends BaseEntity {
   @Column(nullable = false, length = 1000)
   private String content;
 
-  public static DirectMessage createMessage(Conversation conversation, User sender, User receiver, String content) {
+  public static DirectMessage createMessage(Conversation conversation, User sender, User receiver,
+      String content) {
     DirectMessage message = new DirectMessage();
     message.conversation = conversation;
     message.sender = sender;

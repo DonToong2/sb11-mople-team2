@@ -12,7 +12,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-public class DirectMessageRepositoryImpl implements DirectMessageRepositoryCustom{
+public class DirectMessageRepositoryImpl implements DirectMessageRepositoryCustom {
 
   private final JPAQueryFactory queryFactory;
 

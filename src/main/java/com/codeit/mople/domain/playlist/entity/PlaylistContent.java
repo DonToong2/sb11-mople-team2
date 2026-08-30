@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "playlist_contents", uniqueConstraints = @UniqueConstraint(
     name = "uk_playlist_contents_playlist_content",
-    columnNames = {"playlist_id","content_id"}
+    columnNames = {"playlist_id", "content_id"}
 ))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

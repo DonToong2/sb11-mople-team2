@@ -6,7 +6,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
-import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -220,7 +219,8 @@ public class ContentControllerTest {
         List.of(content1, content2), "next-cursor-string", UUID.randomUUID(),
         false, 2L, "createdAt", "DESCENDING");
 
-    given(contentService.getContents(any(), any(), anyInt(), any(), any(), any())).willReturn(mockPageResponse);
+    given(contentService.getContents(any(), any(), anyInt(), any(), any(), any())).willReturn(
+        mockPageResponse);
 
     mockMvc.perform(
         get("/api/contents")
@@ -229,7 +229,7 @@ public class ContentControllerTest {
             .param("cursor", Instant.now().toString())
             .param("keywordLike", "테스트")
             .contentType(MediaType.APPLICATION_JSON)
-            .with(mockAuth(UUID.randomUUID(),Role.USER))
+            .with(mockAuth(UUID.randomUUID(), Role.USER))
     ).andExpect(status().isOk());
   }
 
@@ -244,12 +244,13 @@ public class ContentControllerTest {
     CursorResponseContentDto mockPageResponse = new CursorResponseContentDto(
         List.of(content1), null, null, false, 1L, "createdAt", "DESCENDING");
 
-    given(contentService.getContents(null, null, 20, null, null, "createdAt")).willReturn(mockPageResponse);
+    given(contentService.getContents(null, null, 20, null, null, "createdAt")).willReturn(
+        mockPageResponse);
 
     mockMvc.perform(
         get("/api/contents")
             .contentType(MediaType.APPLICATION_JSON)
-            .with(mockAuth(UUID.randomUUID(),Role.USER))
+            .with(mockAuth(UUID.randomUUID(), Role.USER))
     ).andExpect(status().isOk());
   }
 
@@ -258,7 +259,8 @@ public class ContentControllerTest {
   void getContents_Fail_InvalidTypeEqual() throws Exception {
     //컨트롤러가 호출할 서비스 메서드에서 예외가 발생하도록 모킹
     given(contentService.getContents(any(), any(), anyInt(), eq("INVALID_TYPE"), any(), any()))
-        .willThrow(new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("typeEqual", "INVALID_TYPE")));
+        .willThrow(new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST,
+            Map.of("typeEqual", "INVALID_TYPE")));
 
     mockMvc.perform(get("/api/contents")
             .param("typeEqual", "INVALID_TYPE")
@@ -284,7 +286,7 @@ public class ContentControllerTest {
     mockMvc.perform(
         get("/api/contents/{contentId}", contentId)
             .contentType(MediaType.APPLICATION_JSON)
-            .with(mockAuth(UUID.randomUUID(),Role.USER))
+            .with(mockAuth(UUID.randomUUID(), Role.USER))
     ).andExpect(status().isOk());
   }
 
@@ -293,12 +295,13 @@ public class ContentControllerTest {
   void getContent_Fail_NotFound() throws Exception {
     UUID contentId = UUID.randomUUID();
     given(contentService.getContent(any(UUID.class)))
-        .willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
+        .willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
+            Map.of("contentId", contentId)));
 
     mockMvc.perform(
         get("/api/contents/{contentId}", contentId)
             .contentType(MediaType.APPLICATION_JSON)
-            .with(mockAuth(UUID.randomUUID(),Role.USER))
+            .with(mockAuth(UUID.randomUUID(), Role.USER))
     ).andExpect(status().isNotFound());
   }
 
@@ -412,14 +415,15 @@ public class ContentControllerTest {
   @DisplayName("콘텐츠 삭제 실패 - 존재하지 않는 ID 삭제 시 404 Not Found")
   void deleteContent_Fail_NotFound() throws Exception {
     UUID contentId = UUID.randomUUID();
-    willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)))
+    willThrow(
+        new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)))
         .given(contentService).deleteContent(eq(contentId));
 
     mockMvc.perform(
         delete("/api/contents/{contentId}", contentId)
             .contentType(MediaType.APPLICATION_JSON)
             .with(csrf())
-            .with(mockAuth(UUID.randomUUID(),Role.ADMIN))
+            .with(mockAuth(UUID.randomUUID(), Role.ADMIN))
     ).andExpect(status().isNotFound());
   }
 }

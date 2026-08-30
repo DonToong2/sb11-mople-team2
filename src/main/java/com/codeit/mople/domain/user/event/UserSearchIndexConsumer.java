@@ -59,7 +59,7 @@ public class UserSearchIndexConsumer {
 
     if (inserted == 0) {
       ProcessedEvent processedEvent = processedEventRepository.findById(eventId).orElseThrow(() ->
-                  new IllegalStateException("처리 이벤트를 찾을 수 없습니다: eventId=" + eventId));
+          new IllegalStateException("처리 이벤트를 찾을 수 없습니다: eventId=" + eventId));
 
       if (processedEvent.getStatus() == ProcessedEventStatus.PROCESSED) {
         log.info("이미 처리된 이벤트입니다: eventId={}", eventId);
@@ -74,7 +74,7 @@ public class UserSearchIndexConsumer {
 
   private void markProcessed(UUID eventId) {
     ProcessedEvent processedEvent = processedEventRepository.findById(eventId).orElseThrow(() ->
-                new IllegalStateException("처리 이벤트를 찾을 수 없습니다: eventId=" + eventId));
+        new IllegalStateException("처리 이벤트를 찾을 수 없습니다: eventId=" + eventId));
 
     // PENDING → PROCESSED
     processedEvent.markProcessed();

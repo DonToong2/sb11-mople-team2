@@ -43,7 +43,8 @@ public class DirectMessageRepositoryTest {
     otherConversation = tem.persist(Conversation.createConversation(sender, thirdUser));
 
     for (int i = 1; i <= 5; i++) {
-      DirectMessage message = DirectMessage.createMessage(targetConversation, sender, receiver, "메시지 " + i);
+      DirectMessage message = DirectMessage.createMessage(targetConversation, sender, receiver,
+          "메시지 " + i);
       tem.persistAndFlush(message);
       try {
         Thread.sleep(10);
@@ -53,7 +54,8 @@ public class DirectMessageRepositoryTest {
     }
 
     for (int i = 1; i <= 2; i++) {
-      DirectMessage message = DirectMessage.createMessage(otherConversation, sender, thirdUser, "메시지 " + i);
+      DirectMessage message = DirectMessage.createMessage(otherConversation, sender, thirdUser,
+          "메시지 " + i);
       tem.persistAndFlush(message);
       try {
         Thread.sleep(10);

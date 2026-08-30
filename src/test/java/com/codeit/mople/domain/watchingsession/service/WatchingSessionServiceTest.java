@@ -120,7 +120,8 @@ public class WatchingSessionServiceTest {
 
     //zCard 및 커서 페이징 메서드 모킹 - 파라미터 타입 매칭 (double, double, long, long)
     given(zSetOperations.zCard(contentKey)).willReturn(1L);
-    given(zSetOperations.reverseRangeByScoreWithScores(eq(contentKey), anyDouble(), anyDouble(), anyLong(), anyLong()))
+    given(zSetOperations.reverseRangeByScoreWithScores(eq(contentKey), anyDouble(), anyDouble(),
+        anyLong(), anyLong()))
         .willReturn(Set.of(mockTuple));
 
     //DB에서 해당 유저 정보 조회 모킹
@@ -168,7 +169,8 @@ public class WatchingSessionServiceTest {
 
     //검색어가 있을 때는 예외적으로 reverseRangeWithScores를 사용
     given(zSetOperations.zCard(contentKey)).willReturn(1L);
-    given(zSetOperations.reverseRangeWithScores(eq(contentKey), eq(0L), anyLong())).willReturn(Set.of(tuple1, tuple2));
+    given(zSetOperations.reverseRangeWithScores(eq(contentKey), eq(0L), anyLong())).willReturn(
+        Set.of(tuple1, tuple2));
     given(userRepository.findAllById(any())).willReturn(List.of(user1, user2));
     given(valueOperations.multiGet(anyList())).willReturn(List.of(UUID.randomUUID().toString()));
 
@@ -206,7 +208,8 @@ public class WatchingSessionServiceTest {
 
     //zCard 및 커서 페이징 메서드 모킹 적용 - 파라미터 타입 매칭
     given(zSetOperations.zCard(contentKey)).willReturn(1L);
-    given(zSetOperations.reverseRangeByScoreWithScores(eq(contentKey), anyDouble(), anyDouble(), anyLong(), anyLong()))
+    given(zSetOperations.reverseRangeByScoreWithScores(eq(contentKey), anyDouble(), anyDouble(),
+        anyLong(), anyLong()))
         .willReturn(Set.of(mockTuple));
 
     //실제 Redis에 저장되어 있는 세션 ID를 모킹
@@ -259,7 +262,8 @@ public class WatchingSessionServiceTest {
 
     //zCard 및 커서 페이징 메서드 모킹 적용 - 파라미터 타입 매칭
     given(zSetOperations.zCard(contentKey)).willReturn(2L);
-    given(zSetOperations.reverseRangeByScoreWithScores(eq(contentKey), anyDouble(), anyDouble(), anyLong(), anyLong()))
+    given(zSetOperations.reverseRangeByScoreWithScores(eq(contentKey), anyDouble(), anyDouble(),
+        anyLong(), anyLong()))
         .willReturn(returnedSet);
 
     //이전 페이지 마지막 항목이었던 user3 정보를 커서로 전달
@@ -339,7 +343,8 @@ public class WatchingSessionServiceTest {
     verify(mockContent).updateWatcherCount(1L);
 
     //정확한 이벤트 타입과 contentId 검증
-    ArgumentCaptor<WatchingSessionEvent> eventCaptor = ArgumentCaptor.forClass(WatchingSessionEvent.class);
+    ArgumentCaptor<WatchingSessionEvent> eventCaptor = ArgumentCaptor.forClass(
+        WatchingSessionEvent.class);
     verify(eventPublisher).publishEvent(eventCaptor.capture());
     WatchingSessionEvent publishedEvent = eventCaptor.getValue();
     assertEquals(contentId, publishedEvent.contentId());
@@ -356,7 +361,8 @@ public class WatchingSessionServiceTest {
     given(contentRepository.findById(contentId)).willReturn(Optional.empty());
 
     //Redis 진입 전 터지는지 검증
-    assertThrows(ContentException.class, () -> watchingSessionService.enterSession(userId, contentId));
+    assertThrows(ContentException.class,
+        () -> watchingSessionService.enterSession(userId, contentId));
 
     //예외 발생 시 Redis 트랜잭션 로직이 단 한 번도 호출되지 않았음을 명시적으로 검증
     verify(redisTemplate, org.mockito.Mockito.never()).execute(any(SessionCallback.class));
@@ -395,7 +401,8 @@ public class WatchingSessionServiceTest {
     verify(mockContent).updateWatcherCount(0L); //DB 동기화가 정상 호출되었는지 검증
 
     //정확한 이벤트 타입과 contentId 검증
-    ArgumentCaptor<WatchingSessionEvent> eventCaptor = ArgumentCaptor.forClass(WatchingSessionEvent.class);
+    ArgumentCaptor<WatchingSessionEvent> eventCaptor = ArgumentCaptor.forClass(
+        WatchingSessionEvent.class);
     verify(eventPublisher).publishEvent(eventCaptor.capture());
     WatchingSessionEvent publishedEvent = eventCaptor.getValue();
     assertEquals(contentId, publishedEvent.contentId());
@@ -479,7 +486,8 @@ public class WatchingSessionServiceTest {
     given(userRepository.findById(userId)).willReturn(Optional.of(mock(User.class)));
     given(valueOperations.get("user:watching:" + userId)).willReturn(null);
 
-    org.junit.jupiter.api.Assertions.assertNull(watchingSessionService.getWatchingSessionForUser(userId));
+    org.junit.jupiter.api.Assertions.assertNull(
+        watchingSessionService.getWatchingSessionForUser(userId));
   }
 
   @Test
@@ -495,7 +503,8 @@ public class WatchingSessionServiceTest {
     given(contentRepository.findById(contentId)).willReturn(Optional.of(mockContent));
     given(valueOperations.get("user:session:id:" + userId)).willReturn(null);
 
-    org.junit.jupiter.api.Assertions.assertNull(watchingSessionService.getWatchingSessionForUser(userId));
+    org.junit.jupiter.api.Assertions.assertNull(
+        watchingSessionService.getWatchingSessionForUser(userId));
   }
 
   @Test
@@ -570,7 +579,8 @@ public class WatchingSessionServiceTest {
     watchingSessionService.enterSession(userId, newContentId);
 
     //ArgumentCaptor를 사용하여 2개의 이벤트 순서 및 데이터 정밀 검증
-    ArgumentCaptor<WatchingSessionEvent> eventCaptor = ArgumentCaptor.forClass(WatchingSessionEvent.class);
+    ArgumentCaptor<WatchingSessionEvent> eventCaptor = ArgumentCaptor.forClass(
+        WatchingSessionEvent.class);
     verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(eventCaptor.capture());
 
     List<WatchingSessionEvent> publishedEvents = eventCaptor.getAllValues();
@@ -592,7 +602,8 @@ public class WatchingSessionServiceTest {
 
     UUID userId = UUID.randomUUID();
     CustomUserDetails userDetails = new CustomUserDetails(userId, Role.USER);
-    Principal principal = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+    Principal principal = new UsernamePasswordAuthenticationToken(userDetails, null,
+        userDetails.getAuthorities());
 
     User mockUser = mock(User.class);
     given(userRepository.findById(userId)).willReturn(Optional.of(mockUser));
@@ -634,7 +645,8 @@ public class WatchingSessionServiceTest {
 
     watchingSessionService.enterSession(userId, contentId);
 
-    ArgumentCaptor<WatchingSessionEvent> captor = ArgumentCaptor.forClass(WatchingSessionEvent.class);
+    ArgumentCaptor<WatchingSessionEvent> captor = ArgumentCaptor.forClass(
+        WatchingSessionEvent.class);
     verify(eventPublisher).publishEvent(captor.capture());
 
     WatchingSessionEvent event = captor.getValue();
@@ -648,12 +660,15 @@ public class WatchingSessionServiceTest {
     String contentIdStr = UUID.randomUUID().toString();
 
     //Principal(인증 객체)이 null인 경우
-    watchingSessionService.broadcastChatMessage(contentIdStr, new ContentChatSendRequest("안녕"), null);
+    watchingSessionService.broadcastChatMessage(contentIdStr, new ContentChatSendRequest("안녕"),
+        null);
 
     //메시지가 비어있는 경우(Principal은 정상)
     Principal mockPrincipal = mock(Principal.class);
-    watchingSessionService.broadcastChatMessage(contentIdStr, new ContentChatSendRequest(""), mockPrincipal);
-    watchingSessionService.broadcastChatMessage(contentIdStr, new ContentChatSendRequest(null), mockPrincipal);
+    watchingSessionService.broadcastChatMessage(contentIdStr, new ContentChatSendRequest(""),
+        mockPrincipal);
+    watchingSessionService.broadcastChatMessage(contentIdStr, new ContentChatSendRequest(null),
+        mockPrincipal);
 
     //3번의 호출 모두 내부 로직에서 early return 되어 convertAndSend가 단 한 번도 호출되지 않아야 함
     verify(messagingTemplate, org.mockito.Mockito.never())

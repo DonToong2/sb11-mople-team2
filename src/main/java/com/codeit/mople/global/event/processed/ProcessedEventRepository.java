@@ -15,10 +15,10 @@ public interface ProcessedEventRepository extends JpaRepository<ProcessedEvent, 
   @Transactional
   @Modifying
   @Query(value = """
-    INSERT INTO processed_events (event_id, status)
-    VALUES (:eventId, 'PENDING')
-    ON CONFLICT DO NOTHING
-    """, nativeQuery = true)
+      INSERT INTO processed_events (event_id, status)
+      VALUES (:eventId, 'PENDING')
+      ON CONFLICT DO NOTHING
+      """, nativeQuery = true)
   int insertIfAbsent(@Param("eventId") UUID eventId);
 
 }

@@ -125,18 +125,18 @@ public class PlaylistIntegrationTest {
       assertThat(playlist.getDescription()).isEqualTo(description);
     }
 
-  @Test
-  @DisplayName("플레이리스트 생성 실패 - 인증되지 않은 사용자(401 에러)")
-  void create_fail_unauthorized() throws Exception {
-    // when & then
-    mockMvc.perform(post("/api/playlists")
-            .with(csrf())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(createRequest)))
-        .andExpect(status().isUnauthorized());
+    @Test
+    @DisplayName("플레이리스트 생성 실패 - 인증되지 않은 사용자(401 에러)")
+    void create_fail_unauthorized() throws Exception {
+      // when & then
+      mockMvc.perform(post("/api/playlists")
+              .with(csrf())
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(objectMapper.writeValueAsString(createRequest)))
+          .andExpect(status().isUnauthorized());
 
-    assertThat(playlistRepository.count()).isZero();
-  }
+      assertThat(playlistRepository.count()).isZero();
+    }
 
   }
 
@@ -191,9 +191,9 @@ public class PlaylistIntegrationTest {
     @DisplayName("플레이리스트 목록 조회 성공")
     void findAll_success() throws Exception {
       // given
-      
+
       // BeforeEach에서 playlist, userDetails를 초기화
-      
+
       // 3개의 Playlist 저장
       playlistRepository.save(playlist);
       playlistRepository.save(

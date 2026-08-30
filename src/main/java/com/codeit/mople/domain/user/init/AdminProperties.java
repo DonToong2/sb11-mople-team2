@@ -15,4 +15,6 @@ public record AdminProperties(
     String password,
     @NotBlank(message = "admin.name은 필수입니다.")
     String name
-) {}
+) {
+
+}

@@ -16,4 +16,5 @@ public record WatcherUserDto(
     @JsonProperty("profileImageUrl")
     String profileImageUrl
 ) {
+
 }

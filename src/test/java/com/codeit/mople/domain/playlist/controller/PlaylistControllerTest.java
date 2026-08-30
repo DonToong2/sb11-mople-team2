@@ -668,9 +668,10 @@ public class PlaylistControllerTest {
     @DisplayName("콘텐츠 추가에 성공하면 204와 빈 본문을 반환")
     void addContentSuccess() throws Exception {
       // when, then
-      mockMvc.perform(post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
-              .with(user(userDetails))
-              .with(csrf())
+      mockMvc.perform(
+              post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
+                  .with(user(userDetails))
+                  .with(csrf())
           )
           .andExpect(status().isNoContent())
           .andExpect(content().string(""));
@@ -689,9 +690,10 @@ public class PlaylistControllerTest {
           .when(playlistService).addContent(eq(playlistId), eq(contentId), eq(ownerId));
 
       // when, then
-      mockMvc.perform(post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
-              .with(user(userDetails))
-              .with(csrf())
+      mockMvc.perform(
+              post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
+                  .with(user(userDetails))
+                  .with(csrf())
           )
           .andExpect(status().isBadRequest())
           .andExpect(jsonPath("$.error.code").value("PLAYLIST-011"));
@@ -708,9 +710,10 @@ public class PlaylistControllerTest {
           .when(playlistService).addContent(eq(playlistId), eq(contentId), eq(ownerId));
 
       // when, then
-      mockMvc.perform(post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
-              .with(user(userDetails))
-              .with(csrf())
+      mockMvc.perform(
+              post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
+                  .with(user(userDetails))
+                  .with(csrf())
           )
           .andExpect(status().isBadRequest())
           .andExpect(jsonPath("$.error.code").value("PLAYLIST-013"));
@@ -727,9 +730,10 @@ public class PlaylistControllerTest {
           .when(playlistService).addContent(eq(playlistId), eq(contentId), eq(ownerId));
 
       // when, then
-      mockMvc.perform(post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
-              .with(user(userDetails))
-              .with(csrf())
+      mockMvc.perform(
+              post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
+                  .with(user(userDetails))
+                  .with(csrf())
           )
           .andExpect(status().isForbidden())
           .andExpect(jsonPath("$.error.code").value("PLAYLIST-003"));
@@ -739,8 +743,9 @@ public class PlaylistControllerTest {
     @DisplayName("인증 없이 요청하면 401을 반환")
     void addContentFailWhenUnauthenticated() throws Exception {
       // when, then
-      mockMvc.perform(post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
-              .with(csrf())
+      mockMvc.perform(
+              post("/api/playlists/{playlistId}/contents/{contentId}", playlistId, contentId)
+                  .with(csrf())
           )
           .andExpect(status().isUnauthorized());
 

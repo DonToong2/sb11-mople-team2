@@ -550,7 +550,8 @@ public class ReviewRepositoryTest {
       entityManager.clear();
 
       // when
-      boolean result = reviewRepository.existsByContentIdAndAuthorId(content1.getId(), author.getId());
+      boolean result = reviewRepository.existsByContentIdAndAuthorId(content1.getId(),
+          author.getId());
 
       // then
       assertThat(result).isTrue();
@@ -572,7 +573,8 @@ public class ReviewRepositoryTest {
       UUID anotherAuthorId = UUID.randomUUID();
 
       // when
-      boolean result = reviewRepository.existsByContentIdAndAuthorId(anotherContentId, anotherAuthorId);
+      boolean result = reviewRepository.existsByContentIdAndAuthorId(anotherContentId,
+          anotherAuthorId);
 
       // then
       assertThat(result).isFalse();

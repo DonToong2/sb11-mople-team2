@@ -136,7 +136,7 @@ public class SseConnectionRepositoryTest {
       verify(redisTemplate).execute(
           ArgumentMatchers.<RedisScript<Long>>any(),
           eq(List.of("sse:connection:" + receiverId)),
-          eq(serverId+ ":" + connectionId)
+          eq(serverId + ":" + connectionId)
       );
     }
 

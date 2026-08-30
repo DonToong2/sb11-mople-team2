@@ -14,14 +14,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 public class PlaylistTest {
-  
+
   private User owner;
   private String title;
   private String description;
 
   private Playlist playlist;
   private UUID playlistId;
-  
+
   @BeforeEach
   void setUp() {
     owner = User.createUser("test@test.com", "12345678", "test");
@@ -54,13 +54,13 @@ public class PlaylistTest {
       assertThat(newplaylist.getDescription()).isEqualTo(description);
       assertThat(newplaylist.getSubscriberCount()).isEqualTo(0L);
     }
-    
+
   }
-  
+
   @Nested
   @DisplayName("플레이리스트 수정")
   class Update {
-    
+
     @Test
     @DisplayName("플레이리스트 수정 성공 - 제목, 설명 둘 다 수정")
     void update_success() {

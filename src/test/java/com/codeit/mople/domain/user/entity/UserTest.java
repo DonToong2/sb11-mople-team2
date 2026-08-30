@@ -37,7 +37,7 @@ public class UserTest {
   @Test
   @DisplayName("password가 null이면 User 생성 시 예외가 발생함")
   void createUser_throwsException_whenPasswordIsNull() {
-    assertThatThrownBy(() -> User.createUser("test@test.com",  null, "testUser"))
+    assertThatThrownBy(() -> User.createUser("test@test.com", null, "testUser"))
         .isInstanceOf(NullPointerException.class)
         .hasMessage("password");
   }
@@ -99,7 +99,7 @@ public class UserTest {
   @Test
   @DisplayName("changePassword에 null을 전달하면 예외가 발생함")
   void changePassword_throwsException_whenNewPasswordIsNull() {
-    User user = User.createUser("test@test.com",  "encodedPassword", "testUser");
+    User user = User.createUser("test@test.com", "encodedPassword", "testUser");
 
     assertThatThrownBy(() -> user.changePassword(null))
         .isInstanceOf(NullPointerException.class)
@@ -119,7 +119,8 @@ public class UserTest {
   @Test
   @DisplayName("createOAuthUser로 생성 시 비밀번호 없이 지정한 provider, providerId, 프로필 이미지로 생성됨")
   void createOAuthUser_success() {
-    User user = User.createOAuthUser("oauth@test.com", "oauthUser", "https://profile.image", AuthProvider.GOOGLE, "google-sub-123");
+    User user = User.createOAuthUser("oauth@test.com", "oauthUser", "https://profile.image",
+        AuthProvider.GOOGLE, "google-sub-123");
 
     assertThat(user.getEmail()).isEqualTo("oauth@test.com");
     assertThat(user.getName()).isEqualTo("oauthUser");
@@ -133,7 +134,8 @@ public class UserTest {
   @Test
   @DisplayName("createOAuthUser에 provider가 null이면 예외가 발생함")
   void createOAuthUser_throwsException_whenProviderIsNull() {
-    assertThatThrownBy(() -> User.createOAuthUser("oauth@test.com", "oasuthUser", null, null, "google-sub-123"))
+    assertThatThrownBy(
+        () -> User.createOAuthUser("oauth@test.com", "oasuthUser", null, null, "google-sub-123"))
         .isInstanceOf(NullPointerException.class)
         .hasMessage("provider");
   }
@@ -141,7 +143,8 @@ public class UserTest {
   @Test
   @DisplayName("createOAuthUser에 providerId가 null이면 예외가 발생함")
   void createOAuthUser_throwsException_whenProviderIdIsNull() {
-    assertThatThrownBy(() -> User.createOAuthUser("oauth@test.com", "oasuthUser", null, AuthProvider.GOOGLE, null))
+    assertThatThrownBy(
+        () -> User.createOAuthUser("oauth@test.com", "oasuthUser", null, AuthProvider.GOOGLE, null))
         .isInstanceOf(NullPointerException.class)
         .hasMessage("providerId");
   }

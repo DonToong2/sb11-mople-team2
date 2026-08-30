@@ -32,14 +32,17 @@ public class DirectMessageSyncEventListener {
 
     try {
       DirectMessage message = directMessageRepository.findById(event.directMessageId())
-          .orElseThrow(() -> new DirectMessageException(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND, Map.of("directMessageId", event.directMessageId())));
+          .orElseThrow(
+              () -> new DirectMessageException(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND,
+                  Map.of("directMessageId", event.directMessageId())));
 
       DirectMessageDocument document = DirectMessageDocument.from(message);
       directMessageSearchRepository.save(document);
 
       log.info("Elasticsearch 메시지 저장 완료 - directMessageId: {}", event.directMessageId());
-    } catch (Exception e){
-      log.error("Elasticsearch 메시지 저장 중 에러 발생 (Kafka) - directMessageId: {}", event.directMessageId(), e);
+    } catch (Exception e) {
+      log.error("Elasticsearch 메시지 저장 중 에러 발생 (Kafka) - directMessageId: {}",
+          event.directMessageId(), e);
       throw new RuntimeException("ES 동기화 실패로 Kafka 재시도를 요청합니다.", e);
     }
   }

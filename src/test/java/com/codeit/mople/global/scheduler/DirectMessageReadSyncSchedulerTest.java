@@ -57,7 +57,8 @@ public class DirectMessageReadSyncSchedulerTest {
     // given
     User userA = userRepository.save(User.createUser("testA@test.com", "12345678", "유저A"));
     User userB = userRepository.save(User.createUser("testB@test.com", "12345678", "유저B"));
-    Conversation conversation = conversationRepository.save(Conversation.createConversation(userA, userB));
+    Conversation conversation = conversationRepository.save(
+        Conversation.createConversation(userA, userB));
 
     UUID convId = conversation.getId();
     UUID userId = userA.getId();
@@ -81,7 +82,8 @@ public class DirectMessageReadSyncSchedulerTest {
     Boolean hasProcessing = redisTemplate.hasKey("dm:read:dirty:processing");
     Boolean hasDirty = redisTemplate.hasKey("dm:read:dirty");
     assertThat(Boolean.TRUE.equals(hasProcessing)).isFalse();
-    assertThat(Boolean.TRUE.equals(hasDirty)).isFalse();  }
+    assertThat(Boolean.TRUE.equals(hasDirty)).isFalse();
+  }
 
   @Test
   @DisplayName("Cache-Aside 테스트: 레디스에 값이 없으면 DB에서 가져온 뒤 레디스에 복구(캐싱)한다")
@@ -89,7 +91,8 @@ public class DirectMessageReadSyncSchedulerTest {
     // given
     User userA = userRepository.save(User.createUser("testA@test.com", "12345678", "유저A"));
     User userB = userRepository.save(User.createUser("testB@test.com", "12345678", "유저B"));
-    Conversation conversation = conversationRepository.save(Conversation.createConversation(userA, userB));
+    Conversation conversation = conversationRepository.save(
+        Conversation.createConversation(userA, userB));
     UUID convId = conversation.getId();
 
     Instant dbTime = Instant.now().truncatedTo(ChronoUnit.MILLIS);

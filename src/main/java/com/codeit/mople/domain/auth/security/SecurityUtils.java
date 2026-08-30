@@ -14,7 +14,7 @@ public final class SecurityUtils {
 
   public static CustomUserDetails currentPrincipal() {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    if(auth == null || !(auth.getPrincipal() instanceof CustomUserDetails principal)) {
+    if (auth == null || !(auth.getPrincipal() instanceof CustomUserDetails principal)) {
       throw new AuthException(AuthErrorCode.INVALID_TOKEN);
     }
     return principal;

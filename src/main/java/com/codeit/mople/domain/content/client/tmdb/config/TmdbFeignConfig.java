@@ -32,7 +32,8 @@ public class TmdbFeignConfig {
 
   // 모든 요청 직전에 공통 값을 채움
   @Bean
-  public RequestInterceptor tmdbRequestInterceptor(TmdbProperties properties, MeterRegistry meterRegistry) {
+  public RequestInterceptor tmdbRequestInterceptor(TmdbProperties properties,
+      MeterRegistry meterRegistry) {
     Counter tmdbCallCounter = Counter.builder("mople.external.api.call.count")
         .tag("provider", "tmdb") //태그로 sportsDB와 구분
         .description("TMDB API 호출 횟수")

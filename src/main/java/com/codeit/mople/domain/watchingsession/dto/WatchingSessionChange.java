@@ -12,4 +12,5 @@ public record WatchingSessionChange(
     @JsonProperty("watcherCount")
     Integer watcherCount
 ) {
+
 }

@@ -89,7 +89,7 @@ class KafkaPublishSmokeTest {
 
   @Autowired
   EmbeddedKafkaBroker embeddedKafka;
-  
+
   private Consumer<String, String> consumerFor(String topic) {
     Map<String, Object> props =
         KafkaTestUtils.consumerProps("smoke-" + UUID.randomUUID(), "true", embeddedKafka);
@@ -127,7 +127,8 @@ class KafkaPublishSmokeTest {
         transactionTemplate.executeWithoutResult(status ->
             eventPublisher.publishEvent(
                 new FollowCreatedEvent(
-                    UUID.randomUUID(), Instant.now(), followId, followeeId, followerId, "아메리카노좋아")));
+                    UUID.randomUUID(), Instant.now(), followId, followeeId, followerId,
+                    "아메리카노좋아")));
 
         // then
         ConsumerRecord<String, String> record =
@@ -152,15 +153,18 @@ class KafkaPublishSmokeTest {
         transactionTemplate.executeWithoutResult(status ->
             eventPublisher.publishEvent(
                 new PlaylistContentAddedEvent(
-                    UUID.randomUUID(), Instant.now(), playlistContentId, playlistId, contentId, "테스트 플레이리스트")));
+                    UUID.randomUUID(), Instant.now(), playlistContentId, playlistId, contentId,
+                    "테스트 플레이리스트")));
 
         // then
         ConsumerRecord<String, String> record =
-            KafkaTestUtils.getSingleRecord(consumer, PLAYLIST_CONTENT_TOPIC, Duration.ofSeconds(10));
+            KafkaTestUtils.getSingleRecord(consumer, PLAYLIST_CONTENT_TOPIC,
+                Duration.ofSeconds(10));
 
         assertThat(record.key()).isEqualTo(playlistId.toString());
         assertThat(record.value()).contains(
-            playlistContentId.toString(), playlistId.toString(), contentId.toString(), "테스트 플레이리스트");
+            playlistContentId.toString(), playlistId.toString(), contentId.toString(),
+            "테스트 플레이리스트");
       }
     }
   }
@@ -207,7 +211,8 @@ class KafkaPublishSmokeTest {
 
         // then
         ConsumerRecord<String, String> record =
-            KafkaTestUtils.getSingleRecord(consumer, PLAYLIST_CONTENT_TOPIC, Duration.ofSeconds(10));
+            KafkaTestUtils.getSingleRecord(consumer, PLAYLIST_CONTENT_TOPIC,
+                Duration.ofSeconds(10));
 
         assertThat(typeIdOf(record)).isEqualTo("playlist-content-added.v1");
       }
@@ -223,19 +228,24 @@ class KafkaPublishSmokeTest {
       UUID id = UUID.randomUUID();
 
       return Stream.of(
-          arguments(new PlaylistSubscribedEvent(UUID.randomUUID(), Instant.now(), id, id, id, "구독자", "플리"),
+          arguments(new PlaylistSubscribedEvent(UUID.randomUUID(), Instant.now(), id, id, id, "구독자",
+                  "플리"),
               PLAYLIST_EVENTS_TOPIC, "playlist-subscribed.v1"),
           arguments(new PlaylistUnsubscribedEvent(UUID.randomUUID(), Instant.now(), id, id),
               PLAYLIST_EVENTS_TOPIC, "playlist-unsubscribed.v1"),
-          arguments(new PlaylistSearchIndexEvent(UUID.randomUUID(), Instant.now(), id, "플리", Instant.now(), 3L),
+          arguments(new PlaylistSearchIndexEvent(UUID.randomUUID(), Instant.now(), id, "플리",
+                  Instant.now(), 3L),
               PLAYLIST_SEARCH_INDEX_TOPIC, "playlist-search-index.v1"),
           arguments(new PlaylistSearchIndexDeleteEvent(UUID.randomUUID(), Instant.now(), id),
               PLAYLIST_SEARCH_INDEX_TOPIC, "playlist-search-index-delete.v1"),
-          arguments(new ContentSearchIndexEvent(UUID.randomUUID(), Instant.now(), id, "콘텐츠", ContentType.MOVIE, 4.5, 10L, Instant.now()),
+          arguments(new ContentSearchIndexEvent(UUID.randomUUID(), Instant.now(), id, "콘텐츠",
+                  ContentType.MOVIE, 4.5, 10L, Instant.now()),
               CONTENT_SEARCH_INDEX_TOPIC, "content-search-index.v1"),
           arguments(new ContentSearchIndexDeleteEvent(UUID.randomUUID(), Instant.now(), id),
               CONTENT_SEARCH_INDEX_TOPIC, "content-search-index-delete.v1"),
-          arguments(new UserSearchIndexEvent(UUID.randomUUID(), Instant.now(), id, "a@mople.com", "이름", Instant.now(), false, "USER"),
+          arguments(
+              new UserSearchIndexEvent(UUID.randomUUID(), Instant.now(), id, "a@mople.com", "이름",
+                  Instant.now(), false, "USER"),
               USER_SEARCH_INDEX_TOPIC, "user-search-index.v1"),
           arguments(new ReviewCreatedEvent(UUID.randomUUID(), Instant.now(), id, 4.5),
               REVIEW_CREATED_TOPIC, "review-created.v1"),
@@ -310,7 +320,8 @@ class KafkaPublishSmokeTest {
         transactionTemplate.executeWithoutResult(status -> {
           eventPublisher.publishEvent(
               new PlaylistContentAddedEvent(
-                  UUID.randomUUID(), Instant.now(), playlistContentId, playlistId, contentId, "테스트 플레이리스트"));
+                  UUID.randomUUID(), Instant.now(), playlistContentId, playlistId, contentId,
+                  "테스트 플레이리스트"));
           status.setRollbackOnly();
         });
 

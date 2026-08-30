@@ -48,7 +48,7 @@ public class TmdbContentItemProcessor implements ItemProcessor<TmdbContentItem, 
         tags,
         externalId);
   }
-  
+
   private List<String> resolveTags(List<Integer> genreIds) {
     if (genreIds == null || genreIds.isEmpty() || genreNames.isEmpty()) {
       return List.of();

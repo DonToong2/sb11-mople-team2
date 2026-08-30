@@ -29,7 +29,8 @@ public class WebSocketEventListener {
     String destination = headerAccessor.getDestination();
     String subscriptionId = headerAccessor.getSubscriptionId(); //구독 ID 추출
 
-    if (destination != null && destination.startsWith("/sub/contents") && destination.endsWith("/watch")) {
+    if (destination != null && destination.startsWith("/sub/contents") && destination.endsWith(
+        "/watch")) {
       try {
         String contentIdStr = destination.split("/")[3];
 
@@ -62,7 +63,8 @@ public class WebSocketEventListener {
     if (subscriptionId != null && headerAccessor.getSessionAttributes() != null) {
       String contentIdStr = (String) headerAccessor.getSessionAttributes().get(subscriptionId);
 
-      if (contentIdStr != null && headerAccessor.getUser() instanceof UsernamePasswordAuthenticationToken auth &&
+      if (contentIdStr != null
+          && headerAccessor.getUser() instanceof UsernamePasswordAuthenticationToken auth &&
           auth.getPrincipal() instanceof CustomUserDetails user) {
         try {
           log.info("유저 퇴장(구독 해제): userId={}, contentId={}", user.getUserId(), contentIdStr);
@@ -72,7 +74,8 @@ public class WebSocketEventListener {
           headerAccessor.getSessionAttributes().remove(subscriptionId);
         } catch (Exception e) {
           //실패 시 지우지 않고 남겨두면, 추후 브라우저 종료 시 DisconnectEvent에서 재시도할 수 있습니다.
-          log.error("구독 해제(퇴장) 처리 중 에러 발생 - userId: {}, contentId: {}", user.getUserId(), contentIdStr, e);
+          log.error("구독 해제(퇴장) 처리 중 에러 발생 - userId: {}, contentId: {}", user.getUserId(),
+              contentIdStr, e);
         }
       }
     }

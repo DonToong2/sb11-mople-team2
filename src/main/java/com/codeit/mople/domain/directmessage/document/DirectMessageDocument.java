@@ -36,7 +36,7 @@ public class DirectMessageDocument {
   @Field(type = FieldType.Date)
   private Instant createdAt;
 
-  public static DirectMessageDocument from (DirectMessage message) {
+  public static DirectMessageDocument from(DirectMessage message) {
     return new DirectMessageDocument(
         message.getId(),
         message.getConversation().getId(),

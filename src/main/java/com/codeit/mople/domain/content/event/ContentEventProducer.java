@@ -19,6 +19,7 @@ public class ContentEventProducer {
     this.eventPublisher = eventPublisher;
     this.contentSearchIndexTopic = properties.topics().contentSearchIndex();
   }
+
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void on(ContentSearchIndexEvent event) {
     eventPublisher.publish(

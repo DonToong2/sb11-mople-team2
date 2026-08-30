@@ -1,4 +1,5 @@
 package com.codeit.mople.domain.content.exception;
+
 import com.codeit.mople.global.error.CustomException;
 import java.util.UUID;
 
