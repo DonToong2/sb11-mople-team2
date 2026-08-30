@@ -127,7 +127,8 @@ public class ConversationIntegrationTest {
     void search_total_count_bugfix_success() throws Exception {
       // given
       User userC = userRepository.save(User.createUser("testC@test.com", "12345678", "userC"));
-      Conversation secondConversation = conversationRepository.save(Conversation.createConversation(userA, userC));
+      Conversation secondConversation = conversationRepository.save(
+          Conversation.createConversation(userA, userC));
 
       saveMessageToElasticsearch(testConversation, userA, userB, "치킨 먹자");
       saveMessageToElasticsearch(secondConversation, userA, userC, "피자 먹자");
@@ -169,7 +170,8 @@ public class ConversationIntegrationTest {
       // given
       User userC = userRepository.save(User.createUser("testC@test.com", "12345678", "userC"));
       User userD = userRepository.save(User.createUser("testD@test.com", "12345678", "userD"));
-      Conversation othersConversation = conversationRepository.save(Conversation.createConversation(userC, userD));
+      Conversation othersConversation = conversationRepository.save(
+          Conversation.createConversation(userC, userD));
 
       saveMessageToElasticsearch(othersConversation, userC, userD, "피자");
 
@@ -218,7 +220,8 @@ public class ConversationIntegrationTest {
   }
 
   // 유틸 메서드: 실제 서비스 흐름과 동일하게 DB 저장 후 -> ES 문서로 변환하여 저장
-  private void saveMessageToElasticsearch(Conversation conversation, User sender, User receiver, String content) {
+  private void saveMessageToElasticsearch(Conversation conversation, User sender, User receiver,
+      String content) {
     DirectMessage message = DirectMessage.createMessage(conversation, sender, receiver, content);
 
     directMessageRepository.save(message);

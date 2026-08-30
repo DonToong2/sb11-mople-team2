@@ -96,7 +96,8 @@ public class WebSocketSessionRegistryService {
   // Redis Pub/Sub으로 모든 인스턴스에 강제 종료 신호를 방송한다.
   // 실제 종료는 각 인스턴스가 자신의 로컬 레지스트리를 확인해 스스로 판단한다.
   public void publishForceDisconnect(UUID userId, String reason) {
-    redisTemplate.convertAndSend(FORCE_DISCONNECT_CHANNEL, new ForceDisconnectMessage(userId, reason));
+    redisTemplate.convertAndSend(FORCE_DISCONNECT_CHANNEL,
+        new ForceDisconnectMessage(userId, reason));
   }
 
   private double nowScore() {

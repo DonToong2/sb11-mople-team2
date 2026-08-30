@@ -171,7 +171,8 @@ class KafkaConfigTest {
       // given
       Map<Class<?>, KafkaOperations<?, ?>> templates = Map.of(Object.class, template);
       KafkaConfig.GroupAwareDeadLetterPublishingRecoverer recoverer =
-          new KafkaConfig.GroupAwareDeadLetterPublishingRecoverer(templates, KafkaConfig.DLT_DESTINATION_RESOLVER);
+          new KafkaConfig.GroupAwareDeadLetterPublishingRecoverer(templates,
+              KafkaConfig.DLT_DESTINATION_RESOLVER);
 
       given(consumer.groupMetadata()).willReturn(groupMetadata);
       given(groupMetadata.groupId()).willReturn("mople-dm-es-sync-group");
@@ -196,7 +197,8 @@ class KafkaConfigTest {
       // given
       Map<Class<?>, KafkaOperations<?, ?>> templates = Map.of(Object.class, template);
       KafkaConfig.GroupAwareDeadLetterPublishingRecoverer recoverer =
-          new KafkaConfig.GroupAwareDeadLetterPublishingRecoverer(templates, KafkaConfig.DLT_DESTINATION_RESOLVER);
+          new KafkaConfig.GroupAwareDeadLetterPublishingRecoverer(templates,
+              KafkaConfig.DLT_DESTINATION_RESOLVER);
 
       given(template.send(any(ProducerRecord.class)))
           .willReturn(CompletableFuture.completedFuture(null));

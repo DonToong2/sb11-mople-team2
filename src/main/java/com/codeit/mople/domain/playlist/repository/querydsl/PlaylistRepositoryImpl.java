@@ -151,7 +151,7 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
           Map.of("cursor", condition.cursor())
       );
     }
-    
+
     boolean hasCursor = condition.cursor() != null;
     boolean hasIdAfter = condition.idAfter() != null;
 
@@ -170,7 +170,6 @@ public class PlaylistRepositoryImpl implements PlaylistCustomRepository {
     if (!hasCursor) {
       return null;
     }
-
 
     // 최신순 조건
     if (condition.sortBy() == PlaylistSortBy.UPDATED_AT) {

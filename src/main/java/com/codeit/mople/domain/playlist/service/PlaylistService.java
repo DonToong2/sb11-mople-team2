@@ -72,9 +72,12 @@ public class PlaylistService {
 
   @PostConstruct
   public void initMetrics() {
-    this.playlistCreateCounter = Counter.builder("mople.playlist.create.count").register(meterRegistry);
-    this.playlistSubscribeCounter = Counter.builder("mople.playlist.subscribe.count").register(meterRegistry);
-    this.playlistContentAddCounter = Counter.builder("mople.playlist.content.add.count").register(meterRegistry);
+    this.playlistCreateCounter = Counter.builder("mople.playlist.create.count")
+        .register(meterRegistry);
+    this.playlistSubscribeCounter = Counter.builder("mople.playlist.subscribe.count")
+        .register(meterRegistry);
+    this.playlistContentAddCounter = Counter.builder("mople.playlist.content.add.count")
+        .register(meterRegistry);
   }
 
   @CacheEvict(value = CacheNames.PLAYLIST_LIST, allEntries = true)

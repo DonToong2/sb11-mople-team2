@@ -69,7 +69,7 @@ class SseStreamRepositoryTest {
 
       when(redisTemplate.opsForStream())
           .thenReturn(streamOperations);
-      
+
       // 임시 데이터 가정
       String jsonData = "\"data\"";
 
@@ -112,7 +112,7 @@ class SseStreamRepositoryTest {
       assertThatThrownBy(() -> streamRepository.save(event, serverId))
           .isInstanceOf(IllegalStateException.class);
     }
-    
+
   }
-  
+
 }

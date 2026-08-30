@@ -30,7 +30,7 @@ public class PasswordResetRateLimiterRepository {
 
   public boolean tryAcquireWithLimit(String key, int maxRequests, Duration window) {
     Long count = redisTemplate.opsForValue().increment(key);
-    if(count != null && count == 1L) {
+    if (count != null && count == 1L) {
       redisTemplate.expire(key, window);
     }
     return count != null && count <= maxRequests;

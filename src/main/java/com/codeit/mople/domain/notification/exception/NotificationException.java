@@ -5,11 +5,11 @@ import java.util.Map;
 
 public class NotificationException extends CustomException {
 
-    public NotificationException(NotificationErrorCode errorCode) {
-        super(errorCode);
-    }
+  public NotificationException(NotificationErrorCode errorCode) {
+    super(errorCode);
+  }
 
-    public NotificationException(NotificationErrorCode errorCode, Map<String, Object> details) {
-        super(errorCode, details);
-    }
+  public NotificationException(NotificationErrorCode errorCode, Map<String, Object> details) {
+    super(errorCode, details);
+  }
 }

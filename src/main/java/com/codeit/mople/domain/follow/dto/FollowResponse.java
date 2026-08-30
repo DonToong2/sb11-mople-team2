@@ -8,6 +8,7 @@ public record FollowResponse(
     UUID followeeId,
     UUID followerId
 ) {
+
   public static FollowResponse from(Follow follow) {
     return new FollowResponse(
         follow.getId(),

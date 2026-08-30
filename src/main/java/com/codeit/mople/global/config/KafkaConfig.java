@@ -151,7 +151,8 @@ public class KafkaConfig {
     }
 
     @Override
-    public void accept(ConsumerRecord<?, ?> record, org.apache.kafka.clients.consumer.Consumer<?, ?> consumer, Exception exception) {
+    public void accept(ConsumerRecord<?, ?> record,
+        org.apache.kafka.clients.consumer.Consumer<?, ?> consumer, Exception exception) {
       String groupId = "UNKNOWN";
 
       if (consumer != null) {

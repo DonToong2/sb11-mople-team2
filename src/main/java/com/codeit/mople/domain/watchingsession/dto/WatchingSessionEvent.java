@@ -6,4 +6,5 @@ public record WatchingSessionEvent(
     UUID contentId,
     WatchingSessionChange changeEvent
 ) {
+
 }

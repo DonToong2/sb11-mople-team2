@@ -33,7 +33,9 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(CustomException.class)
   public ResponseEntity<ApiResponse<Void>> handleCustomException(CustomException e) {
     ErrorCode errorCode = e.getErrorCode();
-    log.warn("[CustomException] Type: {}, Code: {}, Message: {}, Details: {}", e.getClass().getSimpleName(), errorCode.getCode(), e.getMessage(), LogMaskingUtils.maskSensitiveDetails(e.getDetails()));
+    log.warn("[CustomException] Type: {}, Code: {}, Message: {}, Details: {}",
+        e.getClass().getSimpleName(), errorCode.getCode(), e.getMessage(),
+        LogMaskingUtils.maskSensitiveDetails(e.getDetails()));
     return ResponseEntity
         .status(errorCode.getStatus())
         .body(ApiResponse.error(errorCode.getCode(), errorCode.getMessage(), e.getDetails()));
@@ -120,7 +122,8 @@ public class GlobalExceptionHandler {
 
   // 예상 못 한 모든 예외
   @ExceptionHandler(Exception.class)
-  public ResponseEntity<ApiResponse<Void>> handleException(Exception e, HttpServletRequest request) { // request 추가
+  public ResponseEntity<ApiResponse<Void>> handleException(Exception e,
+      HttpServletRequest request) { // request 추가
     log.error("[Unhandled exception] Message: {}", e.getMessage(), e);
 
     //디스코드 알림 발송 코드 추가
@@ -144,7 +147,8 @@ public class GlobalExceptionHandler {
       discordWebhookService.sendErrorAlert(e, request);
       errorCode = CommonErrorCode.INTERNAL_SERVER_ERROR;
     } else {
-      log.warn("[DataIntegrityViolation] Code: {}, Message: {}", errorCode.getCode(), errorCode.getMessage());
+      log.warn("[DataIntegrityViolation] Code: {}, Message: {}", errorCode.getCode(),
+          errorCode.getMessage());
     }
 
     return ResponseEntity
@@ -165,7 +169,8 @@ public class GlobalExceptionHandler {
         .orElse(null);
   }
 
-  public GlobalExceptionHandler(List<ConstraintErrorCodes> contributors, DiscordWebhookService discordWebhookService) {
+  public GlobalExceptionHandler(List<ConstraintErrorCodes> contributors,
+      DiscordWebhookService discordWebhookService) {
     this.constraintErrorCodes = contributors.stream()
         .flatMap(c -> c.get().entrySet().stream())
         .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
@@ -184,7 +189,8 @@ public class GlobalExceptionHandler {
 
   //잘못된 경로 요청 시 디스코드 알림을 생략하고 404 응답만 반환
   @ExceptionHandler(NoResourceFoundException.class)
-  public ResponseEntity<ApiResponse<Void>> handleNoResourceFoundException(NoResourceFoundException e) {
+  public ResponseEntity<ApiResponse<Void>> handleNoResourceFoundException(
+      NoResourceFoundException e) {
     log.warn("[NoResourceFound] URL: {}", e.getResourcePath());
     return ResponseEntity
         .status(HttpStatus.NOT_FOUND)
@@ -193,7 +199,8 @@ public class GlobalExceptionHandler {
 
   //잘못된 경로 요청 시 디스코드 알림을 생략하고 404 응답만 반환
   @ExceptionHandler(NoHandlerFoundException.class)
-  public ResponseEntity<ApiResponse<Void>> handleNoHandlerFoundException(NoHandlerFoundException e) {
+  public ResponseEntity<ApiResponse<Void>> handleNoHandlerFoundException(
+      NoHandlerFoundException e) {
     log.warn("[NoHandlerFound] URL: {}", e.getRequestURL());
     return ResponseEntity
         .status(HttpStatus.NOT_FOUND)

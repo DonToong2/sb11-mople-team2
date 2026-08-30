@@ -24,7 +24,7 @@ public class PlaylistContentAddedEventConsumer {
   private final NotificationCreator notificationCreator;
 
   private final ProcessedEventRepository processedEventRepository;
-  
+
   @KafkaListener(topics = "${spring.kafka.topics.playlist-content-added}")
   public void handle(PlaylistContentAddedEvent event) {
     List<UUID> subscriberIds = playlistService.getSubscriberIds(event.playlistId());
@@ -48,7 +48,8 @@ public class PlaylistContentAddedEventConsumer {
           NotificationType.PLAYLIST_CONTENT_ADDED
       );
     } catch (Exception e) {
-      log.error("구독자 알림 생성 실패: subscriberId={}, playlistId={}", subscriberId, event.playlistId(), e);
+      log.error("구독자 알림 생성 실패: subscriberId={}, playlistId={}", subscriberId, event.playlistId(),
+          e);
     }
   }
 

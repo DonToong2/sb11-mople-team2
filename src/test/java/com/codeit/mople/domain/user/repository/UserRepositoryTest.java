@@ -231,7 +231,7 @@ public class UserRepositoryTest {
     User admin1 = userRepository.save(User.createUser("a1@test.com", "encoded", "a1"));
     admin1.changeRole(Role.ADMIN);
     userRepository.save(admin1);
-    User user1 = userRepository.save(User.createUser("u1@test.com", "encoded",  "u1"));
+    User user1 = userRepository.save(User.createUser("u1@test.com", "encoded", "u1"));
 
     UserSearchRequest request = new UserSearchRequest(
         null, null, null, "ADMIN", admin1.getId(), 10,

@@ -51,7 +51,8 @@ public class SecurityConfig {
     http
         .cors(cors -> cors.configurationSource(corsConfigurationSource))
         .csrf(csrf -> csrf
-            .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()) // 쿠키명 기본값 XSRF-TOKEN, 헤더명 X-XSRF-TOKEN
+            .csrfTokenRepository(
+                CookieCsrfTokenRepository.withHttpOnlyFalse()) // 쿠키명 기본값 XSRF-TOKEN, 헤더명 X-XSRF-TOKEN
             .csrfTokenRequestHandler(csrfTokenRequestHandler)
             // 로그인 전(비인증) 상태에서 호출되는 API라서 CSRF 검증에서 예외 처리.
             // /api/auth/sign-out은 제외: 인증 없이도 처리되므로(만료/무효화된 세션도 로그아웃 가능),
@@ -59,13 +60,15 @@ public class SecurityConfig {
             .ignoringRequestMatchers(
                 "/api/auth/sign-in", "/api/auth/refresh", "/api/auth/reset-password", "/api/users")
         )
-        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .sessionManagement(
+            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .exceptionHandling(exception -> exception
             .authenticationEntryPoint(new JsonAuthenticationEntryPoint(objectMapper))
             .accessDeniedHandler(new JsonAccessDeniedHandler(objectMapper)))
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
-            .requestMatchers("/", "/index.html", "/favicon.svg", "/assets/**", "/uploads/**").permitAll()
+            .requestMatchers("/", "/index.html", "/favicon.svg", "/assets/**", "/uploads/**")
+            .permitAll()
             .requestMatchers("/ws/**").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
             .requestMatchers("/api/auth/**").permitAll()
@@ -107,6 +110,7 @@ public class SecurityConfig {
   @Validated
   @ConfigurationProperties(prefix = "app.cors")
   public static class CorsProperties {
+
     @NotEmpty
     private final List<String> allowedOrigins = new ArrayList<>(List.of());
   }

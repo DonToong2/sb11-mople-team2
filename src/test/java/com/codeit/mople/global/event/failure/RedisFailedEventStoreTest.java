@@ -9,8 +9,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,8 +24,6 @@ import org.springframework.data.domain.Range;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.connection.Limit;
 import org.springframework.data.redis.connection.RedisStreamCommands.XAddOptions;
-import org.springframework.data.redis.connection.stream.MapRecord;
-import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.core.StreamOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
@@ -127,7 +123,7 @@ class RedisFailedEventStoreTest {
       // given
       given(redisTemplate.opsForStream()).willReturn(streamOperations);
       FailedEvent noKey = new FailedEvent(
-        "mople.notification.created.v1",
+          "mople.notification.created.v1",
           "",
           eventId,
           EVENT_TYPE,

@@ -168,7 +168,6 @@ public class SseService {
               .data(data)
       );
 
-
       log.info(
           "SSE 전송 성공분산: receiverId={}, emitter={}",
           receiverId,

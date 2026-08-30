@@ -6,6 +6,7 @@ import com.codeit.mople.global.dto.SearchResult;
 import java.util.UUID;
 
 public interface ContentSearchRepositoryCustom {
+
   SearchResult findAllByTitleContainingIgnoreCase(
       String title,
       UUID cursorId,

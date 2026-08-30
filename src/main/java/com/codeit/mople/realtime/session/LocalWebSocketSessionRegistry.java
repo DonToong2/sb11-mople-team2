@@ -19,7 +19,9 @@ import org.springframework.web.socket.WebSocketSession;
 @Component
 public class LocalWebSocketSessionRegistry {
 
-  private record SessionEntry(WebSocketSession session, UUID userId) {}
+  private record SessionEntry(WebSocketSession session, UUID userId) {
+
+  }
 
   private final Map<String, SessionEntry> sessions = new ConcurrentHashMap<>();
 

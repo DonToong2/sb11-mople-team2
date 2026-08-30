@@ -15,7 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 
 @RequiredArgsConstructor
-public class ConversationRepositoryImpl implements ConversationRepositoryCustom{
+public class ConversationRepositoryImpl implements ConversationRepositoryCustom {
 
   private final JPAQueryFactory queryFactory;
 
@@ -54,7 +54,8 @@ public class ConversationRepositoryImpl implements ConversationRepositoryCustom{
   }
 
   @Override
-  public long countByParticipantIdAndKeyword(UUID requesterId, String keyword, List<UUID> esMatchingIds) {
+  public long countByParticipantIdAndKeyword(UUID requesterId, String keyword,
+      List<UUID> esMatchingIds) {
     Long count = queryFactory
         .select(conversation.count())
         .from(conversation)
@@ -76,7 +77,8 @@ public class ConversationRepositoryImpl implements ConversationRepositoryCustom{
   }
 
   // 상대방의 닉네임 OR 대화 내용 검색
-  private BooleanExpression containsKeyword(UUID requesterId, String keywordLike, List<UUID> esMatchingIds) {
+  private BooleanExpression containsKeyword(UUID requesterId, String keywordLike,
+      List<UUID> esMatchingIds) {
     // 문자열이 null인지, 빈 문자열인지 공백만 있는지를 한 번에 체크해서 false이면 해당 조건을 무시하도록 구현
     if (!StringUtils.hasText(keywordLike)) {
       return null;
@@ -92,7 +94,7 @@ public class ConversationRepositoryImpl implements ConversationRepositoryCustom{
 
     // 조건3. 메시지 내용 중에 키워드 포함 여부
     BooleanExpression containsMessage = (esMatchingIds != null && !esMatchingIds.isEmpty())
-      ? conversation.id.in(esMatchingIds) : null;
+        ? conversation.id.in(esMatchingIds) : null;
 
     if (containsMessage != null) {
       return searchUserA.or(searchUserB).or(containsMessage);

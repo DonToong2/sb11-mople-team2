@@ -7,5 +7,6 @@ import java.util.UUID;
 
 public interface NotificationRepositoryCustom {
 
-    List<Notification> findNotificationByCursor(UUID receiverId, Instant cursorTime, UUID idAfter, int limit);
+  List<Notification> findNotificationByCursor(UUID receiverId, Instant cursorTime, UUID idAfter,
+      int limit);
 }

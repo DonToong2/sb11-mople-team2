@@ -7,7 +7,7 @@ import com.codeit.mople.domain.notification.service.NotificationCreator;
 import com.codeit.mople.domain.playlist.event.PlaylistCreatedEvent;
 import com.codeit.mople.domain.playlist.event.PlaylistSubscribedEvent;
 import com.codeit.mople.domain.review.event.ReviewWrittenEvent;
-import com.codeit.mople.global.event.UserAccountStatusChangedEvent;
+import com.codeit.mople.domain.user.admin.event.UserAccountStatusChangedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;

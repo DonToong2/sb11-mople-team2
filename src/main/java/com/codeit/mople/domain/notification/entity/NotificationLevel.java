@@ -1,4 +1,4 @@
-package com.codeit.mople.domain.notification;
+package com.codeit.mople.domain.notification.entity;
 
 public enum NotificationLevel {
     INFO,

@@ -18,7 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @Profile({"dev", "prod"}) //dev 또는 prod 환경일 때만 활성화
 @RequiredArgsConstructor
-public class S3FileStorageService implements FileStorageService{
+public class S3FileStorageService implements FileStorageService {
 
   private final S3Template s3Template;
 

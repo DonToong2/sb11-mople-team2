@@ -70,7 +70,8 @@ public class DirectMessageReadRedisRepository {
       );
 
       if (result != null && result == 0L) {
-        log.debug("Redis 읽음 워터마크 역행 방지: 기존 최신 시각이 존재하여 갱신 무시 - key: {}, requestTime: {}", valueKey, readAtStr);
+        log.debug("Redis 읽음 워터마크 역행 방지: 기존 최신 시각이 존재하여 갱신 무시 - key: {}, requestTime: {}", valueKey,
+            readAtStr);
       } else {
         // Lua 스크립트가 성공(1)하면, Java에서 Set 추가 (CROSSSLOT 에러 회피)
         redisTemplate.opsForSet().add(DIRTY_SET_KEY, dirtyMember);
@@ -136,7 +137,8 @@ public class DirectMessageReadRedisRepository {
     String valueKey = READ_KEY_PREFIX + conversationId + ":" + userId;
     try {
       // 레디스에 값 캐싱 복구 및 setIfAbsent를 사용하여 동시성 에러 방어
-      redisTemplate.opsForValue().setIfAbsent(valueKey, FIXED_WIDTH_FORMATTER.format(lastReadAt), READ_DATA_TTL);
+      redisTemplate.opsForValue()
+          .setIfAbsent(valueKey, FIXED_WIDTH_FORMATTER.format(lastReadAt), READ_DATA_TTL);
     } catch (Exception e) {
       log.error("Redis 복구 중 예외 발생 (무시하고 진행) - key: {}", valueKey, e);
     }

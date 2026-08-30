@@ -1,6 +1,5 @@
 package com.codeit.mople.domain.notification.entity;
 
-import com.codeit.mople.domain.notification.NotificationLevel;
 import com.codeit.mople.domain.user.entity.User;
 import com.codeit.mople.global.entity.BaseEntity;
 import jakarta.persistence.Column;
@@ -24,45 +23,45 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Notification extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "receiver_id", nullable = false)
-    private User receiver;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "receiver_id", nullable = false)
+  private User receiver;
 
-    @Column(nullable = false)
-    private String title;
+  @Column(nullable = false)
+  private String title;
 
-    @Column(columnDefinition = "TEXT")
-    private String content;
+  @Column(columnDefinition = "TEXT")
+  private String content;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private NotificationLevel level;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private NotificationLevel level;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private NotificationType notificationType;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private NotificationType notificationType;
 
-    private Notification(User receiver, String title, String content,
-        NotificationLevel level, NotificationType notificationType) {
-        this.receiver = Objects.requireNonNull(receiver, "receiver");
-        this.title = Objects.requireNonNull(title, "title");
-        this.content = content;
-        this.level = Objects.requireNonNull(level, "level");
-        this.notificationType = Objects.requireNonNull(notificationType, "notificationType");
-    }
+  private Notification(User receiver, String title, String content,
+      NotificationLevel level, NotificationType notificationType) {
+    this.receiver = Objects.requireNonNull(receiver, "receiver");
+    this.title = Objects.requireNonNull(title, "title");
+    this.content = content;
+    this.level = Objects.requireNonNull(level, "level");
+    this.notificationType = Objects.requireNonNull(notificationType, "notificationType");
+  }
 
-    public static Notification create(User receiver, String title, String content,
-        NotificationType notificationType) {
-        Objects.requireNonNull(notificationType, "notificationType");
-        NotificationLevel level = resolveLevel(notificationType);
-        return new Notification(receiver, title, content, level, notificationType);
-    }
+  public static Notification create(User receiver, String title, String content,
+      NotificationType notificationType) {
+    Objects.requireNonNull(notificationType, "notificationType");
+    NotificationLevel level = resolveLevel(notificationType);
+    return new Notification(receiver, title, content, level, notificationType);
+  }
 
-    private static NotificationLevel resolveLevel(NotificationType type) {
-        return switch (type) {
-            case ROLE_CHANGE, ACCOUNT_LOCKED -> NotificationLevel.WARNING;
-            case ACCOUNT_UNLOCKED, PLAYLIST_SUBSCRIBE, PLAYLIST_CONTENT_ADDED,
-                 FOLLOWEE_ACTIVITY, NEW_FOLLOWER, DIRECT_MESSAGE -> NotificationLevel.INFO;
-        };
-    }
+  private static NotificationLevel resolveLevel(NotificationType type) {
+    return switch (type) {
+      case ROLE_CHANGE, ACCOUNT_LOCKED -> NotificationLevel.WARNING;
+      case ACCOUNT_UNLOCKED, PLAYLIST_SUBSCRIBE, PLAYLIST_CONTENT_ADDED,
+           FOLLOWEE_ACTIVITY, NEW_FOLLOWER, DIRECT_MESSAGE -> NotificationLevel.INFO;
+    };
+  }
 }

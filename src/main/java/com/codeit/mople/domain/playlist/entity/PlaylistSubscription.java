@@ -25,7 +25,7 @@ public class PlaylistSubscription extends BaseEntity {
   @JoinColumn(name = "playlist_id", nullable = false)
   private Playlist playlist;
 
-  @ManyToOne(fetch =  FetchType.LAZY)
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "subscriber_id", nullable = false)
   private User subscriber;
 

@@ -39,7 +39,8 @@ public class DirectMessageController implements DirectMessageApi {
   ) {
     UUID senderId = userDetails.getUserId();
 
-    DirectMessageDto responseDto = directMessageService.sendMessage(conversationId, senderId, request.content());
+    DirectMessageDto responseDto = directMessageService.sendMessage(conversationId, senderId,
+        request.content());
 
     String destination = "/sub/conversations/" + conversationId + "/direct-messages";
     messagingTemplate.convertAndSend(destination, responseDto);
@@ -52,7 +53,8 @@ public class DirectMessageController implements DirectMessageApi {
       @AuthenticationPrincipal CustomUserDetails userDetails,
       @Valid DirectMessageCursorRequest request
   ) {
-    CursorResponse<DirectMessageDto> response = directMessageService.getDirectMessages(conversationId, userDetails.getUserId(), request);
+    CursorResponse<DirectMessageDto> response = directMessageService.getDirectMessages(
+        conversationId, userDetails.getUserId(), request);
     return ResponseEntity.ok(response);
   }
 

@@ -34,7 +34,8 @@ public class ConversationController implements ConversationApi {
       @AuthenticationPrincipal CustomUserDetails userDetails,
       @Valid @RequestBody ConversationCreateRequest request
   ) {
-    ConversationDto response = conversationService.findOrCreateConversation(userDetails.getUserId(), request.withUserId());
+    ConversationDto response = conversationService.findOrCreateConversation(userDetails.getUserId(),
+        request.withUserId());
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -44,7 +45,8 @@ public class ConversationController implements ConversationApi {
       @AuthenticationPrincipal CustomUserDetails userDetails,
       @Valid ConversationCursorRequest request
   ) {
-    CursorResponseConversationDto response = conversationService.getMyConversations(userDetails.getUserId(), request);
+    CursorResponseConversationDto response = conversationService.getMyConversations(
+        userDetails.getUserId(), request);
     return ResponseEntity.ok(response);
   }
 
@@ -55,7 +57,8 @@ public class ConversationController implements ConversationApi {
       @AuthenticationPrincipal CustomUserDetails userDetails,
       @RequestParam UUID userId
   ) {
-    ConversationDto response = conversationService.getConversationWithUser(userDetails.getUserId(), userId);
+    ConversationDto response = conversationService.getConversationWithUser(userDetails.getUserId(),
+        userId);
     return ResponseEntity.ok(response);
   }
 
@@ -66,7 +69,8 @@ public class ConversationController implements ConversationApi {
       @AuthenticationPrincipal CustomUserDetails userDetails,
       @PathVariable UUID conversationId
   ) {
-    ConversationDto response = conversationService.getConversation(userDetails.getUserId(), conversationId);
+    ConversationDto response = conversationService.getConversation(userDetails.getUserId(),
+        conversationId);
     return ResponseEntity.ok(response);
   }
 }

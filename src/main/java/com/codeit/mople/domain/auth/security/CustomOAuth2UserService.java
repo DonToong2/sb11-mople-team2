@@ -37,7 +37,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     User user = userRepository.findByProviderAndProviderId(provider, attributes.getProviderId())
         .orElseGet(() -> createOAuthUser(attributes, provider));
 
-    if(user.isLocked()) {
+    if (user.isLocked()) {
       throw new OAuth2AuthenticationException(new OAuth2Error(
           AuthErrorCode.LOCKED_ACCOUNT.getCode(), AuthErrorCode.LOCKED_ACCOUNT.getMessage(), null));
     }
@@ -48,17 +48,19 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
   private User createOAuthUser(OAuthAttributes attributes, AuthProvider provider) {
     try {
       return userRepository.save(
-          User.createOAuthUser(attributes.getEmail(), attributes.getName(), attributes.getPicture(), provider, attributes.getProviderId()));
+          User.createOAuthUser(attributes.getEmail(), attributes.getName(), attributes.getPicture(),
+              provider, attributes.getProviderId()));
     } catch (DataIntegrityViolationException e) {
       String constraintName = extractConstraintName(e);
 
-      if(UQ_PROVIDER_ID.equals(constraintName)) {
+      if (UQ_PROVIDER_ID.equals(constraintName)) {
         return userRepository.findByProviderAndProviderId(provider, attributes.getProviderId())
             .orElseThrow(() -> e);
       }
-      if(UQ_EMAIL.equals(constraintName)) {
+      if (UQ_EMAIL.equals(constraintName)) {
         throw new OAuth2AuthenticationException(new OAuth2Error(
-            AuthErrorCode.EMAIL_ALREADY_REGISTERED.getCode(), AuthErrorCode.EMAIL_ALREADY_REGISTERED.getMessage(), null), e);
+            AuthErrorCode.EMAIL_ALREADY_REGISTERED.getCode(),
+            AuthErrorCode.EMAIL_ALREADY_REGISTERED.getMessage(), null), e);
       }
 
       throw e;
@@ -73,14 +75,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
       throw unsupportedProviderException(registerId);
     }
 
-    if(provider != AuthProvider.GOOGLE && provider != AuthProvider.KAKAO) {
+    if (provider != AuthProvider.GOOGLE && provider != AuthProvider.KAKAO) {
       throw unsupportedProviderException(registerId);
     }
     return provider;
   }
 
   private String extractConstraintName(DataIntegrityViolationException e) {
-    if(e.getCause() instanceof ConstraintViolationException cve) {
+    if (e.getCause() instanceof ConstraintViolationException cve) {
       return cve.getConstraintName();
     }
     return null;

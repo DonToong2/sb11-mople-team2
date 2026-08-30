@@ -56,7 +56,7 @@ public class ConversationServiceTest {
 
   @Mock
   private DirectMessageSearchRepository directMessageSearchRepository;
-  
+
   @Spy
   private MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
@@ -90,12 +90,14 @@ public class ConversationServiceTest {
       //given
       given(userRepository.findById(userAId)).willReturn(Optional.of(userA));
       given(userRepository.findById(userBId)).willReturn(Optional.of(userB));
-      given(conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)).willReturn(Optional.empty());
+      given(conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)).willReturn(
+          Optional.empty());
 
       Conversation newConversation = Conversation.createConversation(userA, userB);
       UUID newConversationId = UUID.randomUUID();
       ReflectionTestUtils.setField(newConversation, "id", newConversationId);
-      given(conversationRepository.saveAndFlush(any(Conversation.class))).willReturn(newConversation);
+      given(conversationRepository.saveAndFlush(any(Conversation.class))).willReturn(
+          newConversation);
 
       UserSummary dummySummary = new UserSummary(userAId, "dummyName", "dummyUrl");
       ConversationDto dummyDto = new ConversationDto(newConversationId, dummySummary, null, false);
@@ -113,16 +115,18 @@ public class ConversationServiceTest {
 
     @Test
     @DisplayName("성공: 기존 대화방이 존재하면 생성하지 않고 기존 방을 반환한다.")
-    void success_return_existing_conversation(){
+    void success_return_existing_conversation() {
       //given
       given(userRepository.findById(userAId)).willReturn(Optional.of(userA));
       given(userRepository.findById(userBId)).willReturn(Optional.of(userB));
 
       Conversation existingConversation = Conversation.createConversation(userA, userB);
       ReflectionTestUtils.setField(existingConversation, "id", UUID.randomUUID());
-      given(conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)).willReturn(Optional.of(existingConversation));
+      given(conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)).willReturn(
+          Optional.of(existingConversation));
 
-      ConversationDto dummyDto = new ConversationDto(existingConversation.getId(), null, null, false);
+      ConversationDto dummyDto = new ConversationDto(existingConversation.getId(), null, null,
+          false);
       given(conversationMapper.toDto(existingConversation, userAId)).willReturn(dummyDto);
 
       //when
@@ -143,6 +147,7 @@ public class ConversationServiceTest {
           .hasMessageContaining(ConversationErrorCode.INVALID_PARTICIPANT.getMessage());
     }
   }
+
   @Nested
   @DisplayName("getConversationWithUser 상대방 ID 기반 조회 테스트")
   class GetConversationWithUser {
@@ -158,7 +163,8 @@ public class ConversationServiceTest {
       UUID conversationId = UUID.randomUUID();
       ReflectionTestUtils.setField(conversation, "id", conversationId);
 
-      given(conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)).willReturn(Optional.of(conversation));
+      given(conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)).willReturn(
+          Optional.of(conversation));
 
       ConversationDto dummyDto = new ConversationDto(conversationId, null, null, false);
       given(conversationMapper.toDto(any(Conversation.class), eq(userAId))).willReturn(dummyDto);
@@ -177,7 +183,8 @@ public class ConversationServiceTest {
       //given
       given(userRepository.findById(userAId)).willReturn(Optional.of(userA));
       given(userRepository.findById(userBId)).willReturn(Optional.of(userB));
-      given(conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)).willReturn(Optional.empty());
+      given(conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)).willReturn(
+          Optional.empty());
 
       //when & then
       assertThatThrownBy(() -> conversationService.getConversationWithUser(userAId, userBId))
@@ -200,7 +207,8 @@ public class ConversationServiceTest {
       UUID conversationId = UUID.randomUUID();
       ReflectionTestUtils.setField(conversation, "id", conversationId);
 
-      given(conversationRepository.findWithDetailsById(conversationId)).willReturn(Optional.of(conversation));
+      given(conversationRepository.findWithDetailsById(conversationId)).willReturn(
+          Optional.of(conversation));
 
       ConversationDto dummyDto = new ConversationDto(conversationId, null, null, false);
       given(conversationMapper.toDto(any(Conversation.class), eq(userAId))).willReturn(dummyDto);
@@ -226,7 +234,8 @@ public class ConversationServiceTest {
 
       UUID strangerId = UUID.fromString("00000000-0000-0000-0000-000000000009");
 
-      given(conversationRepository.findWithDetailsById(conversationId)).willReturn(Optional.of(conversation));
+      given(conversationRepository.findWithDetailsById(conversationId)).willReturn(
+          Optional.of(conversation));
 
       //when & then
       assertThatThrownBy(() -> conversationService.getConversation(strangerId, conversationId))
@@ -256,14 +265,16 @@ public class ConversationServiceTest {
       given(mockRequest.parseCursorToInstant()).willReturn(null);
       given(mockRequest.keywordLike()).willReturn(null);
 
-      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(), any()))
+      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(),
+          any()))
           .willReturn(List.of(conversation));
 
       ConversationDto dummyDto = new ConversationDto(UUID.randomUUID(), null, null, false);
       given(conversationMapper.toDto(any(Conversation.class), eq(userAId))).willReturn(dummyDto);
 
       //when
-      CursorResponseConversationDto result = conversationService.getMyConversations(userAId, mockRequest);
+      CursorResponseConversationDto result = conversationService.getMyConversations(userAId,
+          mockRequest);
 
       //then
       assertThat(result).isNotNull();
@@ -292,14 +303,16 @@ public class ConversationServiceTest {
       given(mockRequest.keywordLike()).willReturn(null);
 
       Conversation dummyConversation = Conversation.createConversation(userA, userB);
-      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(), any()))
+      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(),
+          any()))
           .willReturn(List.of(emptyConversation, dummyConversation));
 
       ConversationDto dummyDto = new ConversationDto(UUID.randomUUID(), null, null, false);
       given(conversationMapper.toDto(any(Conversation.class), eq(userAId))).willReturn(dummyDto);
 
       //when
-      CursorResponseConversationDto result = conversationService.getMyConversations(userAId, mockRequest);
+      CursorResponseConversationDto result = conversationService.getMyConversations(userAId,
+          mockRequest);
 
       //then
       assertThat(result).isNotNull();
@@ -339,21 +352,24 @@ public class ConversationServiceTest {
       DirectMessage mockMessage = mock(DirectMessage.class);
       conversation.updateLastMessage(mockMessage);
 
-      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(), any()))
+      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(),
+          any()))
           .willReturn(List.of(conversation));
 
       ConversationDto dummyDto = new ConversationDto(matchedConvId, null, null, false);
       given(conversationMapper.toDto(any(Conversation.class), eq(userAId))).willReturn(dummyDto);
 
       //when
-      CursorResponseConversationDto result = conversationService.getMyConversations(userAId, mockRequest);
+      CursorResponseConversationDto result = conversationService.getMyConversations(userAId,
+          mockRequest);
 
       //then
       assertThat(result).isNotNull();
       assertThat(result.data()).hasSize(1);
 
       verify(directMessageSearchRepository, times(1))
-          .findByContentMatchesAndConversationIdIn(eq(searchKeyword), eq(List.of(matchedConvId.toString())), any());
+          .findByContentMatchesAndConversationIdIn(eq(searchKeyword),
+              eq(List.of(matchedConvId.toString())), any());
     }
 
     @Test
@@ -378,17 +394,20 @@ public class ConversationServiceTest {
           eq(searchKeyword), eq(List.of(myConvId.toString())), any()))
           .willReturn(List.of());
 
-      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(), eq(List.of())))
+      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(),
+          eq(List.of())))
           .willReturn(List.of());
 
       // when
-      CursorResponseConversationDto result = conversationService.getMyConversations(userAId, mockRequest);
+      CursorResponseConversationDto result = conversationService.getMyConversations(userAId,
+          mockRequest);
 
       // then
       assertThat(result).isNotNull();
       assertThat(result.data()).isEmpty();
       verify(directMessageSearchRepository, times(1))
-          .findByContentMatchesAndConversationIdIn(eq(searchKeyword), eq(List.of(myConvId.toString())), any());
+          .findByContentMatchesAndConversationIdIn(eq(searchKeyword),
+              eq(List.of(myConvId.toString())), any());
     }
 
     @Test
@@ -417,14 +436,16 @@ public class ConversationServiceTest {
       DirectMessage mockMessage = mock(DirectMessage.class);
       conversation.updateLastMessage(mockMessage);
 
-      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(), eq(null)))
+      given(conversationRepository.findConversationByCursor(eq(userAId), eq(mockRequest), any(),
+          eq(null)))
           .willReturn(List.of(conversation));
 
       ConversationDto dummyDto = new ConversationDto(UUID.randomUUID(), null, null, false);
       given(conversationMapper.toDto(any(Conversation.class), eq(userAId))).willReturn(dummyDto);
 
       // when (에러가 밖으로 터져 나오지 않고 무사히 result를 받아와야 함)
-      CursorResponseConversationDto result = conversationService.getMyConversations(userAId, mockRequest);
+      CursorResponseConversationDto result = conversationService.getMyConversations(userAId,
+          mockRequest);
 
       // then
       assertThat(result).isNotNull();
@@ -432,7 +453,8 @@ public class ConversationServiceTest {
 
       // ES 호출은 시도했지만 에러가 났고, 우회해서 DB를 조회했음을 증명
       verify(directMessageSearchRepository, times(1))
-          .findByContentMatchesAndConversationIdIn(eq(searchKeyword), eq(List.of(myConvId.toString())), any());
+          .findByContentMatchesAndConversationIdIn(eq(searchKeyword),
+              eq(List.of(myConvId.toString())), any());
       verify(conversationRepository, times(1))
           .findConversationByCursor(eq(userAId), eq(mockRequest), any(), eq(null));
     }

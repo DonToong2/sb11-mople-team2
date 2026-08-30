@@ -22,13 +22,13 @@ public interface PlaylistContentRepository extends JpaRepository<PlaylistContent
       @Param("playlistId") UUID playlistId);
 
   @Query("""
-    select pc
-    from PlaylistContent pc
-    join fetch pc.content
-    join fetch pc.playlist
-    where pc.playlist.id in :playlistIds
-    order by pc.createdAt asc
-    """)
+      select pc
+      from PlaylistContent pc
+      join fetch pc.content
+      join fetch pc.playlist
+      where pc.playlist.id in :playlistIds
+      order by pc.createdAt asc
+      """)
   List<PlaylistContent> findAllByPlaylistIdInOrderByCreatedAtAsc(
       @Param("playlistIds") List<UUID> playlistIds
   );

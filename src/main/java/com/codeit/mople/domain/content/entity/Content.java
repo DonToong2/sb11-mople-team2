@@ -21,8 +21,8 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "contents",
     uniqueConstraints = @UniqueConstraint(
-    name = "uk_contents_type_external_id",
-    columnNames = {"type", "external_id"}))
+        name = "uk_contents_type_external_id",
+        columnNames = {"type", "external_id"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Content extends BaseTimeEntity {
@@ -61,7 +61,8 @@ public class Content extends BaseTimeEntity {
   @Column(name = "external_id")
   private String externalId;
 
-  public Content(ContentType type, String title, String description, String thumbnailUrl, List<String> tags) {
+  public Content(ContentType type, String title, String description, String thumbnailUrl,
+      List<String> tags) {
     this.type = type;
     this.title = title;
     this.description = description;
@@ -72,7 +73,8 @@ public class Content extends BaseTimeEntity {
   }
 
   //외부 데이터 전용 생성자 오버로딩
-  public Content(ContentType type, String title, String description, String thumbnailUrl, List<String> tags, String externalId) {
+  public Content(ContentType type, String title, String description, String thumbnailUrl,
+      List<String> tags, String externalId) {
     this.type = type;
     this.title = title;
     this.description = description;
@@ -91,7 +93,8 @@ public class Content extends BaseTimeEntity {
   }
 
   //관리자가 콘텐츠의 기본 정보를 수정할 때 사용하는 메서드
-  public void updateContentInfo(String title, String description, String thumbnailUrl, List<String> tags) {
+  public void updateContentInfo(String title, String description, String thumbnailUrl,
+      List<String> tags) {
     if (title != null) {
       this.title = title;
     }
@@ -117,7 +120,8 @@ public class Content extends BaseTimeEntity {
   }
 
   // 응답(title, description, thumbnailUrl, tags)데이터를 받아서 현재 콘텐츠가 비어있으면 채워 넣음
-  public boolean syncFromExternal(String title, String description, String thumbnailUrl, List<String> tags) {
+  public boolean syncFromExternal(String title, String description, String thumbnailUrl,
+      List<String> tags) {
     boolean changed = false;
 
     if (shouldFill(this.title, title)) {

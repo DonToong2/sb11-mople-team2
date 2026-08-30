@@ -93,7 +93,7 @@ public class TmdbContentItemWriter implements ItemWriter<Content>, StepExecution
 
       if (changed) {
         updated++;
-      } else  {
+      } else {
         unchanged++;
       }
     }

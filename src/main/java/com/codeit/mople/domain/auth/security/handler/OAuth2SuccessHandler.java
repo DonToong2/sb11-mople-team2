@@ -3,9 +3,6 @@ package com.codeit.mople.domain.auth.security.handler;
 import com.codeit.mople.domain.auth.dto.response.RefreshToken;
 import com.codeit.mople.domain.auth.security.CustomOAuth2User;
 import com.codeit.mople.domain.auth.service.AuthService;
-import com.codeit.mople.domain.user.entity.User;
-import com.codeit.mople.domain.user.repository.UserRepository;
-import com.codeit.mople.global.jwt.JwtProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -18,7 +15,6 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor

@@ -18,4 +18,5 @@ public record ContentSearchIndexEvent(
     long watcherCount,
     Instant createdAt
 ) implements PublishableEvent {
+
 }

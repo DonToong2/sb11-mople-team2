@@ -21,26 +21,26 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/notifications")
 public class NotificationController implements NotificationApi {
 
-    private final NotificationService notificationService;
+  private final NotificationService notificationService;
 
-    @Override
-    @GetMapping
-    public ResponseEntity<CursorResponseNotificationDto> getNotifications(
-        @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails,
-        @Valid NotificationCursorRequest request
-    ) {
-        CursorResponseNotificationDto response = notificationService.getNotifications(
-            userDetails.getUserId(), request);
-        return ResponseEntity.ok(response);
-    }
+  @Override
+  @GetMapping
+  public ResponseEntity<CursorResponseNotificationDto> getNotifications(
+      @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails,
+      @Valid NotificationCursorRequest request
+  ) {
+    CursorResponseNotificationDto response = notificationService.getNotifications(
+        userDetails.getUserId(), request);
+    return ResponseEntity.ok(response);
+  }
 
-    @Override
-    @DeleteMapping("/{notificationId}")
-    public ResponseEntity<Void> deleteNotification(
-        @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails,
-        @PathVariable UUID notificationId
-    ) {
-        notificationService.deleteNotification(notificationId, userDetails.getUserId());
-        return ResponseEntity.noContent().build();
-    }
+  @Override
+  @DeleteMapping("/{notificationId}")
+  public ResponseEntity<Void> deleteNotification(
+      @AuthenticationPrincipal(errorOnInvalidType = true) CustomUserDetails userDetails,
+      @PathVariable UUID notificationId
+  ) {
+    notificationService.deleteNotification(notificationId, userDetails.getUserId());
+    return ResponseEntity.noContent().build();
+  }
 }

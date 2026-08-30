@@ -28,5 +28,7 @@ public record KafkaProperties(
       @NotBlank String contentSearchIndex,
       @NotBlank String userSearchIndex,
       @NotBlank String playlistSearchIndex
-  ) {}
+  ) {
+
+  }
 }

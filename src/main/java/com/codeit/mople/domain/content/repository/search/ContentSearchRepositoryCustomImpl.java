@@ -84,19 +84,16 @@ public class ContentSearchRepositoryCustomImpl implements ContentSearchRepositor
     SortOptions idSort = SortOptions.of(s -> s.field(f -> f.field("id").order(SortOrder.Asc)));
 
     return switch (sortBy) {
-      case RATING ->
-          List.of(
-              SortOptions.of(s -> s.field(f -> f.field("rating").order(SortOrder.Desc))), idSort);
+      case RATING -> List.of(
+          SortOptions.of(s -> s.field(f -> f.field("rating").order(SortOrder.Desc))), idSort);
 
-      case WATCHER_COUNT ->
-          List.of(
-              SortOptions.of(s -> s.field(f -> f.field("watcherCount").order(SortOrder.Desc))),
-              idSort);
+      case WATCHER_COUNT -> List.of(
+          SortOptions.of(s -> s.field(f -> f.field("watcherCount").order(SortOrder.Desc))),
+          idSort);
 
-      case CREATED_AT ->
-          List.of(
-              SortOptions.of(s -> s.field(f -> f.field("createdAt").order(SortOrder.Desc))),
-              idSort);
+      case CREATED_AT -> List.of(
+          SortOptions.of(s -> s.field(f -> f.field("createdAt").order(SortOrder.Desc))),
+          idSort);
     };
   }
 

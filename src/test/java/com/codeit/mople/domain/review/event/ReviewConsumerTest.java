@@ -76,7 +76,8 @@ public class ReviewConsumerTest {
 
       UUID eventId = UUID.randomUUID();
 
-      ReviewUpdatedEvent event = new ReviewUpdatedEvent(eventId, Instant.now(), contentId, 4.0, 5.0);
+      ReviewUpdatedEvent event = new ReviewUpdatedEvent(eventId, Instant.now(), contentId, 4.0,
+          5.0);
 
       given(processedEventRepository.insertIfAbsent(eventId))
           .willReturn(1);

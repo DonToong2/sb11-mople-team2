@@ -54,7 +54,7 @@ public class UserController implements UserApi {
   public ResponseEntity<UserDto> updateProfile(
       @PathVariable UUID userId,
       @Valid @RequestPart UserUpdateRequest request,
-      @RequestPart(value = "image", required = false)MultipartFile image
+      @RequestPart(value = "image", required = false) MultipartFile image
   ) {
     return ResponseEntity.ok(userService.updateProfile(userId, request, image));
   }

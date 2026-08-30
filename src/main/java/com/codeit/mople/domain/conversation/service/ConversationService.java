@@ -68,7 +68,8 @@ public class ConversationService {
     log.debug("대화방 생성 시작 - requesterId: {}, targetUserId: {}", requesterId, targetUserId);
 
     if (requesterId.equals(targetUserId)) {
-      throw new ConversationException(ConversationErrorCode.INVALID_PARTICIPANT, Map.of("requesterId", requesterId));
+      throw new ConversationException(ConversationErrorCode.INVALID_PARTICIPANT,
+          Map.of("requesterId", requesterId));
     }
 
     // userAId < userBId
@@ -76,16 +77,19 @@ public class ConversationService {
     UUID userBId = (userAId.equals(requesterId)) ? targetUserId : requesterId;
 
     User userA = userRepository.findById(userAId)
-        .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", userAId)));
+        .orElseThrow(
+            () -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", userAId)));
     User userB = userRepository.findById(userBId)
-        .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", userBId)));
+        .orElseThrow(
+            () -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", userBId)));
 
     Conversation conversation;
     try {
       conversation = conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)
           .orElseGet(() -> {
             log.info("기존 대화방 없음, 새 대화방 생성 - userAId: {}, userBId: {}", userAId, userBId);
-            Conversation created = conversationRepository.saveAndFlush(Conversation.createConversation(userA, userB));
+            Conversation created = conversationRepository.saveAndFlush(
+                Conversation.createConversation(userA, userB));
             //저장이 성공한 뒤 카운트 증가
             conversationCreateCounter.increment();
             return created;
@@ -93,7 +97,8 @@ public class ConversationService {
     } catch (DataIntegrityViolationException e) {
       log.info("동시 대화방 생성 충돌 발생, 기존 방 재조회 시도 - userAId: {}, userBId: {}", userAId, userBId);
       conversation = conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)
-          .orElseThrow(() -> new ConversationException(ConversationErrorCode.CONVERSATION_NOT_FOUND, Map.of("userAId", userAId, "userBId", userBId)));
+          .orElseThrow(() -> new ConversationException(ConversationErrorCode.CONVERSATION_NOT_FOUND,
+              Map.of("userAId", userAId, "userBId", userBId)));
     }
 
     log.info("대화방 생성 완료 - conversationId: {}", conversation.getId());
@@ -104,7 +109,8 @@ public class ConversationService {
     log.debug("대화방 단건 조회 요청 - conversationId: {}, requesterId: {}", conversationId, requesterId);
 
     Conversation conversation = conversationRepository.findWithDetailsById(conversationId)
-        .orElseThrow(() -> new ConversationException(ConversationErrorCode.CONVERSATION_NOT_FOUND, Map.of("conversationId", conversationId)));
+        .orElseThrow(() -> new ConversationException(ConversationErrorCode.CONVERSATION_NOT_FOUND,
+            Map.of("conversationId", conversationId)));
 
     validateParticipant(conversation, requesterId);
 
@@ -114,30 +120,37 @@ public class ConversationService {
   }
 
   public ConversationDto getConversationWithUser(UUID requesterId, UUID targetUserId) {
-    log.debug("상대 유저 지정을 통한 대화방 조회 요청 - requesterId: {}, targetUserId: {}", requesterId, targetUserId);
+    log.debug("상대 유저 지정을 통한 대화방 조회 요청 - requesterId: {}, targetUserId: {}", requesterId,
+        targetUserId);
 
     UUID userAId = (requesterId.compareTo(targetUserId) < 0) ? requesterId : targetUserId;
     UUID userBId = (userAId.equals(requesterId)) ? targetUserId : requesterId;
 
     User userA = userRepository.findById(userAId)
-        .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", userAId)));
+        .orElseThrow(
+            () -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", userAId)));
 
     User userB = userRepository.findById(userBId)
-        .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", userBId)));
+        .orElseThrow(
+            () -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", userBId)));
 
     Conversation conversation = conversationRepository.findWithDetailsByUserAAndUserB(userA, userB)
-        .orElseThrow(() -> new ConversationException(ConversationErrorCode.CONVERSATION_NOT_FOUND, Map.of("userAId", userAId, "userBId", userBId)));
+        .orElseThrow(() -> new ConversationException(ConversationErrorCode.CONVERSATION_NOT_FOUND,
+            Map.of("userAId", userAId, "userBId", userBId)));
 
     conversationGetCounter.increment(); //성공적으로 조회된 후 카운트 증가
 
     return conversationMapper.toDto(conversation, requesterId);
   }
 
-  public CursorResponseConversationDto getMyConversations(UUID requesterId, ConversationCursorRequest request) {
-    log.debug("내 대화방 목록 조회 요청 - requesterId: {}, limit: {}, cursor: {}", requesterId, request.limit(), request.cursor());
+  public CursorResponseConversationDto getMyConversations(UUID requesterId,
+      ConversationCursorRequest request) {
+    log.debug("내 대화방 목록 조회 요청 - requesterId: {}, limit: {}, cursor: {}", requesterId,
+        request.limit(), request.cursor());
 
     userRepository.findById(requesterId)
-        .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", requesterId)));
+        .orElseThrow(
+            () -> new UserException(UserErrorCode.USER_NOT_FOUND, Map.of("userId", requesterId)));
 
     // 엘라스틱 서치 검색 로직
     List<UUID> esMatchingIds = null;
@@ -147,14 +160,15 @@ public class ConversationService {
       try {
         log.info("대화방 검색: Elasticsearch 내용 검색 시작 - keyword: '{}'", request.keywordLike());
 
-        List<UUID> myConversationIds = conversationRepository.findConversationIdsByUserId(requesterId);
+        List<UUID> myConversationIds = conversationRepository.findConversationIdsByUserId(
+            requesterId);
         List<String> myConversationStringIds = myConversationIds.stream()
             .map(UUID::toString)
             .toList();
 
         if (!myConversationIds.isEmpty()) {
           esMatchingIds = directMessageSearchRepository.findByContentMatchesAndConversationIdIn(
-              keyword, myConversationStringIds, PageRequest.of(0, 500))
+                  keyword, myConversationStringIds, PageRequest.of(0, 500))
               .stream()
               .map(DirectMessageDocument::getConversationId)
               .distinct()
@@ -170,14 +184,16 @@ public class ConversationService {
       }
     }
 
-
-    long totalCount = conversationRepository.countByParticipantIdAndKeyword(requesterId, keyword, esMatchingIds);
+    long totalCount = conversationRepository.countByParticipantIdAndKeyword(requesterId, keyword,
+        esMatchingIds);
     Instant cursorTime = request.parseCursorToInstant();
 
-    List<Conversation> conversations = conversationRepository.findConversationByCursor(requesterId, request, cursorTime, esMatchingIds);
+    List<Conversation> conversations = conversationRepository.findConversationByCursor(requesterId,
+        request, cursorTime, esMatchingIds);
 
     boolean hasNext = conversations.size() > request.limit();
-    List<Conversation> slicedConversations = hasNext ? conversations.subList(0, request.limit()) : conversations;
+    List<Conversation> slicedConversations =
+        hasNext ? conversations.subList(0, request.limit()) : conversations;
 
     List<ConversationDto> conversationDtos = slicedConversations.stream()
         .map(c -> conversationMapper.toDto(c, requesterId))
@@ -215,8 +231,10 @@ public class ConversationService {
   private void validateParticipant(Conversation conversation, UUID requesterId) {
     if (!conversation.getUserA().getId().equals(requesterId) && !conversation.getUserB().getId()
         .equals(requesterId)) {
-      log.warn("대화방 인가 실패, 권한 없는 유저의 접근 - conversationId: {}, requesterId: {}", conversation.getId(), requesterId);
-      throw new ConversationException(ConversationErrorCode.ACCESS_DENIED, Map.of("conversationId", conversation.getId(), "requesterId", requesterId));
+      log.warn("대화방 인가 실패, 권한 없는 유저의 접근 - conversationId: {}, requesterId: {}",
+          conversation.getId(), requesterId);
+      throw new ConversationException(ConversationErrorCode.ACCESS_DENIED,
+          Map.of("conversationId", conversation.getId(), "requesterId", requesterId));
     }
   }
 }

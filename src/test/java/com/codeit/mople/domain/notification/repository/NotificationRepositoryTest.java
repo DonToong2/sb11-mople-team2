@@ -28,9 +28,11 @@ import org.springframework.context.annotation.Import;
 @DisplayName("NotificationRepository 테스트")
 class NotificationRepositoryTest {
 
-  @Autowired NotificationRepository notificationRepository;
+  @Autowired
+  NotificationRepository notificationRepository;
 
-  @Autowired TestEntityManager entityManager;
+  @Autowired
+  TestEntityManager entityManager;
 
   User receiver;
   User otherUser;
@@ -80,16 +82,16 @@ class NotificationRepositoryTest {
       UUID fakeReceiverId = UUID.randomUUID();
 
       assertThatThrownBy(
-              () -> {
-                entityManager
-                    .getEntityManager()
-                    .createNativeQuery(
-                        "INSERT INTO notifications (id, receiver_id, title, content, level, notification_type, created_at) "
-                            + "VALUES (RANDOM_UUID(), :receiverId, '제목', '내용', 'INFO', 'NEW_FOLLOWER', NOW())")
-                    .setParameter("receiverId", fakeReceiverId)
-                    .executeUpdate();
-                entityManager.flush();
-              })
+          () -> {
+            entityManager
+                .getEntityManager()
+                .createNativeQuery(
+                    "INSERT INTO notifications (id, receiver_id, title, content, level, notification_type, created_at) "
+                        + "VALUES (RANDOM_UUID(), :receiverId, '제목', '내용', 'INFO', 'NEW_FOLLOWER', NOW())")
+                .setParameter("receiverId", fakeReceiverId)
+                .executeUpdate();
+            entityManager.flush();
+          })
           .isInstanceOf(PersistenceException.class);
     }
 
@@ -112,16 +114,16 @@ class NotificationRepositoryTest {
     @DisplayName("title이 null이면 DB nullable 제약으로 저장에 실패한다")
     void save_fail_whenTitleIsNull() {
       assertThatThrownBy(
-              () -> {
-                entityManager
-                    .getEntityManager()
-                    .createNativeQuery(
-                        "INSERT INTO notifications (id, receiver_id, title, content, level, notification_type, created_at) "
-                            + "VALUES (RANDOM_UUID(), :receiverId, NULL, '내용', 'INFO', 'NEW_FOLLOWER', NOW())")
-                    .setParameter("receiverId", receiver.getId())
-                    .executeUpdate();
-                entityManager.flush();
-              })
+          () -> {
+            entityManager
+                .getEntityManager()
+                .createNativeQuery(
+                    "INSERT INTO notifications (id, receiver_id, title, content, level, notification_type, created_at) "
+                        + "VALUES (RANDOM_UUID(), :receiverId, NULL, '내용', 'INFO', 'NEW_FOLLOWER', NOW())")
+                .setParameter("receiverId", receiver.getId())
+                .executeUpdate();
+            entityManager.flush();
+          })
           .isInstanceOf(PersistenceException.class);
     }
   }
@@ -145,8 +147,10 @@ class NotificationRepositoryTest {
     @Test
     @DisplayName("내 알림 삭제가 다른 receiver의 알림에 영향을 주지 않는다")
     void delete_success_otherReceiverNotAffected() {
-      Notification myNotification = saveNotification(receiver, "내 알림", NotificationType.NEW_FOLLOWER);
-      Notification otherNotification = saveNotification(otherUser, "타유저 알림", NotificationType.NEW_FOLLOWER);
+      Notification myNotification = saveNotification(receiver, "내 알림",
+          NotificationType.NEW_FOLLOWER);
+      Notification otherNotification = saveNotification(otherUser, "타유저 알림",
+          NotificationType.NEW_FOLLOWER);
 
       notificationRepository.deleteById(myNotification.getId());
       entityManager.flush();
@@ -251,7 +255,8 @@ class NotificationRepositoryTest {
     void findByCursor_success_returnsOnlyOlderWhenMultipleNewerExist() throws InterruptedException {
       Notification oldest = saveNotification(receiver, "가장 오래된 알림", NotificationType.NEW_FOLLOWER);
       Thread.sleep(10);
-      Notification middle = saveNotification(receiver, "중간 알림", NotificationType.PLAYLIST_SUBSCRIBE);
+      Notification middle = saveNotification(receiver, "중간 알림",
+          NotificationType.PLAYLIST_SUBSCRIBE);
       Thread.sleep(10);
       saveNotification(receiver, "최신 알림1", NotificationType.DIRECT_MESSAGE);
       saveNotification(receiver, "최신 알림2", NotificationType.ROLE_CHANGE);

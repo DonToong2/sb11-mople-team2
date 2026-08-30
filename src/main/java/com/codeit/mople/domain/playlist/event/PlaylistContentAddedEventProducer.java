@@ -16,7 +16,8 @@ public class PlaylistContentAddedEventProducer {
   private final KafkaEventPublisher publisher;
   private final String topic;
 
-  public PlaylistContentAddedEventProducer(KafkaEventPublisher publisher, KafkaProperties kafkaProperties) {
+  public PlaylistContentAddedEventProducer(KafkaEventPublisher publisher,
+      KafkaProperties kafkaProperties) {
     this.publisher = publisher;
     this.topic = kafkaProperties.topics().playlistContentAdded();
   }

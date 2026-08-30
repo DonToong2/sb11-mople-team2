@@ -86,9 +86,12 @@ public class AuthServiceTest {
 
     user = User.createUser("test@test.com", "encodedPassword", "testUser");
     lenient().when(jwtProvider.getRefreshTokenExpiration()).thenReturn(REFRESH_TOKEN_EXPIRATION_MS);
-    lenient().when(passwordResetRateLimiterRepository.tryAcquireGlobal(anyInt(), any())).thenReturn(true);
-    lenient().when(passwordResetRateLimiterRepository.tryAcquireByIp(anyString(), anyInt(), any())).thenReturn(true);
-    lenient().when(passwordResetRateLimiterRepository.tryAcquireByEmail(anyString(), any())).thenReturn(true);
+    lenient().when(passwordResetRateLimiterRepository.tryAcquireGlobal(anyInt(), any()))
+        .thenReturn(true);
+    lenient().when(passwordResetRateLimiterRepository.tryAcquireByIp(anyString(), anyInt(), any()))
+        .thenReturn(true);
+    lenient().when(passwordResetRateLimiterRepository.tryAcquireByEmail(anyString(), any()))
+        .thenReturn(true);
   }
 
   @Test
@@ -97,7 +100,8 @@ public class AuthServiceTest {
     SignInRequest request = new SignInRequest("test@test.com", "rawPassword");
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
-    when(jwtProvider.createAccessToken(any(), anyString(), any(Role.class))).thenReturn("issued-token");
+    when(jwtProvider.createAccessToken(any(), anyString(), any(Role.class))).thenReturn(
+        "issued-token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
 
     AuthTokens response = authService.signIn(request);
@@ -111,7 +115,8 @@ public class AuthServiceTest {
     SignInRequest request = new SignInRequest("TEST@TEST.COM", "rawPassword");
     when(userRepository.findByEmail("test@test.com")).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
-    when(jwtProvider.createAccessToken(any(), anyString(), any(Role.class))).thenReturn("issued-token");
+    when(jwtProvider.createAccessToken(any(), anyString(), any(Role.class))).thenReturn(
+        "issued-token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
 
     AuthTokens response = authService.signIn(request);
@@ -125,7 +130,8 @@ public class AuthServiceTest {
     SignInRequest request = new SignInRequest("test@test.com", "rawPassword");
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(user));
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
-    when(jwtProvider.createAccessToken(any(), anyString(), any(Role.class))).thenReturn("issued-token");
+    when(jwtProvider.createAccessToken(any(), anyString(), any(Role.class))).thenReturn(
+        "issued-token");
     when(jwtProvider.createRefreshToken(any())).thenReturn("issued-refresh-token");
 
     authService.signIn(request);
@@ -146,7 +152,8 @@ public class AuthServiceTest {
     authService.signIn(request);
 
     ArgumentCaptor<String> jtiCaptor = ArgumentCaptor.forClass(String.class);
-    verify(sessionTokenRepository, times(2)).save(eq(user.getId()), jtiCaptor.capture(), eq(EXPECTED_TTL));
+    verify(sessionTokenRepository, times(2)).save(eq(user.getId()), jtiCaptor.capture(),
+        eq(EXPECTED_TTL));
     assertThat(jtiCaptor.getAllValues().get(0)).isNotEqualTo(jtiCaptor.getAllValues().get(1));
   }
 
@@ -178,12 +185,14 @@ public class AuthServiceTest {
   void signIn_returnsSameErrorCode_forNonExistentEmailAndWrongPassword() {
     // 이메일이 존재하지 않는 경우
     when(userRepository.findByEmail("nobody@test.com")).thenReturn(Optional.empty());
-    AuthErrorCode errorCodeForMissingEmail = catchAuthErrorCode(new SignInRequest("nobody@test.com", "any"));
+    AuthErrorCode errorCodeForMissingEmail = catchAuthErrorCode(
+        new SignInRequest("nobody@test.com", "any"));
 
     // 이메일은 존재하지만 비밀번호가 틀린 경우
     when(userRepository.findByEmail("test@test.com")).thenReturn(Optional.of(user));
     when(passwordEncoder.matches("wrongPw", user.getPassword())).thenReturn(false);
-    AuthErrorCode errorCodeForWrongPassword = catchAuthErrorCode(new SignInRequest("test@test.com", "wrongPw"));
+    AuthErrorCode errorCodeForWrongPassword = catchAuthErrorCode(
+        new SignInRequest("test@test.com", "wrongPw"));
 
     assertThat(errorCodeForMissingEmail).isEqualTo(errorCodeForWrongPassword);
   }
@@ -236,7 +245,8 @@ public class AuthServiceTest {
     ResetPasswordRequest request = new ResetPasswordRequest("nobody@test.com");
     when(userRepository.findByEmail(request.email())).thenReturn(Optional.empty());
 
-    assertThatCode(() -> authService.resetPassword(request, "127.0.0.1")).doesNotThrowAnyException();
+    assertThatCode(
+        () -> authService.resetPassword(request, "127.0.0.1")).doesNotThrowAnyException();
 
     verify(passwordEncoder, never()).encode(any());
   }
@@ -245,7 +255,8 @@ public class AuthServiceTest {
   @DisplayName("동일 이메일로 유효시간 내 재요청 시 예외가 발생하고 메일이 발송되지 않음")
   void resetPassword_throwsException_whenRateLimited() {
     ResetPasswordRequest request = new ResetPasswordRequest("test@test.com");
-    when(passwordResetRateLimiterRepository.tryAcquireByEmail(eq("test@test.com"), any())).thenReturn(false);
+    when(passwordResetRateLimiterRepository.tryAcquireByEmail(eq("test@test.com"),
+        any())).thenReturn(false);
 
     assertThatThrownBy(() -> authService.resetPassword(request, "127.0.0.1"))
         .isInstanceOf(AuthException.class)
@@ -259,7 +270,8 @@ public class AuthServiceTest {
   @DisplayName("같은 IP에서 한도를 초과해 요청하면 예외가 발생하고 메일이 전송되지 않음")
   void resetPassword_throwsException_whenIpRateLimited() {
     ResetPasswordRequest request = new ResetPasswordRequest("test@test.com");
-    when(passwordResetRateLimiterRepository.tryAcquireByIp(eq("127.0.0.1"), anyInt(), any())).thenReturn(false);
+    when(passwordResetRateLimiterRepository.tryAcquireByIp(eq("127.0.0.1"), anyInt(),
+        any())).thenReturn(false);
 
     assertThatThrownBy(() -> authService.resetPassword(request, "127.0.0.1"))
         .isInstanceOf(AuthException.class)
@@ -351,7 +363,8 @@ public class AuthServiceTest {
   @Test
   @DisplayName("유효하지 않은 refreshToken이면 아무 처리도 하지 않고 조용히 종료됨")
   void signOut_doesNothing_whenRefreshTokenIsInvalid() {
-    when(jwtProvider.getUserId("broken-token")).thenThrow(new io.jsonwebtoken.MalformedJwtException("broken"));
+    when(jwtProvider.getUserId("broken-token")).thenThrow(
+        new io.jsonwebtoken.MalformedJwtException("broken"));
 
     assertThatCode(() -> authService.signOut("broken-token")).doesNotThrowAnyException();
 
@@ -364,9 +377,11 @@ public class AuthServiceTest {
     UUID userId = UUID.randomUUID();
     when(jwtProvider.getUserId("valid-refresh-token")).thenReturn(userId);
     when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh-token");
-    when(refreshTokenRepository.rotate(eq(userId), eq("valid-refresh-token"), eq("new-refresh-token"), eq(EXPECTED_TTL))).thenReturn(true);
+    when(refreshTokenRepository.rotate(eq(userId), eq("valid-refresh-token"),
+        eq("new-refresh-token"), eq(EXPECTED_TTL))).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-    when(jwtProvider.createAccessToken(any(), anyString(), any(Role.class))).thenReturn("new-access-token");
+    when(jwtProvider.createAccessToken(any(), anyString(), any(Role.class))).thenReturn(
+        "new-access-token");
 
     AuthTokens response = authService.refresh("valid-refresh-token");
 
@@ -377,7 +392,8 @@ public class AuthServiceTest {
   @Test
   @DisplayName("파싱할 수 없는 refreshToken이면 예외가 발생")
   void refresh_throwsException_whenTokenIsInvalidFormat() {
-    when(jwtProvider.getUserId("broken-token")).thenThrow(new io.jsonwebtoken.MalformedJwtException("broken"));
+    when(jwtProvider.getUserId("broken-token")).thenThrow(
+        new io.jsonwebtoken.MalformedJwtException("broken"));
 
     assertThatThrownBy(() -> authService.refresh("broken-token"))
         .isInstanceOf(AuthException.class)
@@ -403,7 +419,8 @@ public class AuthServiceTest {
     when(jwtProvider.getUserId("wrong-token")).thenReturn(userId);
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh-token");
-    when(refreshTokenRepository.rotate(eq(userId), eq("wrong-token"), eq("new-refresh-token"), eq(EXPECTED_TTL))).thenReturn(false);
+    when(refreshTokenRepository.rotate(eq(userId), eq("wrong-token"), eq("new-refresh-token"),
+        eq(EXPECTED_TTL))).thenReturn(false);
 
     assertThatThrownBy(() -> authService.refresh("wrong-token"))
         .isInstanceOf(AuthException.class)
@@ -434,13 +451,16 @@ public class AuthServiceTest {
     UUID userId = UUID.randomUUID();
     when(jwtProvider.getUserId("old-token")).thenReturn(userId);
     when(jwtProvider.createRefreshToken(userId)).thenReturn("new-refresh");
-    when(refreshTokenRepository.rotate(eq(userId), eq("old-token"), eq("new-refresh"), eq(EXPECTED_TTL))).thenReturn(true);
+    when(refreshTokenRepository.rotate(eq(userId), eq("old-token"), eq("new-refresh"),
+        eq(EXPECTED_TTL))).thenReturn(true);
     when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-    when(jwtProvider.createAccessToken(any(), anyString(), any(Role.class))).thenReturn("new-access");
+    when(jwtProvider.createAccessToken(any(), anyString(), any(Role.class))).thenReturn(
+        "new-access");
 
     authService.refresh("old-token");
 
-    verify(refreshTokenRepository).rotate(eq(userId), eq("old-token"), eq("new-refresh"), eq(EXPECTED_TTL));
+    verify(refreshTokenRepository).rotate(eq(userId), eq("old-token"), eq("new-refresh"),
+        eq(EXPECTED_TTL));
   }
 
   @Test
@@ -457,7 +477,8 @@ public class AuthServiceTest {
   @Test
   @DisplayName("소셜 로그인 계정으로 이메일/비밀번호 로그인 시도 시 비밀번호 검증 없이 예외가 발생함")
   void signIn_throwsException_whenAccountIsOAuthUser() {
-    User googleUser = User.createOAuthUser("oauth@test.com", "oauthUser", null, AuthProvider.GOOGLE, "google-sub");
+    User googleUser = User.createOAuthUser("oauth@test.com", "oauthUser", null, AuthProvider.GOOGLE,
+        "google-sub");
     SignInRequest request = new SignInRequest("oauth@test.com", "anyPassword");
     when(userRepository.findByEmail(request.username())).thenReturn(Optional.of(googleUser));
 

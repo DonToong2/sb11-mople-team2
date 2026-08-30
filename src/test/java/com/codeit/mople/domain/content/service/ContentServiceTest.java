@@ -21,7 +21,6 @@ import com.codeit.mople.domain.content.exception.ContentErrorCode;
 import com.codeit.mople.domain.content.exception.ContentException;
 import com.codeit.mople.domain.content.repository.ContentQueryRepository;
 import com.codeit.mople.domain.content.repository.ContentRepository;
-import com.codeit.mople.domain.content.repository.search.ContentDocument;
 import com.codeit.mople.domain.content.repository.search.ContentSearchRepository;
 import com.codeit.mople.global.storage.FileStorageService;
 import io.micrometer.core.instrument.MeterRegistry;

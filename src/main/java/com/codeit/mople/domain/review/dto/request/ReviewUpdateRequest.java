@@ -6,8 +6,8 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-public record ReviewUpdateRequest (
-    
+public record ReviewUpdateRequest(
+
     // (?s) : .이 붙으면 줄바꾼 다음 줄에도 해당 규칙 포함
     // (?! ... ) : ...은 금지되는 패턴
     // \p{javaWhitespace} : 공백문자 " ", 탭, 줄바꿈 등(\p... 앞에 \는 \p...를 문자열로 표시하기 위해 추가)
@@ -23,9 +23,9 @@ public record ReviewUpdateRequest (
     Double rating
 ) {
 
-    @AssertTrue(message = "수정할 리뷰 내용 또는 별점 중 하나가 필요합니다.")
-    public boolean isAnyFieldPresent() {
-        return text != null || rating != null;
-    }
+  @AssertTrue(message = "수정할 리뷰 내용 또는 별점 중 하나가 필요합니다.")
+  public boolean isAnyFieldPresent() {
+    return text != null || rating != null;
+  }
 
 }

@@ -76,7 +76,8 @@ class FollowServiceTest {
       Follow saved = Follow.create(followee, follower);
       FollowResponse expected = new FollowResponse(saved.getId(), followeeId, followerId);
 
-      given(followRepository.existsByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(false);
+      given(followRepository.existsByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(
+          false);
       given(userRepository.findById(followeeId)).willReturn(Optional.of(followee));
       given(userRepository.findById(followerId)).willReturn(Optional.of(follower));
       given(followRepository.save(any(Follow.class))).willReturn(saved);
@@ -126,7 +127,8 @@ class FollowServiceTest {
     @DisplayName("팔로우 대상이 없으면 예외가 발생")
     void followFailWhenFolloweeNotFound() {
       // given
-      given(followRepository.existsByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(false);
+      given(followRepository.existsByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(
+          false);
       given(userRepository.findById(followeeId)).willReturn(Optional.empty());
 
       // when & then
@@ -144,7 +146,8 @@ class FollowServiceTest {
     void followFailWhenRequesterNotFound() {
       // given
       User followee = mock(User.class);
-      given(followRepository.existsByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(false);
+      given(followRepository.existsByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(
+          false);
       given(userRepository.findById(followeeId)).willReturn(Optional.of(followee));
       given(userRepository.findById(followerId)).willReturn(Optional.empty());
 
@@ -162,7 +165,8 @@ class FollowServiceTest {
     @DisplayName("이미 팔로우 중이면 예외가 발생하고 저장하지 않음")
     void followFailWhenDuplicate() {
       // given
-      given(followRepository.existsByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(true);
+      given(followRepository.existsByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(
+          true);
 
       // when & then
       assertThatExceptionOfType(CustomException.class)
@@ -255,7 +259,8 @@ class FollowServiceTest {
       Follow saved = Follow.create(followee, follower);
       FollowResponse expected = new FollowResponse(saved.getId(), followeeId, followerId);
 
-      given(followRepository.findByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(Optional.of(saved));
+      given(followRepository.findByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(
+          Optional.of(saved));
       given(followee.getId()).willReturn(followeeId);
       given(follower.getId()).willReturn(followerId);
 
@@ -270,7 +275,8 @@ class FollowServiceTest {
     @DisplayName("팔로우 중이 아니면 예외가 발생")
     void getFollowByMeFailWhenNotFollowing() {
       // given: 팔로우Id 조회해서 없으면 empty 반환해
-      given(followRepository.findByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(Optional.empty());
+      given(followRepository.findByFolloweeIdAndFollowerId(followeeId, followerId)).willReturn(
+          Optional.empty());
 
       // when & then
       assertThatExceptionOfType(CustomException.class)

@@ -1,5 +1,6 @@
-package com.codeit.mople.global.event;
+package com.codeit.mople.domain.user.admin.event;
 
+import com.codeit.mople.domain.user.admin.enums.ForceLogoutReason;
 import java.util.UUID;
 
 // sessionInvalidated: 이 이벤트 발행 시점에 실제로 sessionVersion이 올라가 기존 세션이
@@ -16,4 +17,10 @@ import java.util.UUID;
 // 문제없다. 다만 향후 "그 유저의 커넥션이 붙어 있는 바로 그 인스턴스"에서 실행돼야 하는
 // 구독자(예: 웹소켓 강제 종료)를 추가한다면, 로컬 이벤트만으로는 다른 인스턴스에 붙어 있는
 // 커넥션에 닿지 않는다 — 그 시점에는 Redis pub/sub 등 인스턴스 간 전파 수단이 필요하다.
-public record UserAccountStatusChangedEvent(UUID userId, ForceLogoutReason reason, boolean sessionInvalidated) {}
+public record UserAccountStatusChangedEvent(
+    UUID userId,
+    ForceLogoutReason reason,
+    boolean sessionInvalidated
+) {
+
+}

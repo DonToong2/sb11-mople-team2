@@ -5,7 +5,6 @@ import com.codeit.mople.domain.content.client.sportsdb.dto.SportsDbEventDto;
 import com.codeit.mople.domain.content.client.sportsdb.dto.SportsDbEventResponse;
 import java.time.LocalDate;
 import java.util.Iterator;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -31,7 +30,8 @@ public class SportsDbItemReader implements ItemReader<SportsDbEventDto> {
   public SportsDbEventDto read() {
     //실행 시 최초 1회만 API를 호출하여 데이터를 메모리에 로드
     if (eventIterator == null) {
-      String targetDate = (runDate != null && !runDate.isBlank()) ? runDate : LocalDate.now().toString();
+      String targetDate =
+          (runDate != null && !runDate.isBlank()) ? runDate : LocalDate.now().toString();
       log.info("SportsDB API 조회 시작 - 일자: {}", targetDate);
 
       SportsDbEventResponse response = feignClient.getEventsByDate(targetDate, "Soccer");

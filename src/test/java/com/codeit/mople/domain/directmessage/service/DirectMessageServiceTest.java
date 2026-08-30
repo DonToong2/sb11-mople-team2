@@ -171,7 +171,8 @@ public class DirectMessageServiceTest {
           .willReturn(Optional.of(conversation));
 
       //when & then
-      assertThatThrownBy(() -> directMessageService.sendMessage(conversationId, strangerId, "테스트 메시지"))
+      assertThatThrownBy(
+          () -> directMessageService.sendMessage(conversationId, strangerId, "테스트 메시지"))
           .isInstanceOf(ConversationException.class);
 
       verifyNoInteractions(publisher);
@@ -201,7 +202,8 @@ public class DirectMessageServiceTest {
       long totalCount = 1L;
       given(directMessageRepository.countByConversationId(conversationId)).willReturn(totalCount);
 
-      given(directMessageRepository.findDirectMessageByCursor(eq(conversationId), eq(mockRequest), any()))
+      given(directMessageRepository.findDirectMessageByCursor(eq(conversationId), eq(mockRequest),
+          any()))
           .willReturn(List.of(message));
 
       Instant messageTime = Instant.now().minusSeconds(5);
@@ -219,7 +221,8 @@ public class DirectMessageServiceTest {
           .willReturn(true);
 
       //when
-      CursorResponse<DirectMessageDto> result = directMessageService.getDirectMessages(conversationId, userAId, mockRequest);
+      CursorResponse<DirectMessageDto> result = directMessageService.getDirectMessages(
+          conversationId, userAId, mockRequest);
 
       //then
       assertThat(result.data()).hasSize(1);
@@ -238,7 +241,8 @@ public class DirectMessageServiceTest {
       given(conversationRepository.findById(conversationId)).willReturn(Optional.empty());
 
       //when & then
-      assertThatThrownBy(() -> directMessageService.getDirectMessages(conversationId, userAId, mockRequest))
+      assertThatThrownBy(
+          () -> directMessageService.getDirectMessages(conversationId, userAId, mockRequest))
           .isInstanceOf(ConversationException.class)
           .hasMessageContaining(ConversationErrorCode.CONVERSATION_NOT_FOUND.getMessage());
     }
@@ -256,7 +260,8 @@ public class DirectMessageServiceTest {
       given(userB.getId()).willReturn(userBId);
 
       //when & then
-      assertThatThrownBy(() -> directMessageService.getDirectMessages(conversationId, strangerId, mockRequest))
+      assertThatThrownBy(
+          () -> directMessageService.getDirectMessages(conversationId, strangerId, mockRequest))
           .isInstanceOf(ConversationException.class)
           .hasMessageContaining(ConversationErrorCode.ACCESS_DENIED.getMessage());
     }
@@ -282,10 +287,12 @@ public class DirectMessageServiceTest {
       given(userB.getId()).willReturn(userBId);
       given(message.getCreatedAt()).willReturn(messageTime);
 
-      given(readRedisRepository.getCachedLastReadAt(conversationId, userBId)).willReturn(Optional.empty());
+      given(readRedisRepository.getCachedLastReadAt(conversationId, userBId)).willReturn(
+          Optional.empty());
       given(conversation.getMyLastReadAt(userBId)).willReturn(pastTime);
 
-      given(readRedisRepository.saveLastReadAt(conversationId, userBId, messageTime)).willReturn(true);
+      given(readRedisRepository.saveLastReadAt(conversationId, userBId, messageTime)).willReturn(
+          true);
 
       //when
       directMessageService.readMessage(conversationId, messageId, userBId);
@@ -325,7 +332,8 @@ public class DirectMessageServiceTest {
       given(conversation.getId()).willReturn(conversationId);
 
       //when & then
-      assertThatThrownBy(() -> directMessageService.readMessage(wrongConversationId, messageId, userAId))
+      assertThatThrownBy(
+          () -> directMessageService.readMessage(wrongConversationId, messageId, userAId))
           .isInstanceOf(DirectMessageException.class)
           .hasMessageContaining(DirectMessageErrorCode.DIRECT_MESSAGE_NOT_FOUND.getMessage());
     }
@@ -355,7 +363,8 @@ public class DirectMessageServiceTest {
       given(userB.getId()).willReturn(userBId);
 
       // when & then: stranger가 자기가 보낸 메시지를 읽음 처리하려고 시도
-      assertThatThrownBy(() -> directMessageService.readMessage(conversationId, messageId, strangerId))
+      assertThatThrownBy(
+          () -> directMessageService.readMessage(conversationId, messageId, strangerId))
           .isInstanceOf(DirectMessageException.class)
           .hasMessageContaining(DirectMessageErrorCode.UNAUTHORIZED_RECEIVER.getMessage());
     }
@@ -374,11 +383,13 @@ public class DirectMessageServiceTest {
       given(userB.getId()).willReturn(userBId);
       given(message.getCreatedAt()).willReturn(messageTime);
 
-      given(readRedisRepository.getCachedLastReadAt(conversationId, userBId)).willReturn(Optional.empty());
+      given(readRedisRepository.getCachedLastReadAt(conversationId, userBId)).willReturn(
+          Optional.empty());
       given(conversation.getMyLastReadAt(userBId)).willReturn(Instant.now().minusSeconds(20));
 
       // 레디스 저장이 실패(false 리턴)했다고 가정
-      given(readRedisRepository.saveLastReadAt(conversationId, userBId, messageTime)).willReturn(false);
+      given(readRedisRepository.saveLastReadAt(conversationId, userBId, messageTime)).willReturn(
+          false);
 
       //when
       directMessageService.readMessage(conversationId, messageId, userBId);
@@ -408,8 +419,10 @@ public class DirectMessageServiceTest {
       given(message.getCreatedAt()).willReturn(messageTime);
 
       // 레디스에 이미 값이 존재함 (Cache Hit)
-      given(readRedisRepository.getCachedLastReadAt(conversationId, userBId)).willReturn(Optional.of(cachedTime));
-      given(readRedisRepository.saveLastReadAt(conversationId, userBId, messageTime)).willReturn(true);
+      given(readRedisRepository.getCachedLastReadAt(conversationId, userBId)).willReturn(
+          Optional.of(cachedTime));
+      given(readRedisRepository.saveLastReadAt(conversationId, userBId, messageTime)).willReturn(
+          true);
 
       // when
       directMessageService.readMessage(conversationId, messageId, userBId);
@@ -439,7 +452,8 @@ public class DirectMessageServiceTest {
 
       // 메시지 시각이 캐시된 시각보다 과거로 세팅
       given(message.getCreatedAt()).willReturn(messageTime);
-      given(readRedisRepository.getCachedLastReadAt(conversationId, userBId)).willReturn(Optional.of(cachedTime));
+      given(readRedisRepository.getCachedLastReadAt(conversationId, userBId)).willReturn(
+          Optional.of(cachedTime));
 
       // when
       directMessageService.readMessage(conversationId, messageId, userBId);

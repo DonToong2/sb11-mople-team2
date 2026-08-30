@@ -13,6 +13,7 @@ public record CursorResponse<T>(
     String sortBy,
     String sortDirection
 ) {
+
   public static <T> CursorResponse<T> of(
       List<T> fetched,
       int limit,
@@ -28,13 +29,14 @@ public record CursorResponse<T>(
     String nextCursor = null;
     UUID nextIdAfter = null;
 
-    if(hasNext && !data.isEmpty()) {
+    if (hasNext && !data.isEmpty()) {
       T last = data.get(data.size() - 1);
       nextCursor = cursorExtractor.apply(last);
       nextIdAfter = idExtractor.apply(last);
     }
 
-    return new CursorResponse<>(data, nextCursor, nextIdAfter, hasNext, totalCount, sortBy, sortDirection);
+    return new CursorResponse<>(data, nextCursor, nextIdAfter, hasNext, totalCount, sortBy,
+        sortDirection);
   }
 
   public static <T> CursorResponse<T> ofSearchResult(

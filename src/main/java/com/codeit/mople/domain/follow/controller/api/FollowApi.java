@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "팔로우 관리")
 public interface FollowApi {
+
   //
   @Operation(
       summary = "팔로우")

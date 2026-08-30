@@ -70,7 +70,8 @@ public class TmdbErrorDecoderTest {
   void decode_WithRetryAfterHeader_RetryAfterCalculated() {
     long before = System.currentTimeMillis();
 
-    Exception exception = decoder.decode(METHOD_KEY, response(429, Map.of("Retry-After", List.of("10"))));
+    Exception exception = decoder.decode(METHOD_KEY,
+        response(429, Map.of("Retry-After", List.of("10"))));
 
     assertThat(((RetryableException) exception).retryAfter())
         .isNotNull()
@@ -106,6 +107,7 @@ public class TmdbErrorDecoderTest {
 
   private Request request() {
     return Request.create(
-        HttpMethod.GET, URL, Map.of(), (byte[]) null, StandardCharsets.UTF_8, new RequestTemplate());
+        HttpMethod.GET, URL, Map.of(), (byte[]) null, StandardCharsets.UTF_8,
+        new RequestTemplate());
   }
 }

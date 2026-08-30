@@ -106,7 +106,8 @@ class WebSocketForceLogoutIntegrationTest {
     // 저장한다. 그 저장이 끝나기 전에 유저를 지우면 FK 제약 위반이 나므로 먼저 기다린다.
     await().atMost(5, TimeUnit.SECONDS)
         .until(() -> notificationRepository.countByReceiver_Id(targetUser.getId()) >= 1);
-    notificationRepository.deleteAll(notificationRepository.findAllByReceiver_Id(targetUser.getId()));
+    notificationRepository.deleteAll(
+        notificationRepository.findAllByReceiver_Id(targetUser.getId()));
     userRepository.delete(targetUser);
   }
 
@@ -115,7 +116,8 @@ class WebSocketForceLogoutIntegrationTest {
   void accountLocked_notifiesAndClosesConnectedWebSocketSession() throws Exception {
     // given - 로그인 상태와 동일하게 access token 발급 + 세션 토큰 등록
     String jti = UUID.randomUUID().toString();
-    String accessToken = jwtProvider.createAccessToken(targetUser.getId(), jti, targetUser.getRole());
+    String accessToken = jwtProvider.createAccessToken(targetUser.getId(), jti,
+        targetUser.getRole());
     sessionTokenRepository.save(targetUser.getId(), jti, Duration.ofMinutes(30));
 
     StompHeaders connectHeaders = new StompHeaders();

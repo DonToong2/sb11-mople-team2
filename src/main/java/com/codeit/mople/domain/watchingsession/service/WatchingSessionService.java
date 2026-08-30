@@ -61,7 +61,9 @@ public class WatchingSessionService {
   private static final String USER_SESSION_ID_KEY_PREFIX = "user:session:id:"; //유저별 고유 세션 ID 보관용 Redis 키 프리픽스
 
   //내부 DTO: Redis ZSet에서 꺼낸 유저 ID와 실데 입장 시각
-  private record WatcherData(String userId, Instant joinedAt) {}
+  private record WatcherData(String userId, Instant joinedAt) {
+
+  }
 
   @Transactional(readOnly = true)
   public CursorResponseWatchingSessionDto getWatchingSessions(
@@ -71,7 +73,8 @@ public class WatchingSessionService {
 
     //콘텐츠 존재 여부 예외 처리
     Content content = contentRepository.findById(contentId)
-        .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
+        .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
+            Map.of("contentId", contentId)));
 
     //limit 검증
     if (limit <= 0 || limit > 100) {
@@ -88,8 +91,10 @@ public class WatchingSessionService {
     //정렬 방향 검증(null이거나 빈 값이면 기본값 ASCENDING 부여, 지원하지 않는 값이면 400 예외 발생)
     if (sortDirection == null || sortDirection.isBlank()) {
       sortDirection = "ASCENDING";
-    } else if (!"ASCENDING".equalsIgnoreCase(sortDirection) && !"DESCENDING".equalsIgnoreCase(sortDirection)) {
-      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("sortDirection", sortDirection));
+    } else if (!"ASCENDING".equalsIgnoreCase(sortDirection) && !"DESCENDING".equalsIgnoreCase(
+        sortDirection)) {
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST,
+          Map.of("sortDirection", sortDirection));
     }
 
     //커서 쌍 검증
@@ -126,13 +131,16 @@ public class WatchingSessionService {
           } else {
             startScore = cursorTime; //커서 시간 이후 것만 조회
           }
-        } catch (NumberFormatException ignored) {}
+        } catch (NumberFormatException ignored) {
+        }
       }
 
       //Redis 자체적으로 score(시간) 범위 내에서 offset(0)부터 limit(+1: hasNext 확인용)만큼만 가져옴
       tuples = isDesc
-          ? redisTemplate.opsForZSet().reverseRangeByScoreWithScores(contentKey, startScore, endScore, 0, limit + 1)
-          : redisTemplate.opsForZSet().rangeByScoreWithScores(contentKey, startScore, endScore, 0, limit + 1);
+          ? redisTemplate.opsForZSet()
+          .reverseRangeByScoreWithScores(contentKey, startScore, endScore, 0, limit + 1)
+          : redisTemplate.opsForZSet()
+              .rangeByScoreWithScores(contentKey, startScore, endScore, 0, limit + 1);
     }
 
     if (tuples == null) {
@@ -140,7 +148,8 @@ public class WatchingSessionService {
     }
 
     List<WatcherData> watcherDataList = tuples.stream()
-        .map(t -> new WatcherData((String) t.getValue(), Instant.ofEpochMilli(t.getScore().longValue())))
+        .map(t -> new WatcherData((String) t.getValue(),
+            Instant.ofEpochMilli(t.getScore().longValue())))
         .toList();
 
     //이름 검색 조건 필터링
@@ -296,7 +305,8 @@ public class WatchingSessionService {
   public Long enterSession(UUID userId, UUID contentId) {
     //DB 검증을 최상단 위치, 콘텐츠가 없으면 Redis 조작 전에 롤백(예외)시킴
     Content currentContent = contentRepository.findById(contentId)
-        .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
+        .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
+            Map.of("contentId", contentId)));
 
     UserSummary userSummary = userRepository.findById(userId)
         .map(user -> new UserSummary(user.getId(), user.getName(), user.getProfileImageUrl()))
@@ -313,7 +323,8 @@ public class WatchingSessionService {
 
     //이미 발급된 세션 UUID가 존재하면 재사용하고, 없으면 새로 생성하여 입장/퇴장 시 ID 불일치 방지
     String existingSessionIdStr = (String) redisTemplate.opsForValue().get(sessionIdKey);
-    final UUID sessionUuid = (existingSessionIdStr != null) ? UUID.fromString(existingSessionIdStr) : UUID.randomUUID();
+    final UUID sessionUuid =
+        (existingSessionIdStr != null) ? UUID.fromString(existingSessionIdStr) : UUID.randomUUID();
 
     for (int i = 0; i < maxRetries; i++) {
       long joinTime = Instant.now().toEpochMilli();
@@ -383,11 +394,14 @@ public class WatchingSessionService {
         contentCache.evict(prevContentUuid);
       }
 
-      WatchingSessionContentDto prevContentDto = prevContentEntity != null ? new WatchingSessionContentDto(
-          prevContentEntity.getId(), prevContentEntity.getType().name(), prevContentEntity.getTitle(),
-          prevContentEntity.getDescription(), prevContentEntity.getThumbnailUrl(), prevContentEntity.getTags(),
-          prevContentEntity.calculateAverageRating(), prevContentEntity.getReviewCount()
-      ) : contentDto;
+      WatchingSessionContentDto prevContentDto =
+          prevContentEntity != null ? new WatchingSessionContentDto(
+              prevContentEntity.getId(), prevContentEntity.getType().name(),
+              prevContentEntity.getTitle(),
+              prevContentEntity.getDescription(), prevContentEntity.getThumbnailUrl(),
+              prevContentEntity.getTags(),
+              prevContentEntity.calculateAverageRating(), prevContentEntity.getReviewCount()
+          ) : contentDto;
 
       //방 이동 시에도 동일한 sessionUuid를 사용하여 일관성 유지
       WatchingSessionDetailDto prevDetail = new WatchingSessionDetailDto(
@@ -404,7 +418,8 @@ public class WatchingSessionService {
           prevWatcherCountInt
       );
 
-      eventPublisher.publishEvent(new WatchingSessionEvent(UUID.fromString(previousContentId), prevChangeEvent));
+      eventPublisher.publishEvent(
+          new WatchingSessionEvent(UUID.fromString(previousContentId), prevChangeEvent));
     }
 
     //현재 해당 콘텐츠를 보고 있는 총 시청자 수 반환
@@ -546,7 +561,8 @@ public class WatchingSessionService {
   public UUID getWatchingContentId(UUID userId) {
     //유저 존재 여부 확인
     userRepository.findById(userId)
-        .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("userId", userId)));
+        .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
+            Map.of("userId", userId)));
 
     String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
     String contentIdStr = (String) redisTemplate.opsForValue().get(userKey);
@@ -561,7 +577,8 @@ public class WatchingSessionService {
   public WatchingSessionResponse getWatchingSessionForUser(UUID userId) {
     // 1. userId 받아서 user 존재 검증 + user객체 획득
     User user = userRepository.findById(userId)
-        .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("userId", userId)));
+        .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
+            Map.of("userId", userId)));
 
     // 2. redis에서 userKey를 조회 후 값을 받음 -> 비어있는 값이면 null 리턴
     String userKey = USER_WATCHING_KEY_PREFIX + userId.toString();
@@ -578,7 +595,6 @@ public class WatchingSessionService {
       log.warn("시청 중으로 기록된 콘텐츠가 DB에 없음: userId={}, contentId={}", userId, contentId);
       return null;
     }
-
 
     // 5. redis에서 세션 ID 조회 -> 없으면 로그 + null 반환(목록 조회와 동일하게 시청 중이 아닌 것으로 처리)
     String sessionIdKey = USER_SESSION_ID_KEY_PREFIX + userId.toString();
@@ -609,12 +625,14 @@ public class WatchingSessionService {
     );
 
     // 9. 세션 ID + 입장 시각 + 시청자 + 콘텐츠를 묶어 반환
-    return new WatchingSessionResponse(UUID.fromString(sessionIdStr), createdAt, watcher, contentDto);
+    return new WatchingSessionResponse(UUID.fromString(sessionIdStr), createdAt, watcher,
+        contentDto);
   }
 
   //실시간 채팅 메시지 처리 및 브로드캐스팅
   @Transactional(readOnly = true)
-  public void broadcastChatMessage(String contentIdStr, ContentChatSendRequest request, Principal principal) {
+  public void broadcastChatMessage(String contentIdStr, ContentChatSendRequest request,
+      Principal principal) {
     log.debug("웹소켓 채팅 요청 수신 - contentId: {}, request: {}", contentIdStr, request);
 
     //인증 객체 검증

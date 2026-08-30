@@ -74,7 +74,7 @@ public class ContentSearchIndexConsumer {
     // 이미 eventId가 존재하면
     if (inserted == 0) {
       ProcessedEvent processedEvent = processedEventRepository.findById(eventId).orElseThrow(() ->
-                  new IllegalStateException("처리 이벤트를 찾을 수 없습니다: eventId=" + eventId));
+          new IllegalStateException("처리 이벤트를 찾을 수 없습니다: eventId=" + eventId));
 
       // (eventId, PROCESSED)가 있을 경우 스킵
       if (processedEvent.getStatus() == ProcessedEventStatus.PROCESSED) {

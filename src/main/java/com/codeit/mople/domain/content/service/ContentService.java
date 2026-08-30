@@ -42,7 +42,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
-public class ContentService{
+public class ContentService {
 
   private final ContentRepository contentRepository;
   private final ContentQueryRepository contentQueryRepository;
@@ -97,7 +97,8 @@ public class ContentService{
       contentType = ContentType.from(request.type());
     } catch (IllegalArgumentException e) {
       log.warn("콘텐츠 생성 실패(잘못된 ContentType) - type: {}", request.type());
-      throw new ContentException(ContentErrorCode.INVALID_CONTENT_TYPE, Map.of("type", String.valueOf(request.type())));
+      throw new ContentException(ContentErrorCode.INVALID_CONTENT_TYPE,
+          Map.of("type", String.valueOf(request.type())));
     }
 
     //썸네일 이미지 업로드 처리(현재는 임시 URL 처리)
@@ -107,7 +108,8 @@ public class ContentService{
     }
 
     //Request DTO 데이터를 바탕으로 매퍼를 통해 Content 엔티티 생성
-    Content content = new Content(contentType, request.title(), request.description(), uploadedThumbnailUrl, request.tags());
+    Content content = new Content(contentType, request.title(), request.description(),
+        uploadedThumbnailUrl, request.tags());
 
     //DB에 엔티티 저장
     Content savedContent = contentRepository.save(content);
@@ -149,8 +151,10 @@ public class ContentService{
   )
   @Transactional(readOnly = true)
   public CursorResponseContentDto getContents(
-      UUID cursorId, String cursorValue, int limit, String typeEqual, String keywordLike, String sortBy) {
-    log.debug("콘텐츠 목록 조회 시작 - cursorId: {}, cursorValue: {}, limit: {}, typeEqual: {}, sortBy: {}", cursorId, cursorValue, limit, typeEqual, sortBy);
+      UUID cursorId, String cursorValue, int limit, String typeEqual, String keywordLike,
+      String sortBy) {
+    log.debug("콘텐츠 목록 조회 시작 - cursorId: {}, cursorValue: {}, limit: {}, typeEqual: {}, sortBy: {}",
+        cursorId, cursorValue, limit, typeEqual, sortBy);
 
     if (limit <= 0 || limit > 100) {
       log.warn("콘텐츠 목록 조회 실패(잘못된 페이징 조건) - limit: {}", limit);
@@ -176,8 +180,10 @@ public class ContentService{
       try {
         parsedCursorValue = contentSortBy.parseCursor(cursorValue);
       } catch (NumberFormatException | java.time.format.DateTimeParseException e) {
-        log.warn("콘텐츠 목록 조회 실패(커서 파싱 오류) - cursorValue: {}, sortBy: {}", cursorValue, contentSortBy.getValue());
-        throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("cursorValue", cursorValue));
+        log.warn("콘텐츠 목록 조회 실패(커서 파싱 오류) - cursorValue: {}, sortBy: {}", cursorValue,
+            contentSortBy.getValue());
+        throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST,
+            Map.of("cursorValue", cursorValue));
       }
     }
 
@@ -267,7 +273,8 @@ public class ContentService{
       return ContentType.from(typeEqual);
     } catch (IllegalArgumentException e) {
       log.warn("콘텐츠 목록 조회 실패(잘못된 ContentType) - typeEqual: {}", typeEqual);
-      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST, Map.of("typeEqual", typeEqual));
+      throw new ContentException(ContentErrorCode.INVALID_PAGE_REQUEST,
+          Map.of("typeEqual", typeEqual));
     }
   }
 
@@ -281,7 +288,8 @@ public class ContentService{
     Content content = contentRepository.findById(contentId)
         .orElseThrow(() -> {
           log.warn("콘텐츠 단건 조회 실패(존재하지 않는 ID) - contentId: {}", contentId);
-          return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
+          return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
+              Map.of("contentId", contentId));
         });
 
     //콘텐츠 단건 조회 성공 시 카운터 증가
@@ -310,14 +318,16 @@ public class ContentService{
       }
   )
   @Transactional
-  public ContentResponse updateContent(UUID contentId, ContentUpdateRequest request, MultipartFile thumbnail) {
+  public ContentResponse updateContent(UUID contentId, ContentUpdateRequest request,
+      MultipartFile thumbnail) {
     log.debug("콘텐츠 수정 시작 - contentId: {}, updateTitle: {}", contentId, request.title());
 
     //수정할 콘텐츠 조회(없으면 404 예외 발생)
     Content content = contentRepository.findById(contentId)
         .orElseThrow(() -> {
           log.warn("콘텐츠 수정 실패(존재하지 않는 ID) - contentId: {}", contentId);
-          return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
+          return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
+              Map.of("contentId", contentId));
         });
 
     //썸네일 수정(새로운 파일이 들어온 경우에만 업데이트)
@@ -390,7 +400,8 @@ public class ContentService{
     Content content = contentRepository.findById(contentId)
         .orElseThrow(() -> {
           log.warn("콘텐츠 삭제 실패(존재하지 않는 ID) - contentId: {}", contentId);
-          return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId));
+          return new ContentException(ContentErrorCode.CONTENT_NOT_FOUND,
+              Map.of("contentId", contentId));
         });
 
     final String oldThumbnailUrl = content.getThumbnailUrl();
@@ -410,7 +421,8 @@ public class ContentService{
 
     log.info("콘텐츠 삭제 완료 - contentId: {}", contentId);
 
-    eventPublisher.publishEvent(new ContentSearchIndexDeleteEvent(UUID.randomUUID(), Instant.now(), contentId));
+    eventPublisher.publishEvent(
+        new ContentSearchIndexDeleteEvent(UUID.randomUUID(), Instant.now(), contentId));
   }
 
   //썸네일 검증 및 파일 시스템 저장 메서드
@@ -427,19 +439,23 @@ public class ContentService{
     String contentType = file.getContentType();
     if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
       log.warn("이미지 업로드 실패 - 허용되지 않은 Content-Type: {}", contentType);
-      throw new ContentException(ContentErrorCode.INVALID_IMAGE_FILE, Map.of("contentType", contentType != null ? contentType : "null"));
+      throw new ContentException(ContentErrorCode.INVALID_IMAGE_FILE,
+          Map.of("contentType", contentType != null ? contentType : "null"));
     }
 
     String originalFilename = file.getOriginalFilename();
     if (originalFilename == null || !originalFilename.contains(".")) {
       log.warn("이미지 업로드 실패 - 확장자가 없는 파일명: {}", originalFilename);
-      throw new ContentException(ContentErrorCode.INVALID_IMAGE_FILE, Map.of("originalFilename", originalFilename != null ? originalFilename : "null"));
+      throw new ContentException(ContentErrorCode.INVALID_IMAGE_FILE,
+          Map.of("originalFilename", originalFilename != null ? originalFilename : "null"));
     }
 
-    String extension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+    String extension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1)
+        .toLowerCase();
     if (!ALLOWED_EXTENSIONS.contains(extension)) {
       log.warn("이미지 업로드 실패 - 허용되지 않은 확장자: {}", extension);
-      throw new ContentException(ContentErrorCode.INVALID_IMAGE_FILE, Map.of("extension", extension));
+      throw new ContentException(ContentErrorCode.INVALID_IMAGE_FILE,
+          Map.of("extension", extension));
     }
 
     return extension;

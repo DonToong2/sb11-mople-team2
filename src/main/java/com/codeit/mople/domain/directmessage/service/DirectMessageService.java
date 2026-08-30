@@ -59,34 +59,43 @@ public class DirectMessageService {
   // DM 발송 및 DB에 저장
   @Transactional
   public DirectMessageDto sendMessage(UUID conversationId, UUID senderId, String content) {
-    log.debug("WebSocket DM 발송 및 영속화 시작 - conversationId: {}, senderId: {}", conversationId, senderId);
+    log.debug("WebSocket DM 발송 및 영속화 시작 - conversationId: {}, senderId: {}", conversationId,
+        senderId);
 
     Conversation conversation = conversationRepository.findByIdWithUsers(conversationId)
-        .orElseThrow(() -> new ConversationException(ConversationErrorCode.CONVERSATION_NOT_FOUND, Map.of("conversationId", conversationId)));
+        .orElseThrow(() -> new ConversationException(ConversationErrorCode.CONVERSATION_NOT_FOUND,
+            Map.of("conversationId", conversationId)));
 
     validateConversationParticipant(conversation, senderId);
 
-    User sender = conversation.getUserA().getId().equals(senderId) ? conversation.getUserA() : conversation.getUserB();
+    User sender = conversation.getUserA().getId().equals(senderId) ? conversation.getUserA()
+        : conversation.getUserB();
     User receiver = conversation.getPartnerOf(senderId);
 
-    DirectMessage directMessage = DirectMessage.createMessage(conversation, sender, receiver, content);
+    DirectMessage directMessage = DirectMessage.createMessage(conversation, sender, receiver,
+        content);
     directMessage = directMessageRepository.save(directMessage);
 
     conversation.updateLastMessage(directMessage);
 
     // 안 읽은 메시지가 생기는 동시성 혼선 방지 - 발신자 자신의 워터마크를 해당 메시지의 생성 시각으로 강제 전진
-    publisher.publishEvent(new DirectMessageLastReadAtEvent(conversationId, senderId, directMessage.getCreatedAt()));
+    publisher.publishEvent(
+        new DirectMessageLastReadAtEvent(conversationId, senderId, directMessage.getCreatedAt()));
 
-    publisher.publishEvent(new DirectMessageReceivedEvent(receiver.getId(), sender.getName(), content));
+    publisher.publishEvent(
+        new DirectMessageReceivedEvent(receiver.getId(), sender.getName(), content));
 
     DirectMessageDto responseDto = DirectMessageDto.from(directMessage);
 
-    publisher.publishEvent(new DirectMessageCreatedEvent(UUID.randomUUID(), directMessage.getCreatedAt(), receiver.getId(), directMessage.getId()));
+    publisher.publishEvent(
+        new DirectMessageCreatedEvent(UUID.randomUUID(), directMessage.getCreatedAt(),
+            receiver.getId(), directMessage.getId()));
 
     //발송 성공 시 카운트 증가
     dmSendCounter.increment();
 
-    log.info("WebSocket DM 저장 및 워터마크/마지막 메시지 갱신 완료 - conversationId: {}, messageId: {}", conversationId, directMessage.getId());
+    log.info("WebSocket DM 저장 및 워터마크/마지막 메시지 갱신 완료 - conversationId: {}, messageId: {}",
+        conversationId, directMessage.getId());
 
     return responseDto;
   }
@@ -164,12 +173,14 @@ public class DirectMessageService {
 
     // 최신 읽음 시각 조회 시 레디스부터 확인 후 DB 조회 후 레디스에 복구
     Instant myLastReadAt;
-    Optional<Instant> cachedValue = readRedisRepository.getCachedLastReadAt(conversationId, requesterId);
+    Optional<Instant> cachedValue = readRedisRepository.getCachedLastReadAt(conversationId,
+        requesterId);
 
     if (cachedValue.isPresent()) {
       myLastReadAt = cachedValue.get();
     } else {
-      log.info("Redis Cache Miss: DB에서 직접 읽음 시각 조회 진행 - conversationId: {}, requesterId: {}", conversationId, requesterId);
+      log.info("Redis Cache Miss: DB에서 직접 읽음 시각 조회 진행 - conversationId: {}, requesterId: {}",
+          conversationId, requesterId);
       myLastReadAt = conversation.getMyLastReadAt(requesterId);
       if (myLastReadAt != null) {
         readRedisRepository.setCachedLastReadAt(conversationId, requesterId, myLastReadAt);
@@ -193,7 +204,8 @@ public class DirectMessageService {
 
     if (!isRedisAlive) {
       conversation.updateLastReadAt(userId, readAt);
-      log.error("Redis 장애 감지: DB에 직접 읽음 시각 업데이트 (Fallback) 완료 - conversationId: {}", conversation.getId());
+      log.error("Redis 장애 감지: DB에 직접 읽음 시각 업데이트 (Fallback) 완료 - conversationId: {}",
+          conversation.getId());
     } else {
       log.info("Redis 갱신: DM 읽음 시각 갱신 완료 - conversationId: {}", conversation.getId());
     }

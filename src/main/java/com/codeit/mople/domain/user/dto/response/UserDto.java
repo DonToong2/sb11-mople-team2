@@ -14,6 +14,7 @@ public record UserDto(
     Role role,
     boolean locked
 ) {
+
   public static UserDto from(User user) {
     return new UserDto(
         user.getId(),

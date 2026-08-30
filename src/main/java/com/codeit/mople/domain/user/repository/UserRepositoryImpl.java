@@ -14,12 +14,11 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class UserRepositoryImpl implements UserRepositoryCustom{
+public class UserRepositoryImpl implements UserRepositoryCustom {
 
   private final JPAQueryFactory queryFactory;
 
@@ -67,10 +66,10 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
   }
 
   private BooleanExpression cursorCondition(UserSearchRequest request, boolean isAsc) {
-    if(request.cursor() == null && request.idAfter() == null) {
+    if (request.cursor() == null && request.idAfter() == null) {
       return null; // 둘 다 없으면 첫 페이지 생성
     }
-    if(request.cursor() == null || request.idAfter() == null) {
+    if (request.cursor() == null || request.idAfter() == null) {
       throw new UserException(UserErrorCode.INVALID_CURSOR); // 한쪽만 있으면 잘못된 요청
     }
 
@@ -87,21 +86,25 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
       case CREATED_AT -> {
         Instant cursorTime = parseCursorAsInstant(cursor);
         yield isAsc
-            ? user.createdAt.gt(cursorTime).or(user.createdAt.eq(cursorTime).and(user.id.gt(idAfter)))
-            : user.createdAt.lt(cursorTime).or(user.createdAt.eq(cursorTime).and(user.id.lt(idAfter)));
+            ? user.createdAt.gt(cursorTime)
+            .or(user.createdAt.eq(cursorTime).and(user.id.gt(idAfter)))
+            : user.createdAt.lt(cursorTime)
+                .or(user.createdAt.eq(cursorTime).and(user.id.lt(idAfter)));
       }
       case IS_LOCKED -> {
         boolean cursorLocked = parseCursorAsBoolean(cursor);
         yield isAsc
-            ? sameGroupOrAfter(user.locked.eq(false), user.locked.eq(true), !cursorLocked, idAfter, true)
-            : sameGroupOrAfter(user.locked.eq(true), user.locked.eq(false), cursorLocked, idAfter, false);
+            ? sameGroupOrAfter(user.locked.eq(false), user.locked.eq(true), !cursorLocked, idAfter,
+            true)
+            : sameGroupOrAfter(user.locked.eq(true), user.locked.eq(false), cursorLocked, idAfter,
+                false);
       }
       case ROLE -> {
         Role cursorRole = parseCursorAsRole(cursor);
         String cursorRoleValue = cursorRole.name();
         yield isAsc
             ? user.role.stringValue().gt(cursorRoleValue)
-                .or(user.role.stringValue().eq(cursorRoleValue).and(user.id.gt(idAfter)))
+            .or(user.role.stringValue().eq(cursorRoleValue).and(user.id.gt(idAfter)))
             : user.role.stringValue().lt(cursorRoleValue)
                 .or(user.role.stringValue().eq(cursorRoleValue).and(user.id.lt(idAfter)));
       }
@@ -128,7 +131,7 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
 
     return isInFirstGroup
         ? firstGroup.and(idCompare).or(secondGroup)
-        :secondGroup.and(idCompare);
+        : secondGroup.and(idCompare);
   }
 
   private Instant parseCursorAsInstant(String cursor) {
@@ -140,7 +143,7 @@ public class UserRepositoryImpl implements UserRepositoryCustom{
   }
 
   private boolean parseCursorAsBoolean(String cursor) {
-    if(!"true".equalsIgnoreCase(cursor) && !"false".equalsIgnoreCase(cursor)) {
+    if (!"true".equalsIgnoreCase(cursor) && !"false".equalsIgnoreCase(cursor)) {
       throw new UserException(UserErrorCode.INVALID_CURSOR);
     }
     return Boolean.parseBoolean(cursor);

@@ -58,7 +58,7 @@ class FollowControllerTest {
 
   @MockitoBean
   FollowService followService;
-  
+
   @MockitoBean
   JwtProvider jwtProvider;
 
@@ -119,7 +119,7 @@ class FollowControllerTest {
           .andExpect(jsonPath("$.id").value(followId.toString()))
           .andExpect(jsonPath("$.followeeId").value(followeeId.toString()))
           .andExpect(jsonPath("$.followerId").value(followerId.toString()));
-      
+
       verify(followService).follow(request, followerId);
     }
 
@@ -161,7 +161,7 @@ class FollowControllerTest {
 
       verifyNoInteractions(followService);
     }
-    
+
     @Test
     @DisplayName("자기 자신을 팔로우하면 400을 반환")
     void createFollowFailWhenSelfFollow() throws Exception {
@@ -253,7 +253,7 @@ class FollowControllerTest {
           .andDo(print())
           .andExpect(status().isNoContent())
           .andExpect(content().string(""));
-      
+
       verify(followService).unFollow(followId, followerId);
     }
 
@@ -337,7 +337,7 @@ class FollowControllerTest {
           .andExpect(jsonPath("$.id").value(followId.toString()))
           .andExpect(jsonPath("$.followeeId").value(followeeId.toString()))
           .andExpect(jsonPath("$.followerId").value(followerId.toString()));
-      
+
       verify(followService).getFollowByMe(followeeId, followerId);
     }
 

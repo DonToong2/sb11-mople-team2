@@ -20,11 +20,12 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RequiredArgsConstructor
 public class ContentQueryRepository {
+
   private final JPAQueryFactory queryFactory;
 
   //커서 기반 데이터 조회 (limit + 1개)
   public List<Content> findContentByCursor(UUID cursorId, Object parsedCursorValue,
-      int limit, ContentType type,  List<UUID> contentIds, ContentSortBy sortBy) {
+      int limit, ContentType type, List<UUID> contentIds, ContentSortBy sortBy) {
     return queryFactory.selectFrom(content)
         .where(
             typeCondition(type), //카테고리 동적 필터
@@ -79,12 +80,16 @@ public class ContentQueryRepository {
   }
 
   // 커서 필터링 조건(Service 계층에서 이미 타입 검증/파싱된 값을 받음)
-  private BooleanExpression cursorCondition(UUID cursorId, Object parsedCursorValue, ContentSortBy sortBy) {
-    if (cursorId == null || parsedCursorValue == null) return null;
+  private BooleanExpression cursorCondition(UUID cursorId, Object parsedCursorValue,
+      ContentSortBy sortBy) {
+    if (cursorId == null || parsedCursorValue == null) {
+      return null;
+    }
 
     if (sortBy == ContentSortBy.WATCHER_COUNT) {
       long count = (Long) parsedCursorValue;
-      return content.watcherCount.lt(count).or(content.watcherCount.eq(count).and(content.id.gt(cursorId)));
+      return content.watcherCount.lt(count)
+          .or(content.watcherCount.eq(count).and(content.id.gt(cursorId)));
     } else if (sortBy == ContentSortBy.RATING) {
       double rating = (Double) parsedCursorValue;
       NumberExpression<Double> averageRating = averageRatingExpression();

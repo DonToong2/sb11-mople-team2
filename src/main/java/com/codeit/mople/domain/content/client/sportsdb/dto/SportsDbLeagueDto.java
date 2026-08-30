@@ -5,4 +5,6 @@ public record SportsDbLeagueDto(
     String idLeague,
     String strLeague,
     String strSport
-) {}
+) {
+
+}

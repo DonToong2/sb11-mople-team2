@@ -29,13 +29,24 @@ public class ApiResponse<T> {
   }
 
   public static ApiResponse<Void> error(String code, String message, Map<String, Object> details) {
-    return new ApiResponse<>(false, null, new ErrorDetail(code, message, (details == null || details.isEmpty()) ? null : details));
+    return new ApiResponse<>(false, null,
+        new ErrorDetail(code, message, (details == null || details.isEmpty()) ? null : details));
   }
 
-  public boolean isSuccess() { return success; }
-  public T getData() { return data; }
-  public ErrorDetail getError() { return error; }
+  public boolean isSuccess() {
+    return success;
+  }
+
+  public T getData() {
+    return data;
+  }
+
+  public ErrorDetail getError() {
+    return error;
+  }
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
-  public record ErrorDetail(String code, String message, Map<String, Object> details) {}
+  public record ErrorDetail(String code, String message, Map<String, Object> details) {
+
+  }
 }

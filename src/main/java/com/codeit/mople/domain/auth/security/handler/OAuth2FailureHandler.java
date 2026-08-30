@@ -21,15 +21,15 @@ public class OAuth2FailureHandler extends SimpleUrlAuthenticationFailureHandler 
       AuthenticationException exception) throws IOException {
     String errorCode = resolveErrorCode(exception);
     String targetUri = UriComponentsBuilder.fromUriString(failureUri)
-            .queryParam("error", "oauth2_authentication_failed")
-            .queryParam("code", errorCode)
-            .build()
-            .toUriString();
+        .queryParam("error", "oauth2_authentication_failed")
+        .queryParam("code", errorCode)
+        .build()
+        .toUriString();
     getRedirectStrategy().sendRedirect(request, response, targetUri);
   }
 
   private String resolveErrorCode(AuthenticationException exception) {
-    if(exception instanceof OAuth2AuthenticationException oauth2Exception) {
+    if (exception instanceof OAuth2AuthenticationException oauth2Exception) {
       return oauth2Exception.getError().getErrorCode();
     }
     return "UNKNOWN";

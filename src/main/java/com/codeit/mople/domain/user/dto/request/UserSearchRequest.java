@@ -18,6 +18,7 @@ public record UserSearchRequest(
     SortDirection sortDirection,
     UserSortBy sortBy
 ) {
+
   private static final int DEFAULT_LIMIT = 20;
 
   public int limitOrDefault() {

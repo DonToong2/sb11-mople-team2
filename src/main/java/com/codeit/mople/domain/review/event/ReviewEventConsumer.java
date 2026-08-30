@@ -32,7 +32,7 @@ public class ReviewEventConsumer {
     if (checkAndRecordProcessedEvent(event.eventId())) {
       return;
     }
-    
+
     contentRepository.increaseRating(
         event.contentId(),
         event.rating()

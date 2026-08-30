@@ -62,7 +62,7 @@ public class RedisFailedEventStore implements FailedEventStore {
         FIELD_ERROR, event.error()
     );
   }
-  
+
   // 최대 보관 건수를 넘으면 오래된 것부터 잘라라.(대략 근사치로 잘라라)
   private XAddOptions sizeLimitOptions() {
     return XAddOptions.maxlen(maxEntries).approximateTrimming(true);

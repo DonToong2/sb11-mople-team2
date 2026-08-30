@@ -67,8 +67,12 @@ public class Conversation extends BaseEntity {
   }
 
   public User getPartnerOf(UUID requesterId) {
-    if (this.userA.getId().equals(requesterId)) return this.userB;
-    if (this.userB.getId().equals(requesterId)) return this.userA;
+    if (this.userA.getId().equals(requesterId)) {
+      return this.userB;
+    }
+    if (this.userB.getId().equals(requesterId)) {
+      return this.userA;
+    }
     throw new ConversationException(ConversationErrorCode.ACCESS_DENIED);
   }
 
@@ -92,8 +96,12 @@ public class Conversation extends BaseEntity {
   }
 
   public Instant getMyLastReadAt(UUID requesterId) {
-    if (this.userA.getId().equals(requesterId)) return this.userALastReadAt;
-    if (this.userB.getId().equals(requesterId)) return this.userBLastReadAt;
+    if (this.userA.getId().equals(requesterId)) {
+      return this.userALastReadAt;
+    }
+    if (this.userB.getId().equals(requesterId)) {
+      return this.userBLastReadAt;
+    }
     throw new ConversationException(ConversationErrorCode.ACCESS_DENIED);
   }
 }

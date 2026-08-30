@@ -53,11 +53,11 @@ public class OAuthAttributes {
 
   @SuppressWarnings("unchecked")
   private static Map<String, Object> safeMap(Object value) {
-    return value instanceof Map<?,?> map ? (Map<String, Object>) map : Map.of();
+    return value instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
   }
 
   private static String requireProviderId(Object rawId) {
-    if(rawId == null) {
+    if (rawId == null) {
       throw new OAuth2AuthenticationException(new OAuth2Error(
           AuthErrorCode.OAUTH_PROVIDER_ID_MISSING.getCode(),
           AuthErrorCode.OAUTH_PROVIDER_ID_MISSING.getMessage(), null

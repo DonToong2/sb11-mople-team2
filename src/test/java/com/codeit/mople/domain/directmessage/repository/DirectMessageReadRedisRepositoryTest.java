@@ -138,7 +138,8 @@ class DirectMessageReadRedisRepositoryTest {
 
     // then
     ArgumentCaptor<String> valueCaptor = ArgumentCaptor.forClass(String.class);
-    verify(valueOperations).setIfAbsent(eq(valueKey), valueCaptor.capture(), eq(Duration.ofDays(7)));
+    verify(valueOperations).setIfAbsent(eq(valueKey), valueCaptor.capture(),
+        eq(Duration.ofDays(7)));
 
     // 저장되는 값 역시 9자리 나노초 정규식을 만족하는지 검증
     assertThat(valueCaptor.getValue())

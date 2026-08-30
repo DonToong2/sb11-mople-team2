@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ReviewConstraintErrorCodes implements ConstraintErrorCodes {
+
   @Override
   public Map<String, ErrorCode> get() {
     return Map.of(

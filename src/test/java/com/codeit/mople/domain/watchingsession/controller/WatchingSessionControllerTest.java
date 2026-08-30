@@ -109,7 +109,8 @@ class WatchingSessionControllerTest {
 
     given(watchingSessionService.getWatchingSessions(
         any(), any(), any(), any(), anyInt(), any(), any()
-    )).willThrow(new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
+    )).willThrow(
+        new ContentException(ContentErrorCode.CONTENT_NOT_FOUND, Map.of("contentId", contentId)));
 
     mockMvc.perform(get("/api/contents/{contentId}/watching-sessions", contentId))
         .andExpect(status().isNotFound());

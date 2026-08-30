@@ -94,10 +94,11 @@ public class DirectMessageIntegrationTest {
       }
 
       // when & then
-      String responseJson = mockMvc.perform(get("/api/conversations/{conversationId}/direct-messages", testConversation.getId())
-              .with(user(userDetailsB))
-              .param("limit", "20")
-              .accept(MediaType.APPLICATION_JSON))
+      String responseJson = mockMvc.perform(
+              get("/api/conversations/{conversationId}/direct-messages", testConversation.getId())
+                  .with(user(userDetailsB))
+                  .param("limit", "20")
+                  .accept(MediaType.APPLICATION_JSON))
           .andDo(print())
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.data").isArray())
@@ -118,12 +119,13 @@ public class DirectMessageIntegrationTest {
       String cursorStr = JsonPath.read(responseJson, "$.nextCursor");
       String idAfterStr = JsonPath.read(responseJson, "$.nextIdAfter");
 
-      mockMvc.perform(get("/api/conversations/{conversationId}/direct-messages", testConversation.getId())
-              .with(user(userDetailsB))
-              .param("cursor", cursorStr)
-              .param("idAfter", idAfterStr)
-              .param("limit", "20")
-              .accept(MediaType.APPLICATION_JSON))
+      mockMvc.perform(
+              get("/api/conversations/{conversationId}/direct-messages", testConversation.getId())
+                  .with(user(userDetailsB))
+                  .param("cursor", cursorStr)
+                  .param("idAfter", idAfterStr)
+                  .param("limit", "20")
+                  .accept(MediaType.APPLICATION_JSON))
           .andDo(print())
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.hasNext").value(false))
@@ -143,10 +145,11 @@ public class DirectMessageIntegrationTest {
       directMessageRepository.save(message);
 
       // when
-      mockMvc.perform(post("/api/conversations/{conversationId}/direct-messages/{directMessageId}/read",
-              testConversation.getId(), message.getId())
-              .with(user(userDetailsB))
-              .with(csrf()))
+      mockMvc.perform(
+              post("/api/conversations/{conversationId}/direct-messages/{directMessageId}/read",
+                  testConversation.getId(), message.getId())
+                  .with(user(userDetailsB))
+                  .with(csrf()))
           .andDo(print())
           .andExpect(status().isNoContent());
 
@@ -166,14 +169,16 @@ public class DirectMessageIntegrationTest {
     @DisplayName("실패: 발신자 본인이 자기가 보낸 메시지를 읽음 처리하려 하면 204를 반환하지만, Redis는 갱신되지 않는다. (조기 종료)")
     void read_message_by_sender_ignored() throws Exception {
       // given
-      DirectMessage message = DirectMessage.createMessage(testConversation, userA, userB, "내가 보낸 메시지");
+      DirectMessage message = DirectMessage.createMessage(testConversation, userA, userB,
+          "내가 보낸 메시지");
       directMessageRepository.save(message);
 
       // when
-      mockMvc.perform(post("/api/conversations/{conversationId}/direct-messages/{directMessageId}/read",
-              testConversation.getId(), message.getId())
-              .with(user(userDetailsA))
-              .with(csrf()))
+      mockMvc.perform(
+              post("/api/conversations/{conversationId}/direct-messages/{directMessageId}/read",
+                  testConversation.getId(), message.getId())
+                  .with(user(userDetailsA))
+                  .with(csrf()))
           .andExpect(status().isNoContent());
 
       // then

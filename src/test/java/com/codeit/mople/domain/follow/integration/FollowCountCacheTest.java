@@ -49,7 +49,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 @DisplayName("팔로워 수 캐시 통합 테스트")
 class FollowCountCacheTest {
 
-  private static final String CACHE_KEY_PREFIX = "mople:test:cache:" + CacheNames.FOLLOW_COUNT + "::";
+  private static final String CACHE_KEY_PREFIX =
+      "mople:test:cache:" + CacheNames.FOLLOW_COUNT + "::";
 
   @Autowired
   FollowService followService;

@@ -114,7 +114,8 @@ public class UserControllerTest extends AbstractRedisCleanupTest {
   @Test
   @DisplayName("존재하지 않는 사용자를 조회하면 404를 반환")
   void getUser_returnsNotFound_whenUserNotExists() throws Exception {
-    User requester = userRepository.save(User.createUser("requester@test.com", "encoded", "requester"));
+    User requester = userRepository.save(
+        User.createUser("requester@test.com", "encoded", "requester"));
     String token = tokenFor(requester);
 
     mockMvc.perform(get("/api/users/{userId}", UUID.randomUUID())
@@ -136,10 +137,10 @@ public class UserControllerTest extends AbstractRedisCleanupTest {
     userRepository.save(User.createUser("b@test.com", "encoded", "bb"));
 
     mockMvc.perform(get("/api/users")
-        .param("limit", "10")
-        .param("sortBy", "NAME")
-        .param("sortDirection", "ASCENDING")
-        .header("Authorization", "Bearer " + adminToken))
+            .param("limit", "10")
+            .param("sortBy", "NAME")
+            .param("sortDirection", "ASCENDING")
+            .header("Authorization", "Bearer " + adminToken))
         .andDo(print())
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data").isArray())
@@ -150,12 +151,13 @@ public class UserControllerTest extends AbstractRedisCleanupTest {
   @Test
   @DisplayName("어드민이 아닌 사용자는 사용자 목록 조회 시 403을 반환함")
   void getUsers_returnsForbidden_whenNotAdmin() throws Exception {
-    User normalUser = userRepository.save(User.createUser("nomal@test.com", "encoded", "normalUser"));
+    User normalUser = userRepository.save(
+        User.createUser("nomal@test.com", "encoded", "normalUser"));
     String normalUserToken = tokenFor(normalUser);
 
     mockMvc.perform(get("/api/users")
-        .param("limit", "10")
-        .header("Authorization", "Bearer " + normalUserToken))
+            .param("limit", "10")
+            .header("Authorization", "Bearer " + normalUserToken))
         .andDo(print())
         .andExpect(status().isForbidden());
   }
@@ -169,8 +171,8 @@ public class UserControllerTest extends AbstractRedisCleanupTest {
     String adminToken = tokenFor(admin);
 
     mockMvc.perform(get("/api/users")
-        .param("limit", "500")
-        .header("Authorization", "Bearer " + adminToken))
+            .param("limit", "500")
+            .header("Authorization", "Bearer " + adminToken))
         .andDo(print())
         .andExpect(status().isBadRequest());
   }
@@ -184,8 +186,8 @@ public class UserControllerTest extends AbstractRedisCleanupTest {
     String adminToken = tokenFor(admin);
 
     mockMvc.perform(get("/api/users")
-        .param("limit", "0")
-        .header("Authorization", "Bearer " + adminToken))
+            .param("limit", "0")
+            .header("Authorization", "Bearer " + adminToken))
         .andDo(print())
         .andExpect(status().isBadRequest());
   }
@@ -197,10 +199,13 @@ public class UserControllerTest extends AbstractRedisCleanupTest {
     String token = tokenFor(user);
 
     mockMvc.perform(multipart("/api/users/{userId}", user.getId())
-        .file(requestPart("newName"))
-        .header("Authorization", "Bearer " + token)
-        .with(req -> { req.setMethod("PATCH"); return req; })
-        .with(csrf()))
+            .file(requestPart("newName"))
+            .header("Authorization", "Bearer " + token)
+            .with(req -> {
+              req.setMethod("PATCH");
+              return req;
+            })
+            .with(csrf()))
         .andDo(print())
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.name").value("newName"));
@@ -211,14 +216,18 @@ public class UserControllerTest extends AbstractRedisCleanupTest {
   void updateProfile_success_withImage() throws Exception {
     User user = userRepository.save(User.createUser("update2@test.com", "encoded", "oldName"));
     String token = tokenFor(user);
-    MockMultipartFile image = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
+    MockMultipartFile image = new MockMultipartFile("image", "test.jpg", "image/jpeg",
+        "content".getBytes());
 
     mockMvc.perform(multipart("/api/users/{userId}", user.getId())
-        .file(requestPart("newName"))
-        .file(image)
-        .header("Authorization", "Bearer " + token)
-        .with(req -> { req.setMethod("PATCH"); return req; })
-        .with(csrf()))
+            .file(requestPart("newName"))
+            .file(image)
+            .header("Authorization", "Bearer " + token)
+            .with(req -> {
+              req.setMethod("PATCH");
+              return req;
+            })
+            .with(csrf()))
         .andDo(print())
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.name").value("newName"))
@@ -233,10 +242,13 @@ public class UserControllerTest extends AbstractRedisCleanupTest {
     String tooLongName = "a".repeat(21);
 
     mockMvc.perform(multipart("/api/users/{userId}", user.getId())
-        .file(requestPart(tooLongName))
-        .header("Authorization", "Bearer " + token)
-        .with(req -> { req.setMethod("PATCH"); return req; })
-        .with(csrf()))
+            .file(requestPart(tooLongName))
+            .header("Authorization", "Bearer " + token)
+            .with(req -> {
+              req.setMethod("PATCH");
+              return req;
+            })
+            .with(csrf()))
         .andDo(print())
         .andExpect(status().isBadRequest());
   }
@@ -245,14 +257,18 @@ public class UserControllerTest extends AbstractRedisCleanupTest {
   @DisplayName("본인이 아닌 사용자가 프로필을 수정하면 403을 반환")
   void updateProfile_returnsForbidden_whenNotOwner() throws Exception {
     User owner = userRepository.save(User.createUser("owner@test.com", "encoded", "owner"));
-    User attacker = userRepository.save(User.createUser("attacker@test.com", "encoded", "attacker"));
+    User attacker = userRepository.save(
+        User.createUser("attacker@test.com", "encoded", "attacker"));
     String attackerToken = tokenFor(attacker);
 
     mockMvc.perform(multipart("/api/users/{userId}", owner.getId())
-        .file(requestPart("newName"))
-        .header("Authorization", "Bearer " + attackerToken)
-        .with(req -> { req.setMethod("PATCH"); return req; })
-        .with(csrf()))
+            .file(requestPart("newName"))
+            .header("Authorization", "Bearer " + attackerToken)
+            .with(req -> {
+              req.setMethod("PATCH");
+              return req;
+            })
+            .with(csrf()))
         .andDo(print())
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.error.code").value("COMMON-003"));
@@ -261,7 +277,8 @@ public class UserControllerTest extends AbstractRedisCleanupTest {
   @Test
   @DisplayName("비밀번호 변경 성공")
   void changePassword_success() throws Exception {
-    User user = userRepository.save(User.createUser("pw@test.com", passwordEncoder.encode("oldPw123"), "testUser"));
+    User user = userRepository.save(
+        User.createUser("pw@test.com", passwordEncoder.encode("oldPw123"), "testUser"));
     String token = tokenFor(user);
     ChangePasswordRequest request = new ChangePasswordRequest("newPw123");
 
@@ -281,7 +298,8 @@ public class UserControllerTest extends AbstractRedisCleanupTest {
   @DisplayName("본인이 아닌 사용자가 비밀번호를 변경하면 403을 반환")
   void changePassword_returnsForbidden_whenNotOwner() throws Exception {
     User owner = userRepository.save(User.createUser("pw2@test.com", "encoded", "testUser"));
-    User attacker = userRepository.save(User.createUser("attacker2@test.com", "encoded", "attacker"));
+    User attacker = userRepository.save(
+        User.createUser("attacker2@test.com", "encoded", "attacker"));
     String attackerToken = tokenFor(attacker);
     ChangePasswordRequest request = new ChangePasswordRequest("newPw123");
 
@@ -303,7 +321,10 @@ public class UserControllerTest extends AbstractRedisCleanupTest {
     mockMvc.perform(multipart("/api/users/{userId}", user.getId())
             .file(requestPart("newName"))
             .header("Authorization", "Bearer " + token)
-            .with(req -> { req.setMethod("PATCH"); return req; }))
+            .with(req -> {
+              req.setMethod("PATCH");
+              return req;
+            }))
         // .with(csrf()) 없음!
         .andDo(print())
         .andExpect(status().isForbidden());  // 403이 나오면 CSRF가 진짜 살아있는 것
